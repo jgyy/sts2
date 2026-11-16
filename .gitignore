@@ -53,3 +53,9 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# sts2bot
+.build/
+__pycache__/
+*.pyc
+*.egg-info/

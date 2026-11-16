@@ -1,0 +1,24 @@
+# User service that keeps the bot (and through it, the game) running 24/7.
+#
+#   mkdir -p ~/.config/systemd/user
+#   sed "s|@REPO@|$PWD|" systemd/sts2bot.service > ~/.config/systemd/user/sts2bot.service
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now sts2bot
+#   journalctl --user -u sts2bot -f
+#
+# Steam must be running and logged in for the game to launch.
+
+[Unit]
+Description=Slay the Spire 2 bot
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+WorkingDirectory=@REPO@
+# systemd-inhibit keeps the machine from idling to sleep while the bot plays.
+ExecStart=/usr/bin/systemd-inhibit --what=idle:sleep --who=sts2bot --why="Playing Slay the Spire 2" /usr/bin/python3 -m sts2bot --character IRONCLAD
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=graphical-session.target
