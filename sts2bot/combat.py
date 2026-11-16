@@ -27,6 +27,7 @@ class Enemy:
     hp: int
     block: int
     vulnerable: bool
+    weak: bool
     incoming: int  # damage this enemy intends to deal this turn
 
     @property
@@ -48,11 +49,25 @@ def intent_damage(intent: dict) -> int:
     return 0
 
 
-def _has_power(creature: dict, power_id: str) -> bool:
+def power_amount(creature: dict, power_id: str) -> int:
+    """Stacks of a power on a creature. The game names them like VULNERABLE_POWER."""
     for p in creature.get("status") or []:
-        if str(p.get("id", "")).upper() == power_id and (p.get("amount") or 1) != 0:
-            return True
-    return False
+        pid = str(p.get("id", "")).upper()
+        if pid.endswith("_POWER"):
+            pid = pid[: -len("_POWER")]
+        if pid == power_id:
+            amount = p.get("amount")
+            return int(amount) if isinstance(amount, (int, float)) and amount else 1
+    return 0
+
+
+def _has_power(creature: dict, power_id: str) -> bool:
+    return power_amount(creature, power_id) != 0
+
+
+def end_of_turn_block(player: dict) -> int:
+    """Block the player gains by itself when the turn ends (Plating)."""
+    return max(0, power_amount(player, "PLATING"))
 
 
 def read_enemies(state: dict) -> list[Enemy]:
@@ -67,6 +82,7 @@ def read_enemies(state: dict) -> list[Enemy]:
                 hp=hp,
                 block=int(e.get("block") or 0),
                 vulnerable=_has_power(e, "VULNERABLE"),
+                weak=_has_power(e, "WEAK"),
                 incoming=sum(intent_damage(i) for i in e.get("intents") or []),
             )
         )
@@ -91,26 +107,39 @@ def _order_key(c: CardInfo) -> tuple:
     return (rank, -c.total_damage, c.index)
 
 
-def _pick_target(enemies: list[Enemy], dmg_per_hit: int, hits: int) -> Enemy | None:
+def _dealt(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> int:
+    """Damage an attack does to this enemy before its block."""
+    if e.vulnerable:
+        return int(dmg_per_hit * 1.5) * hits * (2 if double_if_vulnerable else 1)
+    return dmg_per_hit * hits
+
+
+def _pick_target(enemies: list[Enemy], dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> Enemy | None:
     alive = [e for e in enemies if e.alive]
     if not alive:
         return None
 
     def dealt(e: Enemy) -> int:
-        per = int(dmg_per_hit * 1.5) if e.vulnerable else dmg_per_hit
-        return per * hits
+        return _dealt(e, dmg_per_hit, hits, double_if_vulnerable)
 
     killable = [e for e in alive if dealt(e) >= e.hp + e.block]
     if killable:
         # Remove the biggest threat first; waste the least damage on ties.
         return max(killable, key=lambda e: (e.incoming, e.hp + e.block))
-    return min(alive, key=lambda e: (e.hp + e.block, -e.incoming))
+    # Otherwise focus whoever dies soonest, counting Vulnerable as less health.
+    return min(alive, key=lambda e: ((e.hp + e.block) / (1.5 if e.vulnerable else 1.0), -e.incoming))
 
 
-def _hit(e: Enemy, dmg_per_hit: int, hits: int) -> int:
+def _weaken(e: Enemy) -> None:
+    """A newly Weak enemy hits for 25% less this turn."""
+    if not e.weak:
+        e.weak = True
+        e.incoming = int(e.incoming * 0.75)
+
+
+def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> int:
     """Apply damage, return HP actually removed."""
-    per = int(dmg_per_hit * 1.5) if e.vulnerable else dmg_per_hit
-    total = per * hits
+    total = _dealt(e, dmg_per_hit, hits, double_if_vulnerable)
     absorbed = min(e.block, total)
     e.block -= absorbed
     lost = min(e.hp, total - absorbed)
@@ -165,29 +194,52 @@ def simulate(
             alive = [e for e in foes if e.alive]
             if c.aoe:
                 for e in alive:
-                    score += _hit(e, per, hits) * dmg_value
+                    score += _hit(e, per, hits, c.double_if_vulnerable) * dmg_value
+                    if e.alive:
+                        if c.vulnerable:
+                            e.vulnerable = True
+                        if c.weak:
+                            _weaken(e)
             elif c.random_target and len(alive) > 1:
                 score += per * hits * 0.8 * dmg_value
             else:
-                t = _pick_target(foes, per, hits)
+                t = _pick_target(foes, per, hits, c.double_if_vulnerable)
                 if t is not None:
                     if n == 0:
                         first_target = t.entity_id
-                    score += _hit(t, per, hits) * dmg_value
+                    score += _hit(t, per, hits, c.double_if_vulnerable) * dmg_value
                     if c.vulnerable and t.alive:
                         t.vulnerable = True
+                    if c.weak and t.alive:
+                        _weaken(t)
         elif c.needs_target:
-            t = _pick_target(foes, 0, 1)
+            alive = [e for e in foes if e.alive]
+            if c.weak and not c.vulnerable:
+                # Weaken the hardest hitter that is not Weak yet.
+                t = max(alive, key=lambda e: (not e.weak, e.incoming), default=None)
+            else:
+                # Vulnerable goes on the enemy we will be hitting the longest.
+                fresh = [e for e in alive if not e.vulnerable] or alive
+                t = max(fresh, key=lambda e: e.hp + e.block, default=None)
             if t is not None:
                 if n == 0:
                     first_target = t.entity_id
                 if c.vulnerable:
                     t.vulnerable = True
+                if c.weak:
+                    _weaken(t)
+        elif c.aoe:
+            for e in foes:
+                if e.alive:
+                    if c.vulnerable:
+                        e.vulnerable = True
+                    if c.weak:
+                        _weaken(e)
 
         if c.vulnerable:
             score += min(c.vulnerable, 3) * 2.5
         if c.weak:
-            score += min(c.weak, 3) * 2.0
+            score += min(c.weak, 3) * 1.0  # later turns; this turn is in `incoming`
         score += c.draw * 2.0
         if c.type == "Power":
             score += (7.0 + 3.0 * max(c.cost, 0)) * (1.5 if tough_fight else 1.0) * (1.0 if early else 0.35)
@@ -217,7 +269,7 @@ def _context(state: dict) -> dict:
         stars=int(player.get("stars") or 0),
         hp=int(player.get("hp") or 1),
         max_hp=int(player.get("max_hp") or 1),
-        block=int(player.get("block") or 0),
+        block=int(player.get("block") or 0) + end_of_turn_block(player),
         tough_fight=state.get("state_type") in ("elite", "boss"),
         early=int(battle.get("round") or 1) <= 3,
     )
@@ -265,7 +317,7 @@ def expected_loss(state: dict) -> int:
     """HP we lose this turn if we do nothing more."""
     player = state.get("player") or {}
     incoming = sum(e.incoming for e in read_enemies(state))
-    return max(0, incoming - int(player.get("block") or 0))
+    return max(0, incoming - int(player.get("block") or 0) - end_of_turn_block(player))
 
 
 def potion_actions(state: dict) -> list[Action]:

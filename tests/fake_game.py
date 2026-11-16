@@ -169,7 +169,7 @@ class FakeGame:
                             "hp": self.enemy["hp"],
                             "max_hp": self.enemy_hp,
                             "block": self.enemy["block"],
-                            "status": [{"id": "VULNERABLE", "amount": self.enemy["vuln"]}] if self.enemy["vuln"] else [],
+                            "status": [{"id": "VULNERABLE_POWER", "amount": self.enemy["vuln"]}] if self.enemy["vuln"] else [],
                             "intents": [{"type": "Attack", "label": str(self.enemy_attack)}],
                         }
                     ],

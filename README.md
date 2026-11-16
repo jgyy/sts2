@@ -88,7 +88,7 @@ In `~/.local/state/sts2bot/` (change with `--log-dir`):
 | `--character` | `IRONCLAD` | Character id, or `cycle` / `random` over unlocked characters |
 | `--runs N` | forever | Stop after N runs |
 | `--no-launch` | off | Never start or kill the game |
-| `--launch-cmd` | `steam -applaunch 2868840` | Command that starts the game |
+| `--launch-cmd` | the game binary, else `steam -applaunch 2868840` | Command that starts the game |
 | `--stuck-timeout` | `300` | Seconds without change before the game is restarted |
 | `--host`, `--port` | `127.0.0.1`, `15526` | Where the bridge mod listens |
 | `-v` | off | Log every action |
