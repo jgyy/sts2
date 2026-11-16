@@ -43,7 +43,7 @@ class Bot:
         self,
         client: Client,
         *,
-        character: str = "IRONCLAD",
+        character: str = "auto",
         log_dir: Path | None = None,
         poll: float = 0.4,
         settle: float = 3.0,
@@ -57,6 +57,7 @@ class Bot:
         self.poll = poll
         self.settle = settle
         self.travel_settle = 8.0
+        self.quiet_settle = 0.3
         self.stuck_timeout = stuck_timeout
         self.clock = clock
         self.sleep = sleep
@@ -85,6 +86,8 @@ class Bot:
         kind = state.get("state_type")
         mem = self.mem
         if kind == "menu":
+            if state.get("menu_screen") == "character_select" and not mem.character_selected:
+                self._refresh_ascensions()
             if self.abandon_next and (state.get("menu_screen") or "main") == "main":
                 names = [o if isinstance(o, str) else o.get("name") for o in state.get("options") or []]
                 if "abandon_run" in names:
@@ -113,6 +116,17 @@ class Bot:
             return strategy.shop(state, mem, key="fake_merchant")
         return handler(state, mem) if handler else []
 
+    def _refresh_ascensions(self) -> None:
+        """Ask the game how far each character has climbed (used to pick who plays next)."""
+        fetch = getattr(self.client, "profile", None)
+        if fetch is None:
+            return
+        try:
+            chars = fetch().get("characters") or []
+            self.mem.max_ascension = {str(c.get("id")): int(c.get("max_ascension") or 0) for c in chars if c.get("id")}
+        except Exception as e:  # an old mod or a hiccup must not stop the run from starting
+            log.debug("could not read the profile: %s", e)
+
     def _combat(self, state: dict) -> list[tuple[str, dict]]:
         battle = state.get("battle")
         player = state.get("player") or {}
@@ -131,7 +145,7 @@ class Bot:
             self._turn_key, self._turn_plays = key, 0
         if self._turn_plays >= MAX_PLAYS_PER_TURN:
             return [("end_turn", {})]
-        return combat.actions(state)
+        return combat.actions({**state, "_plays_this_turn": self._turn_plays})
 
     @staticmethod
     def _where(state: dict) -> tuple:
@@ -201,22 +215,45 @@ class Bot:
             with open(self.log_dir / "runs.jsonl", "a") as f:
                 f.write(json.dumps(entry) + "\n")
 
-    def _wait_for_change(self, fp: str, leave: str | None = None) -> None:
+    @staticmethod
+    def _is_quiet(state: dict, action: str, params: dict) -> bool:
+        """Actions that work without the reported state changing.
+
+        Ticking a card in a selection grid and picking the character that is
+        already highlighted are invisible in the state, so waiting for a change
+        only burns the whole settle time.
+        """
+        if action == "select_card":
+            return (state.get("card_select") or {}).get("screen_type") != "choose"
+        if action == "menu_select" and state.get("menu_screen") == "character_select":
+            return str(params.get("option")) not in ("confirm", "embark")
+        return False
+
+    def _wait_for_change(self, fp: str, leave: str | None = None, quiet: bool = False) -> bool:
         """Wait for the action to show. With `leave`, wait until that screen is gone.
 
         The map keeps answering with fresh options while the travel animation
         plays; acting on those would click a second node.
+
+        Returns True if the game state changed. Every state request costs a
+        game frame or more, so the answer is reused instead of asking again.
         """
-        deadline = self.clock() + (self.travel_settle if leave else self.settle)
+        deadline = self.clock() + (self.travel_settle if leave else self.quiet_settle if quiet else self.settle)
+        changed = False
+        # While a room is loading the game is rebuilding its scene; ask less
+        # often then (a state request walks that scene, and the game once
+        # crashed mid-travel under rapid polling).
+        pause = min(0.15 if leave else 0.03, self.poll)
         while self.clock() < deadline:
-            self.sleep(min(0.15, self.poll))
+            self.sleep(pause)
             state = self.client.state()
+            changed = changed or fingerprint(state) != fp
             if leave:
                 if state.get("state_type") != leave:
-                    return
-            elif fingerprint(state) != fp:
-                self.sleep(min(0.25, self.poll))  # let the animation finish resolving
-                return
+                    return True
+            elif changed:
+                return True
+        return changed
 
     def step(self) -> bool:
         """One read-decide-act cycle. Returns True if an action was sent."""
@@ -243,12 +280,13 @@ class Bot:
             if result.get("status") == "error" or "error" in result:
                 self._strikes[key] += 1
                 log.debug("%s %s rejected: %s", action, params, result.get("error"))
-                self.sleep(self.poll)
+                self.sleep(min(0.15, self.poll))
                 return True
             log.debug("%s %s -> %s", action, params, result.get("message"))
             self._after_success(state, action, params)
-            self._wait_for_change(fp, leave="map" if action == "choose_map_node" else None)
-            if fingerprint(self.client.state()) == fp:
+            quiet = self._is_quiet(state, action, params)
+            changed = self._wait_for_change(fp, leave="map" if action == "choose_map_node" else None, quiet=quiet)
+            if not quiet and not changed:
                 self._strikes[key] += 1  # accepted, but nothing happened
             return True
         self.sleep(self.poll)

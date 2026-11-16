@@ -25,8 +25,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--port", type=int, default=15526)
     ap.add_argument(
         "--character",
-        default="IRONCLAD",
-        help='character id (e.g. IRONCLAD, SILENT), or "cycle" / "random" over unlocked ones (default: IRONCLAD)',
+        default="auto",
+        help='"auto" plays the unlocked character with the lowest ascension, always at the highest ascension '
+        'it has unlocked; or a character id (e.g. IRONCLAD), or "cycle" / "random" over unlocked ones (default: auto)',
     )
     ap.add_argument("--runs", type=int, default=None, help="stop after this many runs (default: never stop)")
     ap.add_argument("--no-launch", action="store_true", help="never start or kill the game; only play when it is up")
@@ -38,8 +39,13 @@ def main(argv: list[str] | None = None) -> int:
         help="game animation speed, set through the mod each time the bot connects; "
         '"keep" leaves the setting alone (default: instant, the fastest)',
     )
+    ap.add_argument(
+        "--full-graphics",
+        action="store_true",
+        help="keep the game's normal window and graphics (default: small window, no anti-aliasing, for speed)",
+    )
     ap.add_argument("--stuck-timeout", type=float, default=300.0, help="seconds without any change before the game is restarted")
-    ap.add_argument("--poll", type=float, default=0.4, help="seconds between state polls")
+    ap.add_argument("--poll", type=float, default=0.2, help="seconds between state polls")
     ap.add_argument("--log-dir", type=Path, default=default_log_dir())
     ap.add_argument("-v", "--verbose", action="store_true", help="log every action")
     args = ap.parse_args(argv)
@@ -56,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
 
     client = Client(args.host, args.port)
     bot = Bot(client, character=args.character, log_dir=args.log_dir, poll=args.poll, stuck_timeout=args.stuck_timeout)
-    sup = Supervisor(bot, client, launch_cmd=args.launch_cmd, manage_game=not args.no_launch, fast_mode=None if args.fast_mode == "keep" else args.fast_mode)
+    sup = Supervisor(bot, client, launch_cmd=args.launch_cmd, manage_game=not args.no_launch, fast_mode=None if args.fast_mode == "keep" else args.fast_mode, light_graphics=not args.full_graphics)
     logging.getLogger("sts2bot").info("logs and run history in %s", args.log_dir)
     try:
         sup.run(args.runs)

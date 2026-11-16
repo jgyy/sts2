@@ -85,11 +85,12 @@ In `~/.local/state/sts2bot/` (change with `--log-dir`):
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--character` | `IRONCLAD` | Character id, or `cycle` / `random` over unlocked characters |
+| `--character` | `auto` | `auto` plays the unlocked character with the lowest ascension so far (so all of them rank up evenly); or a character id, or `cycle` / `random` over unlocked characters. Every run uses the highest ascension that character has unlocked |
 | `--runs N` | forever | Stop after N runs |
 | `--no-launch` | off | Never start or kill the game |
 | `--launch-cmd` | the game binary, else `steam -applaunch 2868840` | Command that starts the game |
 | `--fast-mode` | `instant` | Game animation speed (`instant`, `fast`, `normal`), set through the mod each time the bot connects (not saved to your settings); `keep` leaves it alone |
+| `--full-graphics` | off | Keep the game's normal window and graphics. By default the bot shrinks the window to 960x540 and turns anti-aliasing off for the session (not saved to your settings), which makes it faster |
 | `--stuck-timeout` | `300` | Seconds without change before the game is restarted |
 | `--host`, `--port` | `127.0.0.1`, `15526` | Where the bridge mod listens |
 | `-v` | off | Log every action |

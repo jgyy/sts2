@@ -32,6 +32,20 @@ class Enemy:
     vulnerable: bool
     weak: bool
     incoming: int  # damage this enemy intends to deal this turn
+    slippery: int = 0  # the next N hits only remove 1 HP each
+    damage_mult: float = 1.0  # e.g. Flutter: 50% less damage from attacks
+    thorns: int = 0  # damage we take back per hit
+    revives: bool = False  # Illusion: comes back next turn at full HP
+    stun_at: int = 0  # Plow: Stunned (and loses its Strength) once HP drops to this
+    slow: int = -1  # Slow: % extra attack damage taken so far this turn, +10 per card we play (-1: none)
+    minion: bool = False  # leaves the fight when its leader dies
+
+    @property
+    def worth(self) -> float:
+        """How much damaging this enemy brings the fight closer to its end."""
+        if self.revives:
+            return 0.0
+        return 0.4 if self.minion else 1.0
 
     @property
     def alive(self) -> bool:
@@ -64,6 +78,14 @@ def power_amount(creature: dict, power_id: str) -> int:
     return 0
 
 
+def _slow_percent(creature: dict) -> int:
+    for p in creature.get("status") or []:
+        if str(p.get("id", "")).upper() in ("SLOW", "SLOW_POWER"):
+            amount = p.get("amount")
+            return int(amount) if isinstance(amount, (int, float)) else 0
+    return -1
+
+
 def _has_power(creature: dict, power_id: str) -> bool:
     return power_amount(creature, power_id) != 0
 
@@ -86,6 +108,13 @@ def read_enemies(state: dict) -> list[Enemy]:
                 block=int(e.get("block") or 0),
                 vulnerable=_has_power(e, "VULNERABLE"),
                 weak=_has_power(e, "WEAK"),
+                slippery=max(0, power_amount(e, "SLIPPERY")),
+                damage_mult=0.5 if _has_power(e, "FLUTTER") else 1.0,
+                thorns=max(0, power_amount(e, "THORNS")),
+                revives=_has_power(e, "ILLUSION"),
+                stun_at=max(0, power_amount(e, "PLOW")),
+                slow=_slow_percent(e),
+                minion=_has_power(e, "MINION"),
                 incoming=sum(intent_damage(i) for i in e.get("intents") or []),
             )
         )
@@ -110,11 +139,41 @@ def _order_key(c: CardInfo) -> tuple:
     return (rank, -c.total_damage, c.index)
 
 
-def _dealt(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> int:
-    """Damage an attack does to this enemy before its block."""
-    if e.vulnerable:
-        return int(dmg_per_hit * 1.5) * hits * (2 if double_if_vulnerable else 1)
-    return dmg_per_hit * hits
+def _hit_count(e: Enemy, hits: int, double_if_vulnerable: bool = False) -> int:
+    return hits * (2 if double_if_vulnerable and e.vulnerable else 1)
+
+
+def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> int:
+    """Apply an attack hit by hit, return HP actually removed."""
+    per = dmg_per_hit * (1.5 if e.vulnerable else 1.0) * e.damage_mult
+    if e.slow > 0:
+        per *= 1.0 + e.slow / 100.0
+    per = int(per)
+    removed = 0
+    for _ in range(_hit_count(e, hits, double_if_vulnerable)):
+        if e.hp <= 0:
+            break
+        absorbed = min(e.block, per)
+        e.block -= absorbed
+        through = per - absorbed
+        if through <= 0:
+            continue
+        if e.slippery > 0:
+            e.slippery -= 1
+            through = 1
+        lost = min(e.hp, through)
+        e.hp -= lost
+        removed += lost
+        if e.stun_at and e.hp <= e.stun_at:
+            e.stun_at = 0
+            e.incoming = 0  # Stunned: its attack this turn never happens
+    return removed
+
+
+def _would_kill(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> bool:
+    trial = replace(e)
+    _hit(trial, dmg_per_hit, hits, double_if_vulnerable)
+    return not trial.alive
 
 
 def _pick_target(enemies: list[Enemy], dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> Enemy | None:
@@ -122,15 +181,16 @@ def _pick_target(enemies: list[Enemy], dmg_per_hit: int, hits: int, double_if_vu
     if not alive:
         return None
 
-    def dealt(e: Enemy) -> int:
-        return _dealt(e, dmg_per_hit, hits, double_if_vulnerable)
-
-    killable = [e for e in alive if dealt(e) >= e.hp + e.block]
+    killable = [e for e in alive if _would_kill(e, dmg_per_hit, hits, double_if_vulnerable)]
     if killable:
         # Remove the biggest threat first; waste the least damage on ties.
-        return max(killable, key=lambda e: (e.incoming, e.hp + e.block))
-    # Otherwise focus whoever dies soonest, counting Vulnerable as less health.
-    return min(alive, key=lambda e: ((e.hp + e.block) / (1.5 if e.vulnerable else 1.0), -e.incoming))
+        # Killing something that revives only pays off if it is about to hit us.
+        useful = [e for e in killable if e.worth > 0 or e.incoming > 0]
+        if useful:
+            return max(useful, key=lambda e: (e.worth > 0, e.incoming, e.hp + e.block))
+    # Otherwise focus whoever dies soonest, counting Vulnerable as less health;
+    # leaders before their minions, never something that just comes back.
+    return min(alive, key=lambda e: (-e.worth, (e.hp + e.block) / (1.5 if e.vulnerable else 1.0), -e.incoming))
 
 
 def _weaken(e: Enemy) -> None:
@@ -138,16 +198,6 @@ def _weaken(e: Enemy) -> None:
     if not e.weak:
         e.weak = True
         e.incoming = int(e.incoming * 0.75)
-
-
-def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> int:
-    """Apply damage, return HP actually removed."""
-    total = _dealt(e, dmg_per_hit, hits, double_if_vulnerable)
-    absorbed = min(e.block, total)
-    e.block -= absorbed
-    lost = min(e.hp, total - absorbed)
-    e.hp -= lost
-    return lost
 
 
 @dataclass
@@ -167,8 +217,12 @@ def simulate(
     block: int,
     tough_fight: bool,
     early: bool,
+    card_limit: int | None = None,
+    can_block: bool = True,
 ) -> Outcome | None:
     """Score playing `line` in order. None if it cannot be afforded."""
+    if card_limit is not None and len(line) > card_limit:
+        return None
     foes = [replace(e) for e in enemies]
     score = 0.0
     first_target: str | None = None
@@ -178,6 +232,9 @@ def simulate(
     for n, c in enumerate(line):
         if c.star_cost > stars:
             return None
+        for e in foes:
+            if e.slow >= 0:
+                e.slow += 10  # counts the card being played, like the game does
         stars -= c.star_cost
         x = 1
         if c.is_x:
@@ -190,14 +247,21 @@ def simulate(
             energy -= c.cost
         energy += c.energy_gain
         self_loss += c.hp_loss
-        block += c.block * x
+        if can_block:
+            block += c.block * x
+        if c.block_lock:
+            # Trading away future block is only worth it to survive this turn.
+            score -= 30.0
+        if c.deadly:
+            score -= LETHAL_PENALTY  # never gamble the run on one card
 
         if c.damage:
             per, hits = c.damage, c.hits * x
             alive = [e for e in foes if e.alive]
             if c.aoe:
                 for e in alive:
-                    score += _hit(e, per, hits, c.double_if_vulnerable) * dmg_value
+                    self_loss += e.thorns * _hit_count(e, hits, c.double_if_vulnerable)
+                    score += _hit(e, per, hits, c.double_if_vulnerable) * dmg_value * e.worth
                     if e.alive:
                         if c.vulnerable:
                             e.vulnerable = True
@@ -210,7 +274,8 @@ def simulate(
                 if t is not None:
                     if n == 0:
                         first_target = t.entity_id
-                    score += _hit(t, per, hits, c.double_if_vulnerable) * dmg_value
+                    self_loss += t.thorns * _hit_count(t, hits, c.double_if_vulnerable)
+                    score += _hit(t, per, hits, c.double_if_vulnerable) * dmg_value * t.worth
                     if c.vulnerable and t.alive:
                         t.vulnerable = True
                     if c.weak and t.alive:
@@ -245,16 +310,20 @@ def simulate(
             score += min(c.weak, 3) * 1.0  # later turns; this turn is in `incoming`
         score += c.draw * 2.0
         if c.type == "Power":
-            score += (7.0 + 3.0 * max(c.cost, 0)) * (1.5 if tough_fight else 1.0) * (1.0 if early else 0.35)
+            score += (5.0 + 2.0 * max(c.cost, 0)) * (1.5 if tough_fight else 1.0) * (1.0 if early else 0.35)
         elif c.type in ("Status", "Curse"):
             score += 0.1  # only worth clearing out with energy nothing else can use
         elif not c.known:
             score += 2.5 + max(c.cost, 0)
 
     kills = [e for e, orig in zip(foes, enemies) if not e.alive and orig.alive]
-    score += 25.0 * len(kills)
+    score += 25.0 * sum(e.worth for e in kills)
     survivors = [e for e in foes if e.alive]
-    if not survivors:
+    # The fight is over once every leader is dead: minions leave with them.
+    if not any(not e.minion for e in survivors) and any(not e.minion for e in enemies):
+        score += WIN_BONUS
+        survivors = []
+    elif not survivors:
         score += WIN_BONUS
 
     incoming = sum(e.incoming for e in survivors)
@@ -263,7 +332,11 @@ def simulate(
     # A point of our HP is worth more than a point of enemy HP even at full
     # health: at 1.0 a Strike (6) beat a Defend (5) and the bot never blocked
     # until it was already hurt, bleeding HP in every ordinary fight.
-    score -= lost * (1.5 + 2.5 * (1.0 - ratio))
+    # ... and worth more still when this one turn would take a big bite out
+    # of what is left: at 37 HP facing 27 the bot attacked with two Defends
+    # in hand and was dead a turn later.
+    bite = min(1.0, lost / max(1, hp))
+    score -= lost * (1.5 + 2.5 * (1.0 - ratio) + 3.0 * bite)
     if lost >= hp:
         score -= LETHAL_PENALTY
     return Outcome(score, first_target)
@@ -280,7 +353,25 @@ def _context(state: dict) -> dict:
         block=int(player.get("block") or 0) + end_of_turn_block(player),
         tough_fight=state.get("state_type") in ("elite", "boss"),
         early=int(battle.get("round") or 1) <= 3,
+        card_limit=cards_left_this_turn(state),
+        can_block=not _has_power(player, "NO_BLOCK"),
     )
+
+
+def cards_left_this_turn(state: dict) -> int | None:
+    """How many more cards we may play this turn, when something limits it."""
+    player = state.get("player") or {}
+    played = int(state.get("_plays_this_turn") or 0)
+    limits = []
+    if _has_power(player, "RINGING"):  # "You can only play 1 card this turn."
+        limits.append(1)
+    if _has_power(player, "SLOTH"):  # "You cannot play more than 3 cards each turn."
+        limits.append(3)
+    for c in player.get("hand") or []:
+        m = re.search(r"cannot play more than (\d+) cards", str(c.get("description") or ""), re.I)
+        if m:
+            limits.append(int(m.group(1)))
+    return max(0, min(limits) - played) if limits else None
 
 
 def choose_card(state: dict) -> Action | None:
@@ -294,7 +385,21 @@ def choose_card(state: dict) -> Action | None:
         return None
     if len(playable) > MAX_SEARCH_CARDS:
         playable = sorted(playable, key=lambda c: -(c.total_damage + c.block + 3 * c.draw))[:MAX_SEARCH_CARDS]
-    playable.sort(key=_order_key)
+    if ctx["card_limit"] is not None:
+        if ctx["card_limit"] <= 0:
+            return None
+        # Few plays allowed: spend them on what does the most right now.
+        playable.sort(key=lambda c: (-(c.total_damage + c.block), c.index))
+    elif any(e.slow >= 0 for e in enemies):
+        # Slow: every card played makes later attacks hit harder this turn,
+        # so everything else goes first and the biggest attack goes last.
+        playable.sort(key=lambda c: (1 if c.damage else 0, c.total_damage, c.index))
+    elif any(e.slippery for e in enemies):
+        # Slippery turns each hit into 1 damage: burn it off with the weakest
+        # hits and keep the big ones for afterwards.
+        playable.sort(key=lambda c: (_order_key(c)[0] if not c.damage else 3, c.damage, c.index))
+    else:
+        playable.sort(key=_order_key)
 
     baseline = simulate([], enemies, **ctx)
     best_score = baseline.score if baseline else float("-inf")
@@ -336,10 +441,13 @@ def potion_actions(state: dict) -> list[Action]:
         return []
     hp = int(player.get("hp") or 1)
     max_hp = int(player.get("max_hp") or 1)
-    danger = expected_loss(state) >= 0.3 * hp or hp <= 0.35 * max_hp
+    # Ordinary fights only get a potion in real trouble; the rest are kept
+    # for elites and bosses, where the runs are actually lost.
+    danger = expected_loss(state) >= 0.5 * hp or hp <= 0.3 * max_hp
     if not (danger or state.get("state_type") in ("elite", "boss")):
         return []
-    focus = min(enemies, key=lambda e: e.hp + e.block).entity_id
+    # Aim at something that stays dead and matters: the leader that hits hardest.
+    focus = max(enemies, key=lambda e: (e.worth, e.incoming, e.hp)).entity_id
     out: list[Action] = []
     for p in player.get("potions") or []:
         if not p.get("can_use_in_combat", True):

@@ -33,6 +33,8 @@ class CardInfo:
     hp_loss: int
     needs_target: bool
     playable: bool
+    deadly: bool  # the text says it can kill us outright ("... die.")
+    block_lock: bool  # stops us gaining Block afterwards
     known: bool  # False when no effect could be parsed from the text
 
     @property
@@ -118,8 +120,40 @@ def parse(card: dict) -> CardInfo:
         hp_loss=hp_loss,
         needs_target=target == "AnyEnemy",
         playable=bool(card.get("can_play", True)),
+        deadly=bool(re.search(r"\bdie\b", text, re.I)),
+        block_lock=bool(re.search(r"(cannot|can't|can not)\s+gain\s+(any\s+)?block", text, re.I)),
         known=known,
     )
+
+
+# A nudge for cards whose real strength the text does not show (or
+# overstates). The text-based score below still does most of the work, so
+# cards that are not listed are judged on what they say. Values are in the
+# same units as deck_value: +1 is roughly one rarity step.
+_KNOWN = {
+    # strong for what they cost
+    "OFFERING": 3.0, "SHOCKWAVE": 3.0, "IMMOLATE": 3.0, "IMPERVIOUS": 2.0, "FLAME_BARRIER": 2.0,
+    "SHRUG_IT_OFF": 2.0, "UPPERCUT": 2.0, "DISARM": 2.0, "REAPER": 2.0, "FEED": 1.5,
+    "BATTLE_TRANCE": 1.0, "INFLAME": 1.5, "DEMON_FORM": 1.5, "POMMEL_STRIKE": 1.5, "CARNAGE": 1.5,
+    "SPOT_WEAKNESS": 1.5, "METALLICIZE": 1.5, "TWIN_STRIKE": 1.0, "THUNDERCLAP": 1.0, "HEMOKINESIS": 1.0,
+    "WHIRLWIND": 1.0, "BLUDGEON": 1.0, "CLEAVE": 1.0, "IRON_WAVE": 1.0, "ARMAMENTS": 1.0,
+    "POWER_THROUGH": 1.0, "GHOSTLY_ARMOR": 1.0, "SEEING_RED": 1.0, "INTIMIDATE": 1.0, "FIEND_FIRE": 1.0,
+    "HEADBUTT": 0.5, "ANGER": 0.5, "TRUE_GRIT": 0.5, "BURNING_PACT": 0.5, "RAMPAGE": 0.5,
+    "PERFECTED_STRIKE": 0.5, "COMBUST": 0.5, "DOUBLE_TAP": 0.5,
+    # need a deck built around them, or are just weak
+    "BARRICADE": -1.5, "ENTRENCH": -1.5, "BODY_SLAM": -1.0, "JUGGERNAUT": -1.0, "CLASH": -1.0,
+    "RUPTURE": -1.0, "SEARING_BLOW": -1.0, "RECKLESS_CHARGE": -1.0, "FEEL_NO_PAIN": -1.0,
+    "DARK_EMBRACE": -1.0, "FIRE_BREATHING": -1.0, "EVOLVE": -1.0, "BERSERK": -0.5, "WARCRY": -0.5,
+    "HAVOC": -0.5, "WILD_STRIKE": -0.5, "DUAL_WIELD": -0.5, "RAGE": -0.5, "LIMIT_BREAK": -0.5,
+}
+
+
+def _known_nudge(card: dict) -> float:
+    for field in ("id", "name"):
+        key = re.sub(r"[^A-Z0-9]+", "_", str(card.get(field) or "").upper().rstrip("+")).strip("_")
+        if key in _KNOWN:
+            return _KNOWN[key]
+    return 0.0
 
 
 _RARITY = {"Basic": 0.0, "Common": 1.0, "Uncommon": 2.2, "Rare": 3.5, "Ancient": 4.5, "Event": 2.0}
@@ -136,23 +170,29 @@ def deck_value(card: dict) -> float:
     if ctype == "Status":
         return -8.0
     info = parse(card)
+    if info.deadly:
+        return -6.0  # e.g. "If you take unblocked attack damage this combat, die."
     cost = max(1, info.cost) if not info.is_x else 2
     score = _RARITY.get(str(card.get("rarity") or card.get("card_rarity") or ""), 1.0)
 
     dmg = info.total_damage * (1.6 if info.aoe else 1.0)
-    score += max(0.0, dmg / cost - 6.0) * 0.35
-    score += max(0.0, info.block / cost - 5.0) * 0.35
+    score += max(0.0, dmg / cost - 6.0) * 0.45
+    score += max(0.0, info.block / cost - 5.0) * 0.45
+    score += min(_int(r"gain\s+(\d+)\s+strength", str(card.get("description") or "")), 4) * 1.0
     score += info.draw * 0.8 + info.energy_gain * 1.2
     score += min(info.vulnerable, 3) * 0.6 + min(info.weak, 3) * 0.4
     if info.cost == 0 and info.known:
         score += 0.5
     if ctype == "Power":
-        score += 1.5
+        # Powers we cannot read are a gamble; they also cost a turn of tempo.
+        score += 1.5 if info.known else 0.5
     if info.cost >= 3:
         score -= 0.8
+    if info.block_lock:
+        score -= 3.0
     score -= info.hp_loss * 0.1
     if is_basic(card):
         score -= 2.5
     if card.get("is_upgraded"):
         score += 0.7
-    return score
+    return score + _known_nudge(card)
