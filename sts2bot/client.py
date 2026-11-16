@@ -57,6 +57,10 @@ class Client:
         except GameUnavailable:
             return False
 
+    def profile(self) -> dict[str, Any]:
+        """Profile statistics, including each character's highest unlocked ascension."""
+        return self._request(f"{self.base}/api/v1/profile")
+
     def state(self) -> dict[str, Any]:
         return self._request(self.url)
 

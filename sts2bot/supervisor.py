@@ -54,8 +54,21 @@ def default_launch() -> str:
 DEFAULT_LAUNCH = default_launch()
 
 
+_children: list[subprocess.Popen] = []  # games we started; must be reaped when they die
+
+
 def game_running() -> bool:
-    return subprocess.run(["pgrep", "-x", PROCESS_NAME], capture_output=True).returncode == 0
+    """True if a live game process exists.
+
+    A game we launched that then crashes stays in the process table as a
+    zombie until we collect it. Counting that as "running" made the bot wait
+    forever for a dead game instead of starting a new one.
+    """
+    for proc in list(_children):
+        if proc.poll() is not None:  # reaps it if it has exited
+            _children.remove(proc)
+    out = subprocess.run(["ps", "-C", PROCESS_NAME, "-o", "stat="], capture_output=True, text=True).stdout
+    return any(line.strip() and not line.strip().startswith("Z") for line in out.splitlines())
 
 
 def kill_game(grace: float = 10.0) -> None:
@@ -74,7 +87,7 @@ FAST_MODES = ("instant", "fast", "normal")
 def set_fast_mode(client: Client, mode: str) -> bool:
     """Ask the game for an animation speed ("instant" is the fastest).
 
-    Goes through the bridge mod (scripts/mod_patches/set-fast-mode.patch) and
+    Goes through the bridge mod (scripts/mod_patches/sts2bot.patch) and
     lasts until the game exits, so it is sent after every launch. Editing the
     game's prefs.save instead does not work: Steam cloud sync restores the old
     file when the game starts.
@@ -91,11 +104,26 @@ def set_fast_mode(client: Client, mode: str) -> bool:
     return True
 
 
+def set_light_graphics(client: Client, width: int = 960, height: int = 540) -> bool:
+    """Small window, no anti-aliasing, uncapped frame rate, for this session only.
+
+    The mod answers each request once per rendered frame, so cheaper frames
+    make the whole bot faster. The saved graphics settings are left alone, so
+    the game looks normal when it is started by hand.
+    """
+    result = client.act("set_light_graphics", width=width, height=height)
+    if result.get("status") == "error" or "error" in result:
+        log.warning("could not switch to light graphics (%s); re-run scripts/install_mod.sh", result.get("error"))
+        return False
+    log.info("light graphics: %dx%d (was %.0f fps)", width, height, float(result.get("fps_before") or 0))
+    return True
+
+
 def launch_game(cmd: str) -> None:
     log.info("launching game: %s", cmd)
     argv = shlex.split(cmd)
     exe = Path(argv[0])
-    subprocess.Popen(
+    proc = subprocess.Popen(
         argv,
         cwd=exe.parent if exe.is_absolute() and exe.parent.is_dir() else None,
         env={**os.environ, **GAME_ENV},
@@ -104,6 +132,7 @@ def launch_game(cmd: str) -> None:
         stderr=subprocess.DEVNULL,
         start_new_session=True,
     )
+    _children.append(proc)
 
 
 class Supervisor:
@@ -115,6 +144,7 @@ class Supervisor:
         launch_cmd: str = DEFAULT_LAUNCH,
         manage_game: bool = True,
         fast_mode: str | None = "instant",
+        light_graphics: bool = True,
         boot_timeout: float = 240.0,
         outage_grace: float = 45.0,
     ):
@@ -123,6 +153,7 @@ class Supervisor:
         self.launch_cmd = launch_cmd
         self.manage_game = manage_game
         self.fast_mode = fast_mode
+        self.light_graphics = light_graphics
         self.boot_timeout = boot_timeout
         self.outage_grace = outage_grace
         self.restarts = 0
@@ -173,9 +204,14 @@ class Supervisor:
             try:
                 if self.fast_mode:
                     set_fast_mode(self.client, self.fast_mode)
+                if self.light_graphics:
+                    set_light_graphics(self.client)
                 self.bot.run(max_runs)
             except GameUnavailable as e:
                 log.warning("lost contact with the game: %s", e)
+                if self.manage_game and not game_running():
+                    self.restart_game("the game crashed")  # no point waiting for a dead process
+                    continue
                 if self._wait_for_api(self.outage_grace):
                     continue
                 self.restart_game("game stopped answering")

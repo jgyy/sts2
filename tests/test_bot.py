@@ -120,6 +120,97 @@ class CombatPlanning(unittest.TestCase):
         s = combat_state([slimed, STRIKE(1)], [enemy("A_0", 40)], energy=1)
         self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)
 
+    def test_slippery_is_stripped_with_small_hits_first(self):
+        big = card(0, "HEMO", "Hemokinesis", "Attack", 1, "Lose 2 HP. Deal 15 damage.", "AnyEnemy")
+        slip = [{"id": "SLIPPERY_POWER", "amount": 1}]
+        s = combat_state([big, STRIKE(1)], [enemy("V_0", 100, status=slip)], energy=2)
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)  # Strike eats the Slippery
+        deep = [{"id": "SLIPPERY_POWER", "amount": 8}]
+        s = combat_state([big, STRIKE(1)], [enemy("V_0", 100, status=deep)], energy=1)
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)  # never pay HP for 1 damage
+
+    def test_never_plays_a_card_that_can_kill_us(self):
+        gambit = card(0, "THE_GAMBIT", "The Gambit", "Skill", 0, "Gain 50 Block. If you take unblocked attack damage this combat, die.", "Self")
+        self.assertTrue(parse(gambit).deadly)
+        self.assertLess(deck_value(gambit), 0)
+        s = combat_state([gambit], [enemy("A_0", 60, attack=20)], energy=3)
+        self.assertIsNone(combat.choose_card(s))
+
+    def test_card_limit_spends_plays_on_the_best_cards(self):
+        draw = card(0, "BT", "Battle Trance", "Skill", 0, "Draw 3 cards.", "Self")
+        big = card(1, "BIG", "Big", "Attack", 1, "Deal 14 damage.", "AnyEnemy")
+        s = combat_state([draw, big], [enemy("A_0", 60)], energy=3)
+        s["player"]["status"] = [{"id": "RINGING_POWER", "amount": 1}]
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)
+        s["_plays_this_turn"] = 1
+        self.assertIsNone(combat.choose_card(s))
+
+    def test_thorns_cost_hp_per_hit(self):
+        twin = card(0, "TWIN", "Twin Strike", "Attack", 1, "Deal 5 damage twice.", "AnyEnemy")
+        big = card(1, "BIG", "Big", "Attack", 1, "Deal 10 damage.", "AnyEnemy")
+        thorns = [{"id": "THORNS_POWER", "amount": 5}]
+        s = combat_state([twin, big], [enemy("A_0", 60, status=thorns)], energy=1)
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)
+
+    def test_ignores_an_illusion_that_just_revives(self):
+        illusion = [{"id": "ILLUSION_POWER", "amount": 1}, {"id": "MINION_POWER", "amount": 1}]
+        foes = [enemy("EYE_0", 6, status=illusion), enemy("FOGMOG_0", 50, attack=8)]
+        s = combat_state([STRIKE(0)], foes, energy=1)
+        self.assertEqual(combat.choose_card(s)[1]["target"], "FOGMOG_0")
+
+    def test_killing_the_leader_wins_even_with_minions_left(self):
+        minion = [{"id": "MINION_POWER", "amount": 1}]
+        foes = [enemy("MINION_0", 20, attack=30, status=minion), enemy("LEADER_0", 6)]
+        s = combat_state([STRIKE(0), DEFEND(1)], foes, energy=1, hp=10)
+        self.assertEqual(combat.choose_card(s), ("play_card", {"card_index": 0, "target": "LEADER_0"}))
+
+    def test_races_to_the_stun_threshold_instead_of_blocking(self):
+        plow = [{"id": "PLOW_POWER", "amount": 150}]
+        s = combat_state([STRIKE(0), DEFEND(1)], [enemy("BEAST_0", 155, attack=24, status=plow)], energy=1, hp=19)
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 0)  # 6 damage stuns it; 5 block would not save us
+
+    def test_block_cards_are_useless_while_block_is_locked(self):
+        s = combat_state([STRIKE(0), DEFEND(1)], [enemy("A_0", 40, attack=10)], energy=1)
+        s["player"]["status"] = [{"id": "NO_BLOCK_POWER", "amount": 1}]
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 0)
+
+    def test_slow_enemy_gets_skills_first_and_the_big_hit_last(self):
+        big = card(0, "BIG", "Big", "Attack", 1, "Deal 14 damage.", "AnyEnemy")
+        slow = [{"id": "SLOW_POWER", "amount": 0}]
+        s = combat_state([big, STRIKE(1), DEFEND(2)], [enemy("EFFIGY_0", 120, attack=10, status=slow)], energy=3)
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 2)
+        s = combat_state([big, STRIKE(1)], [enemy("EFFIGY_0", 120, status=slow)], energy=2)
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)
+
+    def test_blocks_a_hit_that_would_take_most_of_what_is_left(self):
+        aoe = card(0, "BREAK", "Breakthrough", "Attack", 1, "Lose 1 HP. Deal 9 damage to ALL enemies.", "AllEnemies")
+        bash = card(1, "BASH", "Bash", "Attack", 2, "Deal 8 damage. Apply 2 Vulnerable.", "AnyEnemy")
+        minion = [{"id": "MINION_POWER", "amount": 1}]
+        foes = [enemy("F_0", 39, attack=9, status=minion), enemy("F_1", 38, attack=8, status=minion), enemy("PRIEST_0", 98, attack=10)]
+        s = combat_state([aoe, bash, DEFEND(2), DEFEND(3), STRIKE(4)], foes, energy=3, hp=37, kind="boss")
+        s["player"]["max_hp"] = 80
+        plays = []
+        for _ in range(3):
+            action = combat.choose_card(s)
+            if action is None:
+                break
+            idx = action[1]["card_index"]
+            plays.append(next(c["name"] for c in s["player"]["hand"] if c["index"] == idx))
+            played = next(c for c in s["player"]["hand"] if c["index"] == idx)
+            s["player"]["hand"] = [c for c in s["player"]["hand"] if c["index"] != idx]
+            s["player"]["energy"] -= int(played["cost"])
+            if played["name"] == "Defend":
+                s["player"]["block"] += 5
+        self.assertEqual(plays.count("Defend"), 2)
+
+    def test_known_cards_are_nudged(self):
+        shrug = card(0, "SHRUG_IT_OFF", "Shrug It Off", "Skill", 1, "Gain 8 Block. Draw 1 card.", "Self")
+        barricade = card(0, "BARRICADE", "Barricade", "Power", 3, "Block is not removed at the start of your turn.", "Self")
+        plain = card(0, "SOMETHING_NEW", "Something New", "Skill", 1, "Gain 8 Block. Draw 1 card.", "Self")
+        self.assertGreater(deck_value(shrug), deck_value(plain))
+        self.assertLess(deck_value(barricade), deck_value(plain))
+        self.assertGreater(deck_value({**shrug, "name": "Shrug It Off+", "id": None}), deck_value(plain))
+
     def test_plating_counts_as_block(self):
         s = combat_state([STRIKE(0), DEFEND(1)], [enemy("A_0", 40, attack=5)], energy=1)
         self.assertEqual(combat.expected_loss(s), 5)
@@ -158,8 +249,10 @@ class Strategy(unittest.TestCase):
                 {"col": 1, "row": 1, "type": "Monster", "children": []},
             ],
         }
-        self.assertEqual(strategy.map_screen(self.base("map", hp=30, map=m), Memory())[0][1], {"index": 1})
-        self.assertEqual(strategy.map_screen(self.base("map", hp=80, map=m), Memory())[0][1], {"index": 0})
+        hurt, healthy = self.base("map", hp=30, map=m), self.base("map", hp=80, map=m)
+        hurt["run"]["act"] = healthy["run"]["act"] = 2  # early act 1 elites are avoided regardless
+        self.assertEqual(strategy.map_screen(hurt, Memory())[0][1], {"index": 1})
+        self.assertEqual(strategy.map_screen(healthy, Memory())[0][1], {"index": 0})
 
     def test_map_looks_ahead(self):
         m = {
@@ -172,6 +265,24 @@ class Strategy(unittest.TestCase):
             ],
         }
         self.assertEqual(strategy.map_screen(self.base("map", map=m), Memory())[0][1], {"index": 1})
+
+    def test_rests_before_the_boss_unless_nearly_full(self):
+        opts = [{"index": 0, "id": "REST", "is_enabled": True}, {"index": 1, "id": "SMITH", "is_enabled": True}]
+        s = self.base("rest_site", hp=60, rest_site={"options": opts})  # 75%
+        self.assertEqual(strategy.rest_site(s, Memory())[0][1]["index"], 1)
+        self.assertEqual(strategy.rest_site(s, Memory(boss_next=True))[0][1]["index"], 0)
+
+    def test_avoids_elites_early_in_act_one_and_notes_the_boss(self):
+        nodes = [{"col": 0, "row": 2, "type": "Elite", "children": [[0, 3]]}, {"col": 1, "row": 2, "type": "Monster", "children": [[0, 3]]},
+                 {"col": 0, "row": 3, "type": "Boss", "children": []}]
+        opts = [{"index": 0, "col": 0, "row": 2, "type": "Elite"}, {"index": 1, "col": 1, "row": 2, "type": "Monster"}]
+        s = self.base("map", hp=80, map={"next_options": opts, "nodes": nodes})
+        s["run"]["act"] = 1
+        mem = Memory()
+        self.assertEqual(strategy.map_screen(s, mem)[0][1]["index"], 1)
+        self.assertTrue(mem.boss_next)
+        s["run"]["act"] = 2
+        self.assertEqual(strategy.map_screen(s, mem)[0][1]["index"], 0)
 
     def test_rest_heals_when_low_and_smiths_when_healthy(self):
         rs = {"options": [{"index": 0, "id": "rest", "is_enabled": True}, {"index": 1, "id": "smith", "is_enabled": True}]}
@@ -221,6 +332,16 @@ class Strategy(unittest.TestCase):
         mem.selected.update({0, 1})
         self.assertIn(("select_card", {"index": 0}), strategy.card_select(s, mem))
 
+    def test_stops_ticking_cards_once_enough_are_chosen(self):
+        cards = [STRIKE(i) for i in range(5)]
+        s = self.base("card_select", card_select={"screen_type": "enchant", "prompt": "Choose 3 cards to Enchant.", "cards": cards})
+        mem = Memory()
+        for _ in range(3):
+            action, params = strategy.card_select(s, mem)[0]
+            self.assertEqual(action, "select_card")
+            mem.selected.add(params["index"])
+        self.assertEqual(strategy.card_select(s, mem)[0], ("confirm_selection", {}))
+
     def test_shop_buys_removal_and_relic_but_not_weak_cards(self):
         shop = {
             "items": [
@@ -233,6 +354,28 @@ class Strategy(unittest.TestCase):
         }
         acts = strategy.shop(self.base("shop", gold=250, shop=shop), Memory())
         self.assertEqual(acts, [("shop_purchase", {"index": 2}), ("shop_purchase", {"index": 1}), ("proceed", {})])
+
+    def test_auto_plays_the_character_with_the_lowest_ascension(self):
+        unlocked = ["IRONCLAD", "SILENT", "DEFECT"]
+        pick = lambda asc: strategy.choose_character("auto", unlocked, 0, asc)
+        self.assertEqual(pick({}), "IRONCLAD")
+        self.assertEqual(pick({"IRONCLAD": 2, "SILENT": 1, "DEFECT": 1}), "SILENT")
+        self.assertEqual(pick({"IRONCLAD": 1}), "SILENT")  # never played counts as 0
+        self.assertEqual(pick({"IRONCLAD": 3, "SILENT": 3, "DEFECT": 3}), "IRONCLAD")
+
+    def test_embarks_at_the_highest_unlocked_ascension(self):
+        chars = [{"id": "IRONCLAD", "locked": False}, {"id": "SILENT", "locked": False}, {"id": "DEFECT", "locked": True}]
+        s = {"state_type": "menu", "menu_screen": "character_select", "characters": chars,
+             "options": [{"name": "IRONCLAD", "enabled": True}, {"name": "SILENT", "enabled": True}, {"name": "confirm", "enabled": True}],
+             "ascension": 0, "max_ascension": 3}
+        mem = Memory(max_ascension={"IRONCLAD": 4, "SILENT": 3})
+        self.assertEqual(strategy.menu(s, mem, "auto")[0], ("menu_select", {"option": "SILENT"}))
+        mem.character_selected = True
+        self.assertEqual(strategy.menu(s, mem, "auto")[0], ("set_ascension", {"level": 3}))
+        s["ascension"] = 3
+        self.assertEqual(strategy.menu(s, mem, "auto")[0], ("menu_select", {"option": "confirm"}))
+        del s["ascension"], s["max_ascension"]  # a mod without the patch: just embark
+        self.assertEqual(strategy.menu(s, mem, "auto")[0], ("menu_select", {"option": "confirm"}))
 
     def test_character_choice(self):
         unlocked = ["IRONCLAD", "SILENT", "REGENT"]
@@ -360,6 +503,24 @@ class FastMode(unittest.TestCase):
         self.assertEqual(new.calls, [("set_fast_mode", {"mode": "instant"})])
         with self.assertLogs("sts2bot.supervisor", level="WARNING"):
             self.assertFalse(set_fast_mode(Mod({"status": "error", "error": "Unknown action"}), "instant"))
+
+
+class CrashRecovery(unittest.TestCase):
+    def test_a_crashed_child_is_not_counted_as_running(self):
+        import subprocess, sys, time
+        from unittest import mock
+        from sts2bot import supervisor
+
+        child = subprocess.Popen([sys.executable, "-c", "pass"])
+        time.sleep(0.3)  # exited, not yet collected: a zombie
+        supervisor._children.append(child)
+        zombie = mock.Mock(stdout="Z\n")
+        with mock.patch.object(supervisor.subprocess, "run", return_value=zombie):
+            self.assertFalse(supervisor.game_running())
+        self.assertNotIn(child, supervisor._children)
+        alive = mock.Mock(stdout="Sl\n")
+        with mock.patch.object(supervisor.subprocess, "run", return_value=alive):
+            self.assertTrue(supervisor.game_running())
 
 
 class HttpClient(unittest.TestCase):

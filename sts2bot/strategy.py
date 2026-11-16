@@ -28,6 +28,8 @@ class Memory:
     selected: set = field(default_factory=set)
     runs_finished: int = 0
     character_selected: bool = False
+    boss_next: bool = False  # the room we are walking into leads straight to the boss
+    max_ascension: dict = field(default_factory=dict)  # character id -> highest unlocked ascension
 
     def reset_run(self) -> None:
         self.deck_size = 10
@@ -76,10 +78,17 @@ def menu(state: dict, mem: Memory, character: str) -> list[Action]:
     if screen == "character_select":
         chars = [c for c in state.get("characters") or [] if not c.get("locked")]
         ids = [str(c.get("id")) for c in chars]
-        want = choose_character(character, ids, mem.runs_finished)
+        want = choose_character(character, ids, mem.runs_finished, mem.max_ascension)
         select = [("menu_select", {"option": want})] if want else []
         embark = pick("confirm", "embark")
-        return embark + select if mem.character_selected else select + embark
+        if not mem.character_selected:
+            return select + embark
+        # Play at the highest ascension this character has unlocked.
+        raise_asc: list[Action] = []
+        top, now = state.get("max_ascension"), state.get("ascension")
+        if isinstance(top, int) and isinstance(now, int) and now != top:
+            raise_asc = [("set_ascension", {"level": top})]
+        return raise_asc + embark + select
     if screen == "tutorial_prompt":
         return pick("no")
     if screen == "tutorial":
@@ -90,14 +99,23 @@ def menu(state: dict, mem: Memory, character: str) -> list[Action]:
     return pick("back", "advance")
 
 
-def choose_character(setting: str, unlocked: list[str], runs_finished: int) -> str | None:
-    """`setting` is a character id, or "cycle" / "random" over the unlocked ones."""
+def choose_character(
+    setting: str, unlocked: list[str], runs_finished: int, max_ascension: dict | None = None
+) -> str | None:
+    """`setting` is a character id, or "auto" / "cycle" / "random" over the unlocked ones.
+
+    "auto" plays whichever unlocked character has the lowest ascension so far,
+    so all of them are ranked up evenly (ties go to the first one listed).
+    """
     if not unlocked:
         return None
     by_upper = {u.upper(): u for u in unlocked}
     s = setting.strip().upper()
     if s in by_upper:
         return by_upper[s]
+    if s == "AUTO":
+        levels = {str(k).upper(): int(v) for k, v in (max_ascension or {}).items()}
+        return min(unlocked, key=lambda u: levels.get(u.upper(), 0))
     if s == "CYCLE":
         return unlocked[runs_finished % len(unlocked)]
     if s == "RANDOM":
@@ -119,9 +137,16 @@ _ROOM_BASE = {
 }
 
 
-def _room_value(kind: str, hp: float, gold: int) -> float:
+EARLY_ROWS = 8  # act 1 rows where the deck is still close to the starter deck
+
+
+def _room_value(kind: str, hp: float, gold: int, early: bool = False) -> float:
     v = _ROOM_BASE.get(kind, 1.0)
-    if kind == "Elite":
+    if kind == "Elite" and early:
+        # A starter deck loses about 35 HP to an act 1 elite, and several runs
+        # ended right there. Only take one when there is no other way.
+        v = -5.0
+    elif kind == "Elite":
         # Elites are worth it only from a strong position; a starter deck
         # walking into one at ~80% HP came out with 18 HP.
         v = 3.0 if hp >= 0.9 else (0.5 if hp >= 0.7 else -6.0)
@@ -143,6 +168,10 @@ def map_screen(state: dict, mem: Memory) -> list[Action]:
     gold = int((state.get("player") or {}).get("gold") or 0)
     nodes = {(n.get("col"), n.get("row")): n for n in m.get("nodes") or []}
     memo: dict = {}
+    act = (state.get("run") or {}).get("act")
+
+    def is_early(row) -> bool:
+        return act == 1 and isinstance(row, int) and row < EARLY_ROWS
 
     def best_from(key) -> float:
         """Best total value of a path starting at this node."""
@@ -155,7 +184,7 @@ def map_screen(state: dict, mem: Memory) -> list[Action]:
         kids = [tuple(c) for c in node.get("children") or []]
         # HP is only known now; discount far-away rooms so near choices dominate.
         ahead = 0.9 * max((best_from(k) for k in kids), default=0.0)
-        memo[key] = _room_value(str(node.get("type")), hp, gold) + ahead
+        memo[key] = _room_value(str(node.get("type")), hp, gold, is_early(key[1])) + ahead
         return memo[key]
 
     def value(opt: dict) -> float:
@@ -163,10 +192,16 @@ def map_screen(state: dict, mem: Memory) -> list[Action]:
         if key in nodes:
             return best_from(key)
         kids = opt.get("leads_to") or []
-        ahead = max((_room_value(str(k.get("type")), hp, gold) for k in kids), default=0.0)
-        return _room_value(str(opt.get("type")), hp, gold) + 0.9 * ahead
+        ahead = max((_room_value(str(k.get("type")), hp, gold, is_early(k.get("row"))) for k in kids), default=0.0)
+        return _room_value(str(opt.get("type")), hp, gold, is_early(opt.get("row"))) + 0.9 * ahead
 
     ranked = sorted(options, key=value, reverse=True)
+    best = ranked[0]
+    kids = best.get("leads_to") or [
+        {"type": (nodes.get(tuple(c)) or {}).get("type")}
+        for c in (nodes.get((best.get("col"), best.get("row"))) or {}).get("children") or []
+    ]
+    mem.boss_next = any(str(k.get("type")) == "Boss" for k in kids)
     return [("choose_map_node", {"index": int(o.get("index", 0))}) for o in ranked]
 
 
@@ -197,7 +232,9 @@ def card_reward(state: dict, mem: Memory) -> list[Action]:
     cards = cr.get("cards") or []
     ranked = sorted(cards, key=deck_value, reverse=True)
     out: list[Action] = []
-    threshold = SKIP_THRESHOLD + (1.5 if mem.deck_size >= BIG_DECK else 0.0)
+    # Be pickier as the deck grows: every mediocre card makes the good ones
+    # show up less often.
+    threshold = SKIP_THRESHOLD + (0.0 if mem.deck_size < 16 else 1.0 if mem.deck_size < 20 else 2.0 if mem.deck_size < BIG_DECK else 3.0)
     take = [("select_card_reward", {"card_index": int(c.get("index", 0))}) for c in ranked]
     if ranked and deck_value(ranked[0]) >= threshold:
         out += take
@@ -220,7 +257,8 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
     def rank(o: dict) -> float:
         oid = str(o.get("id") or o.get("name") or "").lower()
         if "rest" in oid or "heal" in oid:
-            return 10.0 if hp < 0.6 else 1.0
+            # Before a boss, HP is worth more than one upgraded card.
+            return 10.0 if hp < (0.9 if mem.boss_next else 0.6) else 1.0
         if "smith" in oid or "upgrade" in oid:
             return 5.0
         return 3.0
@@ -384,10 +422,17 @@ def card_select(state: dict, mem: Memory) -> list[Action]:
 
     confirmable = cs.get("preview_showing") or cs.get("can_confirm")
     indices = [int(c.get("index", 0)) for c in ordered]
-    if not confirmable and all(i in mem.selected for i in indices):
+    if not cs.get("preview_showing") and indices and all(i in mem.selected for i in indices):
         mem.selected = set()  # our clicks did not register; start over
     out: list[Action] = []
-    if confirmable:
+    wanted = re.search(r"choose\s+(\d+)\s+card", prompt, re.I)
+    if wanted and not cs.get("preview_showing"):
+        # The prompt says how many: tick exactly that many, then confirm. Some
+        # screens report a confirm button as ready before anything is ticked.
+        ready = len(mem.selected) >= int(wanted.group(1))
+    else:
+        ready = bool(confirmable)
+    if ready:
         out.append(("confirm_selection", {}))
     out += [("select_card", {"index": i}) for i in indices if i not in mem.selected]
     if cs.get("can_skip") or cs.get("can_cancel"):

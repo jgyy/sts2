@@ -16,7 +16,7 @@ PartOf=graphical-session.target
 [Service]
 WorkingDirectory=@REPO@
 # systemd-inhibit keeps the machine from idling to sleep while the bot plays.
-ExecStart=/usr/bin/systemd-inhibit --what=idle:sleep --who=sts2bot --why="Playing Slay the Spire 2" /usr/bin/python3 -m sts2bot --character IRONCLAD
+ExecStart=/usr/bin/systemd-inhibit --what=idle:sleep --who=sts2bot --why="Playing Slay the Spire 2" /usr/bin/python3 -m sts2bot
 Restart=always
 RestartSec=15
 
