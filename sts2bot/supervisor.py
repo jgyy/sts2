@@ -68,6 +68,29 @@ def kill_game(grace: float = 10.0) -> None:
         time.sleep(1.0)
 
 
+FAST_MODES = ("instant", "fast", "normal")
+
+
+def set_fast_mode(client: Client, mode: str) -> bool:
+    """Ask the game for an animation speed ("instant" is the fastest).
+
+    Goes through the bridge mod (scripts/mod_patches/set-fast-mode.patch) and
+    lasts until the game exits, so it is sent after every launch. Editing the
+    game's prefs.save instead does not work: Steam cloud sync restores the old
+    file when the game starts.
+    """
+    result = client.act("set_fast_mode", mode=mode)
+    if result.get("status") == "error" or "error" in result:
+        log.warning(
+            "could not set fast mode %r (%s); re-run scripts/install_mod.sh to update the mod",
+            mode,
+            result.get("error"),
+        )
+        return False
+    log.info("fast mode: %s", mode)
+    return True
+
+
 def launch_game(cmd: str) -> None:
     log.info("launching game: %s", cmd)
     argv = shlex.split(cmd)
@@ -91,6 +114,7 @@ class Supervisor:
         *,
         launch_cmd: str = DEFAULT_LAUNCH,
         manage_game: bool = True,
+        fast_mode: str | None = "instant",
         boot_timeout: float = 240.0,
         outage_grace: float = 45.0,
     ):
@@ -98,6 +122,7 @@ class Supervisor:
         self.client = client
         self.launch_cmd = launch_cmd
         self.manage_game = manage_game
+        self.fast_mode = fast_mode
         self.boot_timeout = boot_timeout
         self.outage_grace = outage_grace
         self.restarts = 0
@@ -146,6 +171,8 @@ class Supervisor:
         while max_runs is None or self.bot.runs_finished < max_runs:
             self.ensure_game()
             try:
+                if self.fast_mode:
+                    set_fast_mode(self.client, self.fast_mode)
                 self.bot.run(max_runs)
             except GameUnavailable as e:
                 log.warning("lost contact with the game: %s", e)

@@ -33,7 +33,13 @@ if [[ ! -d "$BUILD_DIR/.git" ]]; then
     git clone --quiet "$REPO" "$BUILD_DIR"
 fi
 git -C "$BUILD_DIR" fetch --quiet origin
-git -C "$BUILD_DIR" checkout --quiet --detach "$COMMIT"
+git -C "$BUILD_DIR" checkout --quiet --force --detach "$COMMIT"
+
+# Small additions the bot needs on top of the pinned commit (scripts/mod_patches).
+for patch in "$(dirname "$0")"/mod_patches/*.patch; do
+    [[ -e "$patch" ]] || continue
+    git -C "$BUILD_DIR" apply "$(cd "$(dirname "$patch")" && pwd)/$(basename "$patch")"
+done
 
 dotnet build "$BUILD_DIR/STS2_MCP.csproj" -c Release -o "$BUILD_DIR/out" \
     -p:STS2GameDir="$GAME_DIR" --nologo -v quiet
