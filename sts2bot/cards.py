@@ -22,6 +22,7 @@ class CardInfo:
     star_cost: int
     damage: int  # per hit
     hits: int
+    double_if_vulnerable: bool  # "If the enemy is Vulnerable, hits twice."
     aoe: bool
     random_target: bool
     block: int
@@ -75,10 +76,17 @@ def parse(card: dict) -> CardInfo:
 
     damage = _int(r"deals?\s+(\d+)\s+damage", text)
     hits = 1
+    double_if_vulnerable = False
     if damage:
-        hits = _int(r"(\d+)\s+times", text) or 1
+        # A conditional second hit must not count as an unconditional one.
+        plain = text
+        m = re.search(r"if\s+the\s+enemy\s+is\s+vulnerable,?\s+hits\s+twice\.?", text, re.I)
+        if m:
+            double_if_vulnerable = True
+            plain = text[: m.start()] + text[m.end() :]
+        hits = _int(r"(\d+)\s+times", plain) or 1
         for word, n in _WORD_NUM.items():
-            if re.search(rf"\b{word}\b", text, re.I):
+            if re.search(rf"\b{word}\b", plain, re.I):
                 hits = n
     block = _int(r"gain\s+(\d+)\s+block", text)
     vulnerable = _int(r"apply\s+(\d+)\s+vulnerable", text) or _int(r"(\d+)\s+vulnerable", text)
@@ -99,6 +107,7 @@ def parse(card: dict) -> CardInfo:
         star_cost=_cost(card.get("star_cost")) if card.get("star_cost") not in (None, "") else 0,
         damage=damage,
         hits=hits,
+        double_if_vulnerable=double_if_vulnerable,
         aoe=aoe,
         random_target=random_target,
         block=block,

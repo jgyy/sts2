@@ -97,9 +97,31 @@ class CombatPlanning(unittest.TestCase):
         self.assertEqual(combat.choose_card(s)[1]["target"], "SMALL_0")
 
     def test_vulnerable_makes_lethal_reachable(self):
-        vuln = [{"id": "VULNERABLE", "amount": 2}]
+        # The real game names powers like VULNERABLE_POWER.
+        vuln = [{"id": "VULNERABLE_POWER", "amount": 2}]
         s = combat_state([STRIKE(0), DEFEND(1)], [enemy("A_0", 9, attack=30, status=vuln)], energy=1, hp=10)
         self.assertEqual(combat.choose_card(s)[1]["card_index"], 0)
+
+    def test_conditional_double_hit_needs_vulnerable(self):
+        dismantle = card(0, "DISMANTLE", "Dismantle", "Attack", 1, "Deal 8 damage. If the enemy is Vulnerable, hits twice.", "AnyEnemy")
+        info = parse(dismantle)
+        self.assertEqual((info.damage, info.hits, info.double_if_vulnerable), (8, 1, True))
+        vuln = [{"id": "VULNERABLE_POWER", "amount": 1}]
+        # 8 * 1.5 * 2 = 24 kills the vulnerable one; the plain one would survive.
+        s = combat_state([dismantle], [enemy("PLAIN_0", 20, attack=5), enemy("VULN_0", 24, attack=5, status=vuln)], energy=1)
+        self.assertEqual(combat.choose_card(s)[1]["target"], "VULN_0")
+
+    def test_plating_counts_as_block(self):
+        s = combat_state([STRIKE(0), DEFEND(1)], [enemy("A_0", 40, attack=5)], energy=1)
+        self.assertEqual(combat.expected_loss(s), 5)
+        s["player"]["status"] = [{"id": "PLATING_POWER", "amount": 5}]
+        self.assertEqual(combat.expected_loss(s), 0)
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 0)  # nothing to block: attack
+
+    def test_weak_goes_on_the_attacker_and_saves_hp(self):
+        weaken = card(0, "W", "Weaken", "Skill", 1, "Apply 2 Weak.", "AnyEnemy")
+        s = combat_state([weaken], [enemy("IDLE_0", 30), enemy("HITTER_0", 60, attack=20)], energy=1, hp=30)
+        self.assertEqual(combat.choose_card(s), ("play_card", {"card_index": 0, "target": "HITTER_0"}))
 
     def test_respects_energy_and_unplayable_cards(self):
         hand = [card(0, "BIG", "Big", "Attack", 3, "Deal 30 damage.", "AnyEnemy"), {**STRIKE(1), "can_play": False}]
@@ -193,6 +215,32 @@ class Strategy(unittest.TestCase):
 
 
 class FullLoop(unittest.TestCase):
+    def test_map_travel_is_not_clicked_twice(self):
+        """While the travel animation plays the map still answers; wait it out."""
+
+        class TravellingMap:
+            def __init__(self):
+                self.clicks = 0
+                self.polls_left = 0
+
+            def state(self):
+                if self.clicks and self.polls_left <= 0:
+                    return {"state_type": "event", "event": {"in_dialogue": True}}
+                self.polls_left -= 1
+                opts = [{"index": 0, "col": self.clicks, "row": 1, "type": "Monster"}]
+                return {"state_type": "map", "map": {"next_options": opts, "nodes": []}, "player": {"hp": 50, "max_hp": 80}}
+
+            def act(self, action, **params):
+                if action == "choose_map_node":
+                    self.clicks += 1
+                    self.polls_left = 5
+                return {"status": "ok"}
+
+        game = TravellingMap()
+        make_bot(game).step()
+        self.assertEqual(game.clicks, 1)
+        self.assertEqual(game.state()["state_type"], "event")
+
     def test_plays_several_runs_back_to_back(self):
         game = FakeGame(seed=1, floors=4)
         with tempfile.TemporaryDirectory() as d:

@@ -56,6 +56,7 @@ class Bot:
         self.log_dir = log_dir
         self.poll = poll
         self.settle = settle
+        self.travel_settle = 8.0
         self.stuck_timeout = stuck_timeout
         self.clock = clock
         self.sleep = sleep
@@ -200,11 +201,20 @@ class Bot:
             with open(self.log_dir / "runs.jsonl", "a") as f:
                 f.write(json.dumps(entry) + "\n")
 
-    def _wait_for_change(self, fp: str) -> None:
-        deadline = self.clock() + self.settle
+    def _wait_for_change(self, fp: str, leave: str | None = None) -> None:
+        """Wait for the action to show. With `leave`, wait until that screen is gone.
+
+        The map keeps answering with fresh options while the travel animation
+        plays; acting on those would click a second node.
+        """
+        deadline = self.clock() + (self.travel_settle if leave else self.settle)
         while self.clock() < deadline:
             self.sleep(min(0.15, self.poll))
-            if fingerprint(self.client.state()) != fp:
+            state = self.client.state()
+            if leave:
+                if state.get("state_type") != leave:
+                    return
+            elif fingerprint(state) != fp:
                 self.sleep(min(0.25, self.poll))  # let the animation finish resolving
                 return
 
@@ -237,7 +247,7 @@ class Bot:
                 return True
             log.debug("%s %s -> %s", action, params, result.get("message"))
             self._after_success(state, action, params)
-            self._wait_for_change(fp)
+            self._wait_for_change(fp, leave="map" if action == "choose_map_node" else None)
             if fingerprint(self.client.state()) == fp:
                 self._strikes[key] += 1  # accepted, but nothing happened
             return True

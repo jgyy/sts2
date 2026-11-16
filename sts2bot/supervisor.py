@@ -8,9 +8,11 @@ stuck. A run that hangs twice in the same place is abandoned.
 from __future__ import annotations
 
 import logging
+import os
 import shlex
 import subprocess
 import time
+from pathlib import Path
 
 from .bot import Bot, Stuck
 from .client import Client, GameUnavailable
@@ -18,8 +20,38 @@ from .client import Client, GameUnavailable
 log = logging.getLogger("sts2bot.supervisor")
 
 STEAM_APP_ID = 2868840
-DEFAULT_LAUNCH = f"steam -applaunch {STEAM_APP_ID}"
+STEAM_LAUNCH = f"steam -applaunch {STEAM_APP_ID}"
 PROCESS_NAME = "SlayTheSpire2"
+
+# After the first run on a fresh profile the game hides "Singleplayer" until
+# the Timeline screen has been visited, and the bridge mod refuses to open the
+# Timeline from automation, so the bot would sit at the main menu forever.
+# STS2_DEV_SKIP is the game's own switch for skipping that requirement (and
+# the intro logo). It only reaches the game when we start the game binary
+# ourselves: `steam -applaunch` hands the launch to the running Steam client.
+# SteamAppId lets the directly started game attach to Steam (cloud saves etc.).
+GAME_ENV = {
+    "STS2_DEV_SKIP": "1",
+    "SteamAppId": str(STEAM_APP_ID),
+    "SteamGameId": str(STEAM_APP_ID),
+}
+
+
+def game_binary() -> Path | None:
+    base = os.environ.get("STS2_GAME_DIR") or str(
+        Path.home() / ".local/share/Steam/steamapps/common/Slay the Spire 2"
+    )
+    exe = Path(base) / PROCESS_NAME
+    return exe if os.access(exe, os.X_OK) else None
+
+
+def default_launch() -> str:
+    """Start the game binary directly when we can find it, else go through Steam."""
+    exe = game_binary()
+    return shlex.quote(str(exe)) if exe else STEAM_LAUNCH
+
+
+DEFAULT_LAUNCH = default_launch()
 
 
 def game_running() -> bool:
@@ -38,8 +70,12 @@ def kill_game(grace: float = 10.0) -> None:
 
 def launch_game(cmd: str) -> None:
     log.info("launching game: %s", cmd)
+    argv = shlex.split(cmd)
+    exe = Path(argv[0])
     subprocess.Popen(
-        shlex.split(cmd),
+        argv,
+        cwd=exe.parent if exe.is_absolute() and exe.parent.is_dir() else None,
+        env={**os.environ, **GAME_ENV},
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
