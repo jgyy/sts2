@@ -8,6 +8,7 @@ draws and other surprises are picked up automatically.
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, replace
 from itertools import combinations
@@ -15,6 +16,8 @@ from itertools import combinations
 from .cards import CardInfo, parse
 
 Action = tuple[str, dict]
+
+log = logging.getLogger("sts2bot.combat")
 
 MAX_SEARCH_CARDS = 11
 LETHAL_PENALTY = 1_000_000.0
@@ -243,6 +246,8 @@ def simulate(
         score += c.draw * 2.0
         if c.type == "Power":
             score += (7.0 + 3.0 * max(c.cost, 0)) * (1.5 if tough_fight else 1.0) * (1.0 if early else 0.35)
+        elif c.type in ("Status", "Curse"):
+            score += 0.1  # only worth clearing out with energy nothing else can use
         elif not c.known:
             score += 2.5 + max(c.cost, 0)
 
@@ -255,7 +260,10 @@ def simulate(
     incoming = sum(e.incoming for e in survivors)
     lost = max(0, incoming - block) + self_loss
     ratio = hp / max(1, max_hp)
-    score -= lost * (1.0 + 3.0 * (1.0 - ratio))
+    # A point of our HP is worth more than a point of enemy HP even at full
+    # health: at 1.0 a Strike (6) beat a Defend (5) and the bot never blocked
+    # until it was already hurt, bleeding HP in every ordinary fight.
+    score -= lost * (1.5 + 2.5 * (1.0 - ratio))
     if lost >= hp:
         score -= LETHAL_PENALTY
     return Outcome(score, first_target)
@@ -343,8 +351,29 @@ def potion_actions(state: dict) -> list[Action]:
     return out
 
 
+def describe(state: dict) -> str:
+    """One line with everything the planner looked at (for the debug log)."""
+    player = state.get("player") or {}
+    battle = state.get("battle") or {}
+    foes = []
+    for e in battle.get("enemies") or []:
+        powers = ",".join(f"{str(s.get('id', '')).replace('_POWER', '')}:{s.get('amount')}" for s in e.get("status") or [])
+        intents = "+".join(f"{i.get('type')}{i.get('label') or ''}" for i in e.get("intents") or [])
+        foes.append(f"{e.get('entity_id')} {e.get('hp')}hp/{e.get('block')}blk [{powers}] {intents}")
+    hand = ", ".join(
+        f"{c.get('index')}:{c.get('name')}({c.get('cost')}{'' if c.get('can_play', True) else '!'})" for c in player.get("hand") or []
+    )
+    mine = ",".join(f"{str(s.get('id', '')).replace('_POWER', '')}:{s.get('amount')}" for s in player.get("status") or [])
+    return (
+        f"r{battle.get('round')} hp {player.get('hp')}/{player.get('max_hp')} blk {player.get('block')} "
+        f"en {player.get('energy')} [{mine}] | {' ; '.join(foes)} | hand {hand}"
+    )
+
+
 def actions(state: dict) -> list[Action]:
     """Ordered candidate actions for a combat state (first workable one is taken)."""
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug("combat %s", describe(state))
     out = potion_actions(state)
     card = choose_card(state)
     if card is not None:

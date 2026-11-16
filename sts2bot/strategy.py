@@ -122,7 +122,9 @@ _ROOM_BASE = {
 def _room_value(kind: str, hp: float, gold: int) -> float:
     v = _ROOM_BASE.get(kind, 1.0)
     if kind == "Elite":
-        v = 3.5 if hp >= 0.75 else (0.0 if hp >= 0.5 else -6.0)
+        # Elites are worth it only from a strong position; a starter deck
+        # walking into one at ~80% HP came out with 18 HP.
+        v = 3.0 if hp >= 0.9 else (0.5 if hp >= 0.7 else -6.0)
     elif kind == "Monster":
         v = 1.5 if hp >= 0.45 else -1.0
     elif kind == "RestSite":
@@ -370,13 +372,24 @@ def card_select(state: dict, mem: Memory) -> list[Action]:
     if key != mem.select_key:
         mem.select_key, mem.selected = key, set()
 
+    ordered = _pick_order(cards, prompt, kind)
+    if kind == "choose":
+        # One click picks and closes the screen; there is nothing to confirm
+        # and nothing to remember. A click that lands while the screen is
+        # still opening is ignored by the game, so always offer it again.
+        out = [("select_card", {"index": int(c.get("index", 0))}) for c in ordered]
+        if cs.get("can_skip") or cs.get("can_cancel"):
+            out.append(("cancel_selection", {}))
+        return out
+
+    confirmable = cs.get("preview_showing") or cs.get("can_confirm")
+    indices = [int(c.get("index", 0)) for c in ordered]
+    if not confirmable and all(i in mem.selected for i in indices):
+        mem.selected = set()  # our clicks did not register; start over
     out: list[Action] = []
-    if cs.get("preview_showing") or cs.get("can_confirm"):
+    if confirmable:
         out.append(("confirm_selection", {}))
-    for c in _pick_order(cards, prompt, kind):
-        idx = int(c.get("index", 0))
-        if idx not in mem.selected:
-            out.append(("select_card", {"index": idx}))
+    out += [("select_card", {"index": i}) for i in indices if i not in mem.selected]
     if cs.get("can_skip") or cs.get("can_cancel"):
         out.append(("cancel_selection", {}))
     out.append(("confirm_selection", {}))

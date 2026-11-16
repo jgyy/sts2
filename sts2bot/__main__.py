@@ -11,7 +11,7 @@ from pathlib import Path
 
 from .bot import Bot
 from .client import Client
-from .supervisor import DEFAULT_LAUNCH, Supervisor
+from .supervisor import DEFAULT_LAUNCH, FAST_MODES, Supervisor
 
 
 def default_log_dir() -> Path:
@@ -31,6 +31,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--runs", type=int, default=None, help="stop after this many runs (default: never stop)")
     ap.add_argument("--no-launch", action="store_true", help="never start or kill the game; only play when it is up")
     ap.add_argument("--launch-cmd", default=DEFAULT_LAUNCH, help=f"command that starts the game (default: {DEFAULT_LAUNCH!r})")
+    ap.add_argument(
+        "--fast-mode",
+        choices=(*FAST_MODES, "keep"),
+        default="instant",
+        help="game animation speed, set through the mod each time the bot connects; "
+        '"keep" leaves the setting alone (default: instant, the fastest)',
+    )
     ap.add_argument("--stuck-timeout", type=float, default=300.0, help="seconds without any change before the game is restarted")
     ap.add_argument("--poll", type=float, default=0.4, help="seconds between state polls")
     ap.add_argument("--log-dir", type=Path, default=default_log_dir())
@@ -49,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
 
     client = Client(args.host, args.port)
     bot = Bot(client, character=args.character, log_dir=args.log_dir, poll=args.poll, stuck_timeout=args.stuck_timeout)
-    sup = Supervisor(bot, client, launch_cmd=args.launch_cmd, manage_game=not args.no_launch)
+    sup = Supervisor(bot, client, launch_cmd=args.launch_cmd, manage_game=not args.no_launch, fast_mode=None if args.fast_mode == "keep" else args.fast_mode)
     logging.getLogger("sts2bot").info("logs and run history in %s", args.log_dir)
     try:
         sup.run(args.runs)

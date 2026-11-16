@@ -228,7 +228,7 @@ class Bot:
             self._strikes.clear()
         elif now - self._last_change > self.stuck_timeout:
             raise Stuck(f"no change for {self.stuck_timeout:.0f}s in state {state.get('state_type')!r}")
-        elif now - self._last_retry > 30:
+        elif now - self._last_retry > 8:  # clicks sent mid-animation are ignored; try again soon
             self._last_retry = now
             self._strikes.clear()  # give shelved actions another go
 

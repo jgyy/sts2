@@ -111,6 +111,15 @@ class CombatPlanning(unittest.TestCase):
         s = combat_state([dismantle], [enemy("PLAIN_0", 20, attack=5), enemy("VULN_0", 24, attack=5, status=vuln)], energy=1)
         self.assertEqual(combat.choose_card(s)[1]["target"], "VULN_0")
 
+    def test_blocks_at_full_health_when_it_cannot_kill(self):
+        s = combat_state([STRIKE(0), DEFEND(1)], [enemy("A_0", 40, attack=10)], energy=1)
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)
+
+    def test_does_not_waste_energy_on_status_cards(self):
+        slimed = card(0, "SLIMED", "Slimed", "Status", 1, "Exhaust.", "None")
+        s = combat_state([slimed, STRIKE(1)], [enemy("A_0", 40)], energy=1)
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)
+
     def test_plating_counts_as_block(self):
         s = combat_state([STRIKE(0), DEFEND(1)], [enemy("A_0", 40, attack=5)], energy=1)
         self.assertEqual(combat.expected_loss(s), 5)
@@ -193,6 +202,24 @@ class Strategy(unittest.TestCase):
         }
         acts = strategy.card_select(self.base("card_select", card_select=cs), Memory())
         self.assertEqual([a[1].get("index") for a in acts[:3]], [2, 1, 0])
+
+    def test_choose_a_card_is_offered_again_after_an_ignored_click(self):
+        cards = [card(0, "DISINTEGRATION", "Disintegration", "Status", 0, "At the end of your turn, take 7 damage.", "None"),
+                 card(1, "SLOTH", "Sloth", "Status", 0, "You cannot play more than 3 cards each turn.", "None")]
+        s = self.base("card_select", card_select={"screen_type": "choose", "prompt": "Choose a card.", "cards": cards})
+        mem = Memory()
+        first = strategy.card_select(s, mem)
+        self.assertEqual({a for a, _ in first}, {"select_card"})  # never confirm_selection here
+        mem.selected.update({0, 1})  # both were clicked on earlier, identical screens
+        self.assertEqual(strategy.card_select(s, mem), first)
+
+    def test_grid_selection_starts_over_when_clicks_did_not_register(self):
+        cards = [STRIKE(0), DEFEND(1)]
+        s = self.base("card_select", card_select={"screen_type": "select", "prompt": "Choose 2 cards.", "cards": cards})
+        mem = Memory()
+        strategy.card_select(s, mem)
+        mem.selected.update({0, 1})
+        self.assertIn(("select_card", {"index": 0}), strategy.card_select(s, mem))
 
     def test_shop_buys_removal_and_relic_but_not_weak_cards(self):
         shop = {
@@ -314,6 +341,25 @@ class FullLoop(unittest.TestCase):
         with self.assertRaises(Stuck):
             for _ in range(10_000):
                 bot.step()
+
+
+class FastMode(unittest.TestCase):
+    def test_sent_through_the_mod_and_tolerates_an_old_mod(self):
+        from sts2bot.supervisor import set_fast_mode
+
+        class Mod:
+            def __init__(self, reply):
+                self.reply, self.calls = reply, []
+
+            def act(self, action, **params):
+                self.calls.append((action, params))
+                return self.reply
+
+        new = Mod({"status": "ok", "fast_mode": "instant"})
+        self.assertTrue(set_fast_mode(new, "instant"))
+        self.assertEqual(new.calls, [("set_fast_mode", {"mode": "instant"})])
+        with self.assertLogs("sts2bot.supervisor", level="WARNING"):
+            self.assertFalse(set_fast_mode(Mod({"status": "error", "error": "Unknown action"}), "instant"))
 
 
 class HttpClient(unittest.TestCase):
