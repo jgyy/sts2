@@ -6,15 +6,18 @@ takes the first one that the game accepts, so a handler can list fallbacks.
 
 from __future__ import annotations
 
+import logging
 import random
 import re
 from dataclasses import dataclass, field
 
-from .cards import deck_value, is_basic, is_junk
+from .cards import deck_value, is_basic, is_junk, is_known as _known_card
 
 Action = tuple[str, dict]
 
-SKIP_THRESHOLD = 1.6  # card rewards scoring below this are skipped
+log = logging.getLogger("sts2bot.strategy")
+
+SKIP_THRESHOLD = 3.0  # card rewards scoring below this are skipped
 BIG_DECK = 24
 
 
@@ -30,6 +33,12 @@ class Memory:
     character_selected: bool = False
     boss_next: bool = False  # the room we are walking into leads straight to the boss
     max_ascension: dict = field(default_factory=dict)  # character id -> highest unlocked ascension
+    ascension_waits: int = 0  # times we held off embarking for the ascension level to show
+    epochs: dict = field(default_factory=dict)  # epoch id -> state, from the game's profile
+    epoch_drought: dict = field(default_factory=dict)  # character id -> runs in a row that earned no epoch
+    current_character: str = ""  # who the run in progress is played with
+    timeline_done: bool = False  # the Timeline has nothing more to reveal this visit
+    timeline_stuck: set = field(default_factory=set)  # epochs it could not reveal (not retried)
 
     def reset_run(self) -> None:
         self.deck_size = 10
@@ -37,6 +46,7 @@ class Memory:
         self.select_key = ""
         self.selected.clear()
         self.character_selected = False
+        self.ascension_waits = 0
 
 
 def _where(state: dict) -> tuple:
@@ -72,13 +82,22 @@ def menu(state: dict, mem: Memory, character: str) -> list[Action]:
         return [("menu_select", {"option": lower[w]}) for w in wanted if w in lower]
 
     if screen == "main":
-        return pick("continue", "singleplayer")
+        mem.timeline_done = False
+        # Unlocks the game has awarded (ascension levels, characters, cards)
+        # only count once they are revealed on the Timeline, and until then
+        # the game may not even offer Singleplayer. Go and reveal them.
+        pending = set(state.get("pending_epoch_ids") or [])
+        if "timeline" in lower and pending - mem.timeline_stuck and "continue" not in lower:
+            return pick("timeline", "singleplayer")
+        return pick("continue", "singleplayer") or pick("timeline")
+    if screen == "timeline":
+        return pick("back", "advance") if mem.timeline_done else pick("advance", "back")
     if screen == "singleplayer":
         return pick("standard")
     if screen == "character_select":
         chars = [c for c in state.get("characters") or [] if not c.get("locked")]
         ids = [str(c.get("id")) for c in chars]
-        want = choose_character(character, ids, mem.runs_finished, mem.max_ascension)
+        want = choose_character(character, ids, mem.runs_finished, mem.max_ascension, mem.epochs, mem.epoch_drought)
         select = [("menu_select", {"option": want})] if want else []
         embark = pick("confirm", "embark")
         if not mem.character_selected:
@@ -88,6 +107,16 @@ def menu(state: dict, mem: Memory, character: str) -> list[Action]:
         top, now = state.get("max_ascension"), state.get("ascension")
         if isinstance(top, int) and isinstance(now, int) and now != top:
             raise_asc = [("set_ascension", {"level": top})]
+        # The screen takes a moment to show the levels of the character just
+        # picked. Embarking before it does started the run at ascension 0 even
+        # though a higher one was unlocked, so wait for it (but not for ever).
+        known = {str(k).upper(): int(v) for k, v in mem.max_ascension.items()}.get(str(want).upper(), 0)
+        # (When the screen itself says the top level is lower, the unlock has
+        # not been revealed on the Timeline yet; a short wait is enough then.)
+        patience = 4 if isinstance(top, int) else 20
+        if known > 0 and not raise_asc and now != known and mem.ascension_waits < patience:
+            mem.ascension_waits += 1
+            return select
         return raise_asc + embark + select
     if screen == "tutorial_prompt":
         return pick("no")
@@ -99,13 +128,32 @@ def menu(state: dict, mem: Memory, character: str) -> list[Action]:
     return pick("back", "advance")
 
 
+_EARNED = ("Obtained", "ObtainedNoSlot", "Revealed")
+
+
+def missing_epochs(character: str, epochs: dict | None) -> int:
+    """How many of this character's own epochs (IRONCLAD2_EPOCH, ...) are still to be earned."""
+    prefix = re.compile(rf"^{re.escape(character.upper())}\d+_EPOCH$")
+    return sum(1 for eid, state in (epochs or {}).items() if prefix.match(str(eid).upper()) and state not in _EARNED)
+
+
 def choose_character(
-    setting: str, unlocked: list[str], runs_finished: int, max_ascension: dict | None = None
+    setting: str,
+    unlocked: list[str],
+    runs_finished: int,
+    max_ascension: dict | None = None,
+    epochs: dict | None = None,
+    drought: dict | None = None,
 ) -> str | None:
     """`setting` is a character id, or "auto" / "cycle" / "random" over the unlocked ones.
 
-    "auto" plays whichever unlocked character has the lowest ascension so far,
-    so all of them are ranked up evenly (ties go to the first one listed).
+    "auto" works towards unlocking every epoch on the game's Timeline. Each
+    character has a line of its own epochs, earned by playing that character,
+    and playing a new character is also what unlocks the next one. So it
+    plays whoever has the most epochs left to earn, and moves on for a while
+    when a character has gone several runs without earning any (some need a
+    win). Once nobody has epochs left, it plays the character with the lowest
+    ascension so that all of them climb evenly.
     """
     if not unlocked:
         return None
@@ -115,7 +163,13 @@ def choose_character(
         return by_upper[s]
     if s == "AUTO":
         levels = {str(k).upper(): int(v) for k, v in (max_ascension or {}).items()}
-        return min(unlocked, key=lambda u: levels.get(u.upper(), 0))
+        dry = {str(k).upper(): int(v) for k, v in (drought or {}).items()}
+
+        def pull(u: str) -> float:
+            return missing_epochs(u, epochs) / (1.0 + dry.get(u.upper(), 0) / 4.0)
+
+        # Most epochs to earn first; then the lowest ascension; then the listed order.
+        return min(unlocked, key=lambda u: (-pull(u), levels.get(u.upper(), 0)))
     if s == "CYCLE":
         return unlocked[runs_finished % len(unlocked)]
     if s == "RANDOM":
@@ -140,7 +194,7 @@ _ROOM_BASE = {
 EARLY_ROWS = 8  # act 1 rows where the deck is still close to the starter deck
 
 
-def _room_value(kind: str, hp: float, gold: int, early: bool = False) -> float:
+def _room_value(kind: str, hp: float, gold: int, early: bool = False, act: int | None = None) -> float:
     v = _ROOM_BASE.get(kind, 1.0)
     if kind == "Elite" and early:
         # A starter deck loses about 35 HP to an act 1 elite, and several runs
@@ -150,12 +204,17 @@ def _room_value(kind: str, hp: float, gold: int, early: bool = False) -> float:
         # Elites are worth it only from a strong position; a starter deck
         # walking into one at ~80% HP came out with 18 HP.
         v = 3.0 if hp >= 0.9 else (0.5 if hp >= 0.7 else -6.0)
+        if act == 1 and hp >= 0.7:
+            # Act 1 elites turned out cheap once the deck has a few cards
+            # (about 12 HP each) and their relics carry the rest of the run.
+            v = 3.5
     elif kind == "Monster":
         v = 1.5 if hp >= 0.45 else -1.0
     elif kind == "RestSite":
         v = 3.0 + (1.0 - hp) * 5.0
     elif kind == "Shop":
-        v = 3.0 if gold >= 150 else (1.5 if gold >= 80 else 0.3)
+        # Gold is worth nothing at the end of a run; the bot died holding 1000.
+        v = 4.5 if gold >= 300 else 3.0 if gold >= 150 else (1.5 if gold >= 80 else 0.3)
     return v
 
 
@@ -184,7 +243,7 @@ def map_screen(state: dict, mem: Memory) -> list[Action]:
         kids = [tuple(c) for c in node.get("children") or []]
         # HP is only known now; discount far-away rooms so near choices dominate.
         ahead = 0.9 * max((best_from(k) for k in kids), default=0.0)
-        memo[key] = _room_value(str(node.get("type")), hp, gold, is_early(key[1])) + ahead
+        memo[key] = _room_value(str(node.get("type")), hp, gold, is_early(key[1]), act) + ahead
         return memo[key]
 
     def value(opt: dict) -> float:
@@ -192,8 +251,8 @@ def map_screen(state: dict, mem: Memory) -> list[Action]:
         if key in nodes:
             return best_from(key)
         kids = opt.get("leads_to") or []
-        ahead = max((_room_value(str(k.get("type")), hp, gold, is_early(k.get("row"))) for k in kids), default=0.0)
-        return _room_value(str(opt.get("type")), hp, gold, is_early(opt.get("row"))) + 0.9 * ahead
+        ahead = max((_room_value(str(k.get("type")), hp, gold, is_early(k.get("row")), act) for k in kids), default=0.0)
+        return _room_value(str(opt.get("type")), hp, gold, is_early(opt.get("row")), act) + 0.9 * ahead
 
     ranked = sorted(options, key=value, reverse=True)
     best = ranked[0]
@@ -230,13 +289,25 @@ def rewards(state: dict, mem: Memory) -> list[Action]:
 def card_reward(state: dict, mem: Memory) -> list[Action]:
     cr = state.get("card_reward") or {}
     cards = cr.get("cards") or []
-    ranked = sorted(cards, key=deck_value, reverse=True)
+    act = (state.get("run") or {}).get("act")
+
+    def worth(c: dict) -> float:
+        v = deck_value(c)
+        # The starter deck cannot kill anything quickly; until that is fixed,
+        # an attack is worth more than one more way to block.
+        if act == 1 and mem.deck_size < 18 and str(c.get("type")) == "Attack" and v > 0:
+            v += 0.8
+        return v
+
+    ranked = sorted(cards, key=worth, reverse=True)
     out: list[Action] = []
     # Be pickier as the deck grows: every mediocre card makes the good ones
     # show up less often.
     threshold = SKIP_THRESHOLD + (0.0 if mem.deck_size < 16 else 1.0 if mem.deck_size < 20 else 2.0 if mem.deck_size < BIG_DECK else 3.0)
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug("card reward (deck %d, need %.1f): %s", mem.deck_size, threshold, ", ".join(f"{c.get('name')} {worth(c):.1f}" for c in ranked))
     take = [("select_card_reward", {"card_index": int(c.get("index", 0))}) for c in ranked]
-    if ranked and deck_value(ranked[0]) >= threshold:
+    if ranked and worth(ranked[0]) >= threshold:
         out += take
         if cr.get("can_skip", True):
             out.append(("skip_card_reward", {}))
@@ -305,12 +376,16 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
         if cat == "card_removal":
             want = 9.0
         elif cat == "relic":
-            want = 8.0 - price / 200.0
+            # Snecko Eye randomises card costs, which the planner cannot work with.
+            bad = "SNECKO" in str(item.get("relic_id") or item.get("relic_name") or "").upper()
+            want = -1.0 if bad else 8.0 - price / 200.0
         elif cat == "card":
             v = deck_value(_shop_card(item))
-            want = v if v >= 3.0 and mem.deck_size < BIG_DECK else -1.0
+            # Only cards that make the deck better, and more freely when rich.
+            bar = 4.0 if gold - price >= 200 else 4.5 if mem.deck_size < BIG_DECK else 5.5
+            want = v if v >= bar else -1.0
         elif cat == "potion":
-            want = 2.0 if not belt_full and gold - price >= 100 else -1.0
+            want = 2.0 if not belt_full and gold - price >= 60 else -1.0
         else:
             want = -1.0
         if want > 0:
@@ -334,8 +409,20 @@ _GOOD = [
     (r"\bpotion\b", 1.5),
     (r"\bcard\b", 1.0),
     (r"\benchant\b", 3.0),
+    (r"draw \d+ additional cards?", 5.0),  # every turn, for the rest of the run
+    (r"energy_icon", 5.0),
 ]
-_BAD = [(r"\bcurse\b", 6.0), (r"\blose all\b", 6.0), (r"\bfight\b", 2.0), (r"\blose \d+ max hp\b", 4.0)]
+_BAD = [(r"\bcurse\b", 6.0), (r"\bfight\b", 2.0), (r"draw \d+ fewer cards?", 4.0), (r"\bdowngrade\b", 2.0), (r"\bsacrifice\b", 5.0)]
+# Options that end the run in all but name. One event offers ever larger
+# rewards for Max HP until the last step, "Lose Everything", leaves 1 Max HP;
+# the bot walked into it nine times.
+_RUINOUS = re.compile(r"\blose (all|everything)\b|\bset your max hp\b|\bmax hp (to|becomes) \d\b", re.I)
+
+
+_JUNK_NAMES = {
+    "CLUMSY", "GUILTY", "NORMALITY", "BADLUCK", "REGRET", "POORSLEEP", "INJURY", "WOUND", "DAZED", "SOOT",
+    "SLIMED", "INFECTION", "ENTHRALLED", "DOUBT", "SHAME", "DECAY", "PARASITE", "PAIN", "WRITHE",
+}
 
 
 def _event_option_value(opt: dict, hp: int, max_hp: int) -> float:
@@ -349,6 +436,27 @@ def _event_option_value(opt: dict, hp: int, max_hp: int) -> float:
     for pat, w in _BAD:
         if re.search(pat, text):
             score -= w
+    if _RUINOUS.search(text):
+        score -= 1000.0
+    m = re.search(r"\.\s*(.+?) is removed from your deck", text)
+    if m:
+        # A named card goes: good riddance to a Strike, Defend or curse, a loss otherwise.
+        gone = {"name": m.group(1).strip().title()}
+        junk = is_basic(gone) or re.sub(r"\W", "", gone["name"]).upper() in _JUNK_NAMES
+        score += 2.0 if junk else -0.8 * max(0.0, deck_value(gone) - 2.0)
+    m = re.search(r"\badd (?:an? |1 )?([a-z' !-]+?) to your deck", text)
+    if m:
+        gained = {"name": m.group(1).strip().title()}
+        if re.sub(r"\W", "", gained["name"]).upper() in _JUNK_NAMES:
+            score -= 4.0
+        else:
+            score += 0.5 * (deck_value(gained) - 3.0) if _known_card(gained) else 0.0
+    m = re.search(r"lose\s+(\d+)(%?)\s+max\s+hp", text)
+    if m:
+        # Max HP never comes back: a small bite is a fair price for an
+        # upgrade or a relic, a big one is not worth anything on offer.
+        share = int(m.group(1)) / 100.0 if m.group(2) else int(m.group(1)) / max(1, max_hp)
+        score -= 1.5 + 60.0 * share + (1000.0 if share >= 0.25 else 0.0)
     m = re.search(r"(?:lose|take)\s+(\d+)\s+(?:hp|damage)", text)
     if m:
         loss = int(m.group(1))
@@ -373,6 +481,12 @@ def event(state: dict, mem: Memory) -> list[Action]:
     proceeds = [o for o in opts if o.get("is_proceed")]
     rest = [o for o in opts if not o.get("is_proceed")]
     rest.sort(key=lambda o: _event_option_value(o, hp, max_hp), reverse=True)
+    if log.isEnabledFor(logging.DEBUG) and rest:
+        log.debug(
+            "event %s: %s",
+            ev.get("event_id"),
+            " | ".join(f"[{_event_option_value(o, hp, max_hp):.1f}] {o.get('title')}: {o.get('description')}" for o in rest),
+        )
     ordered = proceeds + rest if proceeds else rest
     return [("choose_event_option", {"index": int(o.get("index", 0))}) for o in ordered]
 

@@ -1,5 +1,5 @@
 diff --git a/McpMod.Actions.cs b/McpMod.Actions.cs
-index 2553f3f..8a21138 100644
+index 2553f3f..2c00bd0 100644
 --- a/McpMod.Actions.cs
 +++ b/McpMod.Actions.cs
 @@ -665,6 +665,23 @@ public static partial class McpMod
@@ -36,11 +36,142 @@ index 2553f3f..8a21138 100644
          {
              mainConfirm.ForceClick();
              return new Dictionary<string, object?>
+@@ -1181,6 +1199,25 @@ public static partial class McpMod
+             if (string.Equals(option, "advance", System.StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(option, "proceed", System.StringComparison.OrdinalIgnoreCase))
+             {
++                // sts2bot: an unlock screen ("You unlocked ...") is showing: press its confirm button.
++                try
++                {
++                    var currentUnlock = timelineScreen.GetType()
++                        .GetProperty("CurrentUnlockScreen", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)
++                        ?.GetValue(timelineScreen) as Control;
++                    if (currentUnlock != null && GodotObject.IsInstanceValid(currentUnlock) && IsNodeVisible(currentUnlock))
++                    {
++                        var unlockBtn = GetInstanceFieldValue(currentUnlock, "_unlockConfirmButton") as NClickableControl;
++                        if (unlockBtn != null && unlockBtn.IsEnabled && IsNodeVisible(unlockBtn))
++                        {
++                            unlockBtn.ForceClick();
++                            return new Dictionary<string, object?> { ["status"] = "ok", ["message"] = $"Confirmed {currentUnlock.GetType().Name}" };
++                        }
++                        return new Dictionary<string, object?> { ["status"] = "ok", ["message"] = "Unlock screen is still animating", ["retry"] = true };
++                    }
++                }
++                catch (System.ObjectDisposedException) { }
++
+                 // Check for timeline tutorial screen (first-time "Proceed" button).
+                 var tutorial = FindFirst<NTimelineTutorial>(tree.Root);
+                 if (tutorial != null && IsNodeVisible(tutorial))
+@@ -1223,8 +1260,8 @@ public static partial class McpMod
+                         closeClickable.ForceClick();
+                         return new Dictionary<string, object?> { ["status"] = "ok", ["message"] = "Closed epoch inspect screen" };
+                     }
+-                    inspectScreen.Close();
+-                    return new Dictionary<string, object?> { ["status"] = "ok", ["message"] = "Closed epoch inspect screen" };
++                    // sts2bot: never force it shut mid-animation; that is what left the unlock state invalid.
++                    return new Dictionary<string, object?> { ["status"] = "ok", ["message"] = "Epoch is still being revealed", ["retry"] = true };
+                 }
+ 
+                 // Check for queued unlock screens.
+@@ -1232,12 +1269,49 @@ public static partial class McpMod
+                 if (queuedUnlockResult != null)
+                     return queuedUnlockResult;
+ 
++                // sts2bot: reveal the next obtained epoch the way a player does, by clicking its slot.
++                var slotStates = new List<string>();
++                foreach (var probe in FindAll<NEpochSlot>(timelineScreen))
++                {
++                    try
++                    {
++                        const System.Reflection.BindingFlags AnyP = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
++                        slotStates.Add($"{GetInstanceFieldValue(probe, "model")?.GetType().Name}:{probe.GetType().GetProperty("State", AnyP)?.GetValue(probe)}:spawned={probe.GetType().GetProperty("HasSpawned", AnyP)?.GetValue(probe)}:enabled={probe.IsEnabled}:visible={probe.IsVisibleInTree()}");
++                    }
++                    catch { }
++                }
++                var uiVisible = GetInstanceFieldValue(timelineScreen, "_isUiVisible");
++                var blocker = GetInstanceFieldValue(timelineScreen, "_inputBlocker") as Control;
++                var blocked = blocker != null && IsNodeVisible(blocker);
++                // Neither flag is a reliable "busy" sign (the UI flag stays off after the last
++                // reveal), so they are only reported. With no unlock screen open or queued
++                // and no slot to reveal, the timeline is finished; the bot asks a few times
++                // before it believes that, which covers the gaps between animations.
++                foreach (var slot in FindAll<NEpochSlot>(timelineScreen))
++                {
++                    try
++                    {
++                        const System.Reflection.BindingFlags Any = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
++                        var slotState = slot.GetType().GetProperty("State", Any)?.GetValue(slot)?.ToString();
++                        var spawned = slot.GetType().GetProperty("HasSpawned", Any)?.GetValue(slot) as bool?;
++                        if (slotState != "Obtained" || !slot.IsEnabled || !slot.IsVisibleInTree())
++                            continue;
++                        var model = GetInstanceFieldValue(slot, "model");
++                        slot.ForceClick();
++                        return new Dictionary<string, object?> { ["status"] = "ok", ["message"] = $"Revealing epoch {model?.GetType().Name ?? "?"}" };
++                    }
++                    catch (System.ObjectDisposedException) { }
++                }
++
+                 var unrevealedEpochs = GetProgressEpochIdsByState("Obtained", "ObtainedNoSlot");
+                 if (unrevealedEpochs.Count > 0)
+                     return new Dictionary<string, object?>
+                     {
+                         ["status"] = "ok",
+-                        ["message"] = "Epoch unlocks are obtained but not revealed; not forcing timeline reveal from automation",
++                        ["message"] = "Epoch unlocks are obtained but no slot on the timeline can be revealed",
++                        ["ui_visible"] = uiVisible,
++                        ["input_blocked"] = blocked,
++                        ["slots"] = slotStates,
+                         ["pending_epoch_ids"] = unrevealedEpochs,
+                         ["manual_action_required"] = true,
+                         ["done"] = true
+@@ -1371,12 +1445,7 @@ public static partial class McpMod
+ 
+             // Main menu buttons
+             var normalizedMainMenuOption = option.ToLowerInvariant();
+-            if (normalizedMainMenuOption == "timeline")
+-            {
+-                var unrevealedEpochs = GetProgressEpochIdsByState("Obtained", "ObtainedNoSlot");
+-                if (unrevealedEpochs.Count > 0)
+-                    return TimelineUnlocksNeedManualReveal(unrevealedEpochs);
+-            }
++            // sts2bot: opening the Timeline with unrevealed epochs is allowed (see "advance" on that screen).
+ 
+             var menuFieldName = normalizedMainMenuOption switch
+             {
 diff --git a/McpMod.StateBuilder.cs b/McpMod.StateBuilder.cs
-index 76eee84..d380242 100644
+index 76eee84..fd191fc 100644
 --- a/McpMod.StateBuilder.cs
 +++ b/McpMod.StateBuilder.cs
-@@ -749,6 +749,18 @@ public static partial class McpMod
+@@ -351,18 +351,7 @@ public static partial class McpMod
+                                         clickable.Visible &&
+                                         clickable.IsVisibleInTree())
+                                     {
+-                                        if (labels[i] == "timeline" && unrevealedEpochs.Count > 0)
+-                                        {
+-                                            blockedOptions.Add(new Dictionary<string, object?>
+-                                            {
+-                                                ["name"] = "timeline",
+-                                                ["enabled"] = false,
+-                                                ["reason"] = "manual_epoch_reveal_required",
+-                                                ["pending_epoch_ids"] = unrevealedEpochs
+-                                            });
+-                                            continue;
+-                                        }
+-
++                                        // sts2bot: the Timeline stays available; the bot reveals the epochs itself.
+                                         options.Add(labels[i]);
+                                     }
+                                 }
+@@ -370,6 +359,8 @@ public static partial class McpMod
+                             }
+                             if (options.Count > 0)
+                                 result["options"] = options;
++                            if (unrevealedEpochs.Count > 0)
++                                result["pending_epoch_ids"] = unrevealedEpochs;
+                             if (blockedOptions.Count > 0)
+                                 result["blocked_options"] = blockedOptions;
+                         }
+@@ -749,6 +740,18 @@ public static partial class McpMod
          }
          catch { }
  
@@ -59,7 +190,47 @@ index 76eee84..d380242 100644
          // _unreadyButton is part of the scene in SP too but never becomes enabled there.
          // Only surface it as an option in MP, where it has a real role.
          if (isMpCharSelect)
-@@ -1933,6 +1945,12 @@ public static partial class McpMod
+@@ -780,7 +783,7 @@ public static partial class McpMod
+                 _ => lobby.NetService.Type.ToString().ToLowerInvariant()
+             },
+             ["game_mode"] = lobby.GameMode.ToString().ToLowerInvariant(),
+-            ["max_players"] = lobby.MaxPlayers,
++            ["max_players"] = null, // StartRunLobby.MaxPlayers was removed in game v0.111
+             ["ascension"] = lobby.Ascension,
+             ["max_ascension"] = lobby.MaxAscension,
+             ["all_ready"] = lobby.Players.Count > 0 && lobby.Players.All(p => p.isReady),
+@@ -970,7 +973,7 @@ public static partial class McpMod
+             catch { }
+ 
+             info["expected_player_count"] = lobby.Run?.Players?.Count ?? 0;
+-            info["connected_player_count"] = lobby.ConnectedPlayerIds?.Count ?? 0;
++            info["connected_player_count"] = lobby.Run?.Players?.Count ?? 0; // ConnectedPlayerIds was removed in game v0.111
+ 
+             // LoadRunLobby no longer exposes IsAboutToBeginGame in the public game API,
+             // so derive the same readiness summary from connected players and ready flags.
+@@ -979,11 +982,9 @@ public static partial class McpMod
+             try
+             {
+                 var runPlayers = lobby.Run?.Players;
+-                var connectedPlayerIds = lobby.ConnectedPlayerIds;
+                 aboutToBegin = runPlayers != null
+-                    && connectedPlayerIds != null
+                     && runPlayers.Count > 0
+-                    && runPlayers.All(player => connectedPlayerIds.Contains(player.NetId) && lobby.IsPlayerReady(player.NetId));
++                    && runPlayers.All(player => lobby.IsPlayerReady(player.NetId));
+             }
+             catch { }
+             info["all_ready"] = aboutToBegin;
+@@ -997,7 +998,7 @@ public static partial class McpMod
+                 {
+                     foreach (var sp in lobby.Run.Players)
+                     {
+-                        bool isConnected = lobby.ConnectedPlayerIds?.Contains(sp.NetId) ?? false;
++                        bool isConnected = true; // not exposed since game v0.111
+                         bool isReady = false;
+                         try { isReady = lobby.IsPlayerReady(sp.NetId); } catch { }
+                         players.Add(new Dictionary<string, object?>
+@@ -1933,6 +1934,12 @@ public static partial class McpMod
          bool previewShowing = (previewSingle?.Visible ?? false)
                              || (previewMulti?.Visible ?? false)
                              || (previewGeneric?.Visible ?? false);

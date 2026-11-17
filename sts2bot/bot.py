@@ -58,6 +58,10 @@ class Bot:
         self.settle = settle
         self.travel_settle = 8.0
         self.quiet_settle = 0.3
+        self.choose_settle = 0.5
+        # Set by the supervisor after the game crashed twice in the same place:
+        # until this time, act slowly and ask for the state rarely.
+        self.careful_until = 0.0
         self.stuck_timeout = stuck_timeout
         self.clock = clock
         self.sleep = sleep
@@ -75,6 +79,11 @@ class Bot:
         self._turn_key: tuple = ()
         self._turn_plays = 0
         self._last_where: tuple = ()
+        self._seen_powers: set = set()
+        self._wins_seen: int | None = None  # the game's win counter when we last looked
+        self._timeline_idle = 0  # Timeline clicks in a row that changed nothing
+        self._facing: str | None = None  # enemy we last aimed at in this fight
+        self._facing_fight: tuple = ()
 
     # ------------------------------------------------------------ deciding
 
@@ -122,7 +131,11 @@ class Bot:
         if fetch is None:
             return
         try:
-            chars = fetch().get("characters") or []
+            profile = fetch()
+            if isinstance(profile.get("total_wins"), (int, float)):
+                self._wins_seen = int(profile["total_wins"])
+            self.mem.epochs = {str(e.get("id")): str(e.get("state")) for e in profile.get("epochs") or [] if e.get("id")}
+            chars = profile.get("characters") or []
             self.mem.max_ascension = {str(c.get("id")): int(c.get("max_ascension") or 0) for c in chars if c.get("id")}
         except Exception as e:  # an old mod or a hiccup must not stop the run from starting
             log.debug("could not read the profile: %s", e)
@@ -143,9 +156,11 @@ class Bot:
         key = (*self._where(state), battle.get("round"))
         if key != self._turn_key:
             self._turn_key, self._turn_plays = key, 0
+        if key[:2] != self._facing_fight:
+            self._facing_fight, self._facing = key[:2], None  # a new fight
         if self._turn_plays >= MAX_PLAYS_PER_TURN:
             return [("end_turn", {})]
-        return combat.actions({**state, "_plays_this_turn": self._turn_plays})
+        return combat.actions({**state, "_plays_this_turn": self._turn_plays, "_facing": self._facing})
 
     @staticmethod
     def _where(state: dict) -> tuple:
@@ -163,18 +178,59 @@ class Bot:
             self.mem.card_skips[where] = self.mem.card_skips.get(where, 0) + 1
         elif action in ("play_card", "use_potion"):
             self._turn_plays += 1
+            if params.get("target"):
+                self._facing = params["target"]  # we turn towards whatever we aim at
         elif action == "menu_select" and kind == "menu":
             option = str(params.get("option"))
             if state.get("menu_screen") == "character_select" and option not in ("confirm", "embark"):
                 self.mem.character_selected = True
+                self.mem.current_character = option
             elif option == "abandon_run":
                 log.warning("abandoning the current run")
             elif option in ("yes", "confirm") and self.abandon_next and state.get("menu_screen") == "popup":
                 self.abandon_next = False
                 self.mem.reset_run()
 
+    def _after_timeline_click(self, params: dict, result: dict) -> None:
+        """Follow the Timeline: the mod reveals one thing per click and says when nothing is left."""
+        message = str(result.get("message") or "")
+        if message.startswith("Revealing epoch") or message.startswith("Confirmed"):
+            log.info("timeline: %s", message)
+        if str(params.get("option")) == "advance":
+            progressed = message.startswith(("Revealing", "Confirmed", "Closed", "Clicked", "Opening"))
+            # "Done" has to hold for a few clicks in a row: between two
+            # animations the Timeline briefly looks finished when it is not.
+            self._timeline_idle = 0 if progressed else self._timeline_idle + (3 if result.get("done") else 1)
+            # ... and nothing at all happening for half a minute means the same.
+            if self._timeline_idle >= (9 if result.get("done") else 45):
+                self._timeline_idle = 0
+                self.mem.timeline_done = True
+                # Whatever is still pending cannot be revealed yet; do not come back for it.
+                self.mem.timeline_stuck = set(result.get("pending_epoch_ids") or [])
+        self.sleep(0.6)  # let the reveal animation run before the next click
+
+    def _note_powers(self, state: dict) -> None:
+        """Log each power's rules text the first time it is met (the planner only
+        knows the ones it was taught; this is how the rest get noticed)."""
+        creatures = [state.get("player") or {}, *((state.get("battle") or {}).get("enemies") or [])]
+        for c in creatures:
+            for p in c.get("status") or []:
+                pid = str(p.get("id"))
+                if pid not in self._seen_powers:
+                    self._seen_powers.add(pid)
+                    log.info("power %s (on %s): %s", pid, c.get("name") or c.get("character") or "player", p.get("description"))
+        # Same for keywords on our cards (enchantments, afflictions a boss puts on them, ...).
+        for c in (state.get("player") or {}).get("hand") or []:
+            for k in c.get("keywords") or []:
+                name = "kw:" + str(k.get("name"))
+                if name not in self._seen_powers:
+                    self._seen_powers.add(name)
+                    log.info("keyword %s (on %s): %s", k.get("name"), c.get("name"), k.get("description"))
+
     def _note_state(self, state: dict) -> None:
         kind = state.get("state_type")
+        if kind in COMBAT_STATES:
+            self._note_powers(state)
         if state.get("run"):
             where = self._where(state)
             if where != self._last_where:
@@ -190,10 +246,52 @@ class Bot:
             self.mem.reset_run()
             self.mem.runs_finished = self.runs_finished
 
+    def _profile_wins(self) -> int | None:
+        """Total wins according to the game's own records (None if it cannot be asked)."""
+        fetch = getattr(self.client, "profile", None)
+        if fetch is None:
+            return None
+        try:
+            wins = fetch().get("total_wins")
+        except Exception as e:
+            log.debug("could not read the profile: %s", e)
+            return None
+        return int(wins) if isinstance(wins, (int, float)) else None
+
+    def _note_epochs_earned(self) -> None:
+        """Keep count of runs that earned a character nothing, so "auto" can move on from it."""
+        who = self.mem.current_character.upper()
+        fetch = getattr(self.client, "profile", None)
+        if not who or fetch is None:
+            return
+        try:
+            epochs = {str(e.get("id")): str(e.get("state")) for e in fetch().get("epochs") or [] if e.get("id")}
+        except Exception as e:
+            log.debug("could not read the profile: %s", e)
+            return
+        earned = lambda table: {k for k, v in table.items() if v in strategy._EARNED}
+        new = earned(epochs) - earned(self.mem.epochs)
+        if new:
+            log.info("epochs earned this run: %s", ", ".join(sorted(new)))
+            self.mem.epoch_drought[who] = 0
+        else:
+            self.mem.epoch_drought[who] = self.mem.epoch_drought.get(who, 0) + 1
+        self.mem.epochs = epochs
+
     def _record_run(self, state: dict) -> None:
         p = state.get("player") or {}
         run = state.get("run") or {}
-        won = int(p.get("hp") or 0) > 0
+        # The end screen looks the same for a win and a loss, and the HP it
+        # reports is not reliable (the first win was logged as a loss). The
+        # game's own win counter is: it goes up by one when a run is won.
+        self._note_epochs_earned()
+        before, now = self._wins_seen, self._profile_wins()
+        if now is not None:
+            self._wins_seen = now
+        if before is not None and now is not None:
+            won = now > before
+        else:
+            won = int(p.get("hp") or 0) > 0
         self.runs_finished += 1
         self.wins += won
         entry = {
@@ -227,9 +325,23 @@ class Bot:
             return (state.get("card_select") or {}).get("screen_type") != "choose"
         if action == "menu_select" and state.get("menu_screen") == "character_select":
             return str(params.get("option")) not in ("confirm", "embark")
+        if action == "menu_select" and state.get("menu_screen") == "timeline":
+            return True  # the Timeline animates between clicks; the state says nothing about it
         return False
 
-    def _wait_for_change(self, fp: str, leave: str | None = None, quiet: bool = False) -> bool:
+    @staticmethod
+    def _is_choose(state: dict, action: str) -> bool:
+        """Picking one card on a "choose 1 of 3" screen.
+
+        The game takes the click but ignores it while the screen is still
+        sliding in. Waiting the full settle time before trying again cost three
+        seconds on every such card, so these are re-sent after a short wait.
+        """
+        return action == "select_card" and (state.get("card_select") or {}).get("screen_type") == "choose"
+
+    def _wait_for_change(
+        self, fp: str, leave: str | None = None, quiet: bool = False, settle: float | None = None, slow: bool = False
+    ) -> bool:
         """Wait for the action to show. With `leave`, wait until that screen is gone.
 
         The map keeps answering with fresh options while the travel animation
@@ -238,12 +350,16 @@ class Bot:
         Returns True if the game state changed. Every state request costs a
         game frame or more, so the answer is reused instead of asking again.
         """
-        deadline = self.clock() + (self.travel_settle if leave else self.quiet_settle if quiet else self.settle)
+        deadline = self.clock() + (
+            settle if settle is not None else self.travel_settle if leave else self.quiet_settle if quiet else self.settle
+        )
         changed = False
         # While a room is loading the game is rebuilding its scene; ask less
         # often then (a state request walks that scene, and the game once
         # crashed mid-travel under rapid polling).
-        pause = min(0.15 if leave else 0.03, self.poll)
+        pause = min(0.15 if leave or slow else 0.03, self.poll)
+        if self.clock() < self.careful_until:
+            pause = max(pause, 0.5)
         while self.clock() < deadline:
             self.sleep(pause)
             state = self.client.state()
@@ -284,9 +400,34 @@ class Bot:
                 return True
             log.debug("%s %s -> %s", action, params, result.get("message"))
             self._after_success(state, action, params)
+            if action == "menu_select" and state.get("menu_screen") == "timeline":
+                self._after_timeline_click(params, result)
             quiet = self._is_quiet(state, action, params)
-            changed = self._wait_for_change(fp, leave="map" if action == "choose_map_node" else None, quiet=quiet)
-            if not quiet and not changed:
+            choose = self._is_choose(state, action)
+            # Leaving a room and buying something both rebuild part of the
+            # scene. Asking for the state every 30 ms through that crashed the
+            # game (reliably, when a card was bought and the shop left at once),
+            # so give it a moment first and then ask less often.
+            fragile = action in ("proceed", "shop_purchase")
+            # Embarking loads the whole run; clicking the character again
+            # while it does crashed the game. Wait for the menu to go away.
+            embarking = (
+                action == "menu_select"
+                and state.get("menu_screen") == "character_select"
+                and str(params.get("option")) in ("confirm", "embark")
+            )
+            if fragile or embarking:
+                self.sleep(0.4)
+            if self.clock() < self.careful_until:
+                self.sleep(1.0)
+            changed = self._wait_for_change(
+                fp,
+                leave="map" if action == "choose_map_node" else "menu" if embarking else None,
+                quiet=quiet,
+                settle=self.choose_settle if choose else None,
+                slow=fragile,
+            )
+            if not quiet and not choose and not changed:
                 self._strikes[key] += 1  # accepted, but nothing happened
             return True
         self.sleep(self.poll)
