@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shlex
 import subprocess
 import time
@@ -23,26 +24,116 @@ STEAM_APP_ID = 2868840
 STEAM_LAUNCH = f"steam -applaunch {STEAM_APP_ID}"
 PROCESS_NAME = "SlayTheSpire2"
 
-# After the first run on a fresh profile the game hides "Singleplayer" until
-# the Timeline screen has been visited, and the bridge mod refuses to open the
-# Timeline from automation, so the bot would sit at the main menu forever.
-# STS2_DEV_SKIP is the game's own switch for skipping that requirement (and
-# the intro logo). It only reaches the game when we start the game binary
-# ourselves: `steam -applaunch` hands the launch to the running Steam client.
 # SteamAppId lets the directly started game attach to Steam (cloud saves etc.).
+#
+# The game used to be started with STS2_DEV_SKIP=1, its own switch for
+# skipping the Timeline screen. That also kept everything the Timeline unlocks
+# (ascension levels, new characters, cards) locked for good, so the game now
+# runs the normal way and the bot clicks through the Timeline itself.
 GAME_ENV = {
-    "STS2_DEV_SKIP": "1",
     "SteamAppId": str(STEAM_APP_ID),
     "SteamGameId": str(STEAM_APP_ID),
 }
 
 
+def game_dir() -> Path:
+    return Path(os.environ.get("STS2_GAME_DIR") or Path.home() / ".local/share/Steam/steamapps/common/Slay the Spire 2")
+
+
 def game_binary() -> Path | None:
-    base = os.environ.get("STS2_GAME_DIR") or str(
-        Path.home() / ".local/share/Steam/steamapps/common/Slay the Spire 2"
-    )
-    exe = Path(base) / PROCESS_NAME
+    exe = game_dir() / PROCESS_NAME
     return exe if os.access(exe, os.X_OK) else None
+
+
+# ----------------------------------------------------------- bridge mod upkeep
+#
+# The game updates itself through Steam, and an update regularly breaks the
+# bridge mod: it is compiled against the game's own code, so when a class it
+# touches is renamed or removed the game refuses to load it ("Loaded 0 mods
+# WITH ERRORS") and the bot has nothing to talk to. Rebuilding the mod against
+# the new game files fixes most of these, so the supervisor does that itself:
+# before a launch when the game files changed, and after a launch when the
+# game's log says the mod failed to load.
+
+MOD_NAME = "STS2_MCP"
+INSTALL_SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "install_mod.sh"
+MOD_STAMP = INSTALL_SCRIPT.parent.parent / ".build" / "mod_built_for"
+GAME_LOG = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "SlayTheSpire2" / "logs" / "godot.log"
+
+
+def game_fingerprint() -> str | None:
+    """Changes whenever a game update replaces the code the mod is built against."""
+    parts = []
+    for dll in sorted(game_dir().glob("data_sts2_*/sts2.dll")):
+        st = dll.stat()
+        parts.append(f"{dll.parent.name}:{st.st_size}:{st.st_mtime_ns}")
+    return ";".join(parts) or None
+
+
+def mod_is_stale() -> bool:
+    """True if the game files changed since the mod was last built."""
+    now = game_fingerprint()
+    if now is None or not INSTALL_SCRIPT.exists():
+        return False
+    try:
+        return MOD_STAMP.read_text().strip() != now
+    except OSError:
+        return True
+
+
+def mod_load_error(since: float = 0.0) -> str | None:
+    """Why the game refused to load the mod, read from the game's log (None if it did not).
+
+    `since` (a time.time() value) skips a log left over from an earlier launch.
+    """
+    try:
+        if GAME_LOG.stat().st_mtime < since:
+            return None
+        text = GAME_LOG.read_text(errors="replace")
+    except OSError:
+        return None
+    marker = f"Exception thrown while loading mod {MOD_NAME}"
+    at = text.find(marker)
+    if at < 0:
+        return None
+    for line in text[at:].splitlines()[1:12]:
+        line = line.strip()
+        if line and not line.startswith("at "):
+            return line
+    return "the game log does not say why"
+
+
+def rebuild_mod() -> bool:
+    """Build the mod against the installed game and install it. True on success."""
+    if not INSTALL_SCRIPT.exists():
+        log.error("cannot rebuild the bridge mod: %s is missing", INSTALL_SCRIPT)
+        return False
+    log.warning("rebuilding the bridge mod against the current game files")
+    fingerprint = game_fingerprint()
+    try:
+        done = subprocess.run(
+            ["bash", str(INSTALL_SCRIPT)], capture_output=True, text=True, timeout=900, stdin=subprocess.DEVNULL
+        )
+    except (OSError, subprocess.TimeoutExpired) as e:
+        log.error("rebuilding the bridge mod failed: %s", e)
+        return False
+    if done.returncode != 0:
+        output = (done.stdout + "\n" + done.stderr).splitlines()
+        errors = sorted({re.sub(r"\s*\[/.*?\]$", "", ln.strip()) for ln in output if "error" in ln.lower()})
+        log.error(
+            "the bridge mod does not build against this game version; scripts/mod_patches needs a fix "
+            "for the game's changed code. Compiler said:\n  %s",
+            "\n  ".join((errors or output[-15:])[:15]),
+        )
+        return False
+    if fingerprint:
+        try:
+            MOD_STAMP.parent.mkdir(parents=True, exist_ok=True)
+            MOD_STAMP.write_text(fingerprint + "\n")
+        except OSError as e:
+            log.debug("could not record the mod build: %s", e)
+    log.info("bridge mod rebuilt and installed")
+    return True
 
 
 def default_launch() -> str:
@@ -123,10 +214,12 @@ def launch_game(cmd: str) -> None:
     log.info("launching game: %s", cmd)
     argv = shlex.split(cmd)
     exe = Path(argv[0])
+    env = {**os.environ, **GAME_ENV}
+    env.pop("STS2_DEV_SKIP", None)
     proc = subprocess.Popen(
         argv,
         cwd=exe.parent if exe.is_absolute() and exe.parent.is_dir() else None,
-        env={**os.environ, **GAME_ENV},
+        env=env,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -147,6 +240,7 @@ class Supervisor:
         light_graphics: bool = True,
         boot_timeout: float = 240.0,
         outage_grace: float = 45.0,
+        heal_mod: bool = True,
     ):
         self.bot = bot
         self.client = client
@@ -156,15 +250,36 @@ class Supervisor:
         self.light_graphics = light_graphics
         self.boot_timeout = boot_timeout
         self.outage_grace = outage_grace
+        self.heal_mod = heal_mod and manage_game
         self.restarts = 0
         self._last_stuck_at: tuple | None = None
+        self._mod_retry_at = 0.0  # no rebuild attempts before this (after a failed build)
+        self._crash_at: tuple | None = None  # where the bot was when the game last crashed
+        self._crash_repeats = 0
+        self._mod_backoff = 300.0
 
-    def _wait_for_api(self, timeout: float) -> bool:
+    def _wait_for_api(self, timeout: float, launched_at: float | None = None) -> bool:
+        """Wait for the mod to answer. With `launched_at`, give up as soon as the
+        game's log shows that it refused to load the mod."""
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             if self.client.ping():
                 return True
+            if launched_at is not None and mod_load_error(launched_at):
+                return False
             time.sleep(2.0)
+        return False
+
+    def _rebuild_mod(self) -> bool:
+        """Rebuild the mod, at most once per back-off period while it keeps failing."""
+        if time.monotonic() < self._mod_retry_at:
+            return False
+        if rebuild_mod():
+            self._mod_retry_at, self._mod_backoff = 0.0, 300.0
+            return True
+        self._mod_retry_at = time.monotonic() + self._mod_backoff
+        log.error("will try to rebuild the mod again in %.0f minutes", self._mod_backoff / 60)
+        self._mod_backoff = min(self._mod_backoff * 2, 3600.0)
         return False
 
     def ensure_game(self) -> None:
@@ -177,11 +292,28 @@ class Supervisor:
                 log.info("waiting for the game (start it yourself; --no-launch is set)")
                 self._wait_for_api(60.0)
                 continue
+            launched_at = None
             if not game_running():
+                if self.heal_mod and mod_is_stale():
+                    log.warning("the game files changed since the bridge mod was built (game update?)")
+                    self._rebuild_mod()
+                launched_at = time.time() - 1.0
                 launch_game(self.launch_cmd)
-            if self._wait_for_api(self.boot_timeout):
+            if self._wait_for_api(self.boot_timeout, launched_at if self.heal_mod else None):
                 log.info("game is up")
                 return
+            why = mod_load_error(launched_at or 0.0)
+            if why:
+                log.error("the game did not load the bridge mod: %s", why)
+                kill_game()
+                if self.heal_mod and self._rebuild_mod():
+                    backoff = 10.0
+                    continue  # relaunch straight away with the fresh build
+                # Nothing more to try until the mod is fixed or the game updates again.
+                wait = max(backoff, self._mod_retry_at - time.monotonic()) if self.heal_mod else backoff
+                time.sleep(max(1.0, min(wait, 3600.0)))
+                backoff = min(backoff * 2, 300.0)
+                continue
             log.error(
                 "game did not expose the bot API within %.0fs. Is the STS2_MCP mod installed "
                 "and are mods enabled in the game's settings? Restarting the game.",
@@ -190,6 +322,25 @@ class Supervisor:
             kill_game()
             time.sleep(backoff)
             backoff = min(backoff * 2, 300.0)
+
+    def _note_crash(self) -> None:
+        """Break a crash loop.
+
+        The game saves at the start of each room, so after a crash the bot
+        comes back to the same room and does the same things. If that is what
+        crashed the game, it crashes again, for ever. The second time, play
+        that stretch slowly; if it still crashes, give the run up.
+        """
+        where = self.bot.progress()
+        self._crash_repeats = self._crash_repeats + 1 if where == self._crash_at else 0
+        self._crash_at = where
+        if self._crash_repeats >= 3:
+            log.warning("the game keeps crashing at %s; the run will be abandoned", where)
+            self.bot.abandon_next = True
+            self._crash_repeats = 0
+        elif self._crash_repeats >= 1:
+            log.warning("the game crashed again at %s; playing slowly for a while", where)
+            self.bot.careful_until = self.bot.clock() + 120.0
 
     def restart_game(self, why: str) -> None:
         self.restarts += 1
@@ -210,6 +361,7 @@ class Supervisor:
             except GameUnavailable as e:
                 log.warning("lost contact with the game: %s", e)
                 if self.manage_game and not game_running():
+                    self._note_crash()
                     self.restart_game("the game crashed")  # no point waiting for a dead process
                     continue
                 if self._wait_for_api(self.outage_grace):
