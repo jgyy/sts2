@@ -195,6 +195,14 @@ def set_fast_mode(client: Client, mode: str) -> bool:
     file when the game starts.
     """
     result = client.act("set_fast_mode", mode=mode)
+    # Straight after a launch the game has not read its preferences yet and
+    # says so. Giving up there left a whole session playing at normal speed,
+    # four times slower; it is ready a few seconds later.
+    for _ in range(20):
+        if "not loaded" not in str(result.get("error") or ""):
+            break
+        time.sleep(1.0)
+        result = client.act("set_fast_mode", mode=mode)
     if result.get("status") == "error" or "error" in result:
         log.warning(
             "could not set fast mode %r (%s); re-run scripts/install_mod.sh to update the mod",
