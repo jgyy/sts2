@@ -18,12 +18,26 @@ Slay the Spire 2  <-- STS2_MCP mod (HTTP on localhost:15526) -->  sts2bot (Pytho
     simulation (damage, kills, block against enemy intents, lethal checks),
     plays the first card of the best line, then plans again.
   - `strategy.py` handles the map, rewards, shops, rest sites, events and card
-    selections.
+    selections. The map is planned a whole route at a time: every way to the
+    boss is scored by what it gives (relics, cards, upgrades) against the
+    health the bot would arrive with, because the run history shows the boss
+    is rarely beaten from below 75% HP. Rest sites use the same sums to
+    choose between resting and upgrading.
   - `cards.py` reads card effects from the text on the card, so it keeps
     working when cards are added or rebalanced. For deck building it also has
     a hand-made rating of the cards met so far; cards it has no rating for are
     judged from their text.
-  - `supervisor.py` launches the game, restarts it when it stops answering or
+  - `learn.py` corrects those ratings from the bot's own results: for every
+    card taken from a card reward it records how much further that run got
+    than the character usually gets from that floor, and shifts the card's
+    rating up or down accordingly (kept in `card_stats.json`).
+    It also tunes a few of the bot's own settings the same way (how much HP
+    is worth against damage, how eagerly to fight elites, when to upgrade
+    instead of rest, how picky to be with card rewards): every run plays with
+    one value of each, chosen more and more often from the values whose runs
+    went furthest (kept in `tuning.json`; `--no-tuning` turns this off).
+  - `supervisor.py` starts Steam if it is not running, launches the game,
+    restarts it when it stops answering or
     nothing changes for 5 minutes, abandons a run that hangs twice in the same
     place, and rebuilds the bridge mod after a game update (see below).
 
@@ -74,7 +88,8 @@ the game and the bot resumes it next time.
 
 `systemd/sts2bot.service` is a user service that restarts the bot if it exits
 and blocks idle sleep while it plays. Install instructions are at the top of
-that file. Steam must be running and logged in.
+that file. The bot starts Steam itself when it is not running; Steam must
+be able to log in without asking for a password.
 
 ## Game updates
 
@@ -104,11 +119,24 @@ progress, it opens the Timeline from the main menu, reveals each one, confirms
 the unlock screens and goes back. (This needs the mod built by
 `scripts/install_mod.sh`; the stock mod refuses to reveal epochs.)
 
-With `--character auto` (the default) the bot works towards unlocking every
-epoch: it plays the character with the most of its own epochs still to earn,
-which is also what unlocks the next character, and moves on for a while when a
-character has gone several runs without earning any. When no character has
-epochs left it plays whoever has the lowest ascension.
+With `--character auto` (the default) the bot puts the Timeline first and
+ascension levels second:
+
+- Each character has its own epochs, and the game says what each takes:
+  beating acts 1, 2 and 3, killing 15 elites and 15 bosses, and a win on
+  Ascension 1. The bot plays whoever is most likely to earn one next: a
+  character still short of 15 bosses always gets runs (those add up win or
+  lose), and the epochs that need a win go to whoever has been getting
+  furthest, with the others taking turns when it keeps coming back empty.
+  `--first CHARACTER` puts one character ahead of that order.
+- While epochs are left, runs are played at the easiest ascension that counts
+  (0, or 1 for a character that is after its Ascension 1 epoch).
+- About eighteen more epochs unlock "by accumulating score". The game only
+  adds a run's score in the end-of-run summary, so the bot clicks through it
+  instead of going straight to the main menu (this needs the mod built by
+  `scripts/install_mod.sh`).
+- With every epoch in, it plays the character with the lowest ascension at the
+  highest level that character has unlocked, so all of them climb evenly.
 
 ## Logs
 
@@ -116,7 +144,9 @@ In `~/.local/state/sts2bot/` (change with `--log-dir`):
 
 - `bot.log`: what the bot is doing (rotated at 5 MB).
 - `runs.jsonl`: one line per finished run with character, result, act, floor,
-  HP, relics and deck size.
+  HP, relics, the deck and the card rewards taken (with the floor of each).
+- `card_stats.json`: what the bot has learned about each card (see `learn.py`).
+- `tuning.json`: how runs went with each value of the settings it tunes.
 
 ## Options
 
@@ -124,6 +154,8 @@ In `~/.local/state/sts2bot/` (change with `--log-dir`):
 |---|---|---|
 | `--character` | `auto` | `auto` plays towards unlocking every epoch, then evens out the ascension levels (see Unlocks and the Timeline); or a character id, or `cycle` / `random` over unlocked characters. Every run uses the highest ascension that character has unlocked |
 | `--runs N` | forever | Stop after N runs |
+| `--first CHARACTER` | none | With `--character auto`: play this character until it has earned all of its own epochs, then carry on in the usual order |
+| `--no-tuning` | off | Always play with the default settings instead of trying variations from run to run |
 | `--no-launch` | off | Never start or kill the game |
 | `--launch-cmd` | the game binary, else `steam -applaunch 2868840` | Command that starts the game |
 | `--fast-mode` | `instant` | Game animation speed (`instant`, `fast`, `normal`), set through the mod each time the bot connects (not saved to your settings); `keep` leaves it alone |

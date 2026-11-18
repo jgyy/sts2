@@ -11,6 +11,7 @@ import logging
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -101,6 +102,16 @@ def mod_load_error(since: float = 0.0) -> str | None:
         if line and not line.startswith("at "):
             return line
     return "the game log does not say why"
+
+
+def started_without_steam(since: float = 0.0) -> bool:
+    """True if the game's log says it came up with no Steam client to talk to."""
+    try:
+        if GAME_LOG.stat().st_mtime < since:
+            return False
+        return "Steam is probably not running" in GAME_LOG.read_text(errors="replace")
+    except OSError:
+        return False
 
 
 def rebuild_mod() -> bool:
@@ -210,14 +221,79 @@ def set_light_graphics(client: Client, width: int = 960, height: int = 540) -> b
     return True
 
 
+def _detached(argv: list[str]) -> list[str]:
+    """Under systemd, start Steam and the game in a scope of their own.
+
+    A service's children live in its control group and are killed with it, so
+    restarting the bot's service (to pick up new code, say) would take the
+    game and Steam down too. In their own scope they keep running.
+    """
+    if os.environ.get("INVOCATION_ID") and shutil.which("systemd-run"):
+        return ["systemd-run", "--user", "--scope", "--quiet", "--collect", "--", *argv]
+    return argv
+
+
+def _process_running(name: str) -> bool:
+    out = subprocess.run(["ps", "-C", name, "-o", "stat="], capture_output=True, text=True).stdout
+    return any(line.strip() and not line.strip().startswith("Z") for line in out.splitlines())
+
+
+def steam_running() -> bool:
+    return _process_running("steam")
+
+
+def ensure_steam(timeout: float = 180.0) -> bool:
+    """Start the Steam client if it is not running, and wait until it is ready.
+
+    The game started directly needs a running Steam client: without one its
+    Steamworks start-up fails ("Steam is probably not running") and it never
+    gets as far as loading the bridge mod.
+    """
+    if steam_running():
+        return True
+    steam = shutil.which("steam")
+    if not steam:
+        log.error("Steam is not running and no `steam` command was found to start it")
+        return False
+    log.info("Steam is not running; starting it")
+    try:
+        proc = subprocess.Popen(
+            _detached([steam, "-silent"]),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except OSError as e:
+        log.error("could not start Steam: %s", e)
+        return False
+    _children.append(proc)
+    # The client is usable once its web helper (the UI process) is up; it
+    # updates itself first, which can take a while.
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if steam_running() and _process_running("steamwebhelper"):
+            time.sleep(STEAM_SETTLE)  # logging in takes a moment longer
+            log.info("Steam is up")
+            return True
+        time.sleep(2.0)
+    log.error("Steam did not come up within %.0fs (is it logged in?)", timeout)
+    return False
+
+
+STEAM_SETTLE = 10.0
+
+
 def launch_game(cmd: str) -> None:
-    log.info("launching game: %s", cmd)
     argv = shlex.split(cmd)
     exe = Path(argv[0])
+    if exe.name == PROCESS_NAME:
+        ensure_steam()  # `steam -applaunch ...` starts Steam by itself
+    log.info("launching game: %s", cmd)
     env = {**os.environ, **GAME_ENV}
     env.pop("STS2_DEV_SKIP", None)
     proc = subprocess.Popen(
-        argv,
+        _detached(argv),
         cwd=exe.parent if exe.is_absolute() and exe.parent.is_dir() else None,
         env=env,
         stdin=subprocess.DEVNULL,
@@ -261,12 +337,18 @@ class Supervisor:
     def _wait_for_api(self, timeout: float, launched_at: float | None = None) -> bool:
         """Wait for the mod to answer. With `launched_at`, give up as soon as the
         game's log shows that it refused to load the mod."""
-        deadline = time.monotonic() + timeout
+        started = time.monotonic()
+        deadline = started + timeout
         while time.monotonic() < deadline:
             if self.client.ping():
                 return True
             if launched_at is not None and mod_load_error(launched_at):
                 return False
+            if self.manage_game and time.monotonic() - started > 10.0:
+                if not game_running():
+                    return False  # it died: no point waiting out the timeout
+                if not steam_running() and started_without_steam(launched_at or 0.0):
+                    return False
             time.sleep(2.0)
         return False
 
@@ -314,11 +396,16 @@ class Supervisor:
                 time.sleep(max(1.0, min(wait, 3600.0)))
                 backoff = min(backoff * 2, 300.0)
                 continue
-            log.error(
-                "game did not expose the bot API within %.0fs. Is the STS2_MCP mod installed "
-                "and are mods enabled in the game's settings? Restarting the game.",
-                self.boot_timeout,
-            )
+            if not game_running():
+                log.error("the game exited before the bot API came up; starting it again")
+            elif not steam_running() and started_without_steam(launched_at or 0.0):
+                log.error("the game was started without Steam; restarting it with Steam running")
+            else:
+                log.error(
+                    "game did not expose the bot API within %.0fs. Is the STS2_MCP mod installed "
+                    "and are mods enabled in the game's settings? Restarting the game.",
+                    self.boot_timeout,
+                )
             kill_game()
             time.sleep(backoff)
             backoff = min(backoff * 2, 300.0)

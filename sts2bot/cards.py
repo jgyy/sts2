@@ -57,6 +57,7 @@ class CardInfo:
     next_block: int = 0  # Block gained next turn
     enemy_hp_loss: int = 0  # "Enemy loses N HP." (ignores Block)
     souls: int = 0  # Souls added to the draw pile (each: draw 2 cards)
+    short: bool = False  # cannot be played right now only for want of energy or Stars
 
     @property
     def is_x(self) -> bool:
@@ -237,6 +238,9 @@ def parse(card: dict) -> CardInfo:
         enemy_hp_loss=enemy_hp_loss,
         souls=souls,
         bound=any(str(k.get("name")).lower() == "bound" for k in card.get("keywords") or [] if isinstance(k, dict)),
+        short=not card.get("can_play", True)
+        and bool(card.get("unplayable_reason"))
+        and all(r.strip() in ("EnergyCostTooHigh", "StarCostTooHigh") for r in str(card.get("unplayable_reason")).split(",")),
     )
 
 
@@ -348,6 +352,16 @@ _TIER = {
     "METEOR_STRIKE": 3.5, "HOLOGRAM": 3.5, "OVERCLOCK": 3.5, "COMPACT": 3.5, "WHITE_NOISE": 3.5,
     "DOUBLE_ENERGY": 3.5, "STORM": 3.5, "THUNDER": 3.5, "SCRAPE": 3.0, "ALL_FOR_ONE": 3.0, "HOTFIX": 3.0,
     "VOLTAIC": 3.0, "FERAL": 3.0, "TRASH_TO_TREASURE": 3.0, "ITERATION": 2.5,
+    # --- met on 2026-11-18 (all characters)
+    "MACHINE_LEARNING": 6.5, "DEFRAGMENT": 6.5, "GLACIER": 6.0, "FRIENDSHIP": 6.0, "GENESIS": 5.5, "ECHO_FORM": 5.5,
+    "HYPERBEAM": 5.5, "DEVASTATE": 5.0, "SKIM": 5.0, "COOLANT": 5.0, "BUFFER": 5.0, "SPINNER": 5.0, "QUADCAST": 5.0,
+    "DEATHBRINGER": 5.0, "HIGH_FIVE": 5.0, "GUIDING_STAR": 4.5, "ADAPTIVE_STRIKE": 4.5, "BONE_SHARDS": 4.5,
+    "NULL": 4.5, "ERADICATE": 4.5, "LOOP": 4.5, "NECRO_MASTERY": 4.5, "SENTRY_MODE": 4.5, "CHILL": 4.0,
+    "SEVERANCE": 4.0, "TEMPEST": 4.0, "NEUROSURGE": 4.0, "BLACK_HOLE": 4.0, "SLEIGHT_OF_FLESH": 4.0, "LEAP": 3.5,
+    "DELAY": 3.5, "CHAOS": 3.5, "SOUL_STORM": 3.5, "REFRACT": 3.5, "FETCH": 3.5, "REBOOT": 3.0, "ALIGNMENT": 3.0,
+    "CRESCENT_SPEAR": 3.0, "CONQUEROR": 3.0, "SYNTHESIS": 3.0, "RIGHT_HAND_HAND": 3.0, "SPUR": 3.0, "CLEANSE": 3.0,
+    "TIMES_UP": 3.0, "SHARED_FATE": 3.0, "DANSE_MACABRE": 3.0, "CLAW": 2.5, "MELANCHOLY": 2.5, "SUBROUTINE": 2.0,
+    "PAGESTORM": 2.0, "SYNCHRONIZE": 2.0, "CHARGE": 1.5, "GUARDS": 1.0,
 }
 
 
@@ -408,6 +422,7 @@ def deck_value(card: dict) -> float:
         score -= 1.0  # the planner cannot use what it cannot read
     if info.cost >= 3:
         score -= 0.8
+    score -= 0.9 * (2 if info.star_cost < 0 else info.star_cost)  # Stars are a second price
     if info.block_lock:
         score -= 3.0
     score -= info.hp_loss * 0.1
@@ -416,3 +431,47 @@ def deck_value(card: dict) -> float:
     if card.get("is_upgraded"):
         score += 0.7
     return score + _known_nudge(card)
+
+
+def upgrade_gain(base: dict, upgraded: dict) -> float:
+    """What upgrading a card adds, in the planner's points per play.
+
+    Read from the two versions of the card's text. Upgrading by rating alone
+    spent upgrades on good cards whose upgrade is small (Coolheaded: one more
+    card drawn) while Devastate (+12 damage) and cost reductions waited.
+    """
+    a, b = parse({**base, "target_type": "AnyEnemy"}), parse({**upgraded, "target_type": "AnyEnemy"})
+
+    def worth(i: CardInfo) -> float:
+        channels = len(i.channel) if i.type != "Power" else 0
+        return (
+            i.total_damage * (1.6 if i.aoe else 1.0)
+            + i.block
+            + i.draw * 3.0
+            + i.energy_gain * 5.0
+            + min(i.vulnerable, 4) * 2.5
+            + min(i.weak, 4) * 2.0
+            + i.strength * (4.0 if i.strength_lasts else 1.5)
+            + i.dexterity * (4.0 if i.dexterity_lasts else 1.5)
+            + i.poison * 2.0
+            + i.doom * 0.6
+            + i.shivs * 4.0
+            + i.star_gain * 2.5
+            + i.forge * 0.6
+            + i.summon
+            + channels * 4.0
+            + i.evoke * 3.0
+            + i.enemy_strength_loss * 1.5
+            + i.next_energy * 4.0
+            + i.next_draw * 1.5
+            + i.next_block * 0.7
+            + i.enemy_hp_loss
+            + i.souls * 3.0
+        )
+
+    cost = lambda i: 3 if i.is_x else i.cost
+    gain = worth(b) - worth(a) + 6.0 * (cost(a) - cost(b)) + 2.5 * (max(a.star_cost, 0) - max(b.star_cost, 0))
+    if gain <= 0.0:
+        # Nothing we can read changed (a Power's numbers, an added keyword): still worth something.
+        gain = 3.0 if str(base.get("description")) != str(upgraded.get("description")) else 0.5
+    return gain

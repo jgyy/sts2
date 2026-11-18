@@ -31,6 +31,8 @@ def main(argv: list[str] | None = None) -> int:
         '(e.g. IRONCLAD), or "cycle" / "random" over unlocked ones (default: auto)',
     )
     ap.add_argument("--runs", type=int, default=None, help="stop after this many runs (default: never stop)")
+    ap.add_argument("--first", metavar="CHARACTER", help="with --character auto: play this character until it has earned all of its own epochs, then carry on as usual")
+    ap.add_argument("--no-tuning", action="store_true", help="always play with the default settings instead of trying variations and learning from the results")
     ap.add_argument("--no-launch", action="store_true", help="never start or kill the game; only play when it is up")
     ap.add_argument("--launch-cmd", default=DEFAULT_LAUNCH, help=f"command that starts the game (default: {DEFAULT_LAUNCH!r})")
     ap.add_argument(
@@ -62,7 +64,14 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, handlers=handlers)
 
     client = Client(args.host, args.port)
-    bot = Bot(client, character=args.character, log_dir=args.log_dir, poll=args.poll, stuck_timeout=args.stuck_timeout)
+    bot = Bot(
+        client,
+        character=f"auto:{args.first}" if args.first and args.character.lower() == "auto" else args.character,
+        log_dir=args.log_dir,
+        poll=args.poll,
+        stuck_timeout=args.stuck_timeout,
+        tune=not args.no_tuning,
+    )
     sup = Supervisor(bot, client, launch_cmd=args.launch_cmd, manage_game=not args.no_launch, fast_mode=None if args.fast_mode == "keep" else args.fast_mode, light_graphics=not args.full_graphics)
     logging.getLogger("sts2bot").info("logs and run history in %s", args.log_dir)
     try:
