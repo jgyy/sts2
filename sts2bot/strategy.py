@@ -373,7 +373,7 @@ def path_value(
         elif kind == "Shop":
             # Gold is only worth what it buys: one run walked past every shop
             # in two acts with 600 gold in hand.
-            score += 0.3 + min(5.0, gold / 120.0)
+            score += 0.3 + min(8.0, gold / 120.0)  # (to 8: a bot walked past shops with 1,016 gold)
             gold = gold % 75
         elif kind == "Unknown":
             score += 0.9
@@ -706,6 +706,30 @@ def _pick_order(cards: list[dict], prompt: str, screen_type: str = "", gain=None
     return sorted(cards, key=deck_value, reverse=True)
 
 
+def _affliction_order(ordered: list[dict], state: dict) -> list[dict]:
+    """The Knowledge Demon's last offer: one energy less every turn, or 8 damage every turn.
+
+    With a third of the energy gone (on top of a card less and three plays a
+    turn) the bot dealt about 10 a turn and never finished a Demon that still
+    had over 100 HP. When the fight can be ended in the few turns our HP
+    pays for, the damage is the cheaper price.
+    """
+    keys = {_card_key(c): c for c in ordered}
+    burn, drain = keys.get("DISINTEGRATION"), keys.get("WASTE_AWAY")
+    if burn is None or drain is None:
+        return ordered
+    player = state.get("player") or {}
+    foes = [e for e in (state.get("battle") or {}).get("enemies") or [] if int(e.get("hp") or 0) > 0]
+    if not foes:
+        return ordered
+    m = re.search(r"take (\d+) damage", str(burn.get("description") or ""), re.I)
+    per_turn = int(m.group(1)) if m else 8
+    turns = -(-sum(int(e.get("hp") or 0) for e in foes) // 35)  # at the 35 or so a turn it deals with full energy
+    if int(player.get("hp") or 0) >= per_turn * turns + 20:
+        return [burn] + [c for c in ordered if c is not burn]
+    return ordered
+
+
 def card_select(state: dict, mem: Memory) -> list[Action]:
     cs = state.get("card_select") or {}
     prompt = str(cs.get("prompt") or "")
@@ -716,8 +740,10 @@ def card_select(state: dict, mem: Memory) -> list[Action]:
         mem.select_key, mem.selected = key, set()
 
     ordered = _pick_order(cards, prompt, kind, mem.upgrade_gain)
-    if kind == "choose" and log.isEnabledFor(logging.DEBUG) and key != mem.logged_select:
-        mem.logged_select = key
+    ordered = _affliction_order(ordered, state)
+    shown = key + "|" + ",".join(str(c.get("name")) for c in cards)
+    if kind == "choose" and log.isEnabledFor(logging.DEBUG) and shown != mem.logged_select:
+        mem.logged_select = shown
         log.debug("choose (%s): %s", prompt, " | ".join(f"{c.get('name')}: {c.get('description')}" for c in ordered))
     if kind == "choose":
         # One click picks and closes the screen; there is nothing to confirm

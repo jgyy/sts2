@@ -233,6 +233,10 @@ class Bot:
             if check != self._end_check:
                 self._end_check = check
                 return []
+        if wanted and wanted[0][0] == "end_turn" and log.isEnabledFor(logging.DEBUG):
+            expect = combat.expected_end_loss(state)
+            if expect is not None:
+                log.debug("ending r%s on %s HP, expecting to lose %d", battle.get("round"), player.get("hp"), expect)
         return wanted
 
     @staticmethod

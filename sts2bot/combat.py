@@ -236,6 +236,7 @@ def _progress(e: Enemy, hp_removed: int, chip_rate: float) -> float:
 class Outcome:
     score: float
     first_target: str | None
+    lost: int = 0  # HP the line expects to lose when the turn ends
 
 
 def simulate(
@@ -263,8 +264,10 @@ def simulate(
     vigor: int = 0,  # extra damage on the next Attack only (the card text shows it on all of them)
     giant: bool = False,  # the next Attack deals triple damage (same)
     buffer: int = 0,  # times we lose no HP when we otherwise would
-    taint: int = 0,  # Vital Spark: each Skill played makes every hit on us this turn 2 harder
+    taint: int = 0,  # Vital Spark: each Skill played makes every hit on us this turn this much harder
     draw_worth: tuple = (2.0, 0.0, 0.0),  # of a drawn card: (points if free, share that cost energy, points per energy)
+    bare_block: int = 0,  # Orichalcum: Block gained if the turn ends with none
+    regen: int = 0,  # Regen: HP healed when the turn ends, before the enemy moves
     focus_power: int = 0,  # Focus: added to what a newly channeled orb does
     escape_odds: tuple = (0.3, 0.3),  # chance of no Frantic Escape in the next hand, and in a hand later on
     wither_in: int = 0,  # Withering Presence: cards we can still play before a Wither lands in our hand
@@ -465,6 +468,16 @@ def simulate(
                     energy += 2
         if c.evoke and held:
             held.pop(0)  # evoking uses the orb up
+        if c.evoke_all:  # Shatter: every orb goes off, and all of them are used up
+            for kind, _passive, burst in held:
+                for _ in range(c.evoke_all):
+                    if kind == "FROST" and can_block:
+                        block += burst
+                    elif kind in ("LIGHTNING", "DARK", "GLASS"):
+                        score += _orb_damage(kind, burst, foes, chip_rate, dmg_value)
+                    elif kind == "PLASMA":
+                        energy += 2
+            held = []
         if c.key == "FRANTIC_ESCAPE":
             escapes += 1
         for e in foes:
@@ -523,7 +536,9 @@ def simulate(
     for e, orig in zip(foes, enemies):
         if not e.alive:
             continue
-        if e.poison >= e.hp:
+        # (Not through Intangible: 8 Poison took 1 HP off a Soul Fysh on 6, which the
+        # bot had counted as dead, and it sat on two Defends while it was hit for 9.)
+        if (min(e.poison, e.hit_cap) if e.hit_cap else e.poison) >= e.hp:
             e.hp = 0
             continue
         if e.poison > orig.poison:
@@ -580,7 +595,10 @@ def simulate(
             # So the margin is priced by the chance of running out of it.
             no_escape, usually = escape_odds
             risk = no_escape * usually ** (left - 2)
-            score -= max(SANDPIT_DEATH * risk, {2: 60.0, 3: 25.0, 4: 8.0}.get(left, 0.0))
+            # (The floor is what the risk is worth at the usual odds: a bot that
+            # trusted better ones ended a turn on 2 with an Escape and the energy
+            # for it in hand, and was eaten on 47 HP.)
+            score -= max(SANDPIT_DEATH * risk, {2: 180.0, 3: 55.0, 4: 16.0, 5: 5.0}.get(left, 0.0))
 
     if faced is not None:
         # Turning to face an enemy takes away its 50% bonus and gives it to the other one.
@@ -591,6 +609,8 @@ def simulate(
                 e.incoming = round(e.incoming * 1.5)
 
     incoming = sum(e.incoming + tainted * e.incoming_hits for e in survivors)
+    if block <= 0 and can_block:
+        block = bare_block
     played = {c.index for c in line}
     left = max(0, hand_size - len(line))
     # Cards that burn in the hand go off when our turn ends, before the enemy
@@ -614,6 +634,7 @@ def simulate(
         # between turns, so every card played is a sixth of that bill.
         score -= len(line) * (4.0 * wither_hp + 20.0) / 6.0
     lost = through + self_loss + end_loss + burnt
+    lost = max(0, lost - min(regen, max(0, max_hp - hp + self_loss)))  # Regen mends what was missing first
     ratio = hp / max(1, max_hp)
     # Osty keeps the HP he is not hit for: unlike Block it is still there next
     # turn (and Unleash hits harder for it). The bot never summoned on a turn
@@ -644,7 +665,16 @@ def simulate(
         # penalty left that choice to the damage dealt, and a bot 4 HP short
         # played two Powers with a Defend+ in hand.
         score -= LETHAL_PENALTY + 100.0 * (lost - hp) - (150.0 if energy > 0 else 30.0) * min(drawn, 3)
-    return Outcome(score, first_target)
+    return Outcome(score, first_target, int(lost))
+
+
+def expected_end_loss(state: dict) -> int | None:
+    """HP the planner expects to lose if the turn ended now (logged, to catch what it does not model)."""
+    enemies = read_enemies(state)
+    if not enemies:
+        return None
+    out = simulate([], enemies, **_context(state))
+    return out.lost if out is not None else None
 
 
 def _context(state: dict) -> dict:
@@ -677,14 +707,27 @@ def _context(state: dict) -> dict:
             for o in player.get("orbs") or []
         ),
         orb_slots=int(player.get("orb_slots") or 0),
+        bare_block=_bare_block(player),
+        regen=max(0, power_amount(player, "REGEN")),
         focus_power=power_amount(player, "FOCUS") if _has_power(player, "FOCUS") else 0,
         shiv_damage=4 + max(0, power_amount(player, "ACCURACY")),
         tender=_has_power(player, "TENDER"),
         vigor=max(0, power_amount(player, "VIGOR")),
         giant=_has_power(player, "GIGANTIFICATION"),
         buffer=max(0, power_amount(player, "BUFFER")),
-        taint=2 if any(_has_power(e, "VITAL_SPARK") for e in [player, *(battle.get("enemies") or [])]) else 0,
+        # (The amount grows as the Infested Prism buffs itself: at Vital Spark 4, four Skills
+        # turned a 5x3 attack into 13x3 while the bot counted 2 a Skill, and it died behind 17 Block.)
+        taint=max((power_amount(e, "VITAL_SPARK") for e in [player, *(battle.get("enemies") or [])]), default=0),
     )
+
+
+def _bare_block(player: dict) -> int:
+    """Block a relic gives when the turn ends without any (Orichalcum)."""
+    for r in player.get("relics") or []:
+        m = re.search(r"end your turn without block, gain (\d+) block", str(r.get("description") or ""), re.I)
+        if m:
+            return int(m.group(1))
+    return 0
 
 
 def _draw_worth(player: dict) -> tuple:
@@ -911,6 +954,8 @@ def actions(state: dict) -> list[Action]:
     """Ordered candidate actions for a combat state (first workable one is taken)."""
     if log.isEnabledFor(logging.DEBUG):
         log.debug("combat %s", describe(state))
+    if log.isEnabledFor(logging.DEBUG) and _sandpit(state) is not None:
+        log.debug("sandpit %s, no Escape next hand %.2f, later %.2f", _sandpit(state), *_escape_odds(state.get("player") or {}))
     out = potion_actions(state)
     card = choose_card(state)
     if card is not None:

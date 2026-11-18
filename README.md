@@ -175,6 +175,7 @@ In `~/.local/state/sts2bot/` (change with `--log-dir`):
 | `--no-launch` | off | Never start or kill the game |
 | `--launch-cmd` | the game binary, else `steam -applaunch 2868840` | Command that starts the game |
 | `--fast-mode` | `instant` | Game animation speed (`instant`, `fast`, `normal`), set through the mod each time the bot connects (not saved to your settings); `keep` leaves it alone |
+| `--time-scale` | `3` | How many times faster the game's own clock runs (timers, pauses between enemy moves), set through the mod for the session; `1` leaves it alone |
 | `--full-graphics` | off | Keep the game's normal window and graphics. By default the bot shrinks the window to 960x540 and turns anti-aliasing off for the session (not saved to your settings), which makes it faster |
 | `--stuck-timeout` | `300` | Seconds without change before the game is restarted |
 | `--host`, `--port` | `127.0.0.1`, `15526` | Where the bridge mod listens |

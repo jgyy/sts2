@@ -57,6 +57,7 @@ class CardInfo:
     next_block: int = 0  # Block gained next turn
     enemy_hp_loss: int = 0  # "Enemy loses N HP." (ignores Block)
     souls: int = 0  # Souls added to the draw pile (each: draw 2 cards)
+    evoke_all: int = 0  # times every orb is evoked (Shatter)
     short: bool = False  # cannot be played right now only for want of energy or Stars
 
     @property
@@ -188,6 +189,8 @@ def parse(card: dict) -> CardInfo:
     evoke = 0
     if re.search(r"\bevoke\s+your", text, re.I):  # "Evoke your rightmost Orb twice." / "... 4 times."
         evoke = 2 if re.search(r"evoke[^.]*twice", text, re.I) else _int(r"evoke[^.]*?(\d+)\s+times", text) or 1
+    m = re.search(r"\bevoke\s+all\s+(?:of\s+)?your\s+orbs(\s+twice)?", text, re.I)
+    evoke_all = (2 if m.group(1) else 1) if m else 0
     m = re.search(r"gain\s+((?:\[[a-z_]*energy_icon\.png\]\s*)+)", next_text, re.I)
     next_energy = len(_ENERGY_ICON.findall(m.group(1))) if m else 0
     next_draw = _int(r"draw\s+(\d+)\s+cards?", next_text)
@@ -199,7 +202,7 @@ def parse(card: dict) -> CardInfo:
     random_target = bool(re.search(r"random\s+enemy", text, re.I))
     known = any(
         (damage, block, vulnerable, weak, draw, energy_gain, strength, enemy_strength_loss, poison, doom, shivs)
-        + (star_gain, forge, summon, dexterity, len(channel), evoke, next_energy, next_draw, next_block, enemy_hp_loss, souls)
+        + (star_gain, forge, summon, dexterity, len(channel), evoke, evoke_all, next_energy, next_draw, next_block, enemy_hp_loss, souls)
     )
 
     return CardInfo(
@@ -238,6 +241,7 @@ def parse(card: dict) -> CardInfo:
         dexterity_lasts=dexterity_lasts,
         channel=channel,
         evoke=evoke,
+        evoke_all=evoke_all,
         next_energy=next_energy,
         next_draw=next_draw,
         next_block=next_block,
@@ -280,6 +284,8 @@ def _known_nudge(card: dict) -> float:
     return 0.0
 
 
+# (2026-11-18: cards that scale over a fight were raised by 0.5 to 1.5. Damage per turn against
+# bosses was the same 30 for every deck the bot built, and community rankings put these first.)
 # How much each card we have met is worth in the deck, on the deck_value
 # scale (about 3 = fine early on, 5 = good, 7+ = take it every time). Judged
 # by hand from what the cards do and how the bot actually plays them: it
@@ -293,7 +299,7 @@ _TIER = {
     "TAUNT": 3.5, "ANGER": 3.0, "SETUP_STRIKE": 3.0, "SWORD_BOOMERANG": 3.0, "TREMBLE": 2.5,
     "PERFECTED_STRIKE": 2.5, "BODY_SLAM": 1.5, "HAVOC": 1.0,
     # uncommons
-    "SHOCKWAVE": 7.5, "UPPERCUT": 6.0, "FLAME_BARRIER": 6.0, "INFLAME": 6.0, "HEMOKINESIS": 6.0,
+    "SHOCKWAVE": 7.5, "UPPERCUT": 6.0, "FLAME_BARRIER": 6.0, "INFLAME": 6.5, "HEMOKINESIS": 6.0,
     "BATTLE_TRANCE": 5.5, "WHIRLWIND": 5.0, "ULTIMATE_STRIKE": 5.0, "ULTIMATE_DEFEND": 5.0,
     "THRUMMING_HATCHET": 5.0, "STONE_ARMOR": 5.0, "DRAMATIC_ENTRANCE": 5.0, "THE_BOMB": 5.0, "BLUDGEON": 5.5,
     "FIGHT_ME": 4.5, "OMNISLICE": 4.5, "DISMANTLE": 4.0, "RAMPAGE": 4.0, "FLASH_OF_STEEL": 4.0, "FINESSE": 4.0,
@@ -306,7 +312,7 @@ _TIER = {
     "EXPECT_A_FIGHT": 2.0, "JACK_OF_ALL_TRADES": 2.0, "IMPATIENCE": 2.0, "RUPTURE": 1.5, "RESTLESSNESS": 1.5,
     "PURITY": 1.5, "PROLONG": 1.0,
     # rares and event cards
-    "IMPERVIOUS": 8.0, "OFFERING": 7.5, "DEMON_FORM": 7.0, "PYRE": 7.0, "EXTERMINATE": 7.0, "FEED": 6.5,
+    "IMPERVIOUS": 8.0, "OFFERING": 7.5, "DEMON_FORM": 8.0, "PYRE": 7.0, "EXTERMINATE": 7.0, "FEED": 6.5,
     "CRIMSON_MANTLE": 6.0, "ROLLING_BOULDER": 6.0, "GIANT_ROCK": 6.0, "CONFLAGRATION": 5.5, "HAND_OF_GREED": 5.5,
     "MASTER_OF_STRATEGY": 5.0, "MANGLE": 4.5, "AGGRESSION": 4.5, "MAYHEM": 4.5, "NOT_YET": 4.5, "BOLAS": 4.5,
     "UNMOVABLE": 4.0, "BRAND": 4.0, "FIEND_FIRE": 4.0, "JUGGERNAUT": 3.5, "HELLRAISER": 3.5, "ONE_TWO_PUNCH": 3.5,
@@ -314,13 +320,13 @@ _TIER = {
     "SECRET_TECHNIQUE": 3.0, "HIDDEN_GEM": 2.5, "GOLD_AXE": 2.5, "METAMORPHOSIS": 2.5, "PRIMAL_FORCE": 2.0,
     "STOKE": 2.0, "THE_GAMBIT": -6.0,
     # --- The Silent
-    "ADRENALINE": 7.0, "NOXIOUS_FUMES": 6.5, "FOOTWORK": 6.0, "AFTERIMAGE": 6.0, "LEG_SWEEP": 6.0, "BACKFLIP": 5.5,
-    "DASH": 5.5, "SERPENT_FORM": 5.5, "ASSASSINATE": 5.5, "DEADLY_POISON": 5.0, "BOUNCING_FLASK": 5.0,
-    "ACROBATICS": 5.0, "DAGGER_SPRAY": 5.0, "BLADE_DANCE": 5.0, "PIERCING_WAIL": 5.0, "MALAISE": 5.0,
+    "ADRENALINE": 7.0, "NOXIOUS_FUMES": 7.5, "FOOTWORK": 6.0, "AFTERIMAGE": 6.0, "LEG_SWEEP": 6.0, "BACKFLIP": 5.5,
+    "DASH": 5.5, "SERPENT_FORM": 5.5, "ASSASSINATE": 5.5, "DEADLY_POISON": 5.5, "BOUNCING_FLASK": 5.5,
+    "ACROBATICS": 5.0, "DAGGER_SPRAY": 5.0, "BLADE_DANCE": 5.5, "PIERCING_WAIL": 5.0, "MALAISE": 5.0,
     "ECHOING_SLASH": 5.0, "NEUTRALIZE": 4.0, "SURVIVOR": 3.5, "POISONED_STAB": 4.5, "HAZE": 4.5,
     "DAGGER_THROW": 4.5, "SUCKER_PUNCH": 4.5, "CLOAK_AND_DAGGER": 4.5, "DODGE_AND_ROLL": 4.5, "PREDATOR": 4.5,
     "BACKSTAB": 4.5, "BLUR": 4.5, "SKEWER": 4.5, "FLICK_FLACK": 4.5, "WELL_LAID_PLANS": 4.5, "FAN_OF_KNIVES": 4.5,
-    "ACCURACY": 4.0, "INFINITE_BLADES": 4.0, "TOOLS_OF_THE_TRADE": 4.0, "ENVENOM": 4.0, "ABRASIVE": 4.0,
+    "ACCURACY": 5.5, "INFINITE_BLADES": 5.5, "TOOLS_OF_THE_TRADE": 4.0, "ENVENOM": 4.0, "ABRASIVE": 4.0,
     "SNAKEBITE": 4.0, "OUTBREAK": 4.0, "DEFLECT": 4.0, "THE_HUNT": 4.0, "POUNCE": 4.0, "UP_MY_SLEEVE": 4.0,
     "EXPOSE": 4.0, "SPEEDSTER": 3.5, "BUBBLE_BUBBLE": 3.5, "ESCAPE_PLAN": 3.5, "EXPERTISE": 3.5, "BURST": 3.5,
     "PRECISE_CUT": 3.5, "STRANGLE": 3.5, "RICOCHET": 3.5, "LEADING_STRIKE": 3.5, "ACCELERANT": 3.0,
@@ -340,18 +346,18 @@ _TIER = {
     "TYRANNY": 3.5, "ORBIT": 3.5, "MONOLOGUE": 3.0, "ROYAL_GAMBLE": 3.0, "ROYALTIES": 3.0,
     "PILLAR_OF_CREATION": 3.0, "SPECTRUM_SHIFT": 3.0, "PALE_BLUE_DOT": 3.0,
     # --- The Necrobinder
-    "SOW": 5.0, "DEBILITATE": 5.0, "GRAVE_WARDEN": 5.0, "PUTREFY": 5.0, "DRAIN_POWER": 4.5, "DEFILE": 4.5,
+    "SOW": 5.0, "DEBILITATE": 5.0, "GRAVE_WARDEN": 6.0, "PUTREFY": 5.0, "DRAIN_POWER": 4.5, "DEFILE": 4.5,
     "BLIGHT_STRIKE": 4.5, "REAVE": 4.5, "BURY": 4.5, "DEFY": 4.5, "NEGATIVE_PULSE": 4.5, "PARSE": 4.5,
     "END_OF_DAYS": 4.5, "BODYGUARD": 3.5, "UNLEASH": 3.5, "FEAR": 4.0, "REAP": 4.0, "FLATTEN": 4.0,
-    "PULL_AGGRO": 4.0, "UNDEATH": 4.0, "ENFEEBLING_TOUCH": 4.0, "CAPTURE_SPIRIT": 4.0, "DEATHS_DOOR": 4.0,
+    "PULL_AGGRO": 4.0, "UNDEATH": 4.0, "ENFEEBLING_TOUCH": 4.0, "CAPTURE_SPIRIT": 5.0, "DEATHS_DOOR": 4.0,
     "NO_ESCAPE": 4.0, "REANIMATE": 4.0, "SNAP": 3.5, "POKE": 3.5, "RATTLE": 3.5, "HANG": 3.5, "INVOKE": 3.5,
-    "WISP": 3.5, "DIRGE": 3.5, "LETHALITY": 3.5, "SHROUD": 3.5, "HAUNT": 3.5, "CALL_OF_THE_VOID": 3.5,
+    "WISP": 3.5, "DIRGE": 4.5, "LETHALITY": 3.5, "SHROUD": 3.5, "HAUNT": 3.5, "CALL_OF_THE_VOID": 3.5,
     "SIC_EM": 3.5, "GRAVEBLAST": 3.0, "DEATH_MARCH": 3.0, "PULL_FROM_BELOW": 2.5, "BORROWED_TIME": 2.5,
     "SEANCE": 2.5,
     # --- The Defect
     "COOLHEADED": 5.5, "COLD_SNAP": 5.0, "BALL_LIGHTNING": 5.0, "SWEEPING_BEAM": 5.0, "BOOT_SEQUENCE": 5.0,
     "SHADOW_SHIELD": 5.0, "ZAP": 4.0, "DUALCAST": 3.5, "SUNDER": 4.5, "CHARGE_BATTERY": 4.5,
-    "LIGHTNING_ROD": 4.5, "FUSION": 4.5, "GLASSWORK": 4.5, "HAILSTORM": 4.5, "BULK_UP": 4.5, "CAPACITOR": 4.5,
+    "LIGHTNING_ROD": 4.5, "FUSION": 4.5, "GLASSWORK": 4.5, "HAILSTORM": 4.5, "BULK_UP": 4.5, "CAPACITOR": 5.5,
     "CREATIVE_AI": 4.5, "ICE_LANCE": 4.5, "FIGHT_THROUGH": 4.0, "GO_FOR_THE_EYES": 4.0, "FOCUSED_STRIKE": 4.0,
     "BEAM_CELL": 4.0, "MOMENTUM_STRIKE": 4.0, "COMPILE_DRIVER": 4.0, "FTL": 4.0, "BOOST_AWAY": 4.0,
     "DARKNESS": 4.0, "MODDED": 4.0, "GUNK_UP": 3.5, "UPROAR": 3.5, "COLLISION_COURSE": 3.5, "TESLA_COIL": 3.5,
@@ -359,7 +365,7 @@ _TIER = {
     "DOUBLE_ENERGY": 3.5, "STORM": 3.5, "THUNDER": 3.5, "SCRAPE": 3.0, "ALL_FOR_ONE": 3.0, "HOTFIX": 3.0,
     "VOLTAIC": 3.0, "FERAL": 3.0, "TRASH_TO_TREASURE": 3.0, "ITERATION": 2.5,
     # --- met on 2026-11-18 (all characters)
-    "MACHINE_LEARNING": 6.5, "DEFRAGMENT": 6.5, "GLACIER": 6.0, "FRIENDSHIP": 6.0, "GENESIS": 5.5, "ECHO_FORM": 5.5,
+    "MACHINE_LEARNING": 6.5, "DEFRAGMENT": 7.5, "GLACIER": 6.0, "FRIENDSHIP": 6.0, "GENESIS": 5.5, "ECHO_FORM": 6.5,
     "HYPERBEAM": 5.5, "DEVASTATE": 5.0, "SKIM": 5.0, "COOLANT": 5.0, "BUFFER": 5.0, "SPINNER": 5.0, "QUADCAST": 5.0,
     "DEATHBRINGER": 5.0, "HIGH_FIVE": 5.0, "GUIDING_STAR": 4.5, "ADAPTIVE_STRIKE": 4.5, "BONE_SHARDS": 4.5,
     "NULL": 4.5, "ERADICATE": 4.5, "LOOP": 4.5, "NECRO_MASTERY": 4.5, "SENTRY_MODE": 4.5, "CHILL": 4.0,

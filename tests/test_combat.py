@@ -203,6 +203,46 @@ class CombatPlanning(unittest.TestCase):
         self.assertEqual(combat.potion_actions(boss), [("use_potion", {"slot": 1, "target": "A_0"})])
 
 
+class WhatSoftensTheBlow(unittest.TestCase):
+    def test_orichalcum_and_regen_are_counted(self):
+        state = combat_state([], [enemy("A", 100, attack=18)], hp=60, max_hp=80)
+        self.assertEqual(combat.expected_end_loss(state), 18)
+        state["player"]["relics"] = [{"id": "ORICHALCUM", "description": "If you end your turn without Block, gain 6 Block."}]
+        self.assertEqual(combat.expected_end_loss(state), 12)
+        state["player"]["status"] = [{"id": "REGEN_POWER", "amount": 5}]
+        self.assertEqual(combat.expected_end_loss(state), 7)
+        state["player"]["block"] = 3  # some Block already: the relic stays out of it
+        self.assertEqual(combat.expected_end_loss(state), 10)
+
+
+class Potions(unittest.TestCase):
+    @staticmethod
+    def potion(slot, name, text, target="Self"):
+        return {"slot": slot, "id": name.upper().replace(" ", "_"), "name": name, "description": text, "target_type": target, "can_use_in_combat": True}
+
+    def boss(self, potions, hp=75, block=0, foe_hp=300, floor=33, kind="boss"):
+        state = combat_state([STRIKE(0)], [enemy("A", foe_hp, attack=10)], hp=hp, max_hp=75, block=block, kind=kind, potions=potions)
+        state["run"]["floor"] = floor
+        return [a[1]["slot"] for a in combat.potion_actions(state)]
+
+    def test_a_potion_that_hits_us_too_waits_for_block(self):
+        foul = self.potion(0, "Foul Potion", "Deal 12 damage to ALL players and enemies. Can be thrown at the Merchant for 100 Gold instead.")
+        fire = self.potion(1, "Fire Potion", "Deal 20 damage.", "AnyEnemy")
+        self.assertEqual(self.boss([foul, fire]), [1])
+        self.assertEqual(self.boss([foul, fire], block=12), [0, 1])
+
+    def test_healing_waits_until_it_is_needed(self):
+        blood = self.potion(0, "Blood Potion", "Heal for 20% of your Max HP.")
+        self.assertEqual(self.boss([blood]), [])
+        self.assertEqual(self.boss([blood], hp=30), [0])
+
+    def test_potions_are_kept_for_the_boss_next_door(self):
+        belt = [self.potion(i, "Fire Potion", "Deal 20 damage.", "AnyEnemy") for i in range(3)]
+        self.assertEqual(self.boss(belt, floor=20, kind="monster"), [0])  # a full belt: one is free to use
+        self.assertEqual(self.boss(belt, floor=31, kind="monster"), [])  # two rooms from the boss
+        self.assertEqual(self.boss(belt, floor=33, foe_hp=20), [])  # the fight is over anyway
+
+
 class PowersThePlannerKnows(unittest.TestCase):
     def test_vigor_only_helps_the_first_attack(self):
         # With 8 Vigor each Strike reads "Deal 14 damage", but only the first one gets it:
@@ -347,6 +387,11 @@ class OtherCharacters(unittest.TestCase):
         self.assertGreater(gain(10, "boss"), 2 * gain(0, "boss"))
         self.assertGreater(gain(0, "boss"), gain(0, "monster"))
 
+    def test_poison_does_not_kill_through_intangible(self):
+        foe = enemy("FYSH", 6, attack=9, status=[{"id": "POISON_POWER", "amount": 8}, {"id": "INTANGIBLE_POWER", "amount": 1}])
+        state = combat_state([DEFEND(0)], [foe], energy=1, hp=29)
+        self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 0}))
+
     def test_poison_that_covers_its_hp_stops_the_attack(self):
         poison = card(0, "DEADLY_POISON", "Deadly Poison", "Skill", 1, "Apply 5 Poison.", "AnyEnemy")
         foe = enemy("A", 9, attack=20, status=[{"id": "POISON_POWER", "amount": 4}])
@@ -374,6 +419,15 @@ class OtherCharacters(unittest.TestCase):
         frost_first = combat.simulate([parse(dualcast)], foes, orbs=(frost, glass, glass), **kw).score
         glass_first = combat.simulate([parse(dualcast)], foes, orbs=(glass, glass, frost), **kw).score
         self.assertGreater(frost_first, glass_first + 20)  # 10 Block that keeps us alive against 16 damage
+
+    def test_shatter_sets_off_every_orb(self):
+        shatter = parse(card(0, "SHATTER", "Shatter", "Attack", 1, "Deal 7 damage to ALL enemies. Evoke all of your Orbs twice. Exhaust.", "AllEnemies"))
+        self.assertEqual(shatter.evoke_all, 2)
+        foes = lambda: combat.read_enemies(combat_state([], [enemy("A", 200, attack=30)]))
+        kw = dict(energy=1, stars=0, hp=40, max_hp=80, block=0, orb_slots=3)
+        bare = combat.simulate([shatter], foes(), **kw).score
+        loaded = combat.simulate([shatter], foes(), orbs=(("LIGHTNING", 3, 8), ("FROST", 2, 5)), **kw).score
+        self.assertGreater(loaded, bare + 30)  # 16 damage and 10 Block on top
 
     def test_a_kill_by_orb_is_a_kill(self):
         dualcast = card(0, "DUALCAST", "Dualcast", "Skill", 1, "Evoke your rightmost Orb twice.", "Self")
