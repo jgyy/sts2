@@ -9,7 +9,7 @@ import time
 from collections import defaultdict
 from pathlib import Path
 
-from . import combat, strategy
+from . import cards, combat, learn, strategy
 from .client import Client
 from .strategy import Memory
 
@@ -19,6 +19,8 @@ COMBAT_STATES = ("monster", "elite", "boss")
 MAX_STRIKES = 2  # failed attempts before an action is shelved for the current state
 MAX_PLAYS_PER_TURN = 40
 _VOLATILE = {"is_hovered", "is_highlighted"}
+# Cards a relic or an enemy shuffles in when a fight starts (the piles do not say what type a card is).
+NOT_OURS = {"Dazed", "Wound", "Burn", "Slimed", "Soot", "Debris", "Infection", "Toxic", "Void", "Wither", "Frantic Escape"}
 
 
 class Stuck(Exception):
@@ -48,6 +50,7 @@ class Bot:
         poll: float = 0.4,
         settle: float = 3.0,
         stuck_timeout: float = 300.0,
+        tune: bool = False,  # try different settings from run to run and learn which work (see learn.Knobs)
         clock=time.monotonic,
         sleep=time.sleep,
     ):
@@ -67,6 +70,17 @@ class Bot:
         self.sleep = sleep
 
         self.mem = Memory()
+        self.card_stats = learn.CardStats(log_dir / "card_stats.json" if log_dir else None)
+        if log_dir:
+            learn.seed_from_history(self.card_stats, log_dir / "runs.jsonl")
+        self.mem.card_stats = self.card_stats
+        self._upgrades: dict = {}  # card id -> what its upgrade adds (None: the game could not say)
+        self.mem.upgrade_gain = self._upgrade_gain
+        self.knobs = learn.Knobs(log_dir / "tuning.json" if log_dir else None)
+        self._knobs_whole_run = False  # the settings in force were there from the run's first floor
+        self.tune = tune
+        if tune:
+            self.knobs.draw()
         self.max_runs: int | None = None
         self.abandon_next = False  # set by the supervisor to drop a run that keeps hanging
         self.runs_finished = 0
@@ -84,6 +98,9 @@ class Bot:
         self._timeline_idle = 0  # Timeline clicks in a row that changed nothing
         self._facing: str | None = None  # enemy we last aimed at in this fight
         self._facing_fight: tuple = ()
+        self._end_check: tuple = ()  # the hand we last thought about ending the turn on
+        self._played_from: tuple = ()  # the hand as it was when we last played a card from it
+        self._played_at = 0.0
 
     # ------------------------------------------------------------ deciding
 
@@ -125,6 +142,24 @@ class Bot:
             return strategy.shop(state, mem, key="fake_merchant")
         return handler(state, mem) if handler else []
 
+    def _upgrade_gain(self, card: dict) -> float | None:
+        """What upgrading this card adds, from the game's own text for both versions."""
+        cid = str(card.get("id") or "")
+        lookup = getattr(self.client, "card", None)
+        if not cid or lookup is None:
+            return None
+        if cid not in self._upgrades:
+            gain = None
+            try:
+                entry = lookup(cid)
+                if entry and entry.get("base") and entry.get("upgraded"):
+                    gain = cards.upgrade_gain(entry["base"], entry["upgraded"])
+            except Exception as e:  # a hiccup must not hold up the choice
+                log.debug("could not look up %s: %s", cid, e)
+                return None
+            self._upgrades[cid] = gain
+        return self._upgrades[cid]
+
     def _refresh_ascensions(self) -> None:
         """Ask the game how far each character has climbed (used to pick who plays next)."""
         fetch = getattr(self.client, "profile", None)
@@ -137,6 +172,19 @@ class Bot:
             self.mem.epochs = {str(e.get("id")): str(e.get("state")) for e in profile.get("epochs") or [] if e.get("id")}
             chars = profile.get("characters") or []
             self.mem.max_ascension = {str(c.get("id")): int(c.get("max_ascension") or 0) for c in chars if c.get("id")}
+            kills: dict = {str(c.get("id")).upper(): 0 for c in chars if c.get("id")}
+            for enc in profile.get("encounter_stats") or []:
+                if str(enc.get("id")).upper().endswith("_BOSS"):
+                    for row in enc.get("by_character") or []:
+                        who = str(row.get("character")).upper()
+                        kills[who] = kills.get(who, 0) + int(row.get("wins") or 0)
+            self.mem.boss_kills = kills
+            # How far each character has been getting lately ("The Defect" in our records is DEFECT here).
+            for name, finals in self.card_stats.finals.items():
+                recent = finals[-15:]
+                for cid in kills:
+                    if cid in name.upper().replace(" ", "") and recent:
+                        self.mem.strength[cid] = min(1.0, sum(recent) / len(recent) / 48.0)
         except Exception as e:  # an old mod or a hiccup must not stop the run from starting
             log.debug("could not read the profile: %s", e)
 
@@ -147,12 +195,7 @@ class Bot:
             return []  # combat is starting or just ended
         if battle.get("turn") != "player" or not battle.get("is_play_phase"):
             return []
-        self.mem.deck_size = (
-            len(player.get("hand") or [])
-            + int(player.get("draw_pile_count") or 0)
-            + int(player.get("discard_pile_count") or 0)
-            + int(player.get("exhaust_pile_count") or 0)
-        )
+        self._note_deck(state)
         key = (*self._where(state), battle.get("round"))
         if key != self._turn_key:
             self._turn_key, self._turn_plays = key, 0
@@ -160,7 +203,57 @@ class Bot:
             self._facing_fight, self._facing = key[:2], None  # a new fight
         if self._turn_plays >= MAX_PLAYS_PER_TURN:
             return [("end_turn", {})]
-        return combat.actions({**state, "_plays_this_turn": self._turn_plays, "_facing": self._facing})
+        # A card we just played stays in the hand for a moment. Seen again
+        # unchanged, the same card was sent a second and third time, and the
+        # end of turn that followed left the game waiting for ever.
+        if self._hand_sig(state) == self._played_from and self.clock() - self._played_at < 2.0:
+            return []
+        wanted = combat.actions({**state, "_plays_this_turn": self._turn_plays, "_facing": self._facing})
+        # Cards that draw (or reshuffle the hand, like Reboot) show up a moment
+        # after the card that brought them: straight after Reboot the hand read
+        # as empty, and the bot ended a turn with 4 energy and a kill in reach.
+        # So before ending a turn with energy left, look once more.
+        if wanted and wanted[0][0] == "end_turn" and self._turn_plays and int(player.get("energy") or 0) > 0:
+            check = (key, self._turn_plays, tuple(str(c.get("name")) for c in player.get("hand") or []))
+            if check != self._end_check:
+                self._end_check = check
+                return []
+        return wanted
+
+    @staticmethod
+    def _hand_sig(state: dict) -> tuple:
+        """The hand and what we have to spend: unchanged until a played card has left it."""
+        player = state.get("player") or {}
+        hand = tuple((c.get("index"), c.get("name")) for c in player.get("hand") or [])
+        return ((state.get("battle") or {}).get("round"), hand, player.get("energy"), player.get("stars"))
+
+    def _note_deck(self, state: dict) -> None:
+        """Remember the deck as it stands when a fight begins.
+
+        Only then: later in a fight the piles also hold what the fight put
+        there (Wounds, Shivs, Souls). Counting those made a 17-card deck look
+        like 26, and the bot turned down good cards for being "too big".
+        """
+        player = state.get("player") or {}
+        battle = state.get("battle") or {}
+        fresh = (
+            int(battle.get("round") or 0) == 1
+            and not int(player.get("discard_pile_count") or 0)
+            and not int(player.get("exhaust_pile_count") or 0)
+        )
+        if not fresh:
+            if self.mem.deck_size <= 0:
+                self.mem.deck_size = len(player.get("hand") or []) + int(player.get("draw_pile_count") or 0)
+            return
+        keep = ("id", "name", "type", "cost", "star_cost", "description", "rarity", "is_upgraded")
+        cards = [{k: c.get(k) for k in keep if c.get(k) is not None} for c in player.get("hand") or []]
+        pile = player.get("draw_pile")
+        if isinstance(pile, list) and len(pile) == int(player.get("draw_pile_count") or 0):
+            cards += [{k: c.get(k) for k in keep if c.get(k) is not None} for c in pile]
+            self.mem.deck = [c for c in cards if str(c.get("type")) != "Status" and str(c.get("name")) not in NOT_OURS]
+            self.mem.deck_size = len(self.mem.deck)
+        else:  # a mod that does not show the piles: the count has to do
+            self.mem.deck_size = len(cards) + int(player.get("draw_pile_count") or 0)
 
     @staticmethod
     def _where(state: dict) -> tuple:
@@ -173,11 +266,19 @@ class Bot:
         kind = state.get("state_type")
         if action == "select_card":
             self.mem.selected.add(params.get("index"))
+        elif action == "select_card_reward":
+            for c in (state.get("card_reward") or {}).get("cards") or []:
+                if c.get("index") == params.get("card_index"):
+                    self.mem.deck.append({k: v for k, v in c.items() if k not in ("index", "keywords")})
+                    self.mem.deck_size += 1
+                    self.mem.picks.append([(state.get("run") or {}).get("floor"), str(c.get("name"))])
         elif action == "skip_card_reward":
             where = self._where(state)
             self.mem.card_skips[where] = self.mem.card_skips.get(where, 0) + 1
         elif action in ("play_card", "use_potion"):
             self._turn_plays += 1
+            if action == "play_card":
+                self._played_from, self._played_at = self._hand_sig(state), self.clock()
             if params.get("target"):
                 self._facing = params["target"]  # we turn towards whatever we aim at
         elif action == "menu_select" and kind == "menu":
@@ -244,6 +345,9 @@ class Bot:
         elif self._over_logged:
             self._over_logged = False
             self.mem.reset_run()
+            if self.tune:
+                log.info("settings for the next run: %s", self.knobs.draw())
+                self._knobs_whole_run = True
             self.mem.runs_finished = self.runs_finished
 
     def _profile_wins(self) -> int | None:
@@ -306,7 +410,15 @@ class Bot:
             "gold": p.get("gold"),
             "relics": [r.get("id") for r in p.get("relics") or []],
             "deck_size": self.mem.deck_size,
+            "deck": sorted(str(c.get("name")) for c in self.mem.deck),
+            "picks": self.mem.picks,
         }
+        who = str(entry["character"] or "")
+        usual = self.card_stats.usual(who, 0)
+        if self._knobs_whole_run and usual is not None and isinstance(entry["floor"], int):
+            self.knobs.record(entry["floor"] + (learn.WIN_BONUS if won else 0) - usual)
+        entry["knobs"] = dict(learn.KNOB) if self._knobs_whole_run else None
+        self.card_stats.record(who, entry["floor"], bool(won), self.mem.picks)
         log.info("run %d over: %s on act %s floor %s (%d wins so far)", self.runs_finished, entry["result"], entry["act"], entry["floor"], self.wins)
         if self.log_dir:
             self.log_dir.mkdir(parents=True, exist_ok=True)

@@ -1,5 +1,5 @@
 diff --git a/McpMod.Actions.cs b/McpMod.Actions.cs
-index 2553f3f..2c00bd0 100644
+index 2553f3f..fe291f7 100644
 --- a/McpMod.Actions.cs
 +++ b/McpMod.Actions.cs
 @@ -665,6 +665,23 @@ public static partial class McpMod
@@ -36,7 +36,40 @@ index 2553f3f..2c00bd0 100644
          {
              mainConfirm.ForceClick();
              return new Dictionary<string, object?>
-@@ -1181,6 +1199,25 @@ public static partial class McpMod
+@@ -1094,14 +1112,19 @@ public static partial class McpMod
+         gameOver ??= FindAll<NGameOverScreen>(tree.Root).FirstOrDefault(IsNodeVisible);
+         if (gameOver != null)
+         {
++            // "continue" opens the run summary. That is where the game adds the
++            // run's score to the profile (NGameOverScreen.AnimateScoreBar) and
++            // awards the epochs that unlock "by accumulating score"; going
++            // straight to the main menu skips all of it.
+             if (string.Equals(option, "continue", System.StringComparison.OrdinalIgnoreCase))
+-                return Error("Game-over option 'continue' is not actionable. Use: main_menu");
++                return ClickMenuButtonField(gameOver, "_continueButton", "Opening the run summary");
+ 
+-            if (!string.Equals(option, "main_menu", System.StringComparison.OrdinalIgnoreCase))
+-                return Error($"Unknown game over option: {option}. Use: main_menu");
++            bool force = string.Equals(option, "force_main_menu", System.StringComparison.OrdinalIgnoreCase);
++            if (!force && !string.Equals(option, "main_menu", System.StringComparison.OrdinalIgnoreCase))
++                return Error($"Unknown game over option: {option}. Use: continue, main_menu, force_main_menu");
+ 
+             var result = ClickMenuButtonField(gameOver, "_mainMenuButton", "Returning to main menu");
+-            if ((string?)result["status"] == "ok")
++            if ((string?)result["status"] == "ok" || !force)
+                 return result;
+ 
+             var returnMethod = gameOver.GetType().GetMethod(
+@@ -1112,7 +1135,7 @@ public static partial class McpMod
+             if (returnMethod != null)
+             {
+                 returnMethod.Invoke(gameOver, null);
+-                return new Dictionary<string, object?> { ["status"] = "ok", ["message"] = "Returning to main menu" };
++                return new Dictionary<string, object?> { ["status"] = "ok", ["message"] = "Returning to main menu (summary skipped)" };
+             }
+ 
+             return Error("Game-over main_menu option is not available");
+@@ -1181,6 +1204,25 @@ public static partial class McpMod
              if (string.Equals(option, "advance", System.StringComparison.OrdinalIgnoreCase) ||
                  string.Equals(option, "proceed", System.StringComparison.OrdinalIgnoreCase))
              {
@@ -62,7 +95,7 @@ index 2553f3f..2c00bd0 100644
                  // Check for timeline tutorial screen (first-time "Proceed" button).
                  var tutorial = FindFirst<NTimelineTutorial>(tree.Root);
                  if (tutorial != null && IsNodeVisible(tutorial))
-@@ -1223,8 +1260,8 @@ public static partial class McpMod
+@@ -1223,8 +1265,8 @@ public static partial class McpMod
                          closeClickable.ForceClick();
                          return new Dictionary<string, object?> { ["status"] = "ok", ["message"] = "Closed epoch inspect screen" };
                      }
@@ -73,7 +106,7 @@ index 2553f3f..2c00bd0 100644
                  }
  
                  // Check for queued unlock screens.
-@@ -1232,12 +1269,49 @@ public static partial class McpMod
+@@ -1232,12 +1274,49 @@ public static partial class McpMod
                  if (queuedUnlockResult != null)
                      return queuedUnlockResult;
  
@@ -124,7 +157,7 @@ index 2553f3f..2c00bd0 100644
                          ["pending_epoch_ids"] = unrevealedEpochs,
                          ["manual_action_required"] = true,
                          ["done"] = true
-@@ -1371,12 +1445,7 @@ public static partial class McpMod
+@@ -1371,12 +1450,7 @@ public static partial class McpMod
  
              // Main menu buttons
              var normalizedMainMenuOption = option.ToLowerInvariant();
@@ -139,7 +172,7 @@ index 2553f3f..2c00bd0 100644
              var menuFieldName = normalizedMainMenuOption switch
              {
 diff --git a/McpMod.StateBuilder.cs b/McpMod.StateBuilder.cs
-index 76eee84..fd191fc 100644
+index 76eee84..2a48de6 100644
 --- a/McpMod.StateBuilder.cs
 +++ b/McpMod.StateBuilder.cs
 @@ -351,18 +351,7 @@ public static partial class McpMod
@@ -171,7 +204,30 @@ index 76eee84..fd191fc 100644
                              if (blockedOptions.Count > 0)
                                  result["blocked_options"] = blockedOptions;
                          }
-@@ -749,6 +740,18 @@ public static partial class McpMod
+@@ -452,10 +443,21 @@ public static partial class McpMod
+         else if (topOverlay is NGameOverScreen gameOverScreen)
+         {
+             result["state_type"] = "game_over";
++            var overOptions = new List<string>();
++            if (GetInstanceFieldValue(gameOverScreen, "_continueButton") is NClickableControl overContinue
++                && overContinue.IsVisibleInTree() && overContinue.IsEnabled)
++                overOptions.Add("continue");
++            if (GetInstanceFieldValue(gameOverScreen, "_mainMenuButton") is NClickableControl overMenu
++                && overMenu.IsVisibleInTree() && overMenu.IsEnabled)
++                overOptions.Add("main_menu");
++            overOptions.Add("force_main_menu");
+             result["game_over"] = new Dictionary<string, object?>
+             {
+                 ["message"] = "Run ended.",
+-                ["options"] = new List<string> { "main_menu" }
++                ["options"] = overOptions,
++                ["score"] = GetInstanceFieldValue(gameOverScreen, "_score"),
++                ["score_threshold"] = GetInstanceFieldValue(gameOverScreen, "_scoreThreshold"),
++                ["summary_animating"] = GetInstanceFieldValue(gameOverScreen, "_isAnimatingSummary")
+             };
+         }
+         else if (topOverlay is IOverlayScreen
+@@ -749,6 +751,18 @@ public static partial class McpMod
          }
          catch { }
  
@@ -190,7 +246,7 @@ index 76eee84..fd191fc 100644
          // _unreadyButton is part of the scene in SP too but never becomes enabled there.
          // Only surface it as an option in MP, where it has a real role.
          if (isMpCharSelect)
-@@ -780,7 +783,7 @@ public static partial class McpMod
+@@ -780,7 +794,7 @@ public static partial class McpMod
                  _ => lobby.NetService.Type.ToString().ToLowerInvariant()
              },
              ["game_mode"] = lobby.GameMode.ToString().ToLowerInvariant(),
@@ -199,7 +255,7 @@ index 76eee84..fd191fc 100644
              ["ascension"] = lobby.Ascension,
              ["max_ascension"] = lobby.MaxAscension,
              ["all_ready"] = lobby.Players.Count > 0 && lobby.Players.All(p => p.isReady),
-@@ -970,7 +973,7 @@ public static partial class McpMod
+@@ -970,7 +984,7 @@ public static partial class McpMod
              catch { }
  
              info["expected_player_count"] = lobby.Run?.Players?.Count ?? 0;
@@ -208,7 +264,7 @@ index 76eee84..fd191fc 100644
  
              // LoadRunLobby no longer exposes IsAboutToBeginGame in the public game API,
              // so derive the same readiness summary from connected players and ready flags.
-@@ -979,11 +982,9 @@ public static partial class McpMod
+@@ -979,11 +993,9 @@ public static partial class McpMod
              try
              {
                  var runPlayers = lobby.Run?.Players;
@@ -221,7 +277,7 @@ index 76eee84..fd191fc 100644
              }
              catch { }
              info["all_ready"] = aboutToBegin;
-@@ -997,7 +998,7 @@ public static partial class McpMod
+@@ -997,7 +1009,7 @@ public static partial class McpMod
                  {
                      foreach (var sp in lobby.Run.Players)
                      {
@@ -230,7 +286,7 @@ index 76eee84..fd191fc 100644
                          bool isReady = false;
                          try { isReady = lobby.IsPlayerReady(sp.NetId); } catch { }
                          players.Add(new Dictionary<string, object?>
-@@ -1933,6 +1934,12 @@ public static partial class McpMod
+@@ -1933,6 +1945,12 @@ public static partial class McpMod
          bool previewShowing = (previewSingle?.Visible ?? false)
                              || (previewMulti?.Visible ?? false)
                              || (previewGeneric?.Visible ?? false);

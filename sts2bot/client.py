@@ -61,6 +61,16 @@ class Client:
         """Profile statistics, including each character's highest unlocked ascension."""
         return self._request(f"{self.base}/api/v1/profile")
 
+    def card(self, card_id: str) -> dict[str, Any] | None:
+        """The game's own entry for a card we have met: its text as it is and as it is upgraded."""
+        from urllib.parse import quote
+
+        found = self._request(f"{self.base}/api/v1/wiki?type=card&limit=3&q={quote(card_id)}")
+        for entry in found.get("results") or []:
+            if str(entry.get("id")) == card_id:
+                return entry
+        return None
+
     def state(self) -> dict[str, Any]:
         return self._request(self.url)
 

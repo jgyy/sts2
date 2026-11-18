@@ -6,7 +6,7 @@
 #   systemctl --user enable --now sts2bot
 #   journalctl --user -u sts2bot -f
 #
-# Steam must be running and logged in for the game to launch.
+# The bot starts Steam itself if it is not running (Steam must be able to log in unattended).
 
 [Unit]
 Description=Slay the Spire 2 bot

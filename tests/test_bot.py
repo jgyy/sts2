@@ -237,6 +237,176 @@ class CombatPlanning(unittest.TestCase):
         self.assertEqual(combat.potion_actions(boss), [("use_potion", {"slot": 1, "target": "A_0"})])
 
 
+class PowersThePlannerKnows(unittest.TestCase):
+    def test_vigor_only_helps_the_first_attack(self):
+        # With 8 Vigor each Strike reads "Deal 14 damage", but only the first one gets it:
+        # 14 + 6 + 6 does not kill 30 HP, so the hit that is coming has to be blocked.
+        strike = lambda i: card(i, "STRIKE_R", "Strike", "Attack", 1, "Deal 14 damage.", "AnyEnemy")
+        state = combat_state([strike(0), strike(1), strike(2), DEFEND(3)], [enemy("A", 30, attack=30)], hp=20)
+        state["player"]["status"] = [{"id": "VIGOR_POWER", "amount": 8}]
+        line = combat.simulate([parse(c) for c in state["player"]["hand"][:3]], combat.read_enemies(state), **combat._context(state))
+        self.assertLess(line.score, 0)  # the enemy lives and we do not
+
+    def test_tender_weakens_every_later_card(self):
+        state = combat_state([DEFEND(0), DEFEND(1), DEFEND(2)], [enemy("A", 90, attack=14)], hp=10)
+        hand = [parse(c) for c in state["player"]["hand"]]
+        plain = combat.simulate(hand, combat.read_enemies(state), **combat._context(state))
+        state["player"]["status"] = [{"id": "TENDER_POWER", "amount": 0}]
+        tender = combat.simulate(hand, combat.read_enemies(state), **combat._context(state))
+        self.assertLess(tender.score, plain.score)  # 5 + 4 + 3 Block, not 15
+
+    def test_slow_order_is_chosen_to_reach_the_kill(self):
+        # 10 then 6x3 (+10%, rounded down) is 28; 6x3 then 10 (+10%) is 29, which kills.
+        cut = card(0, "PHOTON_CUT", "Photon Cut", "Attack", 1, "Deal 10 damage.", "AnyEnemy")
+        might = card(1, "CELESTIAL_MIGHT", "Celestial Might", "Attack", 2, "Deal 6 damage 3 times.", "AnyEnemy")
+        foe = enemy("E", 29, attack=23, status=[{"id": "SLOW_POWER", "amount": 0}])
+        state = combat_state([cut, might, DEFEND(2)], [foe], energy=3, hp=40)
+        self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 1, "target": "E"}))
+
+    def test_stars_made_in_a_line_pay_for_a_later_card(self):
+        star = card(0, "FALLING_STAR", "Falling Star", "Attack", 0, "Deal 8 damage. Apply 1 Weak. Apply 1 Vulnerable.", "AnyEnemy")
+        star.update(star_cost=2, can_play=False, unplayable_reason="StarCostTooHigh")
+        venerate = card(1, "VENERATE", "Venerate", "Skill", 1, "Gain [star_icon.png][star_icon.png].", "Self")
+        state = combat_state([star, venerate, STRIKE(2), STRIKE(3)], [enemy("A", 28)], energy=2)
+        state["player"]["stars"] = 1
+        self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 1}))
+        # ... but a card that is unplayable for another reason stays out.
+        star["unplayable_reason"] = "BlockedByHook, StarCostTooHigh"
+        self.assertNotEqual(combat.choose_card(state), ("play_card", {"card_index": 1}))
+
+    def test_toxic_is_played_rather_than_sat_on(self):
+        toxic = card(0, "TOXIC", "Toxic", "Status", 1, "At the end of your turn, if this is in your Hand, take 5 damage. Exhaust.", "Self")
+        state = combat_state([toxic, DEFEND(1)], [enemy("A", 90, attack=4)], energy=1)
+        self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 0}))  # 5 saved beats 4 blocked
+        burn = card(0, "BURN", "Burn", "Status", 0, "Unplayable. At the end of your turn, if this is in your Hand, take 2 damage.", "Self")
+        burn["can_play"] = False
+        dying = combat_state([burn, STRIKE(1), DEFEND(2)], [enemy("A", 90, attack=5)], energy=1, hp=6)
+        self.assertEqual(combat.choose_card(dying), ("play_card", {"card_index": 2}))  # 5 + 2 would kill
+
+    def test_lightning_orbs_finish_a_lone_enemy_before_it_acts(self):
+        state = combat_state([DEFEND(0), DEFEND(1)], [enemy("A", 5, attack=28)], energy=2, hp=20)
+        state["player"].update(orbs=[{"id": "LIGHTNING_ORB", "passive_val": 3, "evoke_val": 8}] * 2, orb_slots=3)
+        self.assertIsNone(combat.choose_card(state))  # nothing to block: it dies when the turn ends
+
+    def test_withering_presence_makes_small_cards_not_worth_playing(self):
+        poke = card(0, "POKE", "Poke", "Attack", 0, "Deal 3 damage.", "AnyEnemy")
+        foe = enemy("A", 400, status=[{"id": "WITHERING_PRESENCE_POWER", "amount": 4}])
+        self.assertIsNone(combat.choose_card(combat_state([poke], [foe], kind="boss")))
+        self.assertIsNotNone(combat.choose_card(combat_state([poke, STRIKE(1)], [enemy("A", 400)], kind="boss")))
+
+    def test_enrage_keeps_skills_for_when_they_are_needed(self):
+        zap = card(0, "ZAP", "Zap", "Skill", 1, "Channel 1 Lightning.", "Self")
+        angry = enemy("A", 100, attack=10, status=[{"id": "ENRAGE_POWER", "amount": 2}])
+        self.assertEqual(combat.choose_card(combat_state([zap, STRIKE(1)], [angry], energy=1, kind="boss"))[1]["card_index"], 1)
+        self.assertEqual(combat.choose_card(combat_state([zap], [angry], energy=1, kind="boss")), None)
+
+    def test_crabs_are_brought_down_together(self):
+        rage = [{"id": "CRAB_RAGE_POWER", "amount": 1}]
+        crabs = [enemy("CRUSHER", 6, attack=6, status=rage), enemy("ROCKET", 120, attack=6, status=rage)]
+        # Killing the Crusher now would enrage a Rocket with 120 HP left: hit the Rocket.
+        self.assertEqual(combat.choose_card(combat_state([STRIKE(0)], crabs, energy=1, kind="boss"))[1]["target"], "ROCKET")
+        # Both within reach: take them together.
+        crabs = [enemy("CRUSHER", 6, attack=6, status=rage), enemy("ROCKET", 6, attack=6, status=rage)]
+        self.assertIsNotNone(combat.choose_card(combat_state([STRIKE(0), STRIKE(1)], crabs, energy=2, kind="boss")))
+
+    def test_debilitate_doubles_vulnerable(self):
+        foe = enemy("A", 12, attack=5, status=[{"id": "VULNERABLE_POWER", "amount": 1}, {"id": "DEBILITATE_POWER", "amount": 2}])
+        self.assertEqual(combat.choose_card(combat_state([STRIKE(0), DEFEND(1)], [foe], energy=1)), ("play_card", {"card_index": 0, "target": "A"}))
+
+    def test_deck_is_read_at_the_start_of_a_fight_only(self):
+        bot = make_bot(FakeGame())
+        state = combat_state([STRIKE(0), DEFEND(1)], [enemy("A", 30, attack=5)])
+        state["player"].update(draw_pile_count=2, draw_pile=[{"name": "Bash", "cost": "2"}, {"name": "Strike", "cost": "1"}])
+        bot._combat(state)
+        self.assertEqual(bot.mem.deck_size, 4)
+        # Later in the fight the piles hold Wounds and other things that are not in the deck.
+        state["battle"]["round"] = 3
+        state["player"].update(discard_pile_count=9, draw_pile_count=1, draw_pile=[{"name": "Wound"}])
+        bot._combat(state)
+        self.assertEqual(bot.mem.deck_size, 4)
+
+    def test_star_cards_are_worth_less_without_stars_to_pay_for_them(self):
+        comet = card(0, "COMET", "Comet", "Attack", 0, "Deal 33 damage.", "AnyEnemy")
+        comet["star_cost"] = 5
+        pulse = card(0, "ASTRAL_PULSE", "Astral Pulse", "Attack", 0, "Deal 6 damage to ALL enemies twice.", "AllEnemies")
+        pulse["star_cost"] = 3
+        glow = card(0, "GLOW", "Glow", "Skill", 1, "Gain [star_icon.png]. Draw 1 card.", "Self")
+        deck = [STRIKE(i) for i in range(4)] + [DEFEND(i) for i in range(4)] + [pulse, pulse]
+        self.assertLess(strategy.deck_fit(comet, deck), -2.0)
+        self.assertGreater(strategy.deck_fit(glow, deck), 0.5)
+        self.assertEqual(strategy.deck_fit(glow, [STRIKE(0)]), 0.0)
+
+
+class LearnedRatings(unittest.TestCase):
+    def test_cards_that_went_far_rise_and_the_rest_fall(self):
+        from sts2bot import learn
+
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "card_stats.json"
+            stats = learn.CardStats(path)
+            for floor in (10, 17, 17, 20, 25, 33):  # what is usual for this character
+                stats.record("The Silent", floor, False, [])
+            self.assertEqual(stats.shift("The Regent", "Footwork"), 0.0)  # nothing known: no opinion
+            fresh = stats.shift("The Silent", "Footwork")
+            for _ in range(8):
+                stats.record("The Silent", 45, False, [[3, "Footwork+"], [5, "Slice"]])
+                stats.record("The Silent", 8, False, [[3, "Slice"]])
+            self.assertGreater(stats.shift("The Silent", "Footwork"), fresh + 0.5)
+            self.assertLess(stats.shift("The Silent", "Slice"), stats.shift("The Silent", "Footwork"))
+            again = learn.CardStats(path)  # kept between sessions
+            self.assertEqual(again.shift("The Silent", "Footwork"), stats.shift("The Silent", "Footwork"))
+            self.assertLessEqual(len(again.finals["The Silent"]), learn.HISTORY)
+
+
+class EndOfRun(unittest.TestCase):
+    def test_goes_through_the_summary_so_the_score_is_banked(self):
+        mem = Memory()
+        over = lambda *options: {"state_type": "game_over", "game_over": {"options": list(options)}}
+        self.assertEqual(strategy.game_over(over("continue", "force_main_menu"), mem), [("menu_select", {"option": "continue"})])
+        self.assertEqual(strategy.game_over(over("force_main_menu"), mem), [])  # the score is still counting up
+        self.assertEqual(strategy.game_over(over("main_menu", "force_main_menu"), mem), [("menu_select", {"option": "main_menu"})])
+        for _ in range(strategy.OVER_PATIENCE):
+            strategy.game_over(over("force_main_menu"), mem)
+        self.assertEqual(strategy.game_over(over("force_main_menu"), mem), [("menu_select", {"option": "force_main_menu"})])
+        # An older mod only knows the one option.
+        self.assertEqual(strategy.game_over({"state_type": "game_over"}, Memory()), [("menu_select", {"option": "main_menu"})])
+
+
+class Upgrades(unittest.TestCase):
+    def test_the_upgrade_that_adds_most_is_taken(self):
+        from sts2bot.cards import upgrade_gain
+
+        strike = (card(0, "STRIKE_R", "Strike", "Attack", 1, "Deal 6 damage.", "AnyEnemy"), {"type": "Attack", "cost": 1, "description": "Deal 9 damage."})
+        big = (card(1, "DEVASTATE", "Devastate", "Attack", 1, "Deal 35 damage.", "AnyEnemy"), {"type": "Attack", "cost": 1, "description": "Deal 47 damage."})
+        cheap = (card(2, "X", "Body Slam", "Attack", 1, "Deal damage equal to your Block.", "AnyEnemy"), {"type": "Attack", "cost": 0, "description": "Deal damage equal to your Block."})
+        self.assertEqual(upgrade_gain(*strike), 3.0)
+        self.assertEqual(upgrade_gain(*big), 12.0)
+        self.assertEqual(upgrade_gain(*cheap), 6.0)  # a point of energy saved on every play
+        table = {"STRIKE_R": 3.0, "DEVASTATE": 12.0, "SHRUG_IT_OFF": 3.0}
+        shrug = card(3, "SHRUG_IT_OFF", "Shrug It Off", "Skill", 1, "Gain 8 Block. Draw 1 card.", "Self")
+        mem = Memory(upgrade_gain=lambda c: table.get(c["id"]))
+        state = {"state_type": "card_select", "run": {"act": 1, "floor": 6},
+                 "card_select": {"screen_type": "upgrade", "prompt": "Choose a card to Upgrade.", "cards": [strike[0], shrug, big[0]]}}
+        first = next(a for a in strategy.card_select(state, mem) if a[0] == "select_card")
+        self.assertEqual(first[1]["index"], 1)  # Devastate, though Shrug It Off is the better-rated card
+
+
+class Tuning(unittest.TestCase):
+    def test_settings_that_do_well_get_used_more(self):
+        import random
+        from unittest import mock
+        from sts2bot import learn
+
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(learn.KNOB):
+            knobs = learn.Knobs(Path(d) / "tuning.json", rng=random.Random(1))
+            for _ in range(300):
+                knobs.draw()
+                knobs.record(8.0 if learn.KNOB["caution"] == 1.35 else -4.0)  # careful runs get further
+            used = [learn.Knobs(Path(d) / "tuning.json", rng=random.Random(n)).draw()["caution"] for n in range(40)]
+            self.assertGreater(used.count(1.35), 30)
+        self.assertEqual(learn.knob("caution"), 1.0)  # the defaults are back
+
+
 class Strategy(unittest.TestCase):
     def base(self, kind, hp=80, gold=100, **body):
         return {"state_type": kind, "run": {"act": 1, "floor": 5}, "player": {"hp": hp, "max_hp": 80, "gold": gold, "potions": []}, **body}
@@ -266,6 +436,21 @@ class Strategy(unittest.TestCase):
         }
         self.assertEqual(strategy.map_screen(self.base("map", map=m), Memory())[0][1], {"index": 1})
 
+    def test_route_keeps_enough_health_for_the_boss(self):
+        # An elite right before the boss costs more than its relic is worth, even from
+        # full health; with a rest site in between it is fine, unless we are badly hurt.
+        def route(mid):
+            nodes = [{"col": 0, "row": 12, "type": "Elite", "children": [[0, 13]]}, {"col": 1, "row": 12, "type": "Monster", "children": [[0, 13]]},
+                     {"col": 0, "row": 13, "type": mid, "children": [[0, 14]]}, {"col": 0, "row": 14, "type": "Boss", "children": []}]
+            opts = [{"index": 0, "col": 0, "row": 12, "type": "Elite"}, {"index": 1, "col": 1, "row": 12, "type": "Monster"}]
+            return {"next_options": opts, "nodes": nodes}
+
+        pick = lambda hp, mid: strategy.map_screen(self.base("map", hp=hp, map=route(mid)), Memory())[0][1]["index"]
+        self.assertEqual(pick(80, "Unknown"), 1)
+        self.assertEqual(pick(80, "RestSite"), 0)
+        self.assertEqual(pick(40, "RestSite"), 1)
+        self.assertGreater(strategy.boss_odds(0.9), strategy.boss_odds(0.6))
+
     def test_rests_before_the_boss_unless_nearly_full(self):
         opts = [{"index": 0, "id": "REST", "is_enabled": True}, {"index": 1, "id": "SMITH", "is_enabled": True}]
         s = self.base("rest_site", hp=60, rest_site={"options": opts})  # 75%
@@ -281,6 +466,8 @@ class Strategy(unittest.TestCase):
         mem = Memory()
         self.assertEqual(strategy.map_screen(s, mem)[0][1]["index"], 1)
         self.assertTrue(mem.boss_next)
+        # Later on an elite is fine, as long as there is a rest site before the boss.
+        nodes[2:] = [{"col": 0, "row": 3, "type": "RestSite", "children": [[0, 4]]}, {"col": 0, "row": 4, "type": "Boss", "children": []}]
         s["run"]["act"] = 2
         self.assertEqual(strategy.map_screen(s, mem)[0][1]["index"], 0)
 
@@ -384,6 +571,23 @@ class Strategy(unittest.TestCase):
         first = [strategy.menu(s, mem, "auto")[0] for _ in range(25)]
         self.assertEqual(first[-1], ("menu_select", {"option": "confirm"}))
 
+    def test_epochs_come_before_ascension_levels(self):
+        chars = [{"id": "IRONCLAD", "locked": False}]
+        s = {"state_type": "menu", "menu_screen": "character_select", "characters": chars,
+             "options": [{"name": "IRONCLAD", "enabled": True}, {"name": "confirm", "enabled": True}],
+             "ascension": 0, "max_ascension": 3}
+        epochs = {"IRONCLAD4_EPOCH": "Revealed", "IRONCLAD7_EPOCH": "NotObtained"}
+        mem = Memory(max_ascension={"IRONCLAD": 3}, epochs=dict(epochs), character_selected=True)
+        # Its Ascension 1 epoch is still to earn: level 1, not the highest.
+        self.assertEqual(strategy.menu(s, mem, "IRONCLAD")[0], ("set_ascension", {"level": 1}))
+        # That done but the Timeline not complete (other epochs out there): the easiest level.
+        mem.epochs["IRONCLAD7_EPOCH"] = "Revealed"
+        s["ascension"] = 2
+        self.assertEqual(strategy.menu(s, mem, "IRONCLAD")[0], ("set_ascension", {"level": 0}))
+        # Every epoch in: climb.
+        mem.epochs = {f"E{n}_EPOCH": "Revealed" for n in range(strategy.TOTAL_EPOCHS)}
+        self.assertEqual(strategy.menu(s, mem, "IRONCLAD")[0], ("set_ascension", {"level": 3}))
+
     def test_auto_plays_towards_unlocking_every_epoch(self):
         epochs = {
             "IRONCLAD2_EPOCH": "Revealed", "IRONCLAD7_EPOCH": "NotObtained",
@@ -400,6 +604,32 @@ class Strategy(unittest.TestCase):
         # Nobody has epochs left: back to evening out the ascension levels.
         done = {k: "Revealed" for k in epochs}
         self.assertEqual(strategy.choose_character("auto", who, 0, {"IRONCLAD": 1, "REGENT": 2}, done), "SILENT")
+
+    def test_auto_knows_what_each_epoch_takes(self):
+        epochs = {f"{c}{n}_EPOCH": "NotObtained" for c in ("DEFECT", "REGENT", "SILENT") for n in (4, 6, 7)}
+        epochs["SILENT6_EPOCH"] = "Revealed"
+        who = ["SILENT", "REGENT", "DEFECT"]
+        kills = {"SILENT": 16, "REGENT": 8, "DEFECT": 13}
+        strength = {"SILENT": 0.7, "REGENT": 0.55, "DEFECT": 0.85}
+        pick = lambda **kw: strategy.choose_character("auto", who, 0, {}, epochs, kw.get("drought"), kw.get("kills", kills), strength)
+        # Two bosses short of the 15-boss epoch, and the strongest: the Defect.
+        self.assertEqual(pick(), "DEFECT")
+        # Bosses still count when nothing else has come of the last runs.
+        self.assertEqual(pick(drought={"DEFECT": 20}), "REGENT")  # also short of bosses; the Silent is not
+        # With the boss epochs done, wins are what is left: the strongest goes first,
+        # and the others get a turn when it keeps coming back with nothing.
+        done = {"SILENT": 16, "REGENT": 15, "DEFECT": 15}
+        epochs.update(REGENT6_EPOCH="Revealed", DEFECT6_EPOCH="Revealed")
+        self.assertEqual(pick(kills=done), "DEFECT")
+        self.assertEqual(pick(kills=done, drought={"DEFECT": 8}), "SILENT")
+
+    def test_one_character_can_be_put_first(self):
+        epochs = {"IRONCLAD7_EPOCH": "NotObtained", "REGENT4_EPOCH": "NotObtained", "REGENT6_EPOCH": "NotObtained", "REGENT7_EPOCH": "NotObtained"}
+        who = ["IRONCLAD", "REGENT"]
+        self.assertEqual(strategy.choose_character("auto", who, 0, {}, epochs), "REGENT")
+        self.assertEqual(strategy.choose_character("auto:ironclad", who, 0, {}, epochs), "IRONCLAD")
+        epochs["IRONCLAD7_EPOCH"] = "Revealed"  # done: back to the usual order
+        self.assertEqual(strategy.choose_character("auto:ironclad", who, 0, {}, epochs), "REGENT")
 
     def test_character_choice(self):
         unlocked = ["IRONCLAD", "SILENT", "REGENT"]
@@ -849,6 +1079,51 @@ class CrashLoop(unittest.TestCase):
         bot.progress.return_value = (3, 1, 7)
         sup._note_crash()
         self.assertFalse(bot.abandon_next)
+
+
+class SteamUpkeep(unittest.TestCase):
+    """The game started directly needs the Steam client; the supervisor starts it."""
+
+    def test_steam_is_started_before_the_game_when_it_is_not_running(self):
+        from unittest import mock
+        from sts2bot import supervisor
+
+        events = []
+        up = {"steam": False}
+
+        def running(name):
+            return up["steam"]
+
+        def popen(argv, **kw):
+            events.append(Path(argv[0]).name)
+            if Path(argv[0]).name == "steam":
+                up["steam"] = True
+            return mock.Mock(poll=lambda: None)
+
+        with mock.patch.object(supervisor, "_process_running", running), mock.patch.object(
+            supervisor.shutil, "which", return_value="/usr/bin/steam"
+        ), mock.patch.object(supervisor.subprocess, "Popen", popen), mock.patch.object(
+            supervisor.time, "sleep"
+        ), mock.patch.object(supervisor, "_children", []), mock.patch.dict(supervisor.os.environ):
+            supervisor.os.environ.pop("INVOCATION_ID", None)  # not under systemd: started directly
+            supervisor.launch_game("/games/sts2/SlayTheSpire2")
+            self.assertEqual(events, ["steam", "SlayTheSpire2"])
+            supervisor.launch_game("/games/sts2/SlayTheSpire2")  # Steam is up now: not started twice
+            self.assertEqual(events, ["steam", "SlayTheSpire2", "SlayTheSpire2"])
+
+
+    def test_under_systemd_the_game_gets_a_scope_of_its_own(self):
+        from unittest import mock
+        from sts2bot import supervisor
+
+        with mock.patch.dict(supervisor.os.environ, {"INVOCATION_ID": "abc"}), mock.patch.object(
+            supervisor.shutil, "which", return_value="/usr/bin/systemd-run"
+        ):
+            self.assertEqual(supervisor._detached(["game", "-x"])[:3], ["systemd-run", "--user", "--scope"])
+            self.assertEqual(supervisor._detached(["game", "-x"])[-2:], ["game", "-x"])
+        with mock.patch.dict(supervisor.os.environ):
+            supervisor.os.environ.pop("INVOCATION_ID", None)
+            self.assertEqual(supervisor._detached(["game"]), ["game"])
 
 
 class ModUpkeep(unittest.TestCase):
