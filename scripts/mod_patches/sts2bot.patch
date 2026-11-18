@@ -300,10 +300,10 @@ index 76eee84..2a48de6 100644
          if (previewShowing)
          {
 diff --git a/McpMod.cs b/McpMod.cs
-index 3b5ed64..da2a585 100644
+index 3b5ed64..97f307d 100644
 --- a/McpMod.cs
 +++ b/McpMod.cs
-@@ -450,6 +450,112 @@ public static partial class McpMod
+@@ -450,6 +450,144 @@ public static partial class McpMod
  
          string action = actionElem.GetString() ?? "";
  
@@ -374,6 +374,38 @@ index 3b5ed64..da2a585 100644
 +            catch (Exception ex)
 +            {
 +                SendError(response, 500, $"Setting light graphics failed: {ex.Message}");
++            }
++            return;
++        }
++
++        // sts2bot: run the whole game clock faster (animations, timers, delays between enemy moves).
++        // Applies to this session only.
++        if (action == "set_time_scale")
++        {
++            try
++            {
++                double scale = parsed.TryGetValue("scale", out var sElem) && sElem.TryGetDouble(out var sc) ? sc : 1.0;
++                if (scale < 0.25 || scale > 8.0)
++                {
++                    SendError(response, 400, "scale must be between 0.25 and 8");
++                    return;
++                }
++                var resultTask = RunOnMainThread(() =>
++                {
++                    double before = Engine.TimeScale;
++                    Engine.TimeScale = scale;
++                    return new Dictionary<string, object?>
++                    {
++                        ["status"] = "ok",
++                        ["message"] = $"Time scale {scale}",
++                        ["scale_before"] = before
++                    };
++                });
++                SendJson(response, resultTask.GetAwaiter().GetResult());
++            }
++            catch (Exception ex)
++            {
++                SendError(response, 500, $"Setting the time scale failed: {ex.Message}");
 +            }
 +            return;
 +        }

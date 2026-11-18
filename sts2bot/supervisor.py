@@ -229,6 +229,21 @@ def set_light_graphics(client: Client, width: int = 960, height: int = 540) -> b
     return True
 
 
+def set_time_scale(client: Client, scale: float) -> bool:
+    """Run the game's own clock `scale` times faster, for this session only.
+
+    Instant mode skips the card animations; what is left is the game waiting
+    on its timers (between enemy moves, room changes, reward screens). Those
+    all run on the engine clock, which the mod can speed up.
+    """
+    result = client.act("set_time_scale", scale=scale)
+    if result.get("status") == "error" or "error" in result:
+        log.warning("could not set the time scale (%s); re-run scripts/install_mod.sh to update the mod", result.get("error"))
+        return False
+    log.info("time scale: x%g", scale)
+    return True
+
+
 def _detached(argv: list[str]) -> list[str]:
     """Under systemd, start Steam and the game in a scope of their own.
 
@@ -322,6 +337,7 @@ class Supervisor:
         manage_game: bool = True,
         fast_mode: str | None = "instant",
         light_graphics: bool = True,
+        time_scale: float = 1.0,
         boot_timeout: float = 240.0,
         outage_grace: float = 45.0,
         heal_mod: bool = True,
@@ -332,6 +348,7 @@ class Supervisor:
         self.manage_game = manage_game
         self.fast_mode = fast_mode
         self.light_graphics = light_graphics
+        self.time_scale = time_scale
         self.boot_timeout = boot_timeout
         self.outage_grace = outage_grace
         self.heal_mod = heal_mod and manage_game
@@ -452,6 +469,8 @@ class Supervisor:
                     set_fast_mode(self.client, self.fast_mode)
                 if self.light_graphics:
                     set_light_graphics(self.client)
+                if self.time_scale and self.time_scale != 1.0:
+                    set_time_scale(self.client, self.time_scale)
                 self.bot.run(max_runs)
             except GameUnavailable as e:
                 log.warning("lost contact with the game: %s", e)
