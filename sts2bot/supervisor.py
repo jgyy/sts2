@@ -429,7 +429,7 @@ class Supervisor:
         where = self.bot.progress()
         self._crash_repeats = self._crash_repeats + 1 if where == self._crash_at else 0
         self._crash_at = where
-        if self._crash_repeats >= 3:
+        if self._crash_repeats >= 2:  # the third crash in the same place: a loop, not chance
             log.warning("the game keeps crashing at %s; the run will be abandoned", where)
             self.bot.abandon_next = True
             self._crash_repeats = 0
