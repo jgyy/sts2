@@ -14,11 +14,13 @@ Slay the Spire 2  <-- STS2_MCP mod (HTTP on localhost:15526) -->  sts2bot (Pytho
   inside the game and exposes the game state and actions on localhost.
   `scripts/install_mod.sh` builds it from source at a pinned commit.
 - **Bot** (`sts2bot/`, standard library only). Polls the state, decides, acts.
+  - `battle.py` reads a fight from the game state (enemies, intents, powers,
+    cards that hurt while held); `potions.py` decides when to drink.
   - `combat.py` scores every affordable set of cards in hand with a small
     simulation (damage, kills, block against enemy intents, lethal checks),
     plays the first card of the best line, then plans again.
-  - `strategy.py` handles the map, rewards, shops, rest sites, events and card
-    selections. The map is planned a whole route at a time: every way to the
+  - `strategy.py` handles the map, rewards, shops, rest sites and card
+    selections; `events.py` rates event options. The map is planned a whole route at a time: every way to the
     boss is scored by what it gives (relics, cards, upgrades) against the
     health the bot would arrive with, because the run history shows the boss
     is rarely beaten from below 75% HP. Rest sites use the same sums to
@@ -183,6 +185,9 @@ In `~/.local/state/sts2bot/` (change with `--log-dir`):
 ```sh
 python3 -m unittest discover -s tests -t .
 ```
+
+No script is longer than 1000 lines (`tests/test_size.py` fails if one grows
+past that; split it).
 
 The tests run the bot against a small simulated game (`tests/fake_game.py`)
 that speaks the same state and action format as the mod. They do not need the

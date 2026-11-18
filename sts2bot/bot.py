@@ -100,6 +100,7 @@ class Bot:
         self._timeline_idle = 0  # Timeline clicks in a row that changed nothing
         self._facing: str | None = None  # enemy we last aimed at in this fight
         self._facing_fight: tuple = ()
+        self._revive_fight: tuple = ()  # the fight in which the enemy last seen revives when beaten
         self._end_check: tuple = ()  # the hand we last thought about ending the turn on
         self._played_from: tuple = ()  # the hand as it was when we last played a card from it
         self._played_at = 0.0
@@ -216,7 +217,13 @@ class Bot:
         # end of turn that followed left the game waiting for ever.
         if self._hand_sig(state) == self._played_from and self.clock() - self._played_at < 2.0:
             return []
-        wanted = combat.actions({**state, "_plays_this_turn": self._turn_plays, "_facing": self._facing})
+        # An enemy that revives stronger (Adaptable) leaves the field for the
+        # rest of the turn it is beaten in: remember that it is coming back.
+        standing = [e for e in battle.get("enemies") or [] if int(e.get("hp") or 0) > 0]
+        if standing:
+            self._revive_fight = key[:2] if any(combat.power_amount(e, "ADAPTABLE") for e in standing) else ()
+        revive = not standing and self._revive_fight == key[:2]
+        wanted = combat.actions({**state, "_plays_this_turn": self._turn_plays, "_facing": self._facing, "_revive_pending": revive})
         # Cards that draw (or reshuffle the hand, like Reboot) show up a moment
         # after the card that brought them: straight after Reboot the hand read
         # as empty, and the bot ended a turn with 4 energy and a kill in reach.
@@ -328,8 +335,14 @@ class Bot:
                 if pid not in self._seen_powers:
                     self._seen_powers.add(pid)
                     log.info("power %s (on %s): %s", pid, c.get("name") or c.get("character") or "player", p.get("description"))
-        # Same for keywords on our cards (enchantments, afflictions a boss puts on them, ...).
+        # Same for keywords on our cards (enchantments, afflictions a boss puts on them, ...),
+        # and for the cards a fight puts in our hand (Wither, Beckon, Frantic Escape, ...).
         for c in (state.get("player") or {}).get("hand") or []:
+            if str(c.get("type")) in ("Status", "Curse"):
+                name = "card:" + str(c.get("name"))
+                if name not in self._seen_powers:
+                    self._seen_powers.add(name)
+                    log.info("card %s (%s, cost %s): %s", c.get("name"), c.get("type"), c.get("cost"), c.get("description"))
             for k in c.get("keywords") or []:
                 name = "kw:" + str(k.get("name"))
                 if name not in self._seen_powers:

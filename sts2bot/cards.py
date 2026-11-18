@@ -143,7 +143,9 @@ def parse(card: dict) -> CardInfo:
             plain = text[: m.start()] + text[m.end() :]
         hits = _int(r"(\d+)\s+times", plain) or 1
         for word, n in _WORD_NUM.items():
-            if re.search(rf"\b{word}\b", plain, re.I):
+            # Only where it counts the hits: Debilitate ("Deal 10 damage. Vulnerable and
+            # Weak are twice as effective ...") was planned as two hits and dealt one.
+            if re.search(rf"(?:damage[^.]*|\bhits?\s+)\b{word}\b", plain, re.I):
                 hits = n
     m = re.search(r"\(hits\s+(\d+)\s+times?\)", full_text, re.I)
     if m and damage:  # "Deal 5 damage for each Skill in your Hand. (Hits 2 times)"
@@ -151,6 +153,8 @@ def parse(card: dict) -> CardInfo:
         if hits == 0:
             damage = 0
     block = _int(r"gain\s+(\d+)\s+block", text)
+    if not block and damage and re.search(r"gain\s+block\s+equal\s+to\s+(?:the\s+)?damage\s+dealt", text, re.I):
+        block = damage * hits  # Fisticuffs
     vulnerable = _int(r"apply\s+(\d+)\s+vulnerable", text) or _int(r"(\d+)\s+(?:weak\s+and\s+)?vulnerable", text)
     weak = _int(r"apply\s+(\d+)\s+weak", text) or _int(r"(\d+)\s+(?:vulnerable\s+and\s+)?weak", text)
     draw = _int(r"draw\s+(\d+)\s+card", text) or (1 if re.search(r"draw\s+a\s+card", text, re.I) else 0)
@@ -181,7 +185,9 @@ def parse(card: dict) -> CardInfo:
         for count, orb in re.findall(r"channel\s+(\d+)\s+(lightning|frost|dark|plasma|glass)", text, re.I)
         for _ in range(int(count))
     )
-    evoke = (2 if re.search(r"evoke[^.]*twice", text, re.I) else 1) if re.search(r"\bevoke\s+your", text, re.I) else 0
+    evoke = 0
+    if re.search(r"\bevoke\s+your", text, re.I):  # "Evoke your rightmost Orb twice." / "... 4 times."
+        evoke = 2 if re.search(r"evoke[^.]*twice", text, re.I) else _int(r"evoke[^.]*?(\d+)\s+times", text) or 1
     m = re.search(r"gain\s+((?:\[[a-z_]*energy_icon\.png\]\s*)+)", next_text, re.I)
     next_energy = len(_ENERGY_ICON.findall(m.group(1))) if m else 0
     next_draw = _int(r"draw\s+(\d+)\s+cards?", next_text)

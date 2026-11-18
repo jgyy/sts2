@@ -13,7 +13,13 @@ import re
 from dataclasses import dataclass, replace
 from itertools import combinations, permutations
 
+from .battle import (  # noqa: F401  (also the names other modules and the tests reach through here)
+    BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, SANDPIT_DEATH, WIN_BONUS, Enemy,
+    _has_power, _is_attack, constrict, end_of_turn_block, end_of_turn_loss, expected_loss, hand_burns,
+    intent_damage, intent_hits, osty_hp, power_amount, read_enemies,
+)
 from .cards import CardInfo, parse
+from .potions import describe, potion_actions  # noqa: F401
 from .learn import knob
 
 Action = tuple[str, dict]
@@ -21,239 +27,6 @@ Action = tuple[str, dict]
 log = logging.getLogger("sts2bot.combat")
 
 MAX_SEARCH_CARDS = 11
-LETHAL_PENALTY = 1_000_000.0
-WIN_BONUS = 10_000.0
-RAGE_BLOCK = 99  # Crab Rage: Block a crab gains for each ally that dies (gone again when its next turn starts)
-
-
-# What playing each Power is worth in an ordinary fight, in points of damage
-# (the planner multiplies it for elites and bosses, where it pays for longer).
-# Powers that are not listed get a guess from their cost.
-# What a freshly channeled orb does: (each turn, when evoked). Focus changes
-# these; the live numbers for orbs already held come from the game.
-ORB_VALUES = {"LIGHTNING": (3, 8), "FROST": (2, 5), "DARK": (6, 6), "PLASMA": (0, 0), "GLASS": (4, 8)}
-
-POWER_VALUE = {
-    "DEMON_FORM": 24.0, "ROLLING_BOULDER": 18.0, "PYRE": 16.0, "CRIMSON_MANTLE": 12.0, "MAYHEM": 9.0,
-    "STONE_ARMOR": 8.0, "AGGRESSION": 8.0, "UNMOVABLE": 7.0, "FASTEN": 6.0, "JUGGERNAUT": 6.0, "HELLRAISER": 6.0,
-    "STAMPEDE": 5.0, "PANACHE": 4.0, "JUGGLING": 4.0, "VICIOUS": 4.0, "DARK_EMBRACE": 4.0, "STRATAGEM": 4.0,
-    "BARRICADE": 4.0, "FEEL_NO_PAIN": 3.0, "RUPTURE": 3.0,
-    # other characters
-    "SERPENT_FORM": 16.0, "NOXIOUS_FUMES": 14.0, "AFTERIMAGE": 10.0, "CREATIVE_AI": 10.0, "ABRASIVE": 9.0,
-    "HAILSTORM": 9.0, "INFINITE_BLADES": 8.0, "ENVENOM": 8.0, "FAN_OF_KNIVES": 8.0, "SEEKING_EDGE": 8.0,
-    "CAPACITOR": 7.0, "LETHALITY": 7.0, "ACCURACY": 6.0, "TOOLS_OF_THE_TRADE": 6.0, "SPEEDSTER": 6.0,
-    "PARRY": 6.0, "CHILD_OF_THE_STARS": 6.0, "CALL_OF_THE_VOID": 6.0, "TYRANNY": 6.0, "SPECTRUM_SHIFT": 6.0,
-    "WELL_LAID_PLANS": 5.0, "TRACKING": 5.0, "SHROUD": 5.0, "HAUNT": 5.0, "ORBIT": 5.0, "STORM": 5.0,
-    "THUNDER": 5.0, "ACCELERANT": 4.0, "PILLAR_OF_CREATION": 4.0, "PALE_BLUE_DOT": 4.0, "FERAL": 4.0,
-    "ITERATION": 3.0, "TRASH_TO_TREASURE": 3.0, "ROYALTIES": 2.0,
-    "ECHO_FORM": 14.0, "FRIENDSHIP": 12.0, "MACHINE_LEARNING": 10.0, "DEFRAGMENT": 10.0, "GENESIS": 9.0,
-    "COOLANT": 8.0, "SPINNER": 8.0, "BUFFER": 8.0, "SENTRY_MODE": 8.0, "NECRO_MASTERY": 8.0, "LOOP": 7.0,
-    "BLACK_HOLE": 7.0, "SLEIGHT_OF_FLESH": 6.0, "NEUROSURGE": 6.0, "DANSE_MACABRE": 4.0, "SUBROUTINE": 3.0,
-    "PAGESTORM": 2.0,
-}
-
-
-@dataclass
-class Enemy:
-    entity_id: str
-    hp: int
-    block: int
-    vulnerable: bool
-    weak: bool
-    incoming: int  # damage this enemy intends to deal this turn
-    slippery: int = 0  # the next N hits only remove 1 HP each
-    damage_mult: float = 1.0  # e.g. Flutter: 50% less damage from attacks
-    thorns: int = 0  # damage we take back per hit
-    revives: bool = False  # Illusion: comes back next turn at full HP
-    stun_at: int = 0  # Plow: Stunned (and loses its Strength) once HP drops to this
-    slow: int = -1  # Slow: % extra attack damage taken so far this turn, +10 per card we play (-1: none)
-    minion: bool = False  # leaves the fight when its leader dies
-    incoming_hits: int = 0  # how many separate hits make up `incoming`
-    keeps_block: bool = False  # Burrowed: its Block stays until we break it, which Stuns it
-    chipped: int = 0  # Block our attacks have removed so far in this plan
-    artifact: int = 0  # the next N debuffs we apply do nothing
-    hit_cap: int = 0  # Hard to Kill: no single hit removes more HP than this
-    enrage: int = 0  # Strength it gains whenever we play a Skill
-    vuln_turns: int = 0  # turns of Vulnerable / Weak it has left
-    weak_turns: int = 0
-    vuln_added: int = 0  # ... and how many of those this plan added
-    weak_added: int = 0
-    poison: int = 0  # Poison on it: loses that much HP at the start of its turn, before it acts
-    doom: int = 0  # Doom on it: dies at the end of its turn once Doom covers its HP
-    flanker: bool = False  # Back Attack: hits 50% harder from behind us
-    behind: bool = False  # ... and is behind us right now (its intent already shows the bonus)
-
-    vuln_mult: float = 1.5  # what Vulnerable multiplies our attacks by (Debilitate doubles its effect)
-    weak_cut: float = 0.75  # what Weak multiplies its attacks by
-    weak_mult: float = 1.0  # Tracking: our attacks hit a Weak enemy this much harder
-    rage: bool = False  # Crab Rage: gains 6 Strength and 99 Block when an ally dies
-    scar: float = 0.0  # extra cost of each of its hits that gets through (Paper Cuts: Max HP; Painful Stabs: a Wound)
-
-    main_threat: bool = False  # a minion that is doing the real damage and is quicker to kill than its leader
-    respawns: int = 0  # Stock: when killed it is summoned again in its place, at full HP, this many more times
-    max_hp: int = 0  # its full HP (what a Stock summon comes back with)
-
-    @property
-    def worth(self) -> float:
-        """How much damaging this enemy brings the fight closer to its end."""
-        if self.revives:
-            return 0.0
-        if self.minion:
-            return 1.0 if self.main_threat else 0.4
-        return 1.0
-
-    @property
-    def alive(self) -> bool:
-        return self.hp > 0
-
-
-def intent_damage(intent: dict) -> int:
-    if "attack" not in str(intent.get("type", "")).lower():
-        return 0
-    for field in ("label", "description"):
-        text = str(intent.get(field) or "")
-        m = re.search(r"(\d+)\s*[xX×*]\s*(\d+)", text)
-        if m:
-            return int(m.group(1)) * int(m.group(2))
-        m = re.search(r"(\d+)", text)
-        if m:
-            return int(m.group(1))
-    return 0
-
-
-def intent_hits(intent: dict) -> int:
-    if "attack" not in str(intent.get("type", "")).lower():
-        return 0
-    for field in ("label", "description"):
-        m = re.search(r"\d+\s*[xX×*]\s*(\d+)", str(intent.get(field) or ""))
-        if m:
-            return int(m.group(1))
-    return 1 if intent_damage(intent) else 0
-
-
-def power_amount(creature: dict, power_id: str) -> int:
-    """Stacks of a power on a creature. The game names them like VULNERABLE_POWER."""
-    for p in creature.get("status") or []:
-        pid = str(p.get("id", "")).upper()
-        if pid.endswith("_POWER"):
-            pid = pid[: -len("_POWER")]
-        if pid == power_id:
-            amount = p.get("amount")
-            return int(amount) if isinstance(amount, (int, float)) and amount else 1
-    return 0
-
-
-def _slow_percent(creature: dict) -> int:
-    for p in creature.get("status") or []:
-        if str(p.get("id", "")).upper() in ("SLOW", "SLOW_POWER"):
-            amount = p.get("amount")
-            return int(amount) if isinstance(amount, (int, float)) else 0
-    return -1
-
-
-def _has_power(creature: dict, power_id: str) -> bool:
-    return power_amount(creature, power_id) != 0
-
-
-def end_of_turn_block(player: dict) -> int:
-    """Block the player gains by itself when the turn ends (Plating)."""
-    return max(0, power_amount(player, "PLATING"))
-
-
-_HAND_BURN = re.compile(r"at the end of your turn, if this is in your hand, (?:lose|take) (\d+) (?:hp|damage)", re.I)
-
-
-def end_of_turn_loss(player: dict) -> int:
-    """HP that goes at the end of the turn no matter what we play (Disintegration).
-    Leaving it out made the bot think it could afford a hit that killed it."""
-    return max(0, power_amount(player, "DISINTEGRATION")) if _has_power(player, "DISINTEGRATION") else 0
-
-
-def hand_burns(player: dict) -> tuple:
-    """Cards that hurt if they are still in the hand when the turn ends, as
-    (hand index, HP). Most cannot be played; Toxic can (1 energy, Exhaust),
-    and the bot sat on three of them, taking 15 a turn, with energy to spare.
-    An amount of -1 stands for Regret: 1 HP for every card left in the hand."""
-    out = []
-    for c in player.get("hand") or []:
-        text = str(c.get("description") or "")
-        m = _HAND_BURN.search(text)
-        if m:
-            out.append((int(c.get("index", -1)), int(m.group(1))))
-        elif re.search(r"if this is in your hand, lose 1 hp for each card in your hand", text, re.I):
-            out.append((int(c.get("index", -1)), -1))
-    return tuple(out)
-
-
-def osty_hp(player: dict) -> int:
-    """HP of the Necrobinder's pet, who takes attacks before she does."""
-    return sum(int(p.get("hp") or 0) for p in player.get("pets") or [] if p.get("alive", True))
-
-
-def read_enemies(state: dict) -> list[Enemy]:
-    out = []
-    for e in (state.get("battle") or {}).get("enemies") or []:
-        hp = int(e.get("hp") or 0)
-        if hp <= 0:
-            continue
-        out.append(
-            Enemy(
-                entity_id=str(e.get("entity_id")),
-                hp=hp,
-                block=int(e.get("block") or 0),
-                vulnerable=_has_power(e, "VULNERABLE"),
-                weak=_has_power(e, "WEAK"),
-                vuln_turns=max(0, power_amount(e, "VULNERABLE")),
-                weak_turns=max(0, power_amount(e, "WEAK")),
-                slippery=max(0, power_amount(e, "SLIPPERY")),
-                damage_mult=0.5 if _has_power(e, "FLUTTER") or _has_power(e, "SOAR") else 1.0,
-                # Intangible: every hit takes 1 HP, whatever its size.
-                hit_cap=1 if _has_power(e, "INTANGIBLE") else max(0, power_amount(e, "HARD_TO_KILL")),
-                enrage=max(0, power_amount(e, "ENRAGE")),
-                thorns=max(0, power_amount(e, "THORNS")),
-                revives=_has_power(e, "ILLUSION"),
-                stun_at=max(0, power_amount(e, "PLOW")),
-                slow=_slow_percent(e),
-                minion=_has_power(e, "MINION"),
-                keeps_block=_has_power(e, "BURROWED") or _has_power(e, "BARRICADE"),
-                artifact=max(0, power_amount(e, "ARTIFACT")),
-                poison=max(0, power_amount(e, "POISON")),
-                doom=max(0, power_amount(e, "DOOM")),
-                incoming=sum(intent_damage(i) for i in e.get("intents") or []),
-                incoming_hits=sum(intent_hits(i) for i in e.get("intents") or []),
-                vuln_mult=2.0 if _has_power(e, "DEBILITATE") else 1.5,
-                weak_cut=0.5 if _has_power(e, "DEBILITATE") else 0.75,
-                weak_mult=1.5 if _has_power(state.get("player") or {}, "TRACKING") else 1.0,
-                scar=8.0 * _has_power(e, "PAPER_CUTS") + 4.0 * _has_power(e, "PAINFUL_STABS"),
-                rage=_has_power(e, "CRAB_RAGE"),
-                respawns=max(0, power_amount(e, "STOCK")),
-                max_hp=int(e.get("max_hp") or 0),
-            )
-        )
-    # Surrounded: we face whoever we targeted last, and the one behind us hits
-    # 50% harder. The fight starts with us facing right.
-    if _has_power(state.get("player") or {}, "SURROUNDED"):
-        facing = state.get("_facing")
-        raw = {str(e.get("entity_id")): e for e in (state.get("battle") or {}).get("enemies") or []}
-        for e in out:
-            left = _has_power(raw.get(e.entity_id) or {}, "BACK_ATTACK_LEFT")
-            right = _has_power(raw.get(e.entity_id) or {}, "BACK_ATTACK_RIGHT")
-            e.flanker = left or right
-            if e.flanker:
-                e.behind = e.entity_id != facing if facing in raw else left
-
-    # Minions leave when their leader dies, so the leader is normally the
-    # target. Not when the leader only buffs and one minion with far less HP
-    # deals all the damage: against the Queen the bot hit her 400 HP while her
-    # 199 HP minion took 30 to 50 HP off it every turn.
-    leaders = [e for e in out if not e.minion]
-    if leaders:
-        leader_hp = sum(e.hp + e.block for e in leaders)
-        leader_hits = sum(e.incoming for e in leaders)
-        for e in out:
-            if e.minion and e.incoming >= 15 and e.incoming > 2 * leader_hits and e.hp + e.block <= 0.6 * leader_hp:
-                e.main_threat = True
-    return out
 
 
 def _order_key(c: CardInfo) -> tuple:
@@ -278,11 +51,17 @@ def _hit_count(e: Enemy, hits: int, double_if_vulnerable: bool = False) -> int:
     return hits * (2 if double_if_vulnerable and e.vulnerable else 1)
 
 
-def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> int:
-    """Apply an attack hit by hit, return HP actually removed."""
-    per = dmg_per_hit * (e.vuln_mult if e.vulnerable else 1.0) * (e.weak_mult if e.weak else 1.0) * e.damage_mult
-    if e.slow > 0:
-        per *= 1.0 + e.slow / 100.0
+def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False, raw: bool = False) -> int:
+    """Apply an attack hit by hit, return HP actually removed.
+
+    `raw` is damage that is not an Attack (an orb's): Vulnerable does nothing
+    for it (a Lightning evoked twice did 16 to a Vulnerable enemy, 18 times in 18).
+    """
+    per = dmg_per_hit * e.damage_mult
+    if not raw:
+        per *= (e.vuln_mult if e.vulnerable else 1.0) * (e.weak_mult if e.weak else 1.0)
+        if e.slow > 0:
+            per *= 1.0 + e.slow / 100.0
     per = int(per)
     removed = 0
     for _ in range(_hit_count(e, hits, double_if_vulnerable)):
@@ -322,6 +101,16 @@ def _respawns(foes: list[Enemy]) -> None:
         if not e.alive and e.respawns > 0 and e.max_hp > 0:
             e.hp, e.block = e.max_hp, 0
             e.respawns -= 1
+        elif not e.alive and e.adapts:
+            # The Test Subject's first two forms: beating one is not the fight
+            # won. It leaves for the rest of the turn (nothing more can be
+            # aimed at it, and its attack does not happen) and comes back next
+            # turn with 100 HP more. Counted as a win, the kill used to come
+            # before the Powers that the next 500 HP were going to need.
+            e.hp, e.block, e.spent, e.damage_mult = BEYOND_REACH, 0, True, 0.0
+            e.incoming = e.incoming_hits = 0
+            e.poison = e.doom = 0
+            e.adapts, e.adapted = False, True
 
 
 def _rage_blocks(foes: list[Enemy], known_dead: set) -> None:
@@ -339,6 +128,28 @@ def _rage_blocks(foes: list[Enemy], known_dead: set) -> None:
     for e in foes:
         if e.alive and e.rage:
             e.block += RAGE_BLOCK * len(newly)
+
+
+def _orb_damage(kind: str, amount: int, foes: list[Enemy], chip_rate: float, dmg_value: float) -> float:
+    """What an orb's damage is worth, taken off the enemies it lands on.
+
+    Glass hits everyone, Dark the enemy with the least HP, Lightning one at
+    random: with a single enemy left that is no gamble, and the damage is
+    applied, so a kill by orb is seen as a kill (it used to be points only,
+    and a boss on 12 HP facing two Lightning evokes was not "dead").
+    """
+    alive = [e for e in foes if e.alive]
+    if amount <= 0 or not alive:
+        return 0.0
+    if kind == "GLASS":
+        targets = alive
+    elif kind == "DARK":
+        targets = [min(alive, key=lambda e: e.hp)]
+    elif len(alive) == 1:
+        targets = alive
+    else:
+        return amount * 0.8 * dmg_value
+    return sum(_progress(e, _hit(e, amount, 1, raw=True), chip_rate) * dmg_value * e.worth for e in targets)
 
 
 def _would_kill(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> bool:
@@ -402,6 +213,14 @@ def _weaken(e: Enemy, turns: int = 1) -> None:
         e.incoming = int(e.incoming * e.weak_cut)
 
 
+def _poison_total(stack: int, turns: int) -> int:
+    """HP a Poison stack takes over the next `turns` turns (it loses 1 a turn)."""
+    stack = max(0, stack)
+    if stack >= turns:
+        return turns * stack - turns * (turns - 1) // 2
+    return stack * (stack + 1) // 2
+
+
 def _progress(e: Enemy, hp_removed: int, chip_rate: float) -> float:
     """How far an attack moved the fight on: HP removed, plus Block worn down.
 
@@ -434,7 +253,7 @@ def simulate(
     can_block: bool = True,
     sandpit: int | None = None,
     end_loss: int = 0,  # HP we lose at the end of the turn whatever we play
-    burns: tuple = (),  # (hand index, HP) for cards that hurt while they stay in the hand
+    burns: tuple = (),  # (hand index, HP, stopped by Block) for cards that hurt while they stay in the hand
     hand_size: int = 0,
     focus: str | None = None,  # aim every targeted card at this enemy while it lives
     orbs: tuple = (),  # (kind, passive, evoke) for each orb, oldest first
@@ -446,6 +265,8 @@ def simulate(
     buffer: int = 0,  # times we lose no HP when we otherwise would
     taint: int = 0,  # Vital Spark: each Skill played makes every hit on us this turn 2 harder
     draw_worth: tuple = (2.0, 0.0, 0.0),  # of a drawn card: (points if free, share that cost energy, points per energy)
+    focus_power: int = 0,  # Focus: added to what a newly channeled orb does
+    escape_odds: tuple = (0.3, 0.3),  # chance of no Frantic Escape in the next hand, and in a hand later on
     wither_in: int = 0,  # Withering Presence: cards we can still play before a Wither lands in our hand
     wither_hp: int = 5,  # ... and what that Wither will cost (each one is a point worse than the last)
 ) -> Outcome | None:
@@ -598,7 +419,7 @@ def simulate(
                     e.poison += c.poison * x
                 if c.doom and not _resists(e):
                     e.doom += c.doom * x
-                    score += c.doom * x * 0.6 * dmg_value * e.worth
+                    score += c.doom * x * 0.8 * dmg_value * e.worth
                 if c.enemy_hp_loss:
                     lost_hp = min(e.hp, c.enemy_hp_loss)
                     e.hp -= lost_hp
@@ -623,21 +444,27 @@ def simulate(
                 if old[0] == "FROST" and can_block:
                     block += old[2]
                 elif old[0] in ("LIGHTNING", "DARK", "GLASS"):
-                    score += old[2] * 0.8 * dmg_value
+                    score += _orb_damage(old[0], old[2], foes, chip_rate, dmg_value)
             passive, burst = ORB_VALUES.get(kind, (3, 6))
+            if kind != "PLASMA":
+                passive, burst = max(0, passive + focus_power), max(0, burst + focus_power)
             held.append((kind, passive, burst))
             lasting += {"FROST": 3.0, "LIGHTNING": 3.0, "DARK": 4.0, "PLASMA": 6.0, "GLASS": 4.0}.get(kind, 3.0)
-        for _ in range(c.evoke):
+        # "Evoke your rightmost Orb": the one channeled first, which the game
+        # lists first. Taking it for the newest, the bot counted on a fresh
+        # Frost's Block from Dualcast, got a Glass orb's damage instead and
+        # died 3 HP short with the boss on 51.
+        for _ in range(c.evoke * (x if c.is_x else 1)):
             if held:
-                kind, passive, burst = held[-1]
+                kind, passive, burst = held[0]
                 if kind == "FROST" and can_block:
                     block += burst
                 elif kind in ("LIGHTNING", "DARK", "GLASS"):
-                    score += burst * 0.8 * dmg_value
+                    score += _orb_damage(kind, burst, foes, chip_rate, dmg_value)
                 elif kind == "PLASMA":
                     energy += 2
         if c.evoke and held:
-            held.pop()  # evoking uses the orb up
+            held.pop(0)  # evoking uses the orb up
         if c.key == "FRANTIC_ESCAPE":
             escapes += 1
         for e in foes:
@@ -676,33 +503,32 @@ def simulate(
     # Breaking Block that an enemy was keeping Stuns it.
     score += 15.0 * sum(1 for e in foes if e.alive and e.entity_id in kept_block and not e.keeps_block)
     # The Defect's orbs act when the turn ends: Frost adds Block, Lightning hits something.
-    zaps = 0
+    # They hit before the enemy acts: one that dies of them does not attack.
+    _respawns(foes)
+    _rage_blocks(foes, known_dead)
     for kind, passive, _burst in held:
         if kind == "FROST" and can_block:
             block += passive
         elif kind in ("LIGHTNING", "GLASS"):
-            score += passive * 0.7 * dmg_value
-            zaps += passive
-    # With one enemy left there is no doubt whom the Lightning hits, and it
-    # hits before the enemy acts: an enemy on 3 HP is as good as dead.
-    standing = [e for e in foes if e.alive]
-    if zaps and len(standing) == 1 and not standing[0].slippery and not standing[0].hit_cap:
-        if standing[0].hp + standing[0].block <= zaps:
-            standing[0].hp = 0
+            score += 0.9 * _orb_damage(kind, passive, foes, chip_rate, dmg_value)
     score += lasting * span + later
     # Poison bites at the start of the enemy's turn, before it acts: one that
     # is poisoned through is as good as dead now. Otherwise it is damage on
     # its way, a little less each turn.
-    poison_turns = {"boss": 4.0, "elite": 3.0}.get(fight, 2.0)
+    # What is added to a stack keeps ticking for as long as the stack lasts: 5
+    # Poison on a fresh boss is 15 damage, the same 5 on top of 10 is 35 over
+    # seven turns. Priced at a flat 4 a point, stacking it was never worth
+    # more than a Strike.
+    poison_turns = ({"boss": 7, "elite": 4}.get(fight, 3)) if round_no <= late else 3
     for e, orig in zip(foes, enemies):
         if not e.alive:
             continue
         if e.poison >= e.hp:
             e.hp = 0
             continue
-        added = e.poison - orig.poison
-        if added > 0:
-            score += min(e.hp, added * poison_turns) * e.worth
+        if e.poison > orig.poison:
+            gain = _poison_total(e.poison, poison_turns) - _poison_total(orig.poison, poison_turns)
+            score += min(e.hp, gain) * e.worth * (dmg_value if e.hp > 60 else 1.0)
         score += min(e.hp, e.poison) * 0.3 * e.worth  # the tick that comes this turn
     # Vulnerable is half again our damage and Weak a quarter off theirs, for
     # every turn they last. A flat bonus undersold both in long fights, where
@@ -720,6 +546,7 @@ def simulate(
     _respawns(foes)  # a Stock enemy killed by the last card comes back too
     kills = [e for e, orig in zip(foes, enemies) if not e.alive and orig.alive]
     score += 25.0 * sum(e.worth for e in kills)
+    score += 40.0 * sum(1 for e in foes if e.adapted)  # a form beaten: that much of the fight is done
     survivors = [e for e in foes if e.alive]
     # The fight is over once every leader is dead: minions leave with them.
     if not any(not e.minion for e in survivors) and any(not e.minion for e in enemies):
@@ -747,7 +574,13 @@ def simulate(
         if left <= 1:
             score -= LETHAL_PENALTY
         else:
-            score -= {2: 60.0, 3: 25.0, 4: 8.0}.get(left, 0.0)
+            # Ending the turn on 2 means the next hand has to hold an Escape,
+            # and three hands in ten do not: eight of fifteen lost fights
+            # ended in the pit with HP to spare, one with the boss on 4 HP.
+            # So the margin is priced by the chance of running out of it.
+            no_escape, usually = escape_odds
+            risk = no_escape * usually ** (left - 2)
+            score -= max(SANDPIT_DEATH * risk, {2: 60.0, 3: 25.0, 4: 8.0}.get(left, 0.0))
 
     if faced is not None:
         # Turning to face an enemy takes away its 50% bonus and gives it to the other one.
@@ -758,18 +591,22 @@ def simulate(
                 e.incoming = round(e.incoming * 1.5)
 
     incoming = sum(e.incoming + tainted * e.incoming_hits for e in survivors)
-    through = max(0, incoming - block)
+    played = {c.index for c in line}
+    left = max(0, hand_size - len(line))
+    # Cards that burn in the hand go off when our turn ends, before the enemy
+    # moves: the ones that deal damage eat into our Block first.
+    scorch = sum(amount for index, amount, blocked in burns if blocked and index not in played)
+    burnt = sum((left if amount < 0 else amount) for index, amount, blocked in burns if not blocked and index not in played)
+    if wither_in > 0 and len(line) >= wither_in:
+        # A Wither sits in the hand and burns when the turn ends, then comes
+        # round again with the deck: the sixth card has to be worth that.
+        scorch += wither_hp * (1 + (len(line) - wither_in) // 6)
+    burnt += max(0, scorch - block)
+    through = max(0, incoming - max(0, block - scorch))
     if through and buffer >= sum(e.incoming_hits for e in survivors if e.incoming):
         through = 0  # Buffer swallows each hit that would have hurt
     if through:
         score -= sum(e.scar * e.incoming_hits for e in survivors if e.incoming)
-    played = {c.index for c in line}
-    left = max(0, hand_size - len(line))
-    burnt = sum((left if amount < 0 else amount) for index, amount in burns if index not in played)
-    if wither_in > 0 and len(line) >= wither_in:
-        # A Wither sits in the hand and burns when the turn ends, then comes
-        # round again with the deck: the sixth card has to be worth that.
-        burnt += wither_hp * (1 + (len(line) - wither_in) // 6)
     if wither_in > 0:
         # ... and it stays in the deck: it burns again every time it is drawn
         # and takes a card's place in the hand (by round 7 one fight had five
@@ -784,7 +621,12 @@ def simulate(
     score += 1.1 * min(summoned, max(0, block - incoming))
     # Every leader left is Doomed to die at the end of its turn: the fight is
     # won if we live through that turn, so more damage is wasted energy.
-    doomed = bool(survivors) and all(e.doom >= e.hp for e in survivors if not e.minion) and any(not e.minion for e in survivors)
+    doomed = (
+        bool(survivors)
+        and all(e.doom >= e.hp for e in survivors if not e.minion)
+        and any(not e.minion for e in survivors)
+        and not any(e.adapts or e.spent for e in survivors)
+    )
     if doomed:
         score += WIN_BONUS / 2
     # A point of our HP is worth more than a point of enemy HP even at full
@@ -796,7 +638,12 @@ def simulate(
     bite = min(1.0, lost / max(1, hp))
     score -= lost * (1.5 + 2.5 * (1.0 - ratio) + 3.0 * bite) * (4.0 if doomed else 1.0) * knob("caution")
     if lost >= hp:
-        score -= LETHAL_PENALTY
+        # Dead on paper. If every line is, the least dead one is the one to
+        # play: the most Block, and cards drawn while there is energy left to
+        # play them (one of them may be the Block that is missing). A flat
+        # penalty left that choice to the damage dealt, and a bot 4 HP short
+        # played two Powers with a Defend+ in hand.
+        score -= LETHAL_PENALTY + 100.0 * (lost - hp) - (150.0 if energy > 0 else 30.0) * min(drawn, 3)
     return Outcome(score, first_target)
 
 
@@ -814,11 +661,12 @@ def _context(state: dict) -> dict:
         card_limit=cards_left_this_turn(state),
         can_block=not _has_power(player, "NO_BLOCK"),
         sandpit=_sandpit(state),
+        escape_odds=_escape_odds(player),
         end_loss=end_of_turn_loss(player) + constrict(player),
         burns=hand_burns(player),
         hand_size=len(player.get("hand") or []),
         wither_in=max((power_amount(e, "WITHERING_PRESENCE") for e in battle.get("enemies") or []), default=0),
-        wither_hp=_next_wither(player),
+        wither_hp=_next_wither(player, int(battle.get("round") or 1)),
         draw_worth=_draw_worth(player),
         orbs=tuple(
             (
@@ -829,6 +677,7 @@ def _context(state: dict) -> dict:
             for o in player.get("orbs") or []
         ),
         orb_slots=int(player.get("orb_slots") or 0),
+        focus_power=power_amount(player, "FOCUS") if _has_power(player, "FOCUS") else 0,
         shiv_damage=4 + max(0, power_amount(player, "ACCURACY")),
         tender=_has_power(player, "TENDER"),
         vigor=max(0, power_amount(player, "VIGOR")),
@@ -867,17 +716,21 @@ def _draw_worth(player: dict) -> tuple:
     return (free / len(pile), len(paid) / len(pile), sum(paid) / len(paid) if paid else 0.0)
 
 
-def _next_wither(player: dict) -> int:
-    """HP the next Wither takes: 3 for the first, one more for each made so far
-    (the cards are named "Wither+2" and so on). Guessing a flat 5 let the bot
-    play a sixth card at 8 HP into two Wither+3s."""
-    worst = -1
+def _next_wither(player: dict, round_no: int = 1) -> int:
+    """Damage the next Wither does if it is still in the hand when the turn ends.
+
+    A plain Wither does 3. Every third round Aeonglass makes all of them one
+    step worse, the ones in our deck and the ones still to come, and a step is
+    3 more damage: "Wither+2" does 9, not 5. (Measured from HP lost with
+    Withers in hand; a bot on 35 HP that expected to lose 31 died of it.)
+    """
+    level = max(0, (round_no - 1) // 3)
     for pile in ("hand", "draw_pile", "discard_pile", "exhaust_pile"):
         for c in player.get(pile) or []:
             m = re.match(r"Wither(?:\+(\d+))?$", str(c.get("name") or ""))
             if m:
-                worst = max(worst, int(m.group(1) or 0))
-    return 3 + worst + 1 + 2  # the next one up, and room for a card that plays another card
+                level = max(level, int(m.group(1) or 0))
+    return 3 * (level + 1)
 
 
 def _sandpit(state: dict) -> int | None:
@@ -889,6 +742,39 @@ def _sandpit(state: dict) -> int | None:
                 amount = p.get("amount")
                 return int(amount) if isinstance(amount, (int, float)) else 1
     return None
+
+
+def _escape_odds(player: dict, hand_draw: int = 5) -> tuple:
+    """Chance that the next hand holds no Frantic Escape, and the same for a hand a few turns on.
+
+    The first from where the Escapes are right now (the draw pile, or what
+    will be shuffled back into it); the second from the deck as a whole.
+    """
+    def is_escape(c: dict) -> bool:
+        return str(c.get("name") or "").startswith("Frantic Escape")
+
+    def none(n: int, k: int, d: int) -> float:
+        """No Escape among d cards drawn from n that hold k of them."""
+        if n <= 0 or d <= 0:
+            return 1.0
+        d = min(d, n)
+        p = 1.0
+        for i in range(d):
+            p *= max(0.0, (n - k - i) / (n - i))
+        return p
+
+    draw = player.get("draw_pile")
+    if not isinstance(draw, list):
+        return (0.3, 0.3)
+    later = list(player.get("discard_pile") or []) + list(player.get("hand") or [])
+    n, k = len(draw), sum(map(is_escape, draw))
+    m, j = len(later), sum(map(is_escape, later))
+    if n >= hand_draw:
+        next_hand = none(n, k, hand_draw)
+    else:  # the pile runs out: the rest of the hand comes from the reshuffled discards
+        next_hand = none(n, k, n) * none(m, j, hand_draw - n)
+    usual = none(n + m, k + j, hand_draw) if n + m >= hand_draw else 0.3
+    return (next_hand, max(usual, 0.05))
 
 
 def cards_left_this_turn(state: dict) -> int | None:
@@ -914,6 +800,8 @@ def choose_card(state: dict) -> Action | None:
     ctx = _context(state)
     hand = [parse(c) for c in player.get("hand") or []]
     playable = [c for c in hand if c.playable and (c.is_x or c.cost <= ctx["energy"]) and c.star_cost <= ctx["stars"]]
+    if not enemies and state.get("_revive_pending"):
+        return _set_up(playable, ctx["energy"])
     if not playable or not enemies:
         return None
     # Cards we cannot pay for yet can still come later in a line that first
@@ -994,94 +882,29 @@ def choose_card(state: dict) -> Action | None:
     return ("play_card", params)
 
 
-def constrict(player: dict) -> int:
-    """Damage we take at the end of our turn while the Strangler lives."""
-    return max(0, power_amount(player, "CONSTRICT")) if _has_power(player, "CONSTRICT") else 0
+def _set_up(playable: list[CardInfo], energy: int) -> Action | None:
+    """A card worth playing with nobody to aim at: the enemy is gone for the turn and comes back.
 
-
-def expected_loss(state: dict) -> int:
-    """HP we lose this turn if we do nothing more."""
-    player = state.get("player") or {}
-    incoming = sum(e.incoming for e in read_enemies(state))
-    return max(0, incoming - int(player.get("block") or 0) - end_of_turn_block(player) - osty_hp(player))
-
-
-_DEFENSIVE_POTION = re.compile(r"gain \d+ (block|dexterity)|apply \d+ weak|loses? \d+ strength", re.I)
-
-
-def potion_actions(state: dict) -> list[Action]:
-    """Potions worth drinking now: always in elite/boss fights, otherwise when in danger."""
-    player = state.get("player") or {}
-    enemies = read_enemies(state)
-    if not enemies:
-        return []
-    hp = int(player.get("hp") or 1)
-    max_hp = int(player.get("max_hp") or 1)
-    # Ordinary fights only get a potion in real trouble; the rest are kept
-    # for elites and bosses, where the runs are actually lost.
-    danger = expected_loss(state) >= 0.5 * hp or hp <= 0.3 * max_hp
-    potions = player.get("potions") or []
-    # A full belt cannot take the next potion a fight drops, so one of them
-    # is free to use: holding three potions through a whole act wasted every
-    # potion reward on the way.
-    spare = 1 if len(potions) >= int(player.get("max_potion_slots") or 3) else 0
-    big_fight = danger or state.get("state_type") in ("elite", "boss")
-    if not (big_fight or spare):
-        return []
-    # Aim at something that stays dead and matters: the leader that hits hardest.
-    focus = max(enemies, key=lambda e: (e.worth, e.incoming, e.hp)).entity_id
-    out: list[Action] = []
-    slippery = any(e.slippery for e in enemies)
-    for p in potions:
-        if not p.get("can_use_in_combat", True):
+    Between two of the Test Subject's forms the bot used to end the turn with
+    energy in hand and Powers unplayed (Child of the Stars, Prowess, Loop).
+    Whatever lasts is worth playing now: Powers, orbs, Strength, next turn's
+    energy; and cards drawn while there is energy to use what they bring.
+    """
+    best, best_worth = None, 0.0
+    for c in playable:
+        if c.needs_target or c.type in ("Status", "Curse") or c.deadly or c.block_lock or c.is_x:
             continue
-        if not big_fight and len(out) >= spare:
-            break
-        if slippery and re.search(r"deals? \d+ damage", str(p.get("description") or ""), re.I):
-            continue  # every hit on a Slippery enemy takes 1 HP: keep it for later
-        if "SNECKO" in f"{p.get('id')} {p.get('name')}".upper().replace(" ", "_"):
-            continue  # random card costs wreck a planner that counts on its energy
-        if _DEFENSIVE_POTION.search(str(p.get("description") or "")) and expected_loss(state) < min(12, hp):
-            continue  # Block, Weak and the like are for the turn something big is coming
-        params: dict = {"slot": int(p.get("slot", 0))}
-        if str(p.get("target_type")) == "AnyEnemy":
-            params["target"] = focus
-        out.append(("use_potion", params))
-    return out
-
-
-def describe(state: dict) -> str:
-    """One line with everything the planner looked at (for the debug log)."""
-    player = state.get("player") or {}
-    battle = state.get("battle") or {}
-    foes = []
-    for e in battle.get("enemies") or []:
-        powers = ",".join(f"{str(s.get('id', '')).replace('_POWER', '')}:{s.get('amount')}" for s in e.get("status") or [])
-        intents = "+".join(f"{i.get('type')}{i.get('label') or ''}" for i in e.get("intents") or [])
-        foes.append(f"{e.get('entity_id')} {e.get('hp')}hp/{e.get('block')}blk [{powers}] {intents}")
-    def read(c: dict) -> str:
-        """What the planner makes of the card, e.g. " d6x2 b5" (so a misread shows in the log)."""
-        i = parse(c)
-        bits = [f"d{i.damage}" + (f"x{i.hits}" if i.hits > 1 else "")] if i.damage else []
-        bits += [f"b{i.block}"] if i.block else []
-        return (" " + " ".join(bits)) if bits else ""
-
-    hand = ", ".join(
-        f"{c.get('index')}:{c.get('name')}({c.get('cost')}{'' if c.get('can_play', True) else '!'}{read(c)})"
-        for c in player.get("hand") or []
-    )
-    mine = ",".join(f"{str(s.get('id', '')).replace('_POWER', '')}:{s.get('amount')}" for s in player.get("status") or [])
-    extra = ""
-    if player.get("stars") is not None:
-        extra += f" stars {player.get('stars')}"
-    if player.get("orbs") is not None:
-        extra += " orbs " + ("".join(str(o.get("name") or "?")[0] for o in player.get("orbs") or []) or "-")
-    if player.get("pets"):
-        extra += f" osty {osty_hp(player)}"
-    return (
-        f"r{battle.get('round')} hp {player.get('hp')}/{player.get('max_hp')} blk {player.get('block')} "
-        f"en {player.get('energy')}{extra} [{mine}] | {' ; '.join(foes)} | hand {hand}"
-    )
+        worth = POWER_VALUE.get(c.key, 5.0 + 2.0 * max(c.cost, 0)) if c.type == "Power" else 0.0
+        worth += 4.0 * len(c.channel) + 0.5 * c.forge + c.summon + 2.5 * c.star_gain
+        worth += 4.0 * c.strength * c.strength_lasts + 3.5 * c.dexterity * c.dexterity_lasts
+        worth += 5.0 * c.next_energy + 1.5 * c.next_draw + 0.8 * c.next_block
+        if energy - c.cost > 0 or c.energy_gain:
+            worth += 1.0 * c.draw + 2.0 * c.energy_gain
+        worth -= 3.0 * c.hp_loss
+        worth /= c.cost + 0.5
+        if worth > best_worth:
+            best, best_worth = c, worth
+    return ("play_card", {"card_index": best.index}) if best is not None else None
 
 
 def actions(state: dict) -> list[Action]:

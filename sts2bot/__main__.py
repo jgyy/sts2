@@ -14,6 +14,8 @@ from .client import Client
 from . import service
 from .supervisor import DEFAULT_LAUNCH, FAST_MODES, Supervisor
 
+DEFAULT_TIME_SCALE = 3.0
+
 
 def default_log_dir() -> Path:
     base = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local" / "state")
@@ -51,6 +53,12 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="keep the game's normal window and graphics (default: small window, no anti-aliasing, for speed)",
     )
+    ap.add_argument(
+        "--time-scale",
+        type=float,
+        default=DEFAULT_TIME_SCALE,
+        help=f"how many times faster the game's clock runs, set through the mod for the session (default: {DEFAULT_TIME_SCALE:g}; 1 leaves it alone)",
+    )
     ap.add_argument("--stuck-timeout", type=float, default=300.0, help="seconds without any change before the game is restarted")
     ap.add_argument("--poll", type=float, default=0.2, help="seconds between state polls")
     ap.add_argument("--log-dir", type=Path, default=default_log_dir())
@@ -76,7 +84,7 @@ def main(argv: list[str] | None = None) -> int:
         stuck_timeout=args.stuck_timeout,
         tune=not args.no_tuning,
     )
-    sup = Supervisor(bot, client, launch_cmd=args.launch_cmd, manage_game=not args.no_launch, fast_mode=None if args.fast_mode == "keep" else args.fast_mode, light_graphics=not args.full_graphics)
+    sup = Supervisor(bot, client, launch_cmd=args.launch_cmd, manage_game=not args.no_launch, fast_mode=None if args.fast_mode == "keep" else args.fast_mode, light_graphics=not args.full_graphics, time_scale=args.time_scale)
     logging.getLogger("sts2bot").info("logs and run history in %s", args.log_dir)
     try:
         sup.run(args.runs)
