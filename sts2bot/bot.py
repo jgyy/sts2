@@ -118,6 +118,12 @@ class Bot:
                 names = [o if isinstance(o, str) else o.get("name") for o in state.get("options") or []]
                 if "abandon_run" in names:
                     return [("menu_select", {"option": "abandon_run"})]
+                # No run to abandon only once the menu offers a new one. Just
+                # after a launch the menu lists neither for a few seconds:
+                # deciding then dropped the order, the bot pressed Continue,
+                # and a run that crashed the game on loading did so nine times.
+                if "singleplayer" not in names:
+                    return []
                 self.abandon_next = False
             return strategy.menu(state, mem, self.character)
         if kind in COMBAT_STATES:

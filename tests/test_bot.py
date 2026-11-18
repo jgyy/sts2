@@ -309,6 +309,16 @@ class PowersThePlannerKnows(unittest.TestCase):
         crabs = [enemy("CRUSHER", 6, attack=6, status=rage), enemy("ROCKET", 6, attack=6, status=rage)]
         self.assertIsNotNone(combat.choose_card(combat_state([STRIKE(0), STRIKE(1)], crabs, energy=2, kind="boss")))
 
+    def test_drawing_is_worth_what_is_left_to_draw(self):
+        skim = card(0, "SKIM", "Skim", "Skill", 1, "Draw 3 cards.", "Self")
+        state = combat_state([skim, STRIKE(1)], [enemy("A", 200)], energy=1)
+        wounds = [{"name": "Wound", "cost": "0", "description": "Unplayable."}] * 6
+        claws = [{"name": "Claw", "cost": "0", "description": "Deal 9 damage."}] * 6
+        state["player"]["draw_pile"] = wounds
+        self.assertEqual(combat.choose_card(state)[1]["card_index"], 1)  # nothing worth drawing: Strike
+        state["player"]["draw_pile"] = claws
+        self.assertEqual(combat.choose_card(state)[1]["card_index"], 0)  # three free attacks beat one Strike
+
     def test_debilitate_doubles_vulnerable(self):
         foe = enemy("A", 12, attack=5, status=[{"id": "VULNERABLE_POWER", "amount": 1}, {"id": "DEBILITATE_POWER", "amount": 2}])
         self.assertEqual(combat.choose_card(combat_state([STRIKE(0), DEFEND(1)], [foe], energy=1)), ("play_card", {"card_index": 0, "target": "A"}))
