@@ -286,3 +286,35 @@ class Necrobinder(unittest.TestCase):
         s = self.state([days, guard, guard | {"index": 2}, guard | {"index": 3}], osty=0, foe_hp=40, attack=30, doom=15)
         self.assertEqual(combat.choose_card(s), ("play_card", {"card_index": 0}))
         self.assertEqual(combat.expected_end_loss(self.state([days], osty=0, foe_hp=40, attack=30, doom=15)), 30)
+
+
+class StrengthSappedFromAll(unittest.TestCase):
+    def test_piercing_wail_is_played_in_front_of_a_many_hit_attack(self):
+        wail = card(0, "PIERCING_WAIL", "Piercing Wail", "Skill", 1, "ALL enemies lose 6 Strength this turn. Exhaust.", "AllEnemies")
+        foe = {"entity_id": "TEST_SUBJECT_0", "hp": 97, "max_hp": 200, "block": 0, "intents": [{"type": "Attack", "label": "10x6"}],
+               "status": [{"id": "PAINFUL_STABS_POWER", "amount": 1}]}
+        state = combat_state([wail], [foe], energy=1, hp=33, max_hp=128, block=26, kind="boss")
+        self.assertEqual(combat.expected_end_loss(state), 34)  # dead as it stands
+        self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 0}))  # six hits of 4: all behind the Block
+
+    def test_an_attack_on_all_that_saps_them_counts_the_sap(self):
+        from sts2bot.battle import read_enemies
+
+        crush = card(0, "CRUSH_UNDER", "Crush Under", "Attack", 1, "Deal 8 damage to ALL enemies. All enemies lose 1 Strength this turn.", "AllEnemies")
+        foes = [enemy("A", 50, attack="3x4"), enemy("B", 50, attack=10)]
+        foes[0]["intents"] = [{"type": "Attack", "label": "3x4"}]
+        state = combat_state([crush], foes, energy=1, hp=40)
+        out = combat.simulate([parse(crush)], read_enemies(state), **combat._context(state))
+        self.assertEqual(out.lost, 2 * 4 + 9)
+
+
+class Malaise(unittest.TestCase):
+    def test_x_amounts_are_read_per_energy(self):
+        malaise = card(0, "MALAISE", "Malaise", "Skill", "X", "Enemy loses X Strength. Apply X Weak. Exhaust.", "AnyEnemy")
+        info = parse(malaise)
+        self.assertEqual((info.is_x, info.enemy_strength_loss, info.weak, info.known), (True, 1, 1, True))
+        # Three energy into a 5x6 attack: 2x6, and a quarter off that for Weak.
+        foe = enemy("A", 80, attack="5x6")
+        foe["intents"] = [{"type": "Attack", "label": "5x6"}]
+        state = combat_state([malaise], [foe], energy=3, hp=30)
+        self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 0, "target": "A"}))
