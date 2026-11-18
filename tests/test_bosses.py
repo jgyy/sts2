@@ -129,6 +129,14 @@ class BossMechanics(unittest.TestCase):
         state["player"]["hand"] = [STRIKE(2), DEFEND(3)]
         self.assertIsNone(combat.choose_card(state))  # no use hitting or blocking thin air
 
+    def test_vital_spark_taints_by_its_own_amount(self):
+        prism = enemy("PRISM", 60, attack="5x3", status=[{"id": "VITAL_SPARK_POWER", "amount": 4}])
+        prism["intents"] = [{"type": "Attack", "label": "5x3"}]
+        state = combat_state([DEFEND(0)], [prism], energy=1, hp=18)
+        self.assertEqual(combat._context(state)["taint"], 4)
+        # A 5-Block Skill that adds 4 to each of three hits lets more through, not less.
+        self.assertIsNone(combat.choose_card(state))
+
     def test_an_escape_is_never_the_card_given_up(self):
         escape = self.ESCAPE(0)
         hand = [escape, card(1, "X", "Hyperbeam", "Attack", 2, "Deal 26 damage to ALL enemies.", rarity="Rare"), DEFEND(2)]

@@ -347,6 +347,23 @@ class Strategy(unittest.TestCase):
         self.assertEqual([strategy.choose_character("cycle", unlocked, n) for n in range(4)], ["IRONCLAD", "SILENT", "REGENT", "IRONCLAD"])
 
 
+class Afflictions(unittest.TestCase):
+    def offer(self, hp, boss_hp):
+        waste = card(0, "WASTE_AWAY", "Waste Away", "Status", 0, "Gain 1 less [energy_icon.png] per turn.")
+        burn = card(1, "DISINTEGRATION", "Disintegration", "Status", 0, "At the end of your turn, take 8 damage.")
+        state = {
+            "state_type": "card_select", "run": {"act": 2, "floor": 33}, "player": {"hp": hp, "max_hp": 80},
+            "battle": {"enemies": [enemy("KNOWLEDGE_DEMON_0", boss_hp)]},
+            "card_select": {"screen_type": "choose", "prompt": "Choose a card.", "cards": [waste, burn]},
+        }
+        return strategy.card_select(state, Memory())[0][1]["index"]
+
+    def test_damage_is_taken_over_lost_energy_when_the_fight_can_be_finished(self):
+        self.assertEqual(self.offer(hp=60, boss_hp=100), 1)  # three turns of 8 with 20 to spare
+        self.assertEqual(self.offer(hp=30, boss_hp=100), 0)  # cannot afford it
+        self.assertEqual(self.offer(hp=60, boss_hp=250), 0)  # too far from the end
+
+
 class HandSelections(unittest.TestCase):
     def test_the_card_put_back_on_the_deck_is_one_it_would_not_play(self):
         comet = card(0, "COMET", "Comet", "Attack", 3, "Deal 33 damage.", "AnyEnemy", rarity="Rare")

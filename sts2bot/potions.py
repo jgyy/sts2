@@ -9,6 +9,8 @@ from .cards import parse
 
 Action = tuple[str, dict]
 
+BOSS_FLOORS = (17, 33, 48)
+
 _DEFENSIVE_POTION = re.compile(r"gain \d+ (block|dexterity)|apply \d+ weak|loses? \d+ strength", re.I)
 
 
@@ -28,9 +30,19 @@ def potion_actions(state: dict) -> list[Action]:
     # is free to use: holding three potions through a whole act wasted every
     # potion reward on the way.
     spare = 1 if len(potions) >= int(player.get("max_potion_slots") or 3) else 0
-    big_fight = danger or state.get("state_type") in ("elite", "boss")
+    kind = state.get("state_type")
+    floor = (state.get("run") or {}).get("floor")
+    if kind == "monster" and isinstance(floor, int) and any(0 < boss - floor <= 3 for boss in BOSS_FLOORS):
+        # The boss is a room or two away: what is on the belt goes there. Act 3
+        # bosses were met with one potion on average, a third of them with none.
+        spare = 0
+    big_fight = danger or kind in ("elite", "boss")
     if not (big_fight or spare):
         return []
+    left = sum(e.hp + e.block for e in enemies if e.worth > 0)
+    if left <= 0 or (left <= 25 and not danger):
+        return []  # nothing left to hit (a boss already beaten), or the fight is as good as over
+    block = int(player.get("block") or 0)
     # Aim at something that stays dead and matters: the leader that hits hardest.
     focus = max(enemies, key=lambda e: (e.worth, e.incoming, e.hp)).entity_id
     out: list[Action] = []
@@ -42,6 +54,17 @@ def potion_actions(state: dict) -> list[Action]:
             break
         if slippery and re.search(r"deals? \d+ damage", str(p.get("description") or ""), re.I):
             continue  # every hit on a Slippery enemy takes 1 HP: keep it for later
+        text = str(p.get("description") or "")
+        both = re.search(r"deals? (\d+) damage to all (?:players|characters)", text, re.I)
+        if both:
+            # Foul Potion hits us as hard as them: three of them at the start of
+            # a boss fight took 36 of 75 HP for 36 damage. Only behind enough
+            # Block, or to end the fight.
+            amount = int(both.group(1))
+            if not (block >= amount or (hp > amount and all(e.hp + e.block <= amount for e in enemies))):
+                continue
+        if re.search(r"\bheal\b|\bregen\b", text, re.I) and hp > 0.55 * max_hp:
+            continue  # healing is wasted on a full bar; it is for later in the fight
         if "SNECKO" in f"{p.get('id')} {p.get('name')}".upper().replace(" ", "_"):
             continue  # random card costs wreck a planner that counts on its energy
         if _DEFENSIVE_POTION.search(str(p.get("description") or "")) and expected_loss(state) < min(12, hp):
