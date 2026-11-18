@@ -66,6 +66,13 @@ class Bot:
         # Set by the supervisor after the game crashed twice in the same place:
         # until this time, act slowly and ask for the state rarely.
         self.careful_until = 0.0
+        # The game clock's speed-up, set by the supervisor (0: leave the clock
+        # alone). The game sets its own time scale in boss fights (slow motion
+        # at 0.11, then back to 1), so a speed-up set once at the start was
+        # gone after the first boss of every session; it is set again every
+        # few seconds.
+        self.time_scale = 0.0
+        self._scale_at = 0.0
         self.stuck_timeout = stuck_timeout
         self.clock = clock
         self.sleep = sleep
@@ -87,6 +94,9 @@ class Bot:
         self.runs_finished = 0
         self.wins = 0
         self._strikes: dict = defaultdict(int)
+        # Purchases the shop accepted that changed nothing, by (act, floor, item).
+        # Unlike strikes these are not forgiven after a few seconds.
+        self._dead_buys: dict = defaultdict(int)
         self._last_fp = ""
         self._last_change = clock()
         self._last_retry = clock()
@@ -531,9 +541,12 @@ class Bot:
 
     def step(self) -> bool:
         """One read-decide-act cycle. Returns True if an action was sent."""
+        now = self.clock()
+        if self.time_scale and now - self._scale_at > 3.0:
+            self._scale_at = now
+            self.client.act("set_time_scale", scale=self.time_scale)
         state = self.client.state()
         fp = fingerprint(state)
-        now = self.clock()
         if fp != self._last_fp:
             self._last_fp, self._last_change, self._last_retry = fp, now, now
             self._strikes.clear()
@@ -549,6 +562,10 @@ class Bot:
         for action, params in self.candidates(state):
             key = (action, json.dumps(params, sort_keys=True))
             if self._strikes[key] >= MAX_STRIKES:
+                continue
+            run = state.get("run") or {}
+            buy = (run.get("act"), run.get("floor"), key[1]) if action == "shop_purchase" else None
+            if buy and self._dead_buys[buy] >= MAX_STRIKES:
                 continue
             result = self.client.act(action, **params)
             if result.get("status") == "error" or "error" in result:
@@ -587,6 +604,8 @@ class Bot:
             )
             if not quiet and not choose and not changed:
                 self._strikes[key] += 1  # accepted, but nothing happened
+                if buy:
+                    self._dead_buys[buy] += 1
             return True
         self.sleep(self.poll)
         return False

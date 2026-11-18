@@ -248,7 +248,23 @@ class Potions(unittest.TestCase):
         foul = self.potion(0, "Foul Potion", "Deal 12 damage to ALL players and enemies. Can be thrown at the Merchant for 100 Gold instead.")
         fire = self.potion(1, "Fire Potion", "Deal 20 damage.", "AnyEnemy")
         self.assertEqual(self.boss([foul, fire]), [1])
-        self.assertEqual(self.boss([foul, fire], block=12), [0, 1])
+        self.assertEqual(self.boss([foul, fire], block=12), [1])  # that Block is for the 10 coming
+        self.assertEqual(self.boss([foul, fire], block=22), [0, 1])
+
+    def test_no_potion_when_the_hand_already_ends_the_danger(self):
+        belt = [self.potion(0, "Strength Potion", "Gain 2 Strength."), self.potion(1, "Foul Potion", "Deal 12 damage to ALL players and enemies.")]
+
+        def used(foe_hp):
+            state = combat_state([STRIKE(0), STRIKE(1)], [enemy("A", foe_hp, attack=20)], hp=31, max_hp=90, kind="monster", potions=belt)
+            state["run"]["floor"] = 30
+            return [a for a in combat.actions(state) if a[0] == "use_potion"]
+
+        self.assertEqual(used(12), [])  # two Strikes kill it: nothing is coming
+        # Out of energy behind enough Block, on low HP: nothing is coming either.
+        state = combat_state([STRIKE(0)], [enemy("A", 60, attack=12)], energy=0, hp=20, max_hp=90, block=17, kind="monster", potions=belt)
+        state["run"]["floor"] = 24
+        self.assertEqual([a for a in combat.actions(state) if a[0] == "use_potion"], [])
+        self.assertTrue(used(60))  # 20 of 31 HP is coming and the hand cannot stop it
 
     def test_healing_waits_until_it_is_needed(self):
         blood = self.potion(0, "Blood Potion", "Heal for 20% of your Max HP.")

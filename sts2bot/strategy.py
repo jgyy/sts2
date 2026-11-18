@@ -269,7 +269,9 @@ def _room_value(kind: str, hp: float, gold: int, early: bool = False, act: int |
 
 # What a room costs in HP on average, measured over the bot's own runs
 # (act -> room -> HP). A boss costs 35 to 50 HP even when it is beaten.
-FIGHT_COST = {1: {"Monster": 5, "Elite": 16}, 2: {"Monster": 10, "Elite": 21}, 3: {"Monster": 11, "Elite": 40}}
+# (Ascension 2, 2026-11-18 evening: act 1 elites cost 19.7 HP over 19 fights, act 2
+# elites 27.0 over 15 and 0.8 potions each; monsters 3.0, 7.8 and 10.6.)
+FIGHT_COST = {1: {"Monster": 5, "Elite": 20}, 2: {"Monster": 9, "Elite": 27}, 3: {"Monster": 11, "Elite": 40}}
 BAD_LUCK = 1.7  # how much more than average a fight costs when the draws go wrong
 BOSS_WORTH = 16.0  # what getting past the boss is worth, in the units of the room rewards below
 MAX_PATHS = 1500
@@ -412,10 +414,22 @@ def map_screen(state: dict, mem: Memory) -> list[Action]:
 # ------------------------------------------------------------------ rewards
 
 
+def _belt_full(player: dict) -> bool:
+    """No room for a potion: the belt is full, or a relic (Sozu) forbids potions.
+
+    With Sozu the shop accepts the purchase and nothing happens, which once
+    kept the bot buying the same potion until it was stopped.
+    """
+    for relic in player.get("relics") or []:
+        if "no longer obtain potions" in str(relic.get("description") or "").lower():
+            return True
+    return len(player.get("potions") or []) >= int(player.get("max_potion_slots") or 3)
+
+
 def rewards(state: dict, mem: Memory) -> list[Action]:
     r = state.get("rewards") or {}
     player = state.get("player") or {}
-    belt_full = len(player.get("potions") or []) >= int(player.get("max_potion_slots") or 3)
+    belt_full = _belt_full(player)
     skips_left = mem.card_skips.get(_where(state), 0)
     out: list[Action] = []
     # Highest index first so earlier indices stay valid.
@@ -588,7 +602,7 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
         return []
     player = state.get("player") or {}
     gold = int(player.get("gold") or 0)
-    belt_full = len(player.get("potions") or []) >= int(player.get("max_potion_slots") or 3)
+    belt_full = _belt_full(player)
 
     scored: list[tuple[float, dict]] = []
     for item in s.get("items") or []:

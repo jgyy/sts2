@@ -21,7 +21,7 @@ class BossWatchTest(unittest.TestCase):
         line = watch.update({"state_type": "rewards", "run": {"act": 1, "floor": 17}}, "rewards")
         self.assertEqual(
             line,
-            "boss fight over: act 1 floor 17 VANTOM won; boss hp 170 -> 60; player hp 70 -> 50/80; rounds 2",
+            "boss fight over: act 1 floor 17 VANTOM won; boss hp 170 -> 60; player hp 70 -> 50/80; rounds 2; brought relics 0, potions 0, deck 0",
         )
 
     def test_lost_fight_is_reported_once(self):
