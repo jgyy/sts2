@@ -171,6 +171,54 @@ index 2553f3f..fe291f7 100644
  
              var menuFieldName = normalizedMainMenuOption switch
              {
+diff --git a/McpMod.CrashGuards.cs b/McpMod.CrashGuards.cs
+new file mode 100644
+index 0000000..bb72441
+--- /dev/null
++++ b/McpMod.CrashGuards.cs
+@@ -0,0 +1,42 @@
++using System;
++using System.Threading.Tasks;
++using Godot;
++using HarmonyLib;
++
++namespace STS2_MCP;
++
++public static partial class McpMod
++{
++    // The Punch Off event opens with two creatures punching each other in a
++    // visual-only combat room. In game v0.111 that animation crashes the game
++    // natively every time (Signal '_internal_spine_objects_invalidated' is
++    // already connected, then a crash in MegaSpine SetAnimation), on entering
++    // the event and again on every resume of the save. Skipping the animation
++    // leaves the event itself as it is.
++    private static void TryApplyCrashGuards()
++    {
++        try
++        {
++            var type = AccessTools.TypeByName("MegaCrit.Sts2.Core.Models.Events.PunchOff");
++            var method = type == null ? null : AccessTools.Method(type, "PunchEachOther");
++            if (method == null)
++            {
++                GD.Print("[STS2 MCP] Crash guard skipped: PunchOff.PunchEachOther not found");
++                return;
++            }
++            new Harmony("com.sts2mcp.crashguards").Patch(
++                method, prefix: new HarmonyMethod(typeof(McpMod), nameof(SkipPunchOffAnimation)));
++            GD.Print("[STS2 MCP] Crash guard on: Punch Off animation is skipped");
++        }
++        catch (Exception ex)
++        {
++            GD.Print($"[STS2 MCP] Crash guard skipped: {ex.GetType().Name}: {ex.Message}");
++        }
++    }
++
++    private static bool SkipPunchOffAnimation(ref Task __result)
++    {
++        __result = Task.CompletedTask;
++        return false;
++    }
++}
 diff --git a/McpMod.StateBuilder.cs b/McpMod.StateBuilder.cs
 index 76eee84..2a48de6 100644
 --- a/McpMod.StateBuilder.cs
@@ -300,10 +348,18 @@ index 76eee84..2a48de6 100644
          if (previewShowing)
          {
 diff --git a/McpMod.cs b/McpMod.cs
-index 3b5ed64..97f307d 100644
+index 3b5ed64..c44ac45 100644
 --- a/McpMod.cs
 +++ b/McpMod.cs
-@@ -450,6 +450,144 @@ public static partial class McpMod
+@@ -84,6 +84,7 @@ public static partial class McpMod
+         {
+             // Optional settings UI patches should not block the HTTP bridge itself.
+             TryApplyHarmonyPatches();
++            TryApplyCrashGuards();
+ 
+             // Connect to main thread process frame for action execution
+             var tree = (SceneTree)Engine.GetMainLoop();
+@@ -450,6 +451,144 @@ public static partial class McpMod
  
          string action = actionElem.GetString() ?? "";
  

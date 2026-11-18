@@ -19,23 +19,6 @@ class BossMechanics(unittest.TestCase):
         i, "FRANTIC_ESCAPE", "Frantic Escape", "Status", cost,
         "Get farther away. Increase Sandpit by 1. Increase the cost of this card by 1."))
 
-    def kin_round_two(self, hp):
-        reap = card(0, "REAP", "Reap+", "Attack", 3, "Deal 33 damage.", "AnyEnemy")
-        guard = card(3, "GRAVE_WARDEN", "Grave Warden", "Skill", 1, "Gain 6 Block.", "Self")
-        low = lambda i: card(i, "DEFEND_N", "Defend", "Skill", 1, "Gain 3 Block.", "Self")
-        foes = [enemy("KIN_FOLLOWER_0", 58, attack=7), enemy("KIN_FOLLOWER_1", 59, attack=4), enemy("KIN_PRIEST_0", 178, attack=8)]
-        state = combat_state([reap, low(1), low(2), guard], foes, hp=hp, max_hp=66, kind="boss")
-        return combat.choose_card(state)[1]["card_index"]
-
-    def test_a_boss_fight_is_a_race_when_that_setting_is_on(self):
-        from unittest import mock
-
-        with mock.patch.dict(learn.KNOB, {"caution": 1.35}):  # the setting the learner usually picks
-            self.assertNotEqual(self.kin_round_two(45), 0)  # the old pricing blocks for 12 and keeps the 33 damage
-        with mock.patch.dict(learn.KNOB, {"caution": 1.35, "boss_race": 1.0}):
-            self.assertEqual(self.kin_round_two(45), 0)
-            self.assertNotEqual(self.kin_round_two(22), 0)  # 19 coming at 22 HP: that hit is blocked
-
     def test_a_death_blow_is_an_attack(self):
         blow = {"type": "DeathBlow", "label": "39"}
         self.assertEqual((combat.intent_damage(blow), combat.intent_hits(blow)), (39, 1))
@@ -146,6 +129,15 @@ class BossMechanics(unittest.TestCase):
         state["player"]["hand"] = [STRIKE(2), DEFEND(3)]
         self.assertIsNone(combat.choose_card(state))  # no use hitting or blocking thin air
 
+    def test_an_x_cost_summon_is_set_up_too(self):
+        dirge = card(0, "DIRGE", "Dirge", "Skill", "X", "Summon 3 X times. Add X Souls into your Draw Pile. Exhaust.", "Self")
+        state = combat_state([dirge, DEFEND(1)], [], energy=2, kind="boss")
+        state["_revive_pending"] = True
+        self.assertTrue(parse(dirge).is_x)
+        self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 0}))
+        state["player"]["energy"] = 0
+        self.assertIsNone(combat.choose_card(state))
+
     def test_vital_spark_taints_by_its_own_amount(self):
         prism = enemy("PRISM", 60, attack="5x3", status=[{"id": "VITAL_SPARK_POWER", "amount": 4}])
         prism["intents"] = [{"type": "Attack", "label": "5x3"}]
@@ -166,3 +158,131 @@ class BossMechanics(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CardPlayTriggers(unittest.TestCase):
+    """Powers that act on every card played are part of the turn's arithmetic."""
+
+    def subject(self, hp, hand, powers, energy=3):
+        foe = {"entity_id": "TEST_SUBJECT_0", "hp": hp, "max_hp": 200, "block": 0,
+               "status": [{"id": "ADAPTABLE_POWER", "amount": 1}, {"id": "DOOM_POWER", "amount": 28}],
+               "intents": [{"type": "Attack", "label": "10x5"}]}
+        s = combat_state(hand, [foe], energy=energy, hp=10, max_hp=60, kind="boss")
+        s["player"]["status"] = powers
+        return s
+
+    def test_sleight_of_flesh_finishes_what_the_attack_started(self):
+        exterminate = card(0, "EXTERMINATE", "Exterminate+", "Attack", 1, "Deal 7 damage to ALL enemies 4 times.", "AllEnemies")
+        bringer = lambda i: card(i, "DEATHBRINGER", "Deathbringer+", "Skill", 2, "Apply 26 Doom and 1 Weak to ALL enemies.", "AllEnemies")
+        defend = lambda i: card(i, "DEFEND_N", "Defend+", "Skill", 1, "Gain 8 Block.", "Self")
+        sleight = [{"id": "SLEIGHT_OF_FLESH_POWER", "amount": 13}]
+        # 33 HP: the attack takes 28, the two debuffs 13 each. The form dies and its 50 damage never comes.
+        s = self.subject(33, [exterminate, bringer(1), defend(2)], sleight)
+        self.assertEqual(combat.choose_card(s), ("play_card", {"card_index": 0}))
+        s = self.subject(5, [bringer(0), defend(1)], sleight, energy=2)
+        self.assertEqual(combat.choose_card(s), ("play_card", {"card_index": 0}))
+        # Without the Power there is no kill in the hand: Block is all that is left.
+        s = self.subject(33, [exterminate, bringer(1), defend(2)], [])
+        self.assertEqual(combat.choose_card(s), ("play_card", {"card_index": 2}))
+
+    def test_afterimage_and_strangle_count_for_every_card(self):
+        from sts2bot import triggers
+        from sts2bot.battle import read_enemies
+        foe = enemy("RAT_0", 5, attack=9, status=[{"id": "STRANGLE_POWER", "amount": 3}])
+        s = combat_state([DEFEND(0), DEFEND(1)], [foe], energy=2, hp=30)
+        s["player"]["status"] = [{"id": "AFTERIMAGE_POWER", "amount": 1}]
+        t = triggers.read(s)
+        self.assertEqual((t.card_block, t.strangle), (1, {"RAT_0": 3}))
+        foes = read_enemies(s)
+        out = combat.simulate([parse(c) for c in s["player"]["hand"]], foes, **combat._context(s))
+        self.assertEqual(out.lost, 0)  # two Defends strangle it: 6 HP lost on 5
+        self.assertIsNone(triggers.read(combat_state([DEFEND(0)], [enemy("A", 5)])))
+
+
+class EarlySetup(unittest.TestCase):
+    def first_card(self, setting, hp, attack):
+        from unittest import mock
+
+        sleight = card(0, "SLEIGHT_OF_FLESH", "Sleight of Flesh", "Power", 2, "Whenever you apply a debuff to an enemy, they take 9 damage.", "Self")
+        state = combat_state([sleight, DEFEND(1), DEFEND(2), STRIKE(3)], [enemy("B", 300, attack=attack)], hp=hp, kind="boss")
+        with mock.patch.dict(learn.KNOB, {"caution": 1.35, "early_setup": setting}):
+            return combat.choose_card(state)[1]["card_index"]
+
+    def test_the_setting_puts_a_power_first_in_the_opening_rounds_of_a_boss(self):
+        self.assertNotEqual(self.first_card(1.0, hp=80, attack=10), 0)
+        self.assertEqual(self.first_card(1.7, hp=80, attack=10), 0)
+        self.assertNotEqual(self.first_card(1.7, hp=40, attack=18), 0)  # not at half HP in front of a big hit
+
+
+class Disintegration(unittest.TestCase):
+    def test_block_stops_the_burn_like_any_other_damage(self):
+        state = combat_state([DEFEND(0), DEFEND(1)], [enemy("KNOWLEDGE_DEMON_0", 80, attack=6)], energy=2, hp=40, kind="boss")
+        state["player"]["status"] = [{"id": "DISINTEGRATION_POWER", "amount": 8}]
+        self.assertEqual(combat.expected_end_loss(state), 14)  # 8 and then 6, nothing in the way
+        state["player"]["block"] = 10
+        self.assertEqual(combat.expected_end_loss(state), 4)  # seen live: 8 a turn, 0 HP lost behind 25 Block
+
+
+class PainfulStabs(unittest.TestCase):
+    def test_each_hit_stopped_is_a_wound_saved(self):
+        from sts2bot.battle import read_enemies
+
+        guard = lambda i: card(i, "DEFEND_B", "Defend+", "Skill", 1, "Gain 10 Block.", "Self")
+
+        def score(line, stabs):
+            foe = {"entity_id": "T", "hp": 190, "max_hp": 200, "block": 0, "intents": [{"type": "Attack", "label": "10x3"}],
+                   "status": [{"id": "PAINFUL_STABS_POWER", "amount": 1}] if stabs else []}
+            state = combat_state([guard(0), guard(1)], [foe], energy=2, hp=80, kind="boss")
+            cards = [parse(c) for c in state["player"]["hand"]]
+            return combat.simulate([cards[i] for i in line], read_enemies(state), **combat._context(state)).score
+
+        wound = score([], False) - score([], True)  # three hits through: three Wounds
+        self.assertGreater(wound, 0)
+        self.assertAlmostEqual(score([0, 1], False) - score([0, 1], True), wound / 3)  # two hits stopped, one Wound
+
+
+class BufferCard(unittest.TestCase):
+    def test_buffer_played_now_stops_the_hit_that_would_kill(self):
+        buffer = card(0, "BUFFER", "Buffer", "Power", 2, "Prevent the next time you would lose HP.", "Self")
+        guard = card(1, "GLACIER", "Glacier", "Skill", 2, "Gain 11 Block.", "Self")
+        state = combat_state([buffer, guard], [enemy("AMALGAM_0", 56, attack=27)], energy=2, hp=6, max_hp=73, kind="boss")
+        self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 0}))
+
+
+class Necrobinder(unittest.TestCase):
+    POKE = staticmethod(lambda i: card(i, "POKE", "Poke", "Attack", 0, "Osty deals 6 damage.", "AnyEnemy"))
+    SHARDS = staticmethod(lambda i: card(
+        i, "BONE_SHARDS", "Bone Shards", "Attack", 1, "If Osty is alive, he deals 9 damage to ALL enemies and you gain 9 Block. Osty dies.", "AllEnemies"))
+
+    def state(self, hand, osty, foe_hp=40, attack=12, doom=0, energy=3):
+        foe = enemy("SLUG_0", foe_hp, attack=attack, status=[{"id": "DOOM_POWER", "amount": doom}] if doom else [])
+        s = combat_state(hand, [foe], energy=energy, hp=40)
+        s["player"]["pets"] = [{"name": "Osty", "hp": osty, "alive": osty > 0}]
+        return s
+
+    def test_ostys_attacks_do_nothing_while_he_is_dead(self):
+        self.assertEqual(combat.choose_card(self.state([self.POKE(0)], osty=3)), ("play_card", {"card_index": 0, "target": "SLUG_0"}))
+        self.assertIsNone(combat.choose_card(self.state([self.POKE(0)], osty=0)))
+        # Bone Shards kills him: a Poke after it is wasted, so the Poke goes first.
+        both = self.state([self.SHARDS(0), self.POKE(1)], osty=1)
+        self.assertEqual(combat.choose_card(both)[1]["card_index"], 1)
+        # Without the pet in the state nothing is assumed about him.
+        bare = self.state([self.POKE(0)], osty=0)
+        del bare["player"]["pets"]
+        self.assertIsNotNone(combat.choose_card(bare))
+
+    def test_bone_shards_gives_up_the_hp_osty_stood_in_front_with(self):
+        s = self.state([self.SHARDS(0)], osty=10, attack=12)
+        cards = [parse(c) for c in s["player"]["hand"]]
+        from sts2bot.battle import read_enemies
+        kept = combat.simulate([], read_enemies(s), **combat._context(s)).lost  # Osty soaks 10 of 12
+        after = combat.simulate(cards, read_enemies(s), **combat._context(s)).lost  # 9 Block instead of his 10 HP
+        self.assertEqual((kept, after), (2, 3))
+
+    def test_end_of_days_kills_the_doomed_at_once(self):
+        days = card(0, "END_OF_DAYS", "End of Days", "Skill", 3, "Apply 29 Doom to ALL enemies. Kill enemies with at least as much Doom as HP.", "AllEnemies")
+        guard = card(1, "DEFEND_N", "Defend", "Skill", 1, "Gain 5 Block.", "Self")
+        # 40 HP, 15 Doom already: 44 covers it. The enemy dies before its 30 damage, which three Defends would not stop.
+        s = self.state([days, guard, guard | {"index": 2}, guard | {"index": 3}], osty=0, foe_hp=40, attack=30, doom=15)
+        self.assertEqual(combat.choose_card(s), ("play_card", {"card_index": 0}))
+        self.assertEqual(combat.expected_end_loss(self.state([days], osty=0, foe_hp=40, attack=30, doom=15)), 30)

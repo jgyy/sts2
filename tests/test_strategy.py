@@ -144,7 +144,12 @@ class Strategy(unittest.TestCase):
         # Later on an elite is fine, as long as there is a rest site before the boss.
         nodes[2:] = [{"col": 0, "row": 3, "type": "RestSite", "children": [[0, 4]]}, {"col": 0, "row": 4, "type": "Boss", "children": []}]
         s["run"]["act"] = 2
-        self.assertEqual(strategy.map_screen(s, mem)[0][1]["index"], 0)
+        from unittest import mock
+
+        with mock.patch.dict(learn.KNOB, {"elite_worth": 4.0}):  # where the learner values a relic that much
+            self.assertEqual(strategy.map_screen(s, mem)[0][1]["index"], 0)
+        # At the usual worth it is not: a bad fight there means meeting the boss at 85% HP.
+        self.assertEqual(strategy.map_screen(s, mem)[0][1]["index"], 1)
 
     def test_a_badly_hurt_bot_rests_even_when_the_path_says_smith(self):
         # Act 3 at 6 of 109 HP, the boss next: the path values come out small
@@ -251,13 +256,25 @@ class Strategy(unittest.TestCase):
         acts = strategy.shop(self.base("shop", gold=250, shop=shop), Memory())
         self.assertEqual(acts, [("shop_purchase", {"index": 2}), ("shop_purchase", {"index": 1}), ("proceed", {})])
 
+    def test_a_shop_before_the_boss_fills_the_potion_belt(self):
+        items = [
+            {"index": 0, "category": "potion", "price": 60, "is_stocked": True, "can_afford": True},
+            {"index": 1, "category": "relic", "price": 250, "is_stocked": True, "can_afford": True},
+        ]
+        state = self.base("shop", gold=100, shop={"items": items, "can_proceed": True})
+        state["player"]["max_potion_slots"] = 3
+        # Mid-act the last gold is kept; two rooms from the boss it is not, and the potion comes first.
+        self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 1}))
+        state["run"]["floor"] = 31
+        self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 0}))
+        state["player"]["potions"] = [{}, {}, {}]
+        self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 1}))
+
     def test_auto_plays_the_character_with_the_lowest_ascension(self):
         unlocked = ["IRONCLAD", "SILENT", "DEFECT"]
         pick = lambda asc: strategy.choose_character("auto", unlocked, 0, asc)
-        self.assertEqual(pick({}), "IRONCLAD")
-        self.assertEqual(pick({"IRONCLAD": 2, "SILENT": 1, "DEFECT": 1}), "SILENT")
-        self.assertEqual(pick({"IRONCLAD": 1}), "SILENT")  # never played counts as 0
-        self.assertEqual(pick({"IRONCLAD": 3, "SILENT": 3, "DEFECT": 3}), "IRONCLAD")
+        self.assertEqual(pick({"IRONCLAD": 2, "SILENT": 1, "DEFECT": 2}), "SILENT")
+        self.assertIn(pick({"IRONCLAD": 1}), ("SILENT", "DEFECT"))  # never played counts as 0
 
     def test_embarks_at_the_highest_unlocked_ascension(self):
         chars = [{"id": "IRONCLAD", "locked": False}, {"id": "SILENT", "locked": False}, {"id": "DEFECT", "locked": True}]
@@ -280,14 +297,19 @@ class Strategy(unittest.TestCase):
         first = [strategy.menu(s, mem, "auto")[0] for _ in range(25)]
         self.assertEqual(first[-1], ("menu_select", {"option": "confirm"}))
 
-    def test_the_lowest_ascension_comes_before_epochs(self):
-        epochs = {"IRONCLAD7_EPOCH": "NotObtained", "REGENT4_EPOCH": "NotObtained", "REGENT6_EPOCH": "NotObtained",
-                  "NECROBINDER7_EPOCH": "NotObtained"}
-        who = ["IRONCLAD", "REGENT", "NECROBINDER"]
-        pick = lambda levels: strategy.choose_character("auto", who, 0, levels, epochs)
-        self.assertEqual(pick({"IRONCLAD": 1, "REGENT": 1}), "NECROBINDER")  # still on 0, whatever the others could earn
-        self.assertEqual(pick({"IRONCLAD": 1, "REGENT": 1, "NECROBINDER": 1}), "REGENT")  # level: epochs decide
-        self.assertEqual(pick({"IRONCLAD": 1, "REGENT": 2, "NECROBINDER": 2}), "IRONCLAD")
+    def test_auto_and_random_draw_among_the_lowest_ascension_only(self):
+        who = ["IRONCLAD", "SILENT", "REGENT", "NECROBINDER"]
+        levels = {"IRONCLAD": 1, "SILENT": 2, "REGENT": 1, "NECROBINDER": 1}
+        for setting in ("auto", "random"):
+            seen = {strategy.choose_character(setting, who, run, levels) for run in range(60)}
+            self.assertEqual(seen, {"IRONCLAD", "REGENT", "NECROBINDER"})  # never the Silent, everyone else in turn
+            # The menu asks on every poll: the answer must not change during one run.
+            self.assertEqual(len({strategy.choose_character(setting, who, 7, levels) for _ in range(20)}), 1)
+            # The game's "Random" tile is not a character, whatever level it shows.
+            with_tile = who + ["RANDOM_CHARACTER"]
+            self.assertNotIn("RANDOM_CHARACTER", {strategy.choose_character(setting, with_tile, run, levels) for run in range(60)})
+            levels_one_behind = dict(levels, REGENT=0)
+            self.assertEqual({strategy.choose_character(setting, who, run, levels_one_behind) for run in range(20)}, {"REGENT"})
 
     def test_a_run_is_played_at_the_top_level_even_with_epochs_left(self):
         chars = [{"id": "IRONCLAD", "locked": False}]
@@ -298,48 +320,30 @@ class Strategy(unittest.TestCase):
         mem = Memory(max_ascension={"IRONCLAD": 3}, epochs=dict(epochs), character_selected=True)
         self.assertEqual(strategy.menu(s, mem, "IRONCLAD")[0], ("set_ascension", {"level": 3}))
 
-    def test_auto_plays_towards_unlocking_every_epoch(self):
-        epochs = {
-            "IRONCLAD2_EPOCH": "Revealed", "IRONCLAD7_EPOCH": "NotObtained",
-            "SILENT1_EPOCH": "Revealed", "SILENT2_EPOCH": "Revealed", "SILENT4_EPOCH": "NotObtained",
-            "SILENT5_EPOCH": "NotObtained", "REGENT1_EPOCH": "Revealed", "REGENT2_EPOCH": "NotObtained",
-            "REGENT3_EPOCH": "NotObtained", "REGENT4_EPOCH": "NotObtained", "NECROBINDER1_EPOCH": "NotObtained",
-        }
-        who = ["IRONCLAD", "SILENT", "REGENT"]
-        pick = lambda drought=None: strategy.choose_character("auto", who, 0, {"IRONCLAD": 1}, epochs, drought)
-        self.assertEqual(strategy.missing_epochs("SILENT", epochs), 2)
-        self.assertEqual(pick(), "REGENT")  # three epochs to earn, the most
-        # Twelve Regent runs that earned nothing: try someone else for now.
-        self.assertEqual(pick({"REGENT": 12}), "SILENT")
-        # Nobody has epochs left: back to evening out the ascension levels.
+    def test_auto_plays_the_characters_that_still_owe_an_epoch(self):
+        who = ["IRONCLAD", "SILENT", "REGENT", "NECROBINDER", "DEFECT"]
+        epochs = {f"{c}7_EPOCH": "Revealed" for c in who}
+        epochs.update(DEFECT7_EPOCH="NotObtained", NECROBINDER7_EPOCH="NotObtained", RELIC1_EPOCH="NotObtained")
+        # The Ironclad is a level behind, but has nothing of its own left to earn.
+        levels = {"IRONCLAD": 1, "SILENT": 2, "REGENT": 2, "NECROBINDER": 2, "DEFECT": 2}
+        seen = {strategy.choose_character("auto", who, run, levels, epochs) for run in range(60)}
+        self.assertEqual(seen, {"NECROBINDER", "DEFECT"})
+        # Among those that owe one, the lowest ascension still goes first.
+        levels["DEFECT"] = 1
+        self.assertEqual({strategy.choose_character("auto", who, run, levels, epochs) for run in range(20)}, {"DEFECT"})
+        # All earned: back to evening out the levels.
         done = {k: "Revealed" for k in epochs}
-        self.assertEqual(strategy.choose_character("auto", who, 0, {"IRONCLAD": 1, "REGENT": 2}, done), "SILENT")
-
-    def test_auto_knows_what_each_epoch_takes(self):
-        epochs = {f"{c}{n}_EPOCH": "NotObtained" for c in ("DEFECT", "REGENT", "SILENT") for n in (4, 6, 7)}
-        epochs["SILENT6_EPOCH"] = "Revealed"
-        who = ["SILENT", "REGENT", "DEFECT"]
-        kills = {"SILENT": 16, "REGENT": 8, "DEFECT": 13}
-        strength = {"SILENT": 0.7, "REGENT": 0.55, "DEFECT": 0.85}
-        pick = lambda **kw: strategy.choose_character("auto", who, 0, {}, epochs, kw.get("drought"), kw.get("kills", kills), strength)
-        # Two bosses short of the 15-boss epoch, and the strongest: the Defect.
-        self.assertEqual(pick(), "DEFECT")
-        # Bosses still count when nothing else has come of the last runs.
-        self.assertEqual(pick(drought={"DEFECT": 20}), "REGENT")  # also short of bosses; the Silent is not
-        # With the boss epochs done, wins are what is left: the strongest goes first,
-        # and the others get a turn when it keeps coming back with nothing.
-        done = {"SILENT": 16, "REGENT": 15, "DEFECT": 15}
-        epochs.update(REGENT6_EPOCH="Revealed", DEFECT6_EPOCH="Revealed")
-        self.assertEqual(pick(kills=done), "DEFECT")
-        self.assertEqual(pick(kills=done, drought={"DEFECT": 8}), "SILENT")
+        levels["DEFECT"] = 2
+        self.assertEqual({strategy.choose_character("auto", who, run, levels, done) for run in range(20)}, {"IRONCLAD"})
 
     def test_one_character_can_be_put_first(self):
-        epochs = {"IRONCLAD7_EPOCH": "NotObtained", "REGENT4_EPOCH": "NotObtained", "REGENT6_EPOCH": "NotObtained", "REGENT7_EPOCH": "NotObtained"}
+        epochs = {"IRONCLAD7_EPOCH": "NotObtained", "REGENT4_EPOCH": "NotObtained"}
         who = ["IRONCLAD", "REGENT"]
-        self.assertEqual(strategy.choose_character("auto", who, 0, {}, epochs), "REGENT")
-        self.assertEqual(strategy.choose_character("auto:ironclad", who, 0, {}, epochs), "IRONCLAD")
+        levels = {"IRONCLAD": 1}
+        self.assertEqual(strategy.choose_character("auto", who, 0, levels, epochs), "REGENT")
+        self.assertEqual(strategy.choose_character("auto:ironclad", who, 0, levels, epochs), "IRONCLAD")
         epochs["IRONCLAD7_EPOCH"] = "Revealed"  # done: back to the usual order
-        self.assertEqual(strategy.choose_character("auto:ironclad", who, 0, {}, epochs), "REGENT")
+        self.assertEqual(strategy.choose_character("auto:ironclad", who, 0, levels, epochs), "REGENT")
 
     def test_character_choice(self):
         unlocked = ["IRONCLAD", "SILENT", "REGENT"]
@@ -349,20 +353,19 @@ class Strategy(unittest.TestCase):
 
 
 class Afflictions(unittest.TestCase):
-    def offer(self, hp, boss_hp):
+    def offer(self, hp):  # as the game sends it: no enemies on this screen
         waste = card(0, "WASTE_AWAY", "Waste Away", "Status", 0, "Gain 1 less [energy_icon.png] per turn.")
         burn = card(1, "DISINTEGRATION", "Disintegration", "Status", 0, "At the end of your turn, take 8 damage.")
         state = {
             "state_type": "card_select", "run": {"act": 2, "floor": 33}, "player": {"hp": hp, "max_hp": 80},
-            "battle": {"enemies": [enemy("KNOWLEDGE_DEMON_0", boss_hp)]},
             "card_select": {"screen_type": "choose", "prompt": "Choose a card.", "cards": [waste, burn]},
         }
         return strategy.card_select(state, Memory())[0][1]["index"]
 
-    def test_damage_is_taken_over_lost_energy_when_the_fight_can_be_finished(self):
-        self.assertEqual(self.offer(hp=60, boss_hp=100), 1)  # three turns of 8 with 20 to spare
-        self.assertEqual(self.offer(hp=30, boss_hp=100), 0)  # cannot afford it
-        self.assertEqual(self.offer(hp=60, boss_hp=250), 0)  # too far from the end
+    def test_damage_is_taken_over_lost_energy(self):
+        self.assertEqual(self.offer(hp=60), 1)
+        self.assertEqual(self.offer(hp=30), 1)  # an energy a turn costs as much, and for longer
+        self.assertEqual(self.offer(hp=16), 0)  # two burns from dead: keep the HP
 
 
 class HandSelections(unittest.TestCase):
