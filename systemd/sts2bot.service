@@ -6,6 +6,8 @@
 #   systemctl --user enable --now sts2bot
 #   journalctl --user -u sts2bot -f
 #
+# To turn it off: python3 -m sts2bot service disable (see the README, "Running 24/7").
+#
 # The bot starts Steam itself if it is not running (Steam must be able to log in unattended).
 
 [Unit]

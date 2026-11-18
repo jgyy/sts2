@@ -13,6 +13,12 @@ import re
 from . import combat
 
 
+# Screens the game opens in the middle of a fight, like the card a Survivor
+# makes us discard. They do not end the fight (one did, and the watch logged
+# a win at 87 of the boss's 240 HP).
+_IN_FIGHT_SCREENS = {"hand_select", "card_select", "bundle_select", "overlay"}
+
+
 def _base_name(entity_id: str) -> str:
     return re.sub(r"_\d+$", "", entity_id)
 
@@ -26,7 +32,7 @@ class BossWatch:
         if kind == "boss" and state.get("battle"):
             self._seen(state)
             return None
-        if self.fight is None:
+        if self.fight is None or kind in _IN_FIGHT_SCREENS:
             return None
         fight, self.fight = self.fight, None
         return self._summary(fight, lost=kind == "game_over")

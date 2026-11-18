@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .bot import Bot
 from .client import Client
+from . import service
 from .supervisor import DEFAULT_LAUNCH, FAST_MODES, Supervisor
 
 
@@ -20,6 +21,9 @@ def default_log_dir() -> Path:
 
 
 def main(argv: list[str] | None = None) -> int:
+    raw = sys.argv[1:] if argv is None else list(argv)
+    if raw[:1] == ["service"]:  # `python3 -m sts2bot service disable` and friends: no game, no bot
+        return service.main(raw[1:])
     ap = argparse.ArgumentParser(prog="sts2bot", description="Plays Slay the Spire 2 nonstop through the STS2_MCP mod.")
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=15526)

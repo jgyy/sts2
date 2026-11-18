@@ -36,6 +36,8 @@ class Memory:
     runs_finished: int = 0
     character_selected: bool = False
     boss_next: bool = False  # the room we are walking into leads straight to the boss
+    event_id: str = ""  # the event on screen (its id), to tell one event from the next
+    event_hp0: int = 0  # our HP when that event began: what it has cost us so far
     map_nodes: dict = field(default_factory=dict)  # the act's map as last seen: (col, row) -> node
     map_at: tuple = ()  # the node we walked to
     upgrade_gain: object = None  # callable(card) -> what its upgrade adds, or None if unknown
@@ -510,6 +512,19 @@ def deck_fit(card: dict, deck: list) -> float:
     return fit
 
 
+def reward_bar(deck_size: int, act: int | None) -> float:
+    """What a card reward has to be worth to be taken."""
+    # Be pickier as the deck grows: every mediocre card makes the good ones
+    # show up less often. But acts 2 and 3 are where the deck has to do the
+    # damage: the bot skipped 37% of act 2 rewards and 56% of act 3 ones, most
+    # of them 3-4 point attacks, and most act 3 bosses were still above half
+    # their HP when the run ended. So there the growth is halved.
+    growth = 0.0 if deck_size < 16 else 1.0 if deck_size < 20 else 2.0 if deck_size < BIG_DECK else 3.0
+    if isinstance(act, int) and act >= 2:
+        growth *= 0.5
+    return SKIP_THRESHOLD + knob("pickiness") + growth
+
+
 def card_reward(state: dict, mem: Memory) -> list[Action]:
     cr = state.get("card_reward") or {}
     cards = cr.get("cards") or []
@@ -531,7 +546,7 @@ def card_reward(state: dict, mem: Memory) -> list[Action]:
     out: list[Action] = []
     # Be pickier as the deck grows: every mediocre card makes the good ones
     # show up less often.
-    threshold = SKIP_THRESHOLD + knob("pickiness") + (0.0 if mem.deck_size < 16 else 1.0 if mem.deck_size < 20 else 2.0 if mem.deck_size < BIG_DECK else 3.0)
+    threshold = reward_bar(mem.deck_size, act)
     if log.isEnabledFor(logging.DEBUG):
         log.debug("card reward (deck %d, need %.1f): %s", mem.deck_size, threshold, ", ".join(f"{c.get('name')} {worth(c):.1f}" for c in ranked))
     take = [("select_card_reward", {"card_index": int(c.get("index", 0))}) for c in ranked]
@@ -566,7 +581,12 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
         smith = knob("upgrade_worth") + best_onward(mem.map_nodes, mem.map_at, [], hp_now, *args, [MAX_PATHS])
         healed = min(float(max_hp), hp_now + REST_HEAL * max_hp)
         rest = best_onward(mem.map_nodes, mem.map_at, [], healed, *args, [MAX_PATHS])
-        heal_first = rest > smith and hp < 0.95
+        # Below half HP the path values hardly see the difference between
+        # 6 HP and 40 (boss odds are zero under 30%), so a flat upgrade bonus
+        # won: one act 3 bot walked into the boss at 6 of 109 HP. Heal then.
+        # Before a boss a heal is worth more than the flat upgrade bonus: the
+        # bot skipped the rest 29 times below 90% HP and fought the boss weaker.
+        heal_first = hp < 0.5 or (rest > smith and hp < 0.95) or (mem.boss_next and hp < 0.9)
         log.debug("rest site at %d/%d: rest %.1f, upgrade %.1f", hp_now, max_hp, rest, smith)
 
     def rank(o: dict) -> float:
@@ -659,6 +679,14 @@ _BAD = [(r"\bcurse\b", 6.0), (r"\bfight\b", 2.0), (r"draw \d+ fewer cards?", 4.0
 # Options that end the run in all but name. One event offers ever larger
 # rewards for Max HP until the last step, "Lose Everything", leaves 1 Max HP;
 # the bot walked into it nine times.
+# Duplicating the whole deck doubles every draw pile and dilutes the good cards.
+_DUPLICATE_DECK = re.compile(r"duplicate (?:your|the) (?:whole )?deck")
+# Something bad we would receive or be given: it is not a relic, whatever the
+# "Receive ..." wording suggests.
+_CURSE_GAIN = re.compile(
+    r"\b(?:receive|obtain|add|gain)\b[^.]*\b(?:bad luck|regret|doubt|shame|decay|injury|wound|burn|dazed|hex|parasite|"
+    r"writhe|normality|pain|debt|greed|spite|void|mind rot|sloth|waste away|disintegration|clumsy|curse)\b"
+)
 _RUINOUS = re.compile(r"\blose (all|everything)\b|\bset your max hp\b|\bmax hp (to|becomes) \d\b", re.I)
 
 
@@ -698,7 +726,7 @@ _ANCIENT = {
 }
 
 
-def _event_option_value(opt: dict, hp: int, max_hp: int) -> float:
+def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0) -> float:
     text = f"{opt.get('title') or ''}. {opt.get('description') or ''}".lower()
     known = _ANCIENT.get(re.sub(r"[^A-Z0-9]+", "_", re.sub(r"['\u2019]", "", str(opt.get("title") or "")).upper()).strip("_"))
     if known is not None:
@@ -710,8 +738,17 @@ def _event_option_value(opt: dict, hp: int, max_hp: int) -> float:
         if re.search(pat, text) and not re.search(r"(?:lose|pay|give)[^.]*" + pat, text):
             score += w
     # "Obtain the Sword of Stone", "Receive the Spoils Map": a relic by name.
-    if not opt.get("relic_name") and "relic" not in text and re.search(r"\b(?:obtain|receive) (?:the )?(?!a\b|an\b|\d)[a-z]", text):
-        score += 5.0
+    if _CURSE_GAIN.search(text):
+        score -= 6.0
+    # "Obtain the Sword of Stone", "Receive the Spoils Map": a relic by name.
+    # Each "obtain/receive" is judged on its own, so "Receive Bad Luck" is not one.
+    if not opt.get("relic_name") and "relic" not in text:
+        for gain in re.finditer(r"\b(?:obtain|receive) (?:the )?(?!a\b|an\b|\d)[a-z][a-z' ]*", text):
+            if not _CURSE_GAIN.search(gain.group(0)):
+                score += 5.0
+                break
+    if _DUPLICATE_DECK.search(text):
+        score -= 12.0
     m = re.search(r"\bpay (\d+) gold", text)
     if m:
         score -= int(m.group(1)) / 150.0
@@ -746,6 +783,10 @@ def _event_option_value(opt: dict, hp: int, max_hp: int) -> float:
             score -= 1000.0
         else:
             score -= 12.0 * loss / max(1, hp)
+        if bled >= 5:
+            # This event has already taken HP from us: each further bite costs more,
+            # so a chain of small losses is stopped before it adds up.
+            score -= 2.0 + 0.5 * bled
     if re.search(r"heal", text) and hp >= 0.9 * max_hp:
         score -= 2.0
     return score
@@ -760,14 +801,19 @@ def event(state: dict, mem: Memory) -> list[Action]:
         return [("advance_dialogue", {}), ("proceed", {})]
     player = state.get("player") or {}
     hp, max_hp = int(player.get("hp") or 1), int(player.get("max_hp") or 1)
+    # One event is one floor: the same event on a later floor starts again from its own HP.
+    eid = f"{ev.get('event_id') or ''}@{(state.get('run') or {}).get('floor')}"
+    if eid != mem.event_id:
+        mem.event_id, mem.event_hp0 = eid, hp
+    bled = max(0, mem.event_hp0 - hp)
     proceeds = [o for o in opts if o.get("is_proceed")]
     rest = [o for o in opts if not o.get("is_proceed")]
-    rest.sort(key=lambda o: _event_option_value(o, hp, max_hp), reverse=True)
+    rest.sort(key=lambda o: _event_option_value(o, hp, max_hp, bled), reverse=True)
     if log.isEnabledFor(logging.DEBUG) and rest:
         log.debug(
             "event %s: %s",
             ev.get("event_id"),
-            " | ".join(f"[{_event_option_value(o, hp, max_hp):.1f}] {o.get('title')}: {o.get('description')}" for o in rest),
+            " | ".join(f"[{_event_option_value(o, hp, max_hp, bled):.1f}] {o.get('title')}: {o.get('description')}" for o in rest),
         )
     ordered = proceeds + rest if proceeds else rest
     return [("choose_event_option", {"index": int(o.get("index", 0))}) for o in ordered]

@@ -23,6 +23,7 @@ log = logging.getLogger("sts2bot.combat")
 MAX_SEARCH_CARDS = 11
 LETHAL_PENALTY = 1_000_000.0
 WIN_BONUS = 10_000.0
+RAGE_BLOCK = 99  # Crab Rage: Block a crab gains for each ally that dies (gone again when its next turn starts)
 
 
 # What playing each Power is worth in an ordinary fight, in points of damage
@@ -89,6 +90,8 @@ class Enemy:
     scar: float = 0.0  # extra cost of each of its hits that gets through (Paper Cuts: Max HP; Painful Stabs: a Wound)
 
     main_threat: bool = False  # a minion that is doing the real damage and is quicker to kill than its leader
+    respawns: int = 0  # Stock: when killed it is summoned again in its place, at full HP, this many more times
+    max_hp: int = 0  # its full HP (what a Stock summon comes back with)
 
     @property
     def worth(self) -> float:
@@ -223,6 +226,8 @@ def read_enemies(state: dict) -> list[Enemy]:
                 weak_mult=1.5 if _has_power(state.get("player") or {}, "TRACKING") else 1.0,
                 scar=8.0 * _has_power(e, "PAPER_CUTS") + 4.0 * _has_power(e, "PAINFUL_STABS"),
                 rage=_has_power(e, "CRAB_RAGE"),
+                respawns=max(0, power_amount(e, "STOCK")),
+                max_hp=int(e.get("max_hp") or 0),
             )
         )
     # Surrounded: we face whoever we targeted last, and the one behind us hits
@@ -304,6 +309,36 @@ def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = Fal
             e.stun_at = 0
             e.incoming = 0  # Stunned: its attack this turn never happens
     return removed
+
+
+def _respawns(foes: list[Enemy]) -> None:
+    """Stock: an enemy that dies while it has Stock is summoned again in its place at full HP.
+
+    The death is not a kill: no win, no kill bonus, and the damage it took
+    goes for nothing once it is back. Axebot came back at 85 HP after the
+    bot had counted its death at 5 HP as the fight nearly won.
+    """
+    for e in foes:
+        if not e.alive and e.respawns > 0 and e.max_hp > 0:
+            e.hp, e.block = e.max_hp, 0
+            e.respawns -= 1
+
+
+def _rage_blocks(foes: list[Enemy], known_dead: set) -> None:
+    """Crab Rage, as the line plays out: each ally that dies gives the crabs still standing 99 Block.
+
+    The Block is only there until their next turn, so the damage we aim at
+    them for the rest of this turn is absorbed. In one lost fight the bot hit
+    a Rocket four times with 93 Block on it: its Block fell to 76 and its HP
+    stayed at 113.
+    """
+    newly = [e for e in foes if not e.alive and e.entity_id not in known_dead]
+    if not newly:
+        return
+    known_dead.update(e.entity_id for e in newly)
+    for e in foes:
+        if e.alive and e.rage:
+            e.block += RAGE_BLOCK * len(newly)
 
 
 def _would_kill(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> bool:
@@ -446,8 +481,11 @@ def simulate(
     summoned = 0  # HP this line gives Osty
     drawn = 0  # cards this line draws
     tainted = 0
+    known_dead = {e.entity_id for e in foes if not e.alive}
 
     for n, c in enumerate(line):
+        _respawns(foes)
+        _rage_blocks(foes, known_dead)  # a crab that died with the last card hands its ally Block
         if c.star_cost > stars:
             return None
         x = 1
@@ -679,6 +717,7 @@ def simulate(
             score += (max(0, e.weak_added - 1) + 0.3 * min(1, e.weak_added)) * weak_turn * (1.0 if e.incoming_hits or not e.minion else 0.5)
     # Doom finishes an enemy at the end of its turn once it covers its HP.
     score += 20.0 * sum(e.worth for e, orig in zip(foes, enemies) if e.alive and e.doom >= e.hp and orig.doom < orig.hp)
+    _respawns(foes)  # a Stock enemy killed by the last card comes back too
     kills = [e for e, orig in zip(foes, enemies) if not e.alive and orig.alive]
     score += 25.0 * sum(e.worth for e in kills)
     survivors = [e for e in foes if e.alive]
@@ -690,13 +729,15 @@ def simulate(
         score += WIN_BONUS
 
     if kills and survivors:
-        # Crab Rage: the one left standing gets 99 Block (a whole turn of ours
-        # wasted) and 6 Strength for good. Killing the first crab with the
-        # second on 126 HP lost that fight; the time to do it is when the other
-        # is nearly dead too, or better, when both go in the same turn.
+        # Crab Rage: the one left standing gets 99 Block (its attacks this turn
+        # are wasted, see _rage_blocks) and 6 Strength for good. Killing the
+        # first crab with the second on 126 HP lost that fight, so the cost
+        # grows with the HP left on the survivor. It has no flat base: two
+        # crabs at 6 HP must still be killed one after the other, or the bot
+        # ends every turn and is hit to death.
         for e in survivors:
             if e.rage:
-                score -= len(kills) * (30.0 + 2.0 * e.hp)
+                score -= len(kills) * 2.0 * e.hp
                 e.incoming += 6 * e.incoming_hits * len(kills)
 
     if sandpit is not None and survivors:

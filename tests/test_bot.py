@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from sts2bot import combat, strategy
+from sts2bot import combat, learn, strategy
 from sts2bot.bot import Bot, Stuck
 from sts2bot.cards import deck_value, parse
 from sts2bot.strategy import Memory
@@ -481,6 +481,40 @@ class Strategy(unittest.TestCase):
         s["run"]["act"] = 2
         self.assertEqual(strategy.map_screen(s, mem)[0][1]["index"], 0)
 
+    def test_a_badly_hurt_bot_rests_even_when_the_path_says_smith(self):
+        # Act 3 at 6 of 109 HP, the boss next: the path values come out small
+        # here, so the flat Smith bonus used to beat healing and the bot walked
+        # into the boss at 6 HP.
+        opts = [{"index": 0, "id": "REST", "is_enabled": True}, {"index": 1, "id": "SMITH", "is_enabled": True}]
+        s = self.base("rest_site", hp=6, rest_site={"options": opts})
+        s["player"]["max_hp"], s["run"]["act"] = 109, 3
+        mem = Memory(boss_next=True)
+        mem.map_nodes = {(1, 13): {"col": 1, "row": 13, "type": "RestSite", "children": [[3, 14]]},
+                         (3, 14): {"col": 3, "row": 14, "type": "Boss", "children": []}}
+        mem.map_at = (1, 13)
+        saved, learn.KNOB["upgrade_worth"] = learn.KNOB["upgrade_worth"], 2.5  # the setting the learner usually picks
+        try:
+            self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 0)
+        finally:
+            learn.KNOB["upgrade_worth"] = saved
+
+    def test_heals_before_a_boss_when_below_ninety_percent(self):
+        # Act 2 at 61 of 75 HP, the boss next: a flat upgrade bonus used to beat the heal
+        # (the 19% of HP a rest gives is worth little to the path model), and the bot
+        # entered the boss at 81%. Before a boss, rest.
+        opts = [{"index": 0, "id": "REST", "is_enabled": True}, {"index": 1, "id": "SMITH", "is_enabled": True}]
+        s = self.base("rest_site", hp=61, rest_site={"options": opts})
+        s["player"]["max_hp"], s["run"]["act"] = 75, 2
+        mem = Memory(boss_next=True)
+        mem.map_nodes = {(0, 14): {"col": 0, "row": 14, "type": "RestSite", "children": [[3, 15]]},
+                         (3, 15): {"col": 3, "row": 15, "type": "Boss", "children": []}}
+        mem.map_at = (0, 14)
+        saved, learn.KNOB["upgrade_worth"] = learn.KNOB["upgrade_worth"], 2.5
+        try:
+            self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 0)
+        finally:
+            learn.KNOB["upgrade_worth"] = saved
+
     def test_rest_heals_when_low_and_smiths_when_healthy(self):
         rs = {"options": [{"index": 0, "id": "rest", "is_enabled": True}, {"index": 1, "id": "smith", "is_enabled": True}]}
         self.assertEqual(strategy.rest_site(self.base("rest_site", hp=30, rest_site=rs), Memory())[0][1], {"index": 0})
@@ -895,6 +929,23 @@ class LiveGameLessons(unittest.TestCase):
         self.assertEqual(best(("Continue", "Lose 24 Max HP. Upgrade 2 random cards."), ("Give Up", "Leave.")), 1)
         self.assertEqual(best(("Decipher", "Lose 3 Max HP. Upgrade a random card."), ("Give Up", "Leave.")), 0)
 
+    def test_an_event_that_keeps_costing_hp_is_left_after_a_few_bites(self):
+        # Slippery Bridge: "Hold On" costs 3, 4, 5, ... HP each time. Priced one bite at a
+        # time it always looked cheaper than losing a card, and one run lost 42 HP there.
+        mem = Memory()
+        hp, picks = 71, []
+        for loss in (3, 4, 5):
+            opts = [
+                {"index": 0, "title": "Overcome", "description": "Shining Strike is removed from your Deck."},
+                {"index": 1, "title": "Hold On", "description": f"Lose {loss} HP. The card in the above option is randomized."},
+            ]
+            state = {"state_type": "event", "event": {"event_id": "SLIPPERY_BRIDGE", "options": opts},
+                     "player": {"hp": hp, "max_hp": 75}}
+            picks.append(strategy.event(state, mem)[0][1]["index"])
+            if picks[-1] == 1:
+                hp -= loss
+        self.assertEqual(picks, [1, 1, 0])
+
     def test_bridge_event_gives_up_a_starter_card_not_a_good_one(self):
         def value(title, text, hp=60):
             return strategy._event_option_value({"title": title, "description": text}, hp, 80)
@@ -902,6 +953,18 @@ class LiveGameLessons(unittest.TestCase):
         hold = value("Hold On", "Lose 5 HP. The card in the above option is randomized.")
         self.assertGreater(value("Overcome", "Defend is removed from your Deck."), hold)
         self.assertLess(value("Overcome", "Demon Form+ is removed from your Deck."), hold)
+
+    def test_an_event_never_doubles_the_deck_or_hands_out_a_curse_as_a_relic(self):
+        # The Reflections event: "Receive Bad Luck" was scored as a relic, and
+        # "Duplicate your Deck" was not penalised. One run doubled its deck to 71.
+        def value(title, text, hp=69):
+            return strategy._event_option_value({"title": title, "description": text}, hp, 105)
+
+        shatter = value("Shatter", "Duplicate your Deck. Receive Bad Luck.")
+        mirror = value("Touch a Mirror", "Downgrade 2 random cards. Upgrade 4 random cards.")
+        self.assertLess(shatter, 0)
+        self.assertGreater(mirror, shatter)
+        self.assertGreater(value("Obtain the Spoils Map", "A relic."), 3)  # a real relic by name still counts
 
     def test_picks_the_mildest_boss_affliction(self):
         cards_ = [
@@ -1081,8 +1144,7 @@ class CrashLoop(unittest.TestCase):
             sup._note_crash()
         self.assertEqual((bot.careful_until, bot.abandon_next), (220.0, False))
         with self.assertLogs("sts2bot.supervisor", level="WARNING"):
-            sup._note_crash()
-            sup._note_crash()
+            sup._note_crash()  # the third crash in the same place: the run is given up
         self.assertTrue(bot.abandon_next)
         # Getting somewhere new starts the count again.
         bot.abandon_next = False
@@ -1280,6 +1342,74 @@ class HttpClient(unittest.TestCase):
         with self.assertRaises(GameUnavailable):
             client.state()
         self.assertFalse(client.ping())
+
+
+class CrabRage(unittest.TestCase):
+    def crabs(self, crusher_hp=6, rocket_hp=120):
+        return [
+            combat.Enemy(entity_id="CRUSHER_0", hp=crusher_hp, block=0, vulnerable=False, weak=False, incoming=6, rage=True),
+            combat.Enemy(entity_id="ROCKET_0", hp=rocket_hp, block=0, vulnerable=False, weak=False, incoming=6, rage=True),
+        ]
+
+    def test_a_surviving_crab_gets_block_once_per_ally_that_died(self):
+        foes = self.crabs(crusher_hp=0)
+        known = set()
+        combat._rage_blocks(foes, known)
+        combat._rage_blocks(foes, known)  # the same death is not counted twice
+        self.assertEqual(foes[1].block, combat.RAGE_BLOCK)
+        self.assertEqual(known, {"CRUSHER_0"})
+
+    def test_hitting_the_second_crab_after_the_first_dies_is_worth_less(self):
+        line = [parse(STRIKE(0)), parse(STRIKE(1))]  # kill the Crusher, then hit the Rocket
+        kw = dict(energy=2, stars=0, hp=80, max_hp=80, block=0, fight="boss")
+        with_rage = combat.simulate(line, self.crabs(), **kw).score
+        saved, combat.RAGE_BLOCK = combat.RAGE_BLOCK, 0
+        try:
+            without = combat.simulate(line, self.crabs(), **kw).score
+        finally:
+            combat.RAGE_BLOCK = saved
+        self.assertLess(with_rage, without)
+
+
+class StockRespawn(unittest.TestCase):
+    def axebot(self, hp=5, respawns=2):
+        return combat.Enemy(entity_id="AXEBOT_0", hp=hp, block=0, vulnerable=False, weak=False, incoming=15,
+                            respawns=respawns, max_hp=85)
+
+    def test_a_stock_enemy_comes_back_at_full_hp_while_it_has_stock(self):
+        foes = [self.axebot(hp=0, respawns=1)]
+        combat._respawns(foes)  # first death: back at full HP, one stack used
+        self.assertEqual((foes[0].alive, foes[0].hp, foes[0].respawns), (True, 85, 0))
+        foes[0].hp = 0
+        combat._respawns(foes)  # second death, no stock left: really dead
+        self.assertFalse(foes[0].alive)
+
+    def test_killing_a_stock_enemy_is_not_a_win(self):
+        kw = dict(energy=1, stars=0, hp=80, max_hp=80, block=0, fight="boss")
+        line = [parse(STRIKE(0))]  # 6 damage on a 5-HP Axebot
+        with_stock = combat.simulate(line, [self.axebot(respawns=2)], **kw).score
+        without = combat.simulate(line, [self.axebot(respawns=0)], **kw).score
+        self.assertLess(with_stock, without - combat.WIN_BONUS / 2)
+
+    def test_stock_is_read_from_the_state(self):
+        state = {"battle": {"enemies": [{"entity_id": "AXEBOT_0", "hp": 5, "max_hp": 85, "block": 0,
+                                         "status": [{"id": "STOCK_POWER", "amount": 2}], "intents": []}]},
+                 "player": {}}
+        (foe,) = combat.read_enemies(state)
+        self.assertEqual((foe.respawns, foe.max_hp), (2, 85))
+
+
+class RewardBar(unittest.TestCase):
+    def test_acts_two_and_three_grow_the_bar_half_as_fast(self):
+        # Growth from a 12-card deck to a 26-card one: 3 in act 1, 1.5 in acts 2 and 3.
+        self.assertAlmostEqual(strategy.reward_bar(26, 1) - strategy.reward_bar(12, 1), 3.0)
+        self.assertAlmostEqual(strategy.reward_bar(26, 2) - strategy.reward_bar(12, 2), 1.5)
+        self.assertAlmostEqual(strategy.reward_bar(26, 3) - strategy.reward_bar(12, 3), 1.5)
+        self.assertAlmostEqual(strategy.reward_bar(22, 1) - strategy.reward_bar(22, 2), 1.0)
+
+    def test_small_decks_have_the_same_bar_in_every_act(self):
+        self.assertEqual(strategy.reward_bar(10, 1), strategy.reward_bar(10, 3))
+        self.assertEqual(strategy.reward_bar(10, None), strategy.reward_bar(10, 1))
 
 
 if __name__ == "__main__":

@@ -32,6 +32,17 @@ class BossWatchTest(unittest.TestCase):
         self.assertIn("SOUL_FYSH lost; boss hp 200 -> 150; player hp 60 -> 5/80; rounds 2", line)
         self.assertIsNone(watch.update({"state_type": "game_over", "run": {"act": 1, "floor": 17}}, "game_over"))
 
+    def test_a_card_picked_mid_fight_does_not_end_it(self):
+        # A Survivor's discard opens a hand-select screen in the middle of the fight.
+        watch = BossWatch()
+        watch.update(boss_state([("WATERFALL_GIANT", 240)], 5), "boss")
+        for mid in ("hand_select", "card_select", "bundle_select"):
+            self.assertIsNone(watch.update({"state_type": mid, "run": {"act": 1, "floor": 17}}, mid))
+        watch.update(boss_state([("WATERFALL_GIANT", 87)], 5), "boss")
+        line = watch.update({"state_type": "rewards", "run": {"act": 1, "floor": 17}}, "rewards")
+        self.assertIn("won; boss hp 240 -> 87", line)
+        self.assertIsNone(watch.update({"state_type": "map", "run": {"act": 1, "floor": 18}}, "map"))
+
     def test_several_enemies_are_named_once_each(self):
         watch = BossWatch()
         watch.update(boss_state([("KIN_FOLLOWER", 90), ("KIN_PRIEST", 80)], 1), "boss")

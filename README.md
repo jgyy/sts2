@@ -91,6 +91,20 @@ and blocks idle sleep while it plays. Install instructions are at the top of
 that file. The bot starts Steam itself when it is not running; Steam must
 be able to log in without asking for a password.
 
+Turn the service on or off with these commands (they call `systemctl --user`):
+
+```sh
+python3 -m sts2bot service status    # is it running?
+python3 -m sts2bot service stop      # stop it now; it starts again at the next login
+python3 -m sts2bot service disable   # stop it now and do not start it at login
+python3 -m sts2bot service start     # start it now
+python3 -m sts2bot service enable    # start it now and at every login
+```
+
+Do not just kill the bot's process: the service restarts it after 15 seconds.
+Stopping the service does not close the game; close the game from the game
+or Steam if you want it gone too.
+
 ## Game updates
 
 Steam updates the game on its own, and an update often breaks the bridge mod:
