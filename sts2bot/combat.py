@@ -657,7 +657,17 @@ def simulate(
     # of what is left: at 37 HP facing 27 the bot attacked with two Defends
     # in hand and was dead a turn later.
     bite = min(1.0, lost / max(1, hp))
-    score -= lost * (1.5 + 2.5 * (1.0 - ratio) + 3.0 * bite) * (4.0 if doomed else 1.0) * knob("caution")
+    worth = 1.5 + 2.5 * (1.0 - ratio) + 3.0 * bite
+    if fight == "boss" and knob("boss_race") > 0:
+        # A boss fight is a race, and the HP left over is worth nothing (the
+        # next act starts at full HP). A turn spent blocking buys one more
+        # turn of a boss that has grown since: the Necrobinder sat behind
+        # Defends for 11 rounds of the Kin (71 damage dealt, a 33-damage card
+        # in hand most turns) and lost to followers on 8 Strength. So HP is
+        # priced near the damage it costs to keep, whatever is left of it,
+        # and only a hit that takes a big share of it counts for more.
+        worth = 1.2 + 0.75 * (1.0 - ratio) + 4.0 * max(0.0, bite - 0.3)
+    score -= lost * worth * (4.0 if doomed else 1.0) * knob("caution")
     if lost >= hp:
         # Dead on paper. If every line is, the least dead one is the one to
         # play: the most Block, and cards drawn while there is energy left to

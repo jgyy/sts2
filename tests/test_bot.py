@@ -347,6 +347,41 @@ class LiveGameLessons(unittest.TestCase):
             bot._record_run({**over, "player": {"hp": 12, "max_hp": 80}})  # counter unchanged: a loss
         self.assertIn("loss", logs.output[0])
 
+    def test_a_win_the_game_has_not_written_down_yet_is_waited_for(self):
+        class Game:
+            wins = 2
+            asked = 0
+
+            def profile(self):
+                self.asked += 1
+                return {"total_wins": self.wins + (self.asked >= 5), "characters": []}
+
+        game = Game()
+        bot = Bot(game, clock=FakeClock().now, sleep=lambda s: None)
+        bot._refresh_ascensions()
+        over = {"state_type": "game_over", "run": {"act": 3, "floor": 48}, "player": {"hp": 3, "max_hp": 83}}
+        with self.assertLogs("sts2bot", level="INFO") as logs:
+            bot._record_run(over)
+        self.assertIn("win", logs.output[-1])
+        self.assertEqual(bot.wins, 1)
+
+    def test_a_bot_started_mid_run_still_sees_that_run_won(self):
+        class Game:
+            wins = 3
+
+            def profile(self):
+                return {"total_wins": self.wins, "characters": []}
+
+        game = Game()
+        bot = Bot(game, clock=FakeClock().now, sleep=lambda s: None)
+        mid = {"state_type": "map", "run": {"act": 3, "floor": 40}, "player": {"hp": 50, "max_hp": 80}}
+        over = {"state_type": "game_over", "run": {"act": 3, "floor": 48}, "player": {"hp": 0, "max_hp": 80}}
+        bot._note_state(mid)
+        game.wins = 4
+        with self.assertLogs("sts2bot", level="INFO") as logs:
+            bot._note_state(over)
+        self.assertTrue(any("run 1 over: win" in line for line in logs.output), logs.output)
+
     def test_reveals_unlocks_on_the_timeline_before_starting_a_run(self):
         mem = Memory()
         main = {"state_type": "menu", "menu_screen": "main", "options": ["timeline", "settings", "quit"],

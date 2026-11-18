@@ -19,6 +19,23 @@ class BossMechanics(unittest.TestCase):
         i, "FRANTIC_ESCAPE", "Frantic Escape", "Status", cost,
         "Get farther away. Increase Sandpit by 1. Increase the cost of this card by 1."))
 
+    def kin_round_two(self, hp):
+        reap = card(0, "REAP", "Reap+", "Attack", 3, "Deal 33 damage.", "AnyEnemy")
+        guard = card(3, "GRAVE_WARDEN", "Grave Warden", "Skill", 1, "Gain 6 Block.", "Self")
+        low = lambda i: card(i, "DEFEND_N", "Defend", "Skill", 1, "Gain 3 Block.", "Self")
+        foes = [enemy("KIN_FOLLOWER_0", 58, attack=7), enemy("KIN_FOLLOWER_1", 59, attack=4), enemy("KIN_PRIEST_0", 178, attack=8)]
+        state = combat_state([reap, low(1), low(2), guard], foes, hp=hp, max_hp=66, kind="boss")
+        return combat.choose_card(state)[1]["card_index"]
+
+    def test_a_boss_fight_is_a_race_when_that_setting_is_on(self):
+        from unittest import mock
+
+        with mock.patch.dict(learn.KNOB, {"caution": 1.35}):  # the setting the learner usually picks
+            self.assertNotEqual(self.kin_round_two(45), 0)  # the old pricing blocks for 12 and keeps the 33 damage
+        with mock.patch.dict(learn.KNOB, {"caution": 1.35, "boss_race": 1.0}):
+            self.assertEqual(self.kin_round_two(45), 0)
+            self.assertNotEqual(self.kin_round_two(22), 0)  # 19 coming at 22 HP: that hit is blocked
+
     def test_a_death_blow_is_an_attack(self):
         blow = {"type": "DeathBlow", "label": "39"}
         self.assertEqual((combat.intent_damage(blow), combat.intent_hits(blow)), (39, 1))

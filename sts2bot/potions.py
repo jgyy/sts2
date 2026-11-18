@@ -32,11 +32,17 @@ def potion_actions(state: dict) -> list[Action]:
     spare = 1 if len(potions) >= int(player.get("max_potion_slots") or 3) else 0
     kind = state.get("state_type")
     floor = (state.get("run") or {}).get("floor")
-    if kind == "monster" and isinstance(floor, int) and any(0 < boss - floor <= 3 for boss in BOSS_FLOORS):
+    if kind in ("monster", "elite") and isinstance(floor, int) and any(0 < boss - floor <= 3 for boss in BOSS_FLOORS):
         # The boss is a room or two away: what is on the belt goes there. Act 3
         # bosses were met with one potion on average, a third of them with none.
         spare = 0
-    big_fight = danger or kind in ("elite", "boss")
+    # Elites used to get the whole belt on round 1, and they are not where
+    # runs end: 125 of 149 deaths were at a boss. Bosses met with two or three
+    # potions were beaten far more often (act 2: 65% against 34% with one or
+    # none; act 1: 93% against 72%). So an elite gets the spare one, and the
+    # rest only once the fight has gone wrong.
+    hurt = kind == "elite" and hp <= 0.5 * max_hp
+    big_fight = danger or hurt or kind == "boss"
     if not (big_fight or spare):
         return []
     left = sum(e.hp + e.block for e in enemies if e.worth > 0)

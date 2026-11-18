@@ -123,21 +123,17 @@ def menu(state: dict, mem: Memory, character: str) -> list[Action]:
         embark = pick("confirm", "embark")
         if not mem.character_selected:
             return select + embark
-        # Epochs first, ascension levels after: while the Timeline is not
-        # complete the run is played at the level its epochs ask for, which is
-        # the easiest one that counts. After that, at the highest unlocked.
+        # Every run is played at the highest level the character has unlocked:
+        # a win there is what unlocks the next one.
         raise_asc: list[Action] = []
         top, now = state.get("max_ascension"), state.get("ascension")
         aim = top
-        if isinstance(top, int):
-            aim = min(top, epoch_ascension(str(want), mem.epochs, top))
         if isinstance(aim, int) and isinstance(now, int) and now != aim:
             raise_asc = [("set_ascension", {"level": aim})]
         # The screen takes a moment to show the levels of the character just
         # picked. Embarking before it does started the run at ascension 0 even
         # though a higher one was unlocked, so wait for it (but not for ever).
         known = {str(k).upper(): int(v) for k, v in mem.max_ascension.items()}.get(str(want).upper(), 0)
-        known = min(known, epoch_ascension(str(want), mem.epochs, known))
         # (When the screen itself says the top level is lower, the unlock has
         # not been revealed on the Timeline yet; a short wait is enough then.)
         patience = 4 if isinstance(top, int) else 20
@@ -173,24 +169,6 @@ def epochs_left(epochs: dict | None) -> bool:
     if not epochs:
         return False  # no profile to go by: behave as if there were no Timeline
     return len(epochs) < TOTAL_EPOCHS or any(state not in _EARNED for state in epochs.values())
-
-
-def epoch_ascension(character: str, epochs: dict | None, top: int) -> int:
-    """The ascension level to play this character at.
-
-    While epochs are left: Ascension 1 if the character's own "win on
-    Ascension 1" epoch is the one it is after (and the level is unlocked),
-    otherwise 0, where wins, bosses and score all come easiest. With the
-    Timeline complete: the highest level unlocked, to unlock the next.
-    """
-    if not epochs_left(epochs):
-        return top
-    c = character.upper()
-    won_before = (epochs or {}).get(f"{c}4_EPOCH") in _EARNED
-    wants_a1 = f"{c}7_EPOCH" in (epochs or {}) and (epochs or {}).get(f"{c}7_EPOCH") not in _EARNED
-    return 1 if top >= 1 and won_before and wants_a1 else 0
-
-
 
 
 def epoch_pull(character: str, epochs: dict | None, drought: int = 0, max_ascension: int = 0, boss_kills: int | None = None, strength: float | None = None) -> float:
@@ -236,10 +214,10 @@ def choose_character(
 ) -> str | None:
     """`setting` is a character id, or "auto" / "cycle" / "random" over the unlocked ones.
 
-    "auto" works towards unlocking every epoch on the game's Timeline: it
-    plays whoever is most likely to earn one next (see epoch_pull). Once
-    nobody has epochs left, it plays the character with the lowest ascension
-    so that all of them climb evenly.
+    "auto" plays the character with the lowest ascension unlocked, so that
+    all of them climb evenly (asked for on 2026-11-18). Among characters on
+    the same level it plays whoever is most likely to earn an epoch on the
+    game's Timeline next (see epoch_pull).
     """
     if not unlocked:
         return None
@@ -263,8 +241,8 @@ def choose_character(
             k = u.upper()
             return epoch_pull(u, epochs, dry.get(k, 0), levels.get(k, 0), kills.get(k) if boss_kills is not None else None, strong.get(k))
 
-        # Most likely to earn an epoch first; then the lowest ascension; then the listed order.
-        return min(unlocked, key=lambda u: (-pull(u), levels.get(u.upper(), 0)))
+        # The lowest ascension first; then most likely to earn an epoch; then the listed order.
+        return min(unlocked, key=lambda u: (levels.get(u.upper(), 0), -pull(u)))
     if s == "CYCLE":
         return unlocked[runs_finished % len(unlocked)]
     if s == "RANDOM":

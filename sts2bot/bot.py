@@ -97,6 +97,7 @@ class Bot:
         self._last_where: tuple = ()
         self._seen_powers: set = set()
         self._wins_seen: int | None = None  # the game's win counter when we last looked
+        self._wins_asked = False  # looked it up once for a run already under way
         self._timeline_idle = 0  # Timeline clicks in a row that changed nothing
         self._facing: str | None = None  # enemy we last aimed at in this fight
         self._facing_fight: tuple = ()
@@ -361,6 +362,13 @@ class Bot:
         if kind in COMBAT_STATES:
             self._note_powers(state)
         if state.get("run"):
+            if self._wins_seen is None and kind != "game_over" and not self._wins_asked:
+                # A bot started in the middle of a run has not been through
+                # the menu, where the win counter is first read. Without it
+                # the end of that run fell back on the end screen's HP, and two
+                # wins (the Regent's and the Silent's first) went down as losses.
+                self._wins_asked = True
+                self._wins_seen = self._profile_wins()
             where = self._where(state)
             if where != self._last_where:
                 self._last_where = where
@@ -416,8 +424,18 @@ class Bot:
         # The end screen looks the same for a win and a loss, and the HP it
         # reports is not reliable (the first win was logged as a loss). The
         # game's own win counter is: it goes up by one when a run is won.
-        self._note_epochs_earned()
         before, now = self._wins_seen, self._profile_wins()
+        if before is not None and now == before and int(run.get("act") or 0) >= 3:
+            # The game writes a win to the profile a moment after the end
+            # screen comes up: asked 0.3 s after the last click, the counter
+            # had not moved and the Regent's first win went down as a loss
+            # (and taught the card ratings and settings the wrong thing).
+            for _ in range(8):
+                self.sleep(0.5)
+                now = self._profile_wins()
+                if now is None or now > before:
+                    break
+        self._note_epochs_earned()
         if now is not None:
             self._wins_seen = now
         if before is not None and now is not None:
