@@ -10,6 +10,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from . import cards, combat, learn, strategy
+from .bossfight import BossWatch
 from .client import Client
 from .strategy import Memory
 
@@ -90,6 +91,7 @@ class Bot:
         self._last_change = clock()
         self._last_retry = clock()
         self._over_logged = False
+        self._boss_watch = BossWatch()
         self._turn_key: tuple = ()
         self._turn_plays = 0
         self._last_where: tuple = ()
@@ -336,6 +338,9 @@ class Bot:
 
     def _note_state(self, state: dict) -> None:
         kind = state.get("state_type")
+        ended = self._boss_watch.update(state, kind)
+        if ended:
+            log.info(ended)
         if kind in COMBAT_STATES:
             self._note_powers(state)
         if state.get("run"):
