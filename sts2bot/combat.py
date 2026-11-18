@@ -202,6 +202,17 @@ def _sap(e: Enemy, strength: int) -> None:
         e.incoming = max(0, e.incoming - strength * e.incoming_hits)
 
 
+def _debuff(e: Enemy, c: CardInfo, x: int = 1) -> None:
+    """Everything a card puts on one enemy. (Cards that sap ALL enemies used to do nothing in the plan:
+    Piercing Wail was played twice in 456 hands, and a Silent died behind a 60-damage attack it would have cut to 24.)"""
+    if c.vulnerable:
+        _expose(e, c.vulnerable * x)
+    if c.weak:
+        _weaken(e, c.weak * x)
+    if c.enemy_strength_loss:
+        _sap(e, c.enemy_strength_loss * x)
+
+
 def _weaken(e: Enemy, turns: int = 1) -> None:
     """A newly Weak enemy hits for 25% less this turn."""
     if _resists(e):
@@ -369,10 +380,7 @@ def simulate(
                     self_loss += e.thorns * _hit_count(e, hits, c.double_if_vulnerable)
                     score += _progress(e, _hit(e, per, hits, c.double_if_vulnerable), chip_rate) * dmg_value * e.worth
                     if e.alive:
-                        if c.vulnerable:
-                            _expose(e, c.vulnerable)
-                        if c.weak:
-                            _weaken(e, c.weak)
+                        _debuff(e, c, x if c.is_x else 1)
             elif c.random_target and len(alive) > 1:
                 score += per * hits * 0.8 * dmg_value
             else:
@@ -385,12 +393,8 @@ def simulate(
                         first_target = t.entity_id
                     self_loss += t.thorns * _hit_count(t, hits, c.double_if_vulnerable)
                     score += _progress(t, _hit(t, per, hits, c.double_if_vulnerable), chip_rate) * dmg_value * t.worth
-                    if c.vulnerable and t.alive:
-                        _expose(t, c.vulnerable)
-                    if c.weak and t.alive:
-                        _weaken(t, c.weak)
-                    if c.enemy_strength_loss and t.alive:
-                        _sap(t, c.enemy_strength_loss)
+                    if t.alive:
+                        _debuff(t, c, x if c.is_x else 1)
         elif c.needs_target:
             alive = [e for e in foes if e.alive]
             if c.enemy_strength_loss:
@@ -407,19 +411,11 @@ def simulate(
                 faced = t.entity_id
                 if n == 0:
                     first_target = t.entity_id
-                if c.vulnerable:
-                    _expose(t, c.vulnerable)
-                if c.weak:
-                    _weaken(t, c.weak)
-                if c.enemy_strength_loss:
-                    _sap(t, c.enemy_strength_loss)
+                _debuff(t, c, x if c.is_x else 1)
         elif c.aoe:
             for e in foes:
                 if e.alive:
-                    if c.vulnerable:
-                        _expose(e, c.vulnerable)
-                    if c.weak:
-                        _weaken(e, c.weak)
+                    _debuff(e, c, x if c.is_x else 1)
 
         alive_now = [e for e in foes if e.alive]
         aimed = next((e for e in alive_now if e.entity_id == (faced or focus)), None)
@@ -459,7 +455,7 @@ def simulate(
             nimble += c.dexterity
             if c.dexterity_lasts:
                 lasting += c.dexterity * 3.5
-        for kind in c.channel:
+        for kind in c.channel * (x if c.is_x else 1):
             if orb_slots and len(held) >= orb_slots:
                 old = held.pop(0)  # no room: the oldest orb is evoked to make space
                 if old[0] == "FROST" and can_block:

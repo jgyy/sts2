@@ -172,6 +172,12 @@ def parse(card: dict) -> CardInfo:
     strength = int(m.group(1)) if m else 0
     strength_lasts = bool(m) and not m.group(2)
     enemy_strength_loss = _int(r"enem(?:y|ies)\s+loses?\s+(\d+)\s+strength", text)
+    # "X" amounts on an X-cost card (Malaise: "Enemy loses X Strength. Apply X Weak."): 1 per energy spent.
+    # Read as nothing, Malaise was played 9 times in 51 hands.
+    if re.search(r"enem(?:y|ies)\s+loses?\s+X\s+strength", text, re.I):
+        enemy_strength_loss = 1
+    weak = weak or int(bool(re.search(r"apply\s+X\s+weak", text, re.I)))
+    vulnerable = vulnerable or int(bool(re.search(r"apply\s+X\s+vulnerable", text, re.I)))
     poison = _int(r"apply\s+(\d+)\s+poison", text)
     if poison:
         poison *= _int(r"poison\s+to\s+a\s+random\s+enemy\s+(\d+)\s+times", text) or 1
@@ -191,6 +197,8 @@ def parse(card: dict) -> CardInfo:
         for count, orb in re.findall(r"channel\s+(\d+)\s+(lightning|frost|dark|plasma|glass)", text, re.I)
         for _ in range(int(count))
     )
+    if not channel and (m := re.search(r"channel\s+X\s+(lightning|frost|dark|plasma|glass)", text, re.I)):
+        channel = (m.group(1).upper(),)  # Tempest: one per energy spent
     evoke = 0
     if re.search(r"\bevoke\s+your", text, re.I):  # "Evoke your rightmost Orb twice." / "... 4 times."
         evoke = 2 if re.search(r"evoke[^.]*twice", text, re.I) else _int(r"evoke[^.]*?(\d+)\s+times", text) or 1
