@@ -280,21 +280,22 @@ class Strategy(unittest.TestCase):
         first = [strategy.menu(s, mem, "auto")[0] for _ in range(25)]
         self.assertEqual(first[-1], ("menu_select", {"option": "confirm"}))
 
-    def test_epochs_come_before_ascension_levels(self):
+    def test_the_lowest_ascension_comes_before_epochs(self):
+        epochs = {"IRONCLAD7_EPOCH": "NotObtained", "REGENT4_EPOCH": "NotObtained", "REGENT6_EPOCH": "NotObtained",
+                  "NECROBINDER7_EPOCH": "NotObtained"}
+        who = ["IRONCLAD", "REGENT", "NECROBINDER"]
+        pick = lambda levels: strategy.choose_character("auto", who, 0, levels, epochs)
+        self.assertEqual(pick({"IRONCLAD": 1, "REGENT": 1}), "NECROBINDER")  # still on 0, whatever the others could earn
+        self.assertEqual(pick({"IRONCLAD": 1, "REGENT": 1, "NECROBINDER": 1}), "REGENT")  # level: epochs decide
+        self.assertEqual(pick({"IRONCLAD": 1, "REGENT": 2, "NECROBINDER": 2}), "IRONCLAD")
+
+    def test_a_run_is_played_at_the_top_level_even_with_epochs_left(self):
         chars = [{"id": "IRONCLAD", "locked": False}]
         s = {"state_type": "menu", "menu_screen": "character_select", "characters": chars,
              "options": [{"name": "IRONCLAD", "enabled": True}, {"name": "confirm", "enabled": True}],
              "ascension": 0, "max_ascension": 3}
         epochs = {"IRONCLAD4_EPOCH": "Revealed", "IRONCLAD7_EPOCH": "NotObtained"}
         mem = Memory(max_ascension={"IRONCLAD": 3}, epochs=dict(epochs), character_selected=True)
-        # Its Ascension 1 epoch is still to earn: level 1, not the highest.
-        self.assertEqual(strategy.menu(s, mem, "IRONCLAD")[0], ("set_ascension", {"level": 1}))
-        # That done but the Timeline not complete (other epochs out there): the easiest level.
-        mem.epochs["IRONCLAD7_EPOCH"] = "Revealed"
-        s["ascension"] = 2
-        self.assertEqual(strategy.menu(s, mem, "IRONCLAD")[0], ("set_ascension", {"level": 0}))
-        # Every epoch in: climb.
-        mem.epochs = {f"E{n}_EPOCH": "Revealed" for n in range(strategy.TOTAL_EPOCHS)}
         self.assertEqual(strategy.menu(s, mem, "IRONCLAD")[0], ("set_ascension", {"level": 3}))
 
     def test_auto_plays_towards_unlocking_every_epoch(self):

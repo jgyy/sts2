@@ -135,18 +135,19 @@ progress, it opens the Timeline from the main menu, reveals each one, confirms
 the unlock screens and goes back. (This needs the mod built by
 `scripts/install_mod.sh`; the stock mod refuses to reveal epochs.)
 
-With `--character auto` (the default) the bot puts the Timeline first and
-ascension levels second:
+With `--character auto` (the default) the bot evens out the ascension levels
+first and works on the Timeline second:
 
-- Each character has its own epochs, and the game says what each takes:
-  beating acts 1, 2 and 3, killing 15 elites and 15 bosses, and a win on
-  Ascension 1. The bot plays whoever is most likely to earn one next: a
-  character still short of 15 bosses always gets runs (those add up win or
-  lose), and the epochs that need a win go to whoever has been getting
-  furthest, with the others taking turns when it keeps coming back empty.
-  `--first CHARACTER` puts one character ahead of that order.
-- While epochs are left, runs are played at the easiest ascension that counts
-  (0, or 1 for a character that is after its Ascension 1 epoch).
+- The character with the lowest ascension unlocked is played first, at its
+  highest unlocked level (a win there unlocks the next one).
+- Among characters on the same level, the Timeline decides. Each character
+  has its own epochs, and the game says what each takes: beating acts 1, 2
+  and 3, killing 15 elites and 15 bosses, and a win on Ascension 1. The bot
+  plays whoever is most likely to earn one next: a character still short of
+  15 bosses gets runs (those add up win or lose), and the epochs that need a
+  win go to whoever has been getting furthest, with the others taking turns
+  when it keeps coming back empty. `--first CHARACTER` puts one character
+  ahead of all of that while it has epochs of its own left.
 - About eighteen more epochs unlock "by accumulating score". The game only
   adds a run's score in the end-of-run summary, so the bot clicks through it
   instead of going straight to the main menu (this needs the mod built by
@@ -168,7 +169,7 @@ In `~/.local/state/sts2bot/` (change with `--log-dir`):
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--character` | `auto` | `auto` plays towards unlocking every epoch, then evens out the ascension levels (see Unlocks and the Timeline); or a character id, or `cycle` / `random` over unlocked characters. Every run uses the highest ascension that character has unlocked |
+| `--character` | `auto` | `auto` plays the character with the lowest ascension first, then whoever is closest to an epoch (see Unlocks and the Timeline); or a character id, or `cycle` / `random` over unlocked characters. Every run uses the highest ascension that character has unlocked |
 | `--runs N` | forever | Stop after N runs |
 | `--first CHARACTER` | none | With `--character auto`: play this character until it has earned all of its own epochs, then carry on in the usual order |
 | `--no-tuning` | off | Always play with the default settings instead of trying variations from run to run |

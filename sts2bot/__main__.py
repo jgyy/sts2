@@ -32,8 +32,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--character",
         default="auto",
-        help='"auto" plays towards unlocking every epoch (the character with the most left to earn), then the one '
-        'with the lowest ascension, always at the highest ascension it has unlocked; or a character id '
+        help='"auto" plays the character with the lowest ascension unlocked (among equals, the one closest to an '
+        'epoch), always at the highest ascension it has unlocked; or a character id '
         '(e.g. IRONCLAD), or "cycle" / "random" over unlocked ones (default: auto)',
     )
     ap.add_argument("--runs", type=int, default=None, help="stop after this many runs (default: never stop)")

@@ -242,6 +242,14 @@ class Potions(unittest.TestCase):
         self.assertEqual(self.boss(belt, floor=31, kind="monster"), [])  # two rooms from the boss
         self.assertEqual(self.boss(belt, floor=33, foe_hp=20), [])  # the fight is over anyway
 
+    def test_an_elite_gets_the_spare_potion_and_the_rest_wait_for_the_boss(self):
+        belt = [self.potion(i, "Fire Potion", "Deal 20 damage.", "AnyEnemy") for i in range(3)]
+        self.assertEqual(self.boss(belt, floor=24, kind="elite"), [0])  # a full belt: one is free
+        self.assertEqual(self.boss(belt[:2], floor=24, kind="elite"), [])
+        self.assertEqual(self.boss(belt, floor=31, kind="elite"), [])  # the boss is two rooms on
+        self.assertEqual(self.boss(belt[:2], floor=24, kind="elite", hp=35), [0, 1])  # the fight has gone wrong
+        self.assertEqual(self.boss(belt[:2], floor=33), [0, 1])  # the boss gets all of them
+
 
 class PowersThePlannerKnows(unittest.TestCase):
     def test_vigor_only_helps_the_first_attack(self):
