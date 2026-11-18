@@ -113,17 +113,21 @@ class Strategy(unittest.TestCase):
 
     def test_route_keeps_enough_health_for_the_boss(self):
         # An elite right before the boss costs more than its relic is worth, even from
-        # full health; with a rest site in between it is fine, unless we are badly hurt.
+        # full health, and one rest site in between does not pay for an act 2 elite
+        # (27 HP, measured); two do, unless we are badly hurt.
         def route(mid):
-            nodes = [{"col": 0, "row": 12, "type": "Elite", "children": [[0, 13]]}, {"col": 1, "row": 12, "type": "Monster", "children": [[0, 13]]},
-                     {"col": 0, "row": 13, "type": mid, "children": [[0, 14]]}, {"col": 0, "row": 14, "type": "Boss", "children": []}]
+            mids = mid.split("+")
+            nodes = [{"col": 0, "row": 12, "type": "Elite", "children": [[0, 13]]}, {"col": 1, "row": 12, "type": "Monster", "children": [[0, 13]]}]
+            nodes += [{"col": 0, "row": 13 + n, "type": kind, "children": [[0, 14 + n]]} for n, kind in enumerate(mids)]
+            nodes += [{"col": 0, "row": 13 + len(mids), "type": "Boss", "children": []}]
             opts = [{"index": 0, "col": 0, "row": 12, "type": "Elite"}, {"index": 1, "col": 1, "row": 12, "type": "Monster"}]
             return {"next_options": opts, "nodes": nodes}
 
         pick = lambda hp, mid: strategy.map_screen(self.base("map", hp=hp, map=route(mid)), Memory())[0][1]["index"]
         self.assertEqual(pick(80, "Unknown"), 1)
-        self.assertEqual(pick(80, "RestSite"), 0)
-        self.assertEqual(pick(40, "RestSite"), 1)
+        self.assertEqual(pick(80, "RestSite"), 1)
+        self.assertEqual(pick(80, "RestSite+RestSite"), 0)
+        self.assertEqual(pick(40, "RestSite+RestSite"), 1)
         self.assertGreater(strategy.boss_odds(0.9), strategy.boss_odds(0.6))
 
     def test_rests_before_the_boss_unless_nearly_full(self):
@@ -141,15 +145,17 @@ class Strategy(unittest.TestCase):
         mem = Memory()
         self.assertEqual(strategy.map_screen(s, mem)[0][1]["index"], 1)
         self.assertTrue(mem.boss_next)
-        # Later on an elite is fine, as long as there is a rest site before the boss.
-        nodes[2:] = [{"col": 0, "row": 3, "type": "RestSite", "children": [[0, 4]]}, {"col": 0, "row": 4, "type": "Boss", "children": []}]
+        # Later on an elite is fine, as long as there are rest sites enough before the boss.
+        nodes[2:] = [{"col": 0, "row": 3, "type": "RestSite", "children": [[0, 4]]}, {"col": 0, "row": 4, "type": "RestSite", "children": [[0, 5]]},
+                     {"col": 0, "row": 5, "type": "Boss", "children": []}]
         s["run"]["act"] = 2
         from unittest import mock
 
         with mock.patch.dict(learn.KNOB, {"elite_worth": 4.0}):  # where the learner values a relic that much
             self.assertEqual(strategy.map_screen(s, mem)[0][1]["index"], 0)
-        # At the usual worth it is not: a bad fight there means meeting the boss at 85% HP.
-        self.assertEqual(strategy.map_screen(s, mem)[0][1]["index"], 1)
+        # At a low worth it is not: a bad fight there means meeting the boss short of full HP.
+        with mock.patch.dict(learn.KNOB, {"elite_worth": 1.5}):
+            self.assertEqual(strategy.map_screen(s, mem)[0][1]["index"], 1)
 
     def test_a_badly_hurt_bot_rests_even_when_the_path_says_smith(self):
         # Act 3 at 6 of 109 HP, the boss next: the path values come out small
@@ -269,6 +275,13 @@ class Strategy(unittest.TestCase):
         self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 0}))
         state["player"]["potions"] = [{}, {}, {}]
         self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 1}))
+
+    def test_no_potion_is_bought_with_a_relic_that_forbids_them(self):
+        items = [{"index": 0, "category": "potion", "price": 60, "is_stocked": True, "can_afford": True}]
+        state = self.base("shop", gold=100, shop={"items": items, "can_proceed": True})
+        state["run"]["floor"] = 31
+        state["player"]["relics"] = [{"id": "SOZU", "description": "Gain energy at the start of each turn. You can no longer obtain Potions."}]
+        self.assertEqual(strategy.shop(state, Memory()), [("proceed", {})])
 
     def test_auto_plays_the_character_with_the_lowest_ascension(self):
         unlocked = ["IRONCLAD", "SILENT", "DEFECT"]

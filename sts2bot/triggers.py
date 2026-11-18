@@ -112,3 +112,18 @@ def fire(t: Triggers, c, foes: list[Enemy], before: list[tuple], hit: Callable, 
     if doomed:
         block += t.doom_block
     return score, block
+
+
+def shunned(c, state: dict) -> bool:
+    """Cards the planner must not play here, whatever they seem to offer.
+
+    Neurosurge (3 energy and 2 cards now, 3 Doom on ourselves every turn for
+    the rest of the fight): Doom kills us at the end of our turn once it
+    reaches our HP. Three boss fights ended that way with 24 to 31 HP left
+    (Aeonglass in round 6 with two of them up; the Insatiable in round 14).
+    It is only for fights that will be over in a few turns.
+    """
+    if c.key != "NEUROSURGE":
+        return False
+    foes = sum(int(e.get("hp") or 0) for e in (state.get("battle") or {}).get("enemies") or [])
+    return state.get("state_type") in ("boss", "elite") or foes > 60

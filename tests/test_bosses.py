@@ -260,6 +260,18 @@ class Necrobinder(unittest.TestCase):
         s["player"]["pets"] = [{"name": "Osty", "hp": osty, "alive": osty > 0}]
         return s
 
+    def test_doom_on_ourselves_counts_as_hp_already_gone(self):
+        surge = card(0, "NEUROSURGE", "Neurosurge", "Power", 0, "Gain 3 energy. Draw 2 cards. At the start of your turn, apply 3 Doom to yourself.", "Self")
+        boss = combat_state([surge, STRIKE(1)], [enemy("A", 300, attack=10)], hp=60, kind="boss")
+        self.assertEqual(combat.choose_card(boss)[1]["card_index"], 1)  # a long fight: never
+        small = combat_state([surge], [enemy("A", 30, attack=10)], hp=60)
+        self.assertEqual(combat.choose_card(small), ("play_card", {"card_index": 0}))
+        # 75 HP with 66 Doom and 3 more on the way is 6 HP as far as the plan goes.
+        hurt = combat_state([STRIKE(0)], [enemy("A", 300, attack=10)], hp=75, kind="boss")
+        self.assertEqual(combat._context(hurt)["hp"], 75)
+        hurt["player"]["status"] = [{"id": "DOOM_POWER", "amount": 66}, {"id": "NEUROSURGE_POWER", "amount": 3}]
+        self.assertEqual(combat._context(hurt)["hp"], 6)
+
     def test_ostys_attacks_do_nothing_while_he_is_dead(self):
         self.assertEqual(combat.choose_card(self.state([self.POKE(0)], osty=3)), ("play_card", {"card_index": 0, "target": "SLUG_0"}))
         self.assertIsNone(combat.choose_card(self.state([self.POKE(0)], osty=0)))

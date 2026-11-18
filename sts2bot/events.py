@@ -25,7 +25,14 @@ _GOOD = [
     (r"draw \d+ additional cards?", 5.0),  # every turn, for the rest of the run
     (r"energy_icon", 5.0),
 ]
-_BAD = [(r"\bcurse\b", 6.0), (r"\bfight\b", 2.0), (r"draw \d+ fewer cards?", 4.0), (r"\bdowngrade\b", 2.0), (r"\bsacrifice\b", 5.0)]
+# The Lantern Key's fight (a Mysterious Knight) cost 27 HP on average over 17
+# tries in the middle of act 2 and leaves an unplayable card in the deck; what
+# it unlocks is an act 3 event that 4 of those runs lived to see. About one in
+# five of them got past the act 2 boss, against 44% of the other runs.
+# (Foul Potions hit us as hard as the enemy, so the bot hardly ever throws one:
+# three of them fill the belt for nothing. The Potion Courier's other offer is
+# one Uncommon potion.)
+_BAD = [(r"\bfoul potions?\b", 1.0), (r"\bfight to obtain the key\b", 6.0), (r"\bcurse\b", 6.0), (r"\bfight\b", 2.0), (r"draw \d+ fewer cards?", 4.0), (r"\bdowngrade\b", 2.0), (r"\bsacrifice\b", 5.0)]
 # Options that end the run in all but name. One event offers ever larger
 # rewards for Max HP until the last step, "Lose Everything", leaves 1 Max HP;
 # the bot walked into it nine times.

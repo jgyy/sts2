@@ -53,6 +53,10 @@ class BossWatch:
                 "hp0": int(player.get("hp") or 0),
                 "max_hp": int(player.get("max_hp") or 0),
                 "rounds": set(),
+                # What the bot brought to the fight (to tell later what wins them).
+                "relics": len(player.get("relics") or []),
+                "potions": len(player.get("potions") or []),
+                "deck": sum(len(player.get(pile) or []) for pile in ("hand", "draw_pile", "discard_pile")),
             }
         f = self.fight
         f["boss_hp"] = boss_hp
@@ -67,5 +71,6 @@ class BossWatch:
         return (
             f"boss fight over: act {act} floor {floor} {'+'.join(f['names']) or '?'} "
             f"{'lost' if lost else 'won'}; boss hp {f['boss_hp0']} -> {f.get('boss_hp', f['boss_hp0'])}; "
-            f"player hp {f['hp0']} -> {f.get('hp', f['hp0'])}/{f['max_hp']}; rounds {len(f['rounds'])}"
+            f"player hp {f['hp0']} -> {f.get('hp', f['hp0'])}/{f['max_hp']}; rounds {len(f['rounds'])}; "
+            f"brought relics {f.get('relics', 0)}, potions {f.get('potions', 0)}, deck {f.get('deck', 0)}"
         )

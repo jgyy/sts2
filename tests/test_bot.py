@@ -39,6 +39,64 @@ class FullLoop(unittest.TestCase):
         self.assertEqual(game.clicks, 1)
         self.assertEqual(game.state()["state_type"], "event")
 
+    def test_a_purchase_that_never_happens_is_given_up(self):
+        """The shop said yes to a potion a relic forbids; the bot must leave in the end."""
+
+        class DeafShop:
+            def __init__(self):
+                self.buys = 0
+                self.left = False
+
+            def state(self):
+                if self.left:
+                    return {"state_type": "map", "map": {"next_options": [], "nodes": []}}
+                items = [{"index": 0, "category": "relic", "price": 50, "is_stocked": True, "can_afford": True}]
+                return {
+                    "state_type": "shop",
+                    "shop": {"items": items, "can_proceed": True},
+                    "player": {"hp": 50, "max_hp": 80, "gold": 300},
+                    "run": {"act": 1, "floor": 5},
+                }
+
+            def act(self, action, **params):
+                if action == "shop_purchase":
+                    self.buys += 1
+                elif action == "proceed":
+                    self.left = True
+                return {"status": "ok"}
+
+        game = DeafShop()
+        bot = make_bot(game)
+        for _ in range(40):
+            bot.step()
+            if game.left:
+                break
+        self.assertTrue(game.left)
+        self.assertLessEqual(game.buys, 2)
+
+    def test_the_game_speed_is_set_again_as_the_fight_goes_on(self):
+        """The game resets its own time scale in boss fights; set once, x3 was gone for the session."""
+
+        class Idle:
+            def __init__(self):
+                self.scales = []
+
+            def state(self):
+                return {"state_type": "unknown"}
+
+            def act(self, action, **params):
+                if action == "set_time_scale":
+                    self.scales.append(params["scale"])
+                return {"status": "ok"}
+
+        game = Idle()
+        bot = make_bot(game)
+        bot.time_scale = 3.0
+        for _ in range(60):
+            bot.step()
+        self.assertGreater(len(game.scales), 1)
+        self.assertEqual(set(game.scales), {3.0})
+
     def test_plays_several_runs_back_to_back(self):
         game = FakeGame(seed=1, floors=4)
         with tempfile.TemporaryDirectory() as d:
@@ -227,6 +285,14 @@ class LiveGameLessons(unittest.TestCase):
         hold = value("Hold On", "Lose 5 HP. The card in the above option is randomized.")
         self.assertGreater(value("Overcome", "Defend is removed from your Deck."), hold)
         self.assertLess(value("Overcome", "Demon Form+ is removed from your Deck."), hold)
+
+    def test_one_good_potion_beats_three_foul_ones(self):
+        value = lambda title, text: strategy._event_option_value({"title": title, "description": text}, 60, 80)
+        self.assertGreater(value("Ransack", "Procure 1 random Uncommon Potion."), value("Grab Potions", "Procure 3 Foul Potions."))
+
+    def test_the_lantern_key_is_given_back_for_gold(self):
+        value = lambda title, text: strategy._event_option_value({"title": title, "description": text}, 60, 80)
+        self.assertGreater(value("Return the Key", "Gain 100 Gold."), value("Keep the Key", "Fight to obtain the Key."))
 
     def test_an_event_never_doubles_the_deck_or_hands_out_a_curse_as_a_relic(self):
         # The Reflections event: "Receive Bad Luck" was scored as a relic, and

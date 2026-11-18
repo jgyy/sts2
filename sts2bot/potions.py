@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from .battle import expected_loss, osty_hp, read_enemies
+from .battle import end_of_turn_block, expected_loss, osty_hp, read_enemies
 from .cards import parse
 
 Action = tuple[str, dict]
@@ -14,8 +14,12 @@ BOSS_FLOORS = (17, 33, 48)
 _DEFENSIVE_POTION = re.compile(r"gain \d+ (block|dexterity)|apply \d+ weak|loses? \d+ strength", re.I)
 
 
-def potion_actions(state: dict) -> list[Action]:
-    """Potions worth drinking now: always in elite/boss fights, otherwise when in danger."""
+def potion_actions(state: dict, planned_loss: int | None = None) -> list[Action]:
+    """Potions worth drinking now: always in elite/boss fights, otherwise when in danger.
+
+    `planned_loss` is what the planner expects to lose this turn after playing
+    the best cards in hand (None: not known).
+    """
     player = state.get("player") or {}
     enemies = read_enemies(state)
     if not enemies:
@@ -25,6 +29,14 @@ def potion_actions(state: dict) -> list[Action]:
     # Ordinary fights only get a potion in real trouble; the rest are kept
     # for elites and bosses, where the runs are actually lost.
     danger = expected_loss(state) >= 0.5 * hp or hp <= 0.3 * max_hp
+    if planned_loss is not None:
+        # Judge by what still gets through after the best cards in hand, not
+        # by what is coming if we stand still. A Regent on 31 HP facing 20 from
+        # a Beetle on 12 HP, with the kill in hand, drank a forge potion, a
+        # Strength potion and a Foul Potion (12 to itself), three floors before
+        # a boss it then met on 46 of 90 HP. The plan is redone after every
+        # potion, so they also stop as soon as one has been enough.
+        danger = planned_loss >= 0.5 * hp or (hp <= 0.3 * max_hp and planned_loss > 0)
     potions = player.get("potions") or []
     # A full belt cannot take the next potion a fight drops, so one of them
     # is free to use: holding three potions through a whole act wasted every
@@ -74,7 +86,10 @@ def potion_actions(state: dict) -> list[Action]:
             # a boss fight took 36 of 75 HP for 36 damage. Only behind enough
             # Block, or to end the fight.
             amount = int(both.group(1))
-            if not (block >= amount or (hp > amount and all(e.hp + e.block <= amount for e in enemies))):
+            # "Enough" is what is left over after this turn's attacks: a Regent
+            # on 38 HP behind 21 Block against 7x5 threw one and lost 26.
+            spare_block = block + end_of_turn_block(player) - sum(e.incoming for e in enemies)
+            if not (spare_block >= amount or (hp > amount and all(e.hp + e.block <= amount for e in enemies))):
                 continue
         if re.search(r"\bheal\b|\bregen\b", text, re.I) and hp > 0.55 * max_hp:
             continue  # healing is wasted on a full bar; it is for later in the fight

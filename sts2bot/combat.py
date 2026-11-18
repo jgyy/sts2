@@ -707,7 +707,8 @@ def _context(state: dict) -> dict:
     return dict(
         energy=int(player.get("energy") or 0),
         stars=int(player.get("stars") or 0),
-        hp=int(player.get("hp") or 1),
+        # Doom on us kills at the end of our turn once it reaches our HP: only the HP above it counts.
+        hp=max(1, int(player.get("hp") or 1) - max(0, power_amount(player, "DOOM")) - max(0, power_amount(player, "NEUROSURGE"))),
         max_hp=int(player.get("max_hp") or 1),
         block=int(player.get("block") or 0) + end_of_turn_block(player) + osty_hp(player),
         fight=str(state.get("state_type") or "monster"),
@@ -863,13 +864,14 @@ def cards_left_this_turn(state: dict) -> int | None:
     return max(0, min(limits) - played) if limits else None
 
 
-def choose_card(state: dict) -> Action | None:
-    """Best card to play right now, or None to end the turn."""
+def choose_card(state: dict, plan: dict | None = None) -> Action | None:
+    """Best card to play right now, or None to end the turn (`plan["lost"]`: HP the best line still loses)."""
     player = state.get("player") or {}
     enemies = read_enemies(state)
     ctx = _context(state)
     hand = [parse(c) for c in player.get("hand") or []]
     playable = [c for c in hand if c.playable and (c.is_x or c.cost <= ctx["energy"]) and c.star_cost <= ctx["stars"]]
+    playable = [c for c in playable if not triggers.shunned(c, state)]
     if not enemies and state.get("_revive_pending"):
         return _set_up(playable, ctx["energy"])
     if not playable or not enemies:
@@ -902,7 +904,7 @@ def choose_card(state: dict) -> Action | None:
     # rest unplayable, so any still playable means the allowance is unused.
     bound_left = 1 if any(c.bound for c in playable) else None
     baseline = simulate([], enemies, **ctx)
-    best_score = baseline.score if baseline else float("-inf")
+    best_score, best_lost = (baseline.score, baseline.lost) if baseline else (float("-inf"), None)
     best_line: list[CardInfo] = []
     best_target: str | None = None
     # When surrounded, who we aim at decides who hits us from behind, so each
@@ -937,11 +939,13 @@ def choose_card(state: dict) -> Action | None:
                         break
                     found = True
                     if out.score > best_score + 1e-9:
-                        best_score, best_line, best_target = out.score, list(order), out.first_target
+                        best_score, best_line, best_target, best_lost = out.score, list(order), out.first_target, out.lost
                 if not usable and not nth and not any(c.is_x or c.energy_gain or c.star_gain for c in line):
                     break  # cannot be paid for in any order
         if not found:
             break
+    if plan is not None:
+        plan["lost"] = best_lost
     if not best_line:
         return None
 
@@ -985,8 +989,9 @@ def actions(state: dict) -> list[Action]:
         log.debug("combat %s", describe(state))
     if log.isEnabledFor(logging.DEBUG) and _sandpit(state) is not None:
         log.debug("sandpit %s, no Escape next hand %.2f, later %.2f", _sandpit(state), *_escape_odds(state.get("player") or {}))
-    out = potion_actions(state)
-    card = choose_card(state)
+    plan: dict = {}
+    card = choose_card(state, plan)
+    out = potion_actions(state, plan["lost"] if "lost" in plan else expected_end_loss(state))  # (nothing playable: no plan)
     if card is not None:
         out.append(card)
     out.append(("end_turn", {}))

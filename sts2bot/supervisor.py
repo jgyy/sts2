@@ -469,8 +469,8 @@ class Supervisor:
                     set_fast_mode(self.client, self.fast_mode)
                 if self.light_graphics:
                     set_light_graphics(self.client)
-                if self.time_scale and self.time_scale != 1.0:
-                    set_time_scale(self.client, self.time_scale)
+                if self.time_scale and self.time_scale != 1.0 and set_time_scale(self.client, self.time_scale):
+                    self.bot.time_scale = self.time_scale  # the bot keeps it set: the game resets it
                 self.bot.run(max_runs)
             except GameUnavailable as e:
                 log.warning("lost contact with the game: %s", e)
