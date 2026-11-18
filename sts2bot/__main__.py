@@ -32,9 +32,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--character",
         default="auto",
-        help='"auto" plays the character with the lowest ascension unlocked (among equals, the one closest to an '
-        'epoch), always at the highest ascension it has unlocked; or a character id '
-        '(e.g. IRONCLAD), or "cycle" / "random" over unlocked ones (default: auto)',
+        help='"auto" and "random" play a character with the lowest ascension unlocked (drawn at random among those '
+        'on that level), always at the highest ascension it has unlocked; or a character id '
+        '(e.g. IRONCLAD), or "cycle" over unlocked ones (default: auto)',
     )
     ap.add_argument("--runs", type=int, default=None, help="stop after this many runs (default: never stop)")
     ap.add_argument("--first", metavar="CHARACTER", help="with --character auto: play this character until it has earned all of its own epochs, then carry on as usual")

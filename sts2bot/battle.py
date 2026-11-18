@@ -166,8 +166,8 @@ _HAND_BURN = re.compile(r"at the end of your turn,\s*if this is in your hand,\s*
 
 
 def end_of_turn_loss(player: dict) -> int:
-    """HP that goes at the end of the turn no matter what we play (Disintegration).
-    Leaving it out made the bot think it could afford a hit that killed it."""
+    """Damage we take when our turn ends, before the enemy moves (Disintegration). It eats
+    into Block first. Leaving it out made the bot think it could afford a hit that killed it."""
     return max(0, power_amount(player, "DISINTEGRATION")) if _has_power(player, "DISINTEGRATION") else 0
 
 
@@ -237,7 +237,7 @@ def read_enemies(state: dict) -> list[Enemy]:
                 vuln_mult=2.0 if _has_power(e, "DEBILITATE") else 1.5,
                 weak_cut=0.5 if _has_power(e, "DEBILITATE") else 0.75,
                 weak_mult=1.5 if _has_power(state.get("player") or {}, "TRACKING") else 1.0,
-                scar=8.0 * _has_power(e, "PAPER_CUTS") + 4.0 * _has_power(e, "PAINFUL_STABS"),
+                scar=8.0 * _has_power(e, "PAPER_CUTS") + 8.0 * _has_power(e, "PAINFUL_STABS"),
                 rage=_has_power(e, "CRAB_RAGE"),
                 respawns=max(0, power_amount(e, "STOCK")),
                 adapts=_has_power(e, "ADAPTABLE"),

@@ -225,6 +225,25 @@ class Potions(unittest.TestCase):
         state["run"]["floor"] = floor
         return [a[1]["slot"] for a in combat.potion_actions(state)]
 
+    def test_potions_thrown_at_the_enemy_wait_out_the_test_subjects_first_form(self):
+        vuln = self.potion(0, "Vulnerable Potion", "Apply 3 Vulnerable.", "AnyEnemy")
+        strength = self.potion(1, "Strength Potion", "Gain 2 Strength.")
+
+        def used(powers):
+            foe = enemy("TEST_SUBJECT_0", 100, attack=10, status=powers)
+            state = combat_state([STRIKE(0)], [foe], hp=75, max_hp=75, kind="boss", potions=[vuln, strength])
+            state["run"]["floor"] = 48
+            return [a[1]["slot"] for a in combat.potion_actions(state)]
+
+        first = [{"id": "ADAPTABLE_POWER", "amount": 1}, {"id": "ENRAGE_POWER", "amount": 2}]
+        self.assertEqual(used(first), [1])  # our own Strength lasts; its Vulnerable would not
+        second = [{"id": "ADAPTABLE_POWER", "amount": 1}, {"id": "PAINFUL_STABS_POWER", "amount": 1}]
+        self.assertEqual(used(second), [0, 1])
+        fire = self.potion(0, "Fire Potion", "Deal 20 damage.", "AnyEnemy")
+        foe = enemy("TEST_SUBJECT_0", 300, attack=10, status=[{"id": "INTANGIBLE_POWER", "amount": 1}])
+        state = combat_state([STRIKE(0)], [foe], hp=75, max_hp=75, kind="boss", potions=[fire])
+        self.assertEqual(combat.potion_actions(state), [])  # 20 damage would take 1 HP this turn
+
     def test_a_potion_that_hits_us_too_waits_for_block(self):
         foul = self.potion(0, "Foul Potion", "Deal 12 damage to ALL players and enemies. Can be thrown at the Merchant for 100 Gold instead.")
         fire = self.potion(1, "Fire Potion", "Deal 20 damage.", "AnyEnemy")

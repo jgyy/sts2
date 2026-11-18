@@ -20,6 +20,7 @@ from .battle import (  # noqa: F401  (also the names other modules and the tests
 )
 from .cards import CardInfo, parse
 from .potions import describe, potion_actions  # noqa: F401
+from . import triggers
 from .learn import knob
 
 Action = tuple[str, dict]
@@ -272,6 +273,8 @@ def simulate(
     escape_odds: tuple = (0.3, 0.3),  # chance of no Frantic Escape in the next hand, and in a hand later on
     wither_in: int = 0,  # Withering Presence: cards we can still play before a Wither lands in our hand
     wither_hp: int = 5,  # ... and what that Wither will cost (each one is a point worse than the last)
+    trig: triggers.Triggers | None = None,  # powers that act on every card played
+    pet: int = -1,  # Osty's HP (already part of `block`); -1: no pet in the state
 ) -> Outcome | None:
     """Score playing `line` in order. None if it cannot be afforded."""
     if card_limit is not None and len(line) > card_limit:
@@ -300,6 +303,10 @@ def simulate(
     span = {"boss": 3.0, "elite": 2.0}.get(fight, 1.0)
     late = {"boss": 7, "elite": 5}.get(fight, 3)
     span *= 1.0 if round_no <= late else 0.4
+    if fight != "monster" and round_no <= 3:
+        # Set up first: a setting under test (see learn.CHOICES). Scaling Powers
+        # were left in the hand more often than played (Sleight of Flesh 43 to 14).
+        span *= knob("early_setup")
     might = 0  # Strength gained from cards earlier in this line
     attacks = 0  # Attacks played so far in this line
     summoned = 0  # HP this line gives Osty
@@ -310,6 +317,7 @@ def simulate(
     for n, c in enumerate(line):
         _respawns(foes)
         _rage_blocks(foes, known_dead)  # a crab that died with the last card hands its ally Block
+        before = triggers.marks(foes) if trig else []
         if c.star_cost > stars:
             return None
         x = 1
@@ -329,6 +337,11 @@ def simulate(
             energy -= c.cost
         energy += c.energy_gain
         self_loss += c.hp_loss
+        if c.osty_attack and pet == 0:  # Osty is dead: his attacks do nothing (seen 12 times in 12)
+            c = replace(c, damage=0, block=0 if c.osty_dies else c.block)
+        elif c.osty_dies and pet > 0:
+            block, pet = block - min(block, pet), 0  # ... and the HP he stood in front of us with goes with him
+        pet += c.summon * x if pet >= 0 else 0
         if can_block and c.block:
             block += max(0, c.block + nimble) * x
         if can_block and c.summon:
@@ -433,6 +446,11 @@ def simulate(
         if c.needs_target and not c.damage and aimed is None and alive_now and (c.poison or c.doom):
             if n == 0 and first_target is None:
                 first_target = sorted(alive_now, key=lambda e: (-e.worth, -e.hp))[0].entity_id
+        if trig or c.doom_kills:
+            won, shield = triggers.fire(
+                trig or triggers.NONE, c, foes, before, lambda e, d: _hit(e, d, 1, raw=True), lambda e, hp: _progress(e, hp, chip_rate) * dmg_value * e.worth
+            )
+            score, block = score + won, block + (shield if can_block else 0)
         stars += c.star_gain
         score += c.star_gain * 2.5 + c.souls * 2.5
         lasting += c.forge * 0.5
@@ -480,6 +498,7 @@ def simulate(
             held = []
         if c.key == "FRANTIC_ESCAPE":
             escapes += 1
+        buffer += c.key == "BUFFER"  # played now, it stops this turn's hit (held at 6 HP in front of 27: dead)
         for e in foes:
             if e.slow >= 0:
                 e.slow += 10  # for the cards after this one (measured: the card itself gets no bonus)
@@ -626,7 +645,12 @@ def simulate(
     if through and buffer >= sum(e.incoming_hits for e in survivors if e.incoming):
         through = 0  # Buffer swallows each hit that would have hurt
     if through:
-        score -= sum(e.scar * e.incoming_hits for e in survivors if e.incoming)
+        # Only the hits that get through leave a scar: Block that stops four of
+        # six hits saves four Wounds, though it saves no more HP than usual.
+        for e in survivors:
+            if e.incoming and e.scar:
+                per = max(1, e.incoming // max(1, e.incoming_hits))
+                score -= e.scar * min(e.incoming_hits, -(-through // per))
     if wither_in > 0:
         # ... and it stays in the deck: it burns again every time it is drawn
         # and takes a card's place in the hand (by round 7 one fight had five
@@ -658,15 +682,9 @@ def simulate(
     # in hand and was dead a turn later.
     bite = min(1.0, lost / max(1, hp))
     worth = 1.5 + 2.5 * (1.0 - ratio) + 3.0 * bite
-    if fight == "boss" and knob("boss_race") > 0:
-        # A boss fight is a race, and the HP left over is worth nothing (the
-        # next act starts at full HP). A turn spent blocking buys one more
-        # turn of a boss that has grown since: the Necrobinder sat behind
-        # Defends for 11 rounds of the Kin (71 damage dealt, a 33-damage card
-        # in hand most turns) and lost to followers on 8 Strength. So HP is
-        # priced near the damage it costs to keep, whatever is left of it,
-        # and only a hit that takes a big share of it counts for more.
-        worth = 1.2 + 0.75 * (1.0 - ratio) + 4.0 * max(0.0, bite - 0.3)
+    # (Pricing HP in boss fights as a race, cheap whatever is left of it, was
+    # tried as a setting on 2026-11-18: 0 of 13 act 3 bosses against 5 of 20,
+    # no better in acts 1 and 2. Removed.)
     score -= lost * worth * (4.0 if doomed else 1.0) * knob("caution")
     if lost >= hp:
         # Dead on paper. If every line is, the least dead one is the one to
@@ -702,8 +720,9 @@ def _context(state: dict) -> dict:
         can_block=not _has_power(player, "NO_BLOCK"),
         sandpit=_sandpit(state),
         escape_odds=_escape_odds(player),
-        end_loss=end_of_turn_loss(player) + constrict(player),
-        burns=hand_burns(player),
+        end_loss=constrict(player),
+        # Disintegration is damage, and Block stops it (seen live: 8 a turn, 0 lost behind 25 Block).
+        burns=hand_burns(player) + ((-1, end_of_turn_loss(player), True),) * bool(end_of_turn_loss(player)),
         hand_size=len(player.get("hand") or []),
         wither_in=max((power_amount(e, "WITHERING_PRESENCE") for e in battle.get("enemies") or []), default=0),
         wither_hp=_next_wither(player, int(battle.get("round") or 1)),
@@ -727,6 +746,8 @@ def _context(state: dict) -> dict:
         buffer=max(0, power_amount(player, "BUFFER")),
         # (The amount grows as the Infested Prism buffs itself: at Vital Spark 4, four Skills
         # turned a 5x3 attack into 13x3 while the bot counted 2 a Skill, and it died behind 17 Block.)
+        trig=triggers.read(state),
+        pet=osty_hp(player) if player.get("pets") else -1,
         taint=max((power_amount(e, "VITAL_SPARK") for e in [player, *(battle.get("enemies") or [])]), default=0),
     )
 
@@ -945,16 +966,18 @@ def _set_up(playable: list[CardInfo], energy: int) -> Action | None:
     """
     best, best_worth = None, 0.0
     for c in playable:
-        if c.needs_target or c.type in ("Status", "Curse") or c.deadly or c.block_lock or c.is_x:
+        if c.needs_target or c.type in ("Status", "Curse") or c.deadly or c.block_lock or (c.is_x and energy <= 0):
             continue
+        # (X cards too: Dirge, "Summon 3 X times", stayed in the hand with 2 energy spare and Osty all that stood before 30 damage.)
+        x, cost = (energy, energy) if c.is_x else (1, c.cost)
         worth = POWER_VALUE.get(c.key, 5.0 + 2.0 * max(c.cost, 0)) if c.type == "Power" else 0.0
-        worth += 4.0 * len(c.channel) + 0.5 * c.forge + c.summon + 2.5 * c.star_gain
+        worth += (4.0 * len(c.channel) + c.summon + 1.5 * c.souls) * x + 0.5 * c.forge + 2.5 * c.star_gain
         worth += 4.0 * c.strength * c.strength_lasts + 3.5 * c.dexterity * c.dexterity_lasts
         worth += 5.0 * c.next_energy + 1.5 * c.next_draw + 0.8 * c.next_block
-        if energy - c.cost > 0 or c.energy_gain:
+        if energy - cost > 0 or c.energy_gain:
             worth += 1.0 * c.draw + 2.0 * c.energy_gain
         worth -= 3.0 * c.hp_loss
-        worth /= c.cost + 0.5
+        worth /= cost + 0.5
         if worth > best_worth:
             best, best_worth = c, worth
     return ("play_card", {"card_index": best.index}) if best is not None else None

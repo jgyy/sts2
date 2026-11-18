@@ -59,6 +59,9 @@ class CardInfo:
     souls: int = 0  # Souls added to the draw pile (each: draw 2 cards)
     evoke_all: int = 0  # times every orb is evoked (Shatter)
     short: bool = False  # cannot be played right now only for want of energy or Stars
+    osty_attack: bool = False  # "Osty deals N damage": nothing happens while Osty is dead
+    osty_dies: bool = False  # Bone Shards: Osty dies, and with him the HP that stood in front of us
+    doom_kills: bool = False  # End of Days: enemies with as much Doom as HP die at once, not at the end of their turn
 
     @property
     def is_x(self) -> bool:
@@ -173,6 +176,8 @@ def parse(card: dict) -> CardInfo:
     if poison:
         poison *= _int(r"poison\s+to\s+a\s+random\s+enemy\s+(\d+)\s+times", text) or 1
     doom = _int(r"apply\s+(\d+)\s+doom", text)
+    if not doom and re.search(r"apply\s+doom\s+equal\s+to\s+damage\s+dealt", text, re.I):
+        doom = _int(r"deals?\s+(\d+)\s+damage", text)  # Blight Strike: as much Doom as it hits for
     shivs = _int(r"add\s+(\d+)\s+shivs?\s+into\s+your\s+hand", text)
     m = re.search(r"gain\s+(\d+)?\s*((?:\[star_icon\.png\]\s*)+)", text, re.I)
     star_gain = (int(m.group(1)) if m.group(1) else len(re.findall(r"star_icon", m.group(2)))) if m else 0
@@ -247,6 +252,9 @@ def parse(card: dict) -> CardInfo:
         next_block=next_block,
         enemy_hp_loss=enemy_hp_loss,
         souls=souls,
+        osty_attack=bool(re.search(r"\bOsty\b[^.]*\bdeals\b|if\s+Osty\s+is\s+alive", full_text, re.I)),
+        osty_dies=bool(re.search(r"Osty\s+dies", full_text, re.I)),
+        doom_kills=bool(re.search(r"kill\s+enemies\s+with\s+at\s+least\s+as\s+much\s+Doom", full_text, re.I)),
         bound=any(str(k.get("name")).lower() == "bound" for k in card.get("keywords") or [] if isinstance(k, dict)),
         short=not card.get("can_play", True)
         and bool(card.get("unplayable_reason"))
@@ -346,12 +354,17 @@ _TIER = {
     "TYRANNY": 3.5, "ORBIT": 3.5, "MONOLOGUE": 3.0, "ROYAL_GAMBLE": 3.0, "ROYALTIES": 3.0,
     "PILLAR_OF_CREATION": 3.0, "SPECTRUM_SHIFT": 3.0, "PALE_BLUE_DOT": 3.0,
     # --- The Necrobinder
-    "SOW": 5.0, "DEBILITATE": 5.0, "GRAVE_WARDEN": 6.0, "PUTREFY": 5.0, "DRAIN_POWER": 4.5, "DEFILE": 4.5,
-    "BLIGHT_STRIKE": 4.5, "REAVE": 4.5, "BURY": 4.5, "DEFY": 4.5, "NEGATIVE_PULSE": 4.5, "PARSE": 4.5,
-    "END_OF_DAYS": 4.5, "BODYGUARD": 3.5, "UNLEASH": 3.5, "FEAR": 4.0, "REAP": 4.0, "FLATTEN": 4.0,
-    "PULL_AGGRO": 4.0, "UNDEATH": 4.0, "ENFEEBLING_TOUCH": 4.0, "CAPTURE_SPIRIT": 5.0, "DEATHS_DOOR": 4.0,
-    "NO_ESCAPE": 4.0, "REANIMATE": 4.0, "SNAP": 3.5, "POKE": 3.5, "RATTLE": 3.5, "HANG": 3.5, "INVOKE": 3.5,
-    "WISP": 3.5, "DIRGE": 4.5, "LETHALITY": 3.5, "SHROUD": 3.5, "HAUNT": 3.5, "CALL_OF_THE_VOID": 3.5,
+    # (Reset on 2026-11-18 from 67 Necrobinder runs, floors gained per pick: Eradicate +7.9, End of Days +6.4,
+    # Misery +5.5, Necro Mastery +4.5, Severance +3.7, Deathbringer +3.5, Flatten +2.9, Defile +2.6, Poke +2.5;
+    # Reap -4.1, Snap -3.9, Parse -2.7, Bury -1.2, Negative Pulse -0.2 over 44 picks, High Five 0 over 24.)
+    "SOW": 5.0, "DEBILITATE": 5.0, "GRAVE_WARDEN": 6.0, "PUTREFY": 5.0, "DRAIN_POWER": 4.5, "DEFILE": 5.0,
+    "BLIGHT_STRIKE": 4.5, "REAVE": 4.5, "BURY": 3.5, "DEFY": 4.5, "NEGATIVE_PULSE": 4.0, "PARSE": 3.5,
+    "END_OF_DAYS": 5.5, "BODYGUARD": 3.5, "UNLEASH": 3.5, "FEAR": 4.0, "REAP": 3.0, "FLATTEN": 4.5,
+    "PULL_AGGRO": 3.5, "UNDEATH": 4.0, "ENFEEBLING_TOUCH": 4.0, "CAPTURE_SPIRIT": 5.0, "DEATHS_DOOR": 4.0,
+    "NO_ESCAPE": 4.0, "REANIMATE": 4.0, "SNAP": 3.0, "POKE": 4.0, "RATTLE": 3.5, "HANG": 3.5, "INVOKE": 3.5,
+    "WISP": 3.5, "DIRGE": 5.0, "LETHALITY": 3.5, "SHROUD": 3.5, "HAUNT": 3.5, "CALL_OF_THE_VOID": 3.5,
+    "ERADICATE": 5.5, "MISERY": 5.0, "NECRO_MASTERY": 5.5, "DEATHBRINGER": 5.5, "SEVERANCE": 4.5,
+    "SLEIGHT_OF_FLESH": 5.0, "HIGH_FIVE": 4.5,
     "SIC_EM": 3.5, "GRAVEBLAST": 3.0, "DEATH_MARCH": 3.0, "PULL_FROM_BELOW": 2.5, "BORROWED_TIME": 2.5,
     "SEANCE": 2.5,
     # --- The Defect

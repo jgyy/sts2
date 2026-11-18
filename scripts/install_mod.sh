@@ -33,6 +33,10 @@ if [[ ! -d "$BUILD_DIR/.git" ]]; then
     git clone --quiet "$REPO" "$BUILD_DIR"
 fi
 git -C "$BUILD_DIR" fetch --quiet origin
+# Files an earlier patch run added are not in the pinned commit: clear them, or
+# the patch that creates them again does not apply.
+git -C "$BUILD_DIR" reset --quiet
+git -C "$BUILD_DIR" clean --quiet -f -- '*.cs'
 git -C "$BUILD_DIR" checkout --quiet --force --detach "$COMMIT"
 
 # Small additions the bot needs on top of the pinned commit (scripts/mod_patches).

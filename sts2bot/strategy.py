@@ -12,6 +12,7 @@ import re
 from dataclasses import dataclass, field
 
 from .learn import knob
+from .potions import BOSS_FLOORS
 from .events import _ANCIENT, _event_option_value, event  # noqa: F401  (events live in their own module)
 from .cards import _card_key, deck_value, is_basic, is_junk, is_known as _known_card, parse as _parse
 
@@ -171,35 +172,7 @@ def epochs_left(epochs: dict | None) -> bool:
     return len(epochs) < TOTAL_EPOCHS or any(state not in _EARNED for state in epochs.values())
 
 
-def epoch_pull(character: str, epochs: dict | None, drought: int = 0, max_ascension: int = 0, boss_kills: int | None = None, strength: float | None = None) -> float:
-    """How much playing this character is likely to add to the Timeline right now.
-
-    Each character has its own line of epochs, and the game says what each
-    one takes: 2, 3 and 4 are beating acts 1, 2 and 3; 5 and 6 are 15 elites
-    and 15 bosses killed; 7 is a win on Ascension 1. Killing bosses adds up
-    whatever happens, so a character still short of 15 is always worth a
-    run. Epochs that need a win go to whoever is getting furthest
-    (`strength`, how far its recent runs got as a share of the whole climb),
-    with a discount for runs in a row that earned nothing so the others get
-    their turn.
-    """
-    prefix = re.compile(rf"^{re.escape(character.upper())}(\d+)_EPOCH$")
-    sure, chancy = 0.0, 0.0
-    power = (strength if strength is not None else 0.4) ** 2
-    for eid, state in (epochs or {}).items():
-        m = prefix.match(str(eid).upper())
-        if not m or state in _EARNED:
-            continue
-        n = int(m.group(1))
-        if n == 6 and boss_kills is not None and boss_kills < BOSSES_FOR_EPOCH:
-            sure += 1.5 + boss_kills / BOSSES_FOR_EPOCH
-        elif n == 4:
-            chancy += 3.0 * power
-        elif n == 7:
-            chancy += 1.8 * power if max_ascension >= 1 else 0.3  # needs Ascension 1 unlocked first
-        else:
-            chancy += 1.0
-    return sure + chancy / (1.0 + drought / 4.0)
+_SESSION = random.SystemRandom().getrandbits(32)  # so a restart does not replay the same draws
 
 
 def choose_character(
@@ -214,11 +187,16 @@ def choose_character(
 ) -> str | None:
     """`setting` is a character id, or "auto" / "cycle" / "random" over the unlocked ones.
 
-    "auto" plays the character with the lowest ascension unlocked, so that
-    all of them climb evenly (asked for on 2026-11-18). Among characters on
-    the same level it plays whoever is most likely to earn an epoch on the
-    game's Timeline next (see epoch_pull).
+    "auto" first plays the characters that still have a Timeline epoch of
+    their own to earn. Among those (or among everyone, once no such epoch is
+    left, and always for "random") it plays a character with the lowest
+    ascension unlocked, so that all of them climb evenly, and draws at random
+    among those on that level (all asked for on 2026-11-18). The draw is
+    fixed for a run, since the menu asks again on every poll.
     """
+    # The game's own "Random" tile is listed like a character, on ascension 0
+    # for ever: counted as one, it was the lowest and got picked every time.
+    unlocked = [u for u in unlocked if not u.upper().startswith("RANDOM")]
     if not unlocked:
         return None
     by_upper = {u.upper(): u for u in unlocked}
@@ -231,22 +209,20 @@ def choose_character(
         if first and missing_epochs(first, epochs) > 0:
             return first
         s = "AUTO"
-    if s == "AUTO":
-        levels = {str(k).upper(): int(v) for k, v in (max_ascension or {}).items()}
-        dry = {str(k).upper(): int(v) for k, v in (drought or {}).items()}
-        kills = {str(k).upper(): int(v) for k, v in (boss_kills or {}).items()}
-        strong = {str(k).upper(): float(v) for k, v in (strength or {}).items()}
-
-        def pull(u: str) -> float:
-            k = u.upper()
-            return epoch_pull(u, epochs, dry.get(k, 0), levels.get(k, 0), kills.get(k) if boss_kills is not None else None, strong.get(k))
-
-        # The lowest ascension first; then most likely to earn an epoch; then the listed order.
-        return min(unlocked, key=lambda u: (levels.get(u.upper(), 0), -pull(u)))
+    levels = {str(k).upper(): int(v) for k, v in (max_ascension or {}).items()}
+    if s in ("AUTO", "RANDOM"):
+        if s == "AUTO":
+            # Epochs come first (asked for on 2026-11-18): while any character
+            # still has one of its own to earn, only those characters play.
+            # Everything else on the Timeline (score, Ancients, modes) comes
+            # with playing and winning, whoever plays.
+            owed = [u for u in unlocked if missing_epochs(u, epochs) > 0]
+            unlocked = owed or unlocked
+        low = min(levels.get(u.upper(), 0) for u in unlocked)
+        lowest = [u for u in unlocked if levels.get(u.upper(), 0) == low]
+        return random.Random(_SESSION + runs_finished).choice(lowest)
     if s == "CYCLE":
         return unlocked[runs_finished % len(unlocked)]
-    if s == "RANDOM":
-        return random.Random(runs_finished).choice(unlocked)
     return unlocked[0]
 
 
@@ -293,7 +269,7 @@ def _room_value(kind: str, hp: float, gold: int, early: bool = False, act: int |
 
 # What a room costs in HP on average, measured over the bot's own runs
 # (act -> room -> HP). A boss costs 35 to 50 HP even when it is beaten.
-FIGHT_COST = {1: {"Monster": 5, "Elite": 16}, 2: {"Monster": 10, "Elite": 21}, 3: {"Monster": 11, "Elite": 32}}
+FIGHT_COST = {1: {"Monster": 5, "Elite": 16}, 2: {"Monster": 10, "Elite": 21}, 3: {"Monster": 11, "Elite": 40}}
 BAD_LUCK = 1.7  # how much more than average a fight costs when the draws go wrong
 BOSS_WORTH = 16.0  # what getting past the boss is worth, in the units of the room rewards below
 MAX_PATHS = 1500
@@ -304,8 +280,12 @@ def boss_odds(hp_ratio: float) -> float:
 
     From the run history: at 75% HP or more the act 1 boss was beaten four
     times in five, between 50% and 75% one time in four, below that never.
+    The last stretch counts for the most: act 2 bosses met at 95% HP or more
+    were beaten 27 times in 45 against 10 in 44 below, and every one of seven
+    act 3 wins started at full HP (7 of 16; 0 of 24 below). So the curve
+    bends: 0.26 at 60% HP, 0.58 at 80%, 0.78 at 90%.
     """
-    return max(0.0, min(1.0, (hp_ratio - 0.30) / 0.60))
+    return max(0.0, min(1.0, (hp_ratio - 0.30) / 0.70)) ** 1.6
 
 
 REST_HEAL = 0.3  # of Max HP
@@ -553,7 +533,7 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
     # Rest or upgrade: whichever leaves the rest of the way to the boss better
     # off. Without the map (a run picked up at a rest site) the old rule of
     # thumb decides.
-    heal_first = hp < (0.9 if mem.boss_next else 0.6)
+    heal_first = hp < (0.95 if mem.boss_next else 0.6)
     node = mem.map_nodes.get(mem.map_at) if mem.map_nodes else None
     if node is not None and str(node.get("type")) == "RestSite" and (node.get("children") or []):
         act = (state.get("run") or {}).get("act")
@@ -566,7 +546,7 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
         # won: one act 3 bot walked into the boss at 6 of 109 HP. Heal then.
         # Before a boss a heal is worth more than the flat upgrade bonus: the
         # bot skipped the rest 29 times below 90% HP and fought the boss weaker.
-        heal_first = hp < 0.5 or (rest > smith and hp < 0.95) or (mem.boss_next and hp < 0.9)
+        heal_first = hp < 0.5 or (rest > smith and hp < 0.95) or (mem.boss_next and hp < 0.95)
         log.debug("rest site at %d/%d: rest %.1f, upgrade %.1f", hp_now, max_hp, rest, smith)
 
     def rank(o: dict) -> float:
@@ -628,7 +608,18 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
             bar = 4.0 if gold - price >= 200 else 4.5 if mem.deck_size < BIG_DECK else 5.5
             want = v if v >= bar else -1.0
         elif cat == "potion":
-            want = 2.0 if not belt_full and gold - price >= 60 else -1.0
+            # With the boss a room or two away a potion is the best thing gold
+            # buys: act 2 bosses met with two or three potions were beaten 19
+            # times in 35, with one or none 5 in 24. And the gold kept back is
+            # for a shop that comes after the boss, or never.
+            floor = (state.get("run") or {}).get("floor")
+            boss_next = isinstance(floor, int) and any(0 < boss - floor <= 3 for boss in BOSS_FLOORS)
+            if belt_full:
+                want = -1.0
+            elif boss_next:
+                want = 7.0
+            else:
+                want = 2.0 if gold - price >= 60 else -1.0
         else:
             want = -1.0
         if want > 0:
@@ -687,23 +678,24 @@ def _pick_order(cards: list[dict], prompt: str, screen_type: str = "", gain=None
 def _affliction_order(ordered: list[dict], state: dict) -> list[dict]:
     """The Knowledge Demon's last offer: one energy less every turn, or 8 damage every turn.
 
-    With a third of the energy gone (on top of a card less and three plays a
-    turn) the bot dealt about 10 a turn and never finished a Demon that still
-    had over 100 HP. When the fight can be ended in the few turns our HP
-    pays for, the damage is the cheaper price.
+    The damage is the cheaper price nearly always. An energy is about 8 Block
+    or 10 damage every turn, so going without it costs as much HP as the burn
+    does, and the fight takes half as long again on top. Of 22 fights where
+    the bot gave up the energy (never the HP, under an older and stricter
+    rule), it won 2; four more ended with the Demon on 17 to 42 HP after three
+    or four turns played on 2 energy.
     """
     keys = {_card_key(c): c for c in ordered}
     burn, drain = keys.get("DISINTEGRATION"), keys.get("WASTE_AWAY")
     if burn is None or drain is None:
         return ordered
+    # (The choice screen comes without the enemies: a rule that asked for the
+    # Demon's HP never applied, and the energy went 38 times out of 38.)
     player = state.get("player") or {}
-    foes = [e for e in (state.get("battle") or {}).get("enemies") or [] if int(e.get("hp") or 0) > 0]
-    if not foes:
-        return ordered
     m = re.search(r"take (\d+) damage", str(burn.get("description") or ""), re.I)
     per_turn = int(m.group(1)) if m else 8
-    turns = -(-sum(int(e.get("hp") or 0) for e in foes) // 35)  # at the 35 or so a turn it deals with full energy
-    if int(player.get("hp") or 0) >= per_turn * turns + 20:
+    # (Not when the burn alone would finish us within two turns: then every turn counts.)
+    if int(player.get("hp") or 0) > 2 * per_turn:
         return [burn] + [c for c in ordered if c is not burn]
     return ordered
 

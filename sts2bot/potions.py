@@ -52,7 +52,12 @@ def potion_actions(state: dict) -> list[Action]:
     # Aim at something that stays dead and matters: the leader that hits hardest.
     focus = max(enemies, key=lambda e: (e.worth, e.incoming, e.hp)).entity_id
     out: list[Action] = []
-    slippery = any(e.slippery for e in enemies)
+    slippery = any(e.slippery or e.hit_cap == 1 for e in enemies)  # (Intangible: the same, for a turn)
+    # The Test Subject's first form (100 HP, Enrage): what is thrown at it is
+    # gone when it revives (Vulnerable from a potion lasted two turns of a
+    # fifteen-turn fight). Potions aimed at the enemy wait for the second
+    # form, 200 HP that hit 30, 40, 50 a turn: every turn off it counts most.
+    passing = any(e.adapts and e.enrage for e in enemies)
     for p in potions:
         if not p.get("can_use_in_combat", True):
             continue
@@ -61,6 +66,8 @@ def potion_actions(state: dict) -> list[Action]:
         if slippery and re.search(r"deals? \d+ damage", str(p.get("description") or ""), re.I):
             continue  # every hit on a Slippery enemy takes 1 HP: keep it for later
         text = str(p.get("description") or "")
+        if passing and not danger and (str(p.get("target_type")) in ("AnyEnemy", "AllEnemies") or re.search(r"enem(y|ies)", text, re.I)):
+            continue
         both = re.search(r"deals? (\d+) damage to all (?:players|characters)", text, re.I)
         if both:
             # Foul Potion hits us as hard as them: three of them at the start of
