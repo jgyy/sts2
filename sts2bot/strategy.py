@@ -15,6 +15,7 @@ from .learn import knob
 from .potions import BOSS_FLOORS
 from .events import _ANCIENT, _event_option_value, event  # noqa: F401  (events live in their own module)
 from .cards import _card_key, deck_value, is_basic, is_junk, is_known as _known_card, parse as _parse
+from . import handpick
 
 Action = tuple[str, dict]
 
@@ -819,12 +820,24 @@ def hand_select(state: dict, mem: Memory) -> list[Action]:
     elif log.isEnabledFor(logging.DEBUG):
         log.debug("hand select (%s): %s", prompt, ", ".join(str(c.get("name")) for c in hs.get("cards") or []))
     ordered = _pick_order(hs.get("cards") or [], prompt, kind, mem.upgrade_gain)
-    if re.search(r"\bdiscard\b", prompt, re.I):
-        # A Sly card "discarded from your Hand before the end of your turn" is played
-        # for free: the best thing to throw away. (Flick-Flack was kept 9 times in 10
-        # while a Strike or a Defend went.)
-        sly = lambda c: any(str(k.get("name")) == "Sly" for k in c.get("keywords") or [])
-        ordered = sorted((c for c in ordered if sly(c)), key=deck_value, reverse=True) + [c for c in ordered if not sly(c)]
+    discarding = bool(re.search(r"\bdiscard\b", prompt, re.I))
+    # A Sly card "discarded from your Hand before the end of your turn" is played
+    # for free: the best thing to throw away. (Flick-Flack was kept 9 times in 10
+    # while a Strike or a Defend went.)
+    sly = lambda c: discarding and any(str(k.get("name")) == "Sly" for k in c.get("keywords") or [])
+    ordered = sorted((c for c in ordered if sly(c)), key=deck_value, reverse=True) + [c for c in ordered if not sly(c)]
+    costs = handpick.turn_costs(state, ordered) if _WORST_FIRST.search(prompt) and not kind else None
+    if costs:
+        # ... and otherwise the card this turn's plan misses least. A discard is back with the
+        # next shuffle, so the turn is all that counts; a card Exhausted is gone for the fight,
+        # so there the rating decides unless the choice would cost a kill or our life.
+        def price(c: dict) -> float:
+            cost = costs[int(c.get("index", 0))]
+            if sly(c) or _card_key(c) in KEEP_AT_ALL_COSTS:
+                return float("-inf") if sly(c) else float("inf")
+            return float(round(cost / 2.0)) if discarding else float(cost >= handpick.RUINOUS)
+
+        ordered = sorted(ordered, key=price)  # (stable: equal prices keep the order above)
     for c in ordered:
         out.append(("combat_select_card", {"card_index": int(c.get("index", 0))}))
     out.append(("combat_confirm_selection", {}))

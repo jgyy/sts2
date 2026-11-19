@@ -8,6 +8,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from .cards import parse
+
 LETHAL_PENALTY = 1_000_000.0
 WIN_BONUS = 10_000.0
 SANDPIT_DEATH = 600.0  # what being eaten by the Sandpit costs, in points (the run ends there)
@@ -84,6 +86,7 @@ class Enemy:
     spent: bool = False  # already beaten and out of reach: only its last blow is still to come
     adapts: bool = False  # Adaptable (the Test Subject): killed, it is gone for the turn and back, stronger, the next
     adapted: bool = False  # ... and this plan has done that
+    asleep: int = 0  # Asleep: turns until it wakes by itself (losing HP wakes it at once)
 
     @property
     def worth(self) -> float:
@@ -241,6 +244,7 @@ def read_enemies(state: dict) -> list[Enemy]:
                 rage=_has_power(e, "CRAB_RAGE"),
                 respawns=max(0, power_amount(e, "STOCK")),
                 adapts=_has_power(e, "ADAPTABLE"),
+                asleep=max(0, power_amount(e, "ASLEEP")),
                 max_hp=int(e.get("max_hp") or 0),
             )
         )
@@ -268,6 +272,23 @@ def read_enemies(state: dict) -> list[Enemy]:
             if e.minion and e.incoming >= 15 and e.incoming > 2 * leader_hits and e.hp + e.block <= 0.6 * leader_hp:
                 e.main_threat = True
     return out
+
+
+def kill_reach(survivors: list, blow_is_all: bool) -> float:
+    """HP still in the way of the kill that would save a turn lost on paper (infinite: no kill would).
+
+    Either every leader dies (the fight is over) or, when the attacks are all
+    that kills us, everything that is about to attack. Poison bites before
+    they move.
+    """
+    def left(group: list) -> float:
+        if not group or any(e.spent or e.hit_cap or e.slippery or e.respawns for e in group):
+            return float("inf")
+        return float(sum(max(0, e.hp - e.poison) + e.block for e in group))
+
+    leaders = [e for e in survivors if not e.minion]
+    attackers = [e for e in survivors if e.incoming > 0]
+    return min(left(leaders), left(attackers) if blow_is_all else float("inf"))
 
 
 def constrict(player: dict) -> int:
@@ -324,3 +345,58 @@ def _escape_odds(player: dict, hand_draw: int = 5) -> tuple:
         next_hand = none(n, k, n) * none(m, j, hand_draw - n)
     usual = none(n + m, k + j, hand_draw) if n + m >= hand_draw else 0.3
     return (next_hand, max(usual, 0.05))
+
+
+def _bare_block(player: dict) -> int:
+    """Block a relic gives when the turn ends without any (Orichalcum)."""
+    for r in player.get("relics") or []:
+        m = re.search(r"end your turn without block, gain (\d+) block", str(r.get("description") or ""), re.I)
+        if m:
+            return int(m.group(1))
+    return 0
+
+
+def _draw_worth(player: dict) -> tuple:
+    """What drawing a card is worth right now, from what is left to draw.
+
+    A flat 2 points a card made "Draw 6 cards" for 2 energy look worse than
+    two Strikes whatever the deck held, and made drawing into a pile of
+    Wounds look as good as drawing into a pile of free attacks.
+    """
+    pile = list(player.get("draw_pile") or [])
+    if len(pile) < 3:
+        pile += list(player.get("discard_pile") or [])  # it is about to be shuffled back in
+    if len(pile) < 3:
+        return (2.0, 0.0, 0.0)
+    free = 0.0
+    paid: list[float] = []
+    for c in pile:
+        text = str(c.get("description") or "")
+        if re.search(r"\bunplayable\b", text, re.I):
+            continue
+        info = parse(c)
+        worth = 1.2 * info.total_damage * (1.4 if info.aoe else 1.0) + info.block + 2.0 * (info.vulnerable > 0) + 1.5 * info.draw
+        if not info.known:
+            worth = 3.0
+        if info.cost == 0 and info.star_cost <= 0:
+            free += worth
+        else:
+            paid.append(worth / max(1, 2 if info.is_x else info.cost))
+    return (free / len(pile), len(paid) / len(pile), sum(paid) / len(paid) if paid else 0.0)
+
+
+def _next_wither(player: dict, round_no: int = 1) -> int:
+    """Damage the next Wither does if it is still in the hand when the turn ends.
+
+    A plain Wither does 3. Every third round Aeonglass makes all of them one
+    step worse, the ones in our deck and the ones still to come, and a step is
+    3 more damage: "Wither+2" does 9, not 5. (Measured from HP lost with
+    Withers in hand; a bot on 35 HP that expected to lose 31 died of it.)
+    """
+    level = max(0, (round_no - 1) // 3)
+    for pile in ("hand", "draw_pile", "discard_pile", "exhaust_pile"):
+        for c in player.get(pile) or []:
+            m = re.match(r"Wither(?:\+(\d+))?$", str(c.get("name") or ""))
+            if m:
+                level = max(level, int(m.group(1) or 0))
+    return 3 * (level + 1)

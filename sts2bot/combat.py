@@ -16,7 +16,7 @@ from itertools import combinations, permutations
 from .battle import (  # noqa: F401  (also the names other modules and the tests reach through here)
     BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, SANDPIT_DEATH, WIN_BONUS, Enemy,
     _has_power, _is_attack, constrict, end_of_turn_block, end_of_turn_loss, expected_loss, hand_burns,
-    intent_damage, intent_hits, osty_hp, power_amount, read_enemies, _escape_odds, _sandpit,
+    intent_damage, intent_hits, kill_reach, osty_hp, power_amount, read_enemies, _bare_block, _draw_worth, _escape_odds, _next_wither, _sandpit,
 )
 from .cards import CardInfo, order_key, parse
 from .potions import describe, potion_actions  # noqa: F401
@@ -131,7 +131,11 @@ def _orb_damage(kind: str, amount: int, foes: list[Enemy], chip_rate: float, dmg
     elif len(alive) == 1:
         targets = alive
     else:
-        return amount * 0.8 * dmg_value
+        # A bolt at random can finish the wrong crab: Crusher on 3 HP, Rocket on 20 about to hit
+        # for 52, and a Lightning pushed out by Coolheaded killed the Crusher. The Rocket took its
+        # 99 Block, and the two attacks in hand that would have killed it first did nothing.
+        risk = sum(4.0 * o.hp + 10.0 for e in alive if e.rage and e.hp + e.block <= amount for o in alive if o is not e and o.rage)
+        return amount * 0.8 * dmg_value - risk / len(alive)
     return sum(_progress(e, _hit(e, amount, 1, raw=True), chip_rate) * dmg_value * e.worth for e in targets)
 
 
@@ -193,6 +197,10 @@ def _debuff(e: Enemy, c: CardInfo, x: int = 1) -> None:
         _weaken(e, c.weak * x)
     if c.enemy_strength_loss:
         _sap(e, c.enemy_strength_loss * x)
+    if c.key == "DEBILITATE" and e.vuln_mult < 2.0 and not _resists(e):
+        # "Vulnerable and Weak are twice as effective": for the attacks that follow it this turn too.
+        e.incoming = int(e.incoming * 0.5 / e.weak_cut) if e.weak else e.incoming
+        e.vuln_mult, e.weak_cut = 2.0, 0.5
 
 
 def _weaken(e: Enemy, turns: int = 1) -> None:
@@ -445,11 +453,14 @@ def simulate(
         score += c.star_gain * (2.5 if stars < 4 else 1.0 if stars < 8 else 0.2) + c.souls * 2.5
         stars += c.star_gain
         lasting += c.forge * 0.5
-        later += c.next_energy * 5.0 + c.next_draw * 1.5 + c.next_block * 0.8
+        # (Energy next turn at a flat 5: with the Queen only buffing, Invoke+ (3 energy) lost to a 7-damage attack.)
+        later += (c.next_energy * 6.0 + c.next_draw * 2.0) * dmg_value + c.next_block * 0.8
         if c.dexterity:
             nimble += c.dexterity
             if c.dexterity_lasts:
                 lasting += c.dexterity * 3.5
+        if c.channel or c.evoke or c.evoke_all:
+            _rage_blocks(foes, known_dead)  # a crab this card killed has already handed on its Block
         for kind in c.channel * (x if c.is_x else 1):
             if orb_slots and len(held) >= orb_slots:
                 old = held.pop(0)  # no room: the oldest orb is evoked to make space
@@ -682,18 +693,18 @@ def simulate(
     # no better in acts 1 and 2. Removed.)
     score -= lost * worth * (4.0 if doomed else 1.0) * knob("caution") * care
     if lost >= hp:
-        # Dead on paper. If every line is, the least dead one is the one to
-        # play: the most Block, and cards drawn while there is energy left to
-        # play them (one of them may be the Block that is missing). A flat
-        # penalty left that choice to the damage dealt, and a bot 4 HP short
-        # played two Powers with a Defend+ in hand.
-        # Past 20 HP short no Block in the hand changes it, and only a kill does: there
-        # the loss is not priced, so the damage decides. (26 HP in front of 40 with a
-        # Wither waiting on the next card: the bot played nothing, two free attacks in
-        # hand and Aeonglass on 51, which they and the orbs would have finished.)
-        short = min(lost - hp, 20)
-        score += (lost - hp - short) * worth * knob("caution")
-        score -= LETHAL_PENALTY + 100.0 * short - (150.0 if energy > 0 else 30.0) * min(drawn, 3)
+        # Dead on paper, and that is dead: of 115 turns ended this way none was lived
+        # through (the loss expected is exact: 3 under-estimates of 3 HP or more in 7,880
+        # turns, 111 over-estimates). So Block that still leaves us short buys next to
+        # nothing, and the HP is not priced: what counts is cards drawn while there is
+        # energy to play them (one may be the Block that is missing) and how near the
+        # line comes to a kill that stops the blow, since our damage is the number the
+        # planner gets wrong: a Silent blocked 17 of 35 and died 3 short with the Queen
+        # on 25, where the Shivs and Serpent Form it did not count would have killed her.
+        short = lost - hp
+        score += lost * worth * (4.0 if doomed else 1.0) * knob("caution") * care
+        score -= LETHAL_PENALTY - (150.0 if energy > 0 else 30.0) * min(drawn, 3)
+        score += 400.0 * max(0.0, 1.0 - short / 12.0) + 3000.0 * max(0.0, 1.0 - kill_reach(survivors, lost - through < hp) / 30.0)
     return Outcome(score, first_target, int(lost))
 
 
@@ -756,61 +767,6 @@ def _context(state: dict) -> dict:
     )
 
 
-def _bare_block(player: dict) -> int:
-    """Block a relic gives when the turn ends without any (Orichalcum)."""
-    for r in player.get("relics") or []:
-        m = re.search(r"end your turn without block, gain (\d+) block", str(r.get("description") or ""), re.I)
-        if m:
-            return int(m.group(1))
-    return 0
-
-
-def _draw_worth(player: dict) -> tuple:
-    """What drawing a card is worth right now, from what is left to draw.
-
-    A flat 2 points a card made "Draw 6 cards" for 2 energy look worse than
-    two Strikes whatever the deck held, and made drawing into a pile of
-    Wounds look as good as drawing into a pile of free attacks.
-    """
-    pile = list(player.get("draw_pile") or [])
-    if len(pile) < 3:
-        pile += list(player.get("discard_pile") or [])  # it is about to be shuffled back in
-    if len(pile) < 3:
-        return (2.0, 0.0, 0.0)
-    free = 0.0
-    paid: list[float] = []
-    for c in pile:
-        text = str(c.get("description") or "")
-        if re.search(r"\bunplayable\b", text, re.I):
-            continue
-        info = parse(c)
-        worth = 1.2 * info.total_damage * (1.4 if info.aoe else 1.0) + info.block + 2.0 * (info.vulnerable > 0) + 1.5 * info.draw
-        if not info.known:
-            worth = 3.0
-        if info.cost == 0 and info.star_cost <= 0:
-            free += worth
-        else:
-            paid.append(worth / max(1, 2 if info.is_x else info.cost))
-    return (free / len(pile), len(paid) / len(pile), sum(paid) / len(paid) if paid else 0.0)
-
-
-def _next_wither(player: dict, round_no: int = 1) -> int:
-    """Damage the next Wither does if it is still in the hand when the turn ends.
-
-    A plain Wither does 3. Every third round Aeonglass makes all of them one
-    step worse, the ones in our deck and the ones still to come, and a step is
-    3 more damage: "Wither+2" does 9, not 5. (Measured from HP lost with
-    Withers in hand; a bot on 35 HP that expected to lose 31 died of it.)
-    """
-    level = max(0, (round_no - 1) // 3)
-    for pile in ("hand", "draw_pile", "discard_pile", "exhaust_pile"):
-        for c in player.get(pile) or []:
-            m = re.match(r"Wither(?:\+(\d+))?$", str(c.get("name") or ""))
-            if m:
-                level = max(level, int(m.group(1) or 0))
-    return 3 * (level + 1)
-
-
 def cards_left_this_turn(state: dict) -> int | None:
     """How many more cards we may play this turn, when something limits it."""
     player = state.get("player") or {}
@@ -836,6 +792,12 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
     playable = [c for c in hand if c.playable and (c.is_x or c.cost <= ctx["energy"]) and c.star_cost <= ctx["stars"]]
     playable = [c for c in playable if not triggers.shunned(c, state)]
     if not enemies and state.get("_revive_pending"):
+        return _set_up(playable, ctx["energy"])
+    if len(enemies) == 1 and enemies[0].asleep >= 2 and ctx["round_no"] <= 2:
+        # Asleep ("Awakens upon losing HP or after 3 turns"): she wakes on her own time whatever
+        # we do, so the turns before the last one are free for everything that lasts, and the
+        # attacks wait. The bot used to hit the Lagavulin Matriarch for 3 to 30 through her 12
+        # Block on round 1 and face her 19 a turn from round 2, Powers still in the deck.
         return _set_up(playable, ctx["energy"])
     if not playable or not enemies:
         return None
@@ -914,7 +876,7 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
         if not found:
             break
     if plan is not None:
-        plan["lost"] = best_lost
+        plan["lost"], plan["score"] = best_lost, best_score
     if not best_line:
         return None
 

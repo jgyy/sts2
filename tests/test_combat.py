@@ -494,9 +494,9 @@ class OtherCharacters(unittest.TestCase):
         state = combat_state([dualcast, DEFEND(1)], [enemy("A", 14, attack=30)], energy=1, hp=20)
         state["player"].update(orbs=[lightning], orb_slots=3)
         self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 0}))  # 16 kills it: no need to block
-        # Vulnerable does nothing for orbs: 17 HP is out of reach, so it blocks.
+        # Vulnerable does nothing for orbs: 17 HP is out of reach, so it blocks (and lives, on 26 HP).
         tough = enemy("A", 17, attack=30, status=[{"id": "VULNERABLE_POWER", "amount": 2}])
-        state = combat_state([dualcast, DEFEND(1)], [tough], energy=1, hp=20)
+        state = combat_state([dualcast, DEFEND(1)], [tough], energy=1, hp=26)
         state["player"].update(orbs=[lightning], orb_slots=3)
         self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 1}))
 
