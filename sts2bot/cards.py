@@ -388,11 +388,13 @@ _TIER = {
     "DOUBLE_ENERGY": 3.5, "STORM": 3.5, "THUNDER": 3.5, "SCRAPE": 3.0, "ALL_FOR_ONE": 3.0, "HOTFIX": 3.0,
     "VOLTAIC": 3.0, "FERAL": 3.0, "TRASH_TO_TREASURE": 3.0, "ITERATION": 2.5,
     # --- met on 2026-11-18 (all characters)
+    # (Six Necrobinder cards stood here a second time with their old ratings until 2026-11-19, and the
+    # later entry of a dict wins: the ratings reset above from 67 runs had never applied.)
     "MACHINE_LEARNING": 6.5, "DEFRAGMENT": 7.5, "GLACIER": 6.0, "FRIENDSHIP": 6.0, "GENESIS": 5.5, "ECHO_FORM": 6.5,
     "HYPERBEAM": 5.5, "DEVASTATE": 5.0, "SKIM": 5.0, "COOLANT": 5.0, "BUFFER": 5.0, "SPINNER": 5.0, "QUADCAST": 5.0,
-    "DEATHBRINGER": 5.0, "HIGH_FIVE": 5.0, "GUIDING_STAR": 4.5, "ADAPTIVE_STRIKE": 4.5, "BONE_SHARDS": 4.5,
-    "NULL": 4.5, "ERADICATE": 4.5, "LOOP": 4.5, "NECRO_MASTERY": 4.5, "SENTRY_MODE": 4.5, "CHILL": 4.0,
-    "SEVERANCE": 4.0, "TEMPEST": 4.0, "NEUROSURGE": 1.0, "BLACK_HOLE": 4.0, "SLEIGHT_OF_FLESH": 4.0, "LEAP": 3.5,
+    "GUIDING_STAR": 4.5, "ADAPTIVE_STRIKE": 4.5, "BONE_SHARDS": 4.5,
+    "NULL": 4.5, "LOOP": 4.5, "SENTRY_MODE": 4.5, "CHILL": 4.0,
+    "TEMPEST": 4.0, "NEUROSURGE": 1.0, "BLACK_HOLE": 4.0, "LEAP": 3.5,
     "DELAY": 3.5, "CHAOS": 3.5, "SOUL_STORM": 3.5, "REFRACT": 3.5, "FETCH": 3.5, "REBOOT": 3.0, "ALIGNMENT": 3.0,
     "CRESCENT_SPEAR": 3.0, "CONQUEROR": 3.0, "SYNTHESIS": 3.0, "RIGHT_HAND_HAND": 3.0, "SPUR": 3.0, "CLEANSE": 3.0,
     "TIMES_UP": 3.0, "SHARED_FATE": 3.0, "DANSE_MACABRE": 3.0, "CLAW": 2.5, "MELANCHOLY": 2.5, "SUBROUTINE": 2.0,

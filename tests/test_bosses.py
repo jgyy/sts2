@@ -200,19 +200,28 @@ class CardPlayTriggers(unittest.TestCase):
         self.assertIsNone(triggers.read(combat_state([DEFEND(0)], [enemy("A", 5)])))
 
 
-class EarlySetup(unittest.TestCase):
-    def first_card(self, setting, hp, attack):
+class LongGame(unittest.TestCase):
+    """What lasts the whole fight is worth the turns the fight has left (the `long_game` setting)."""
+
+    def first_card(self, setting, round_no=1, hp=83, attack=19, kind="boss"):
         from unittest import mock
 
-        sleight = card(0, "SLEIGHT_OF_FLESH", "Sleight of Flesh", "Power", 2, "Whenever you apply a debuff to an enemy, they take 9 damage.", "Self")
-        state = combat_state([sleight, DEFEND(1), DEFEND(2), STRIKE(3)], [enemy("B", 300, attack=attack)], hp=hp, kind="boss")
-        with mock.patch.dict(learn.KNOB, {"caution": 1.35, "early_setup": setting}):
+        demon = card(0, "DEMON_FORM", "Demon Form+", "Power", 3, "At the start of your turn, gain 4 Strength.", "Self")
+        brk = card(1, "BREAK", "Break+", "Attack", 1, "Deal 38 damage.", "AnyEnemy")
+        hand = [demon, brk, card(2, "TAUNT", "Taunt", "Skill", 1, "Gain 12 Block.", "Self"), DEFEND(3)]
+        state = combat_state(hand, [enemy("QUEEN_0", 400, attack=attack)], hp=hp, max_hp=87, kind=kind)
+        state["battle"]["round"] = round_no
+        with mock.patch.dict(learn.KNOB, {"caution": 1.0, "long_game": setting}):
             return combat.choose_card(state)[1]["card_index"]
 
-    def test_the_setting_puts_a_power_first_in_the_opening_rounds_of_a_boss(self):
-        self.assertNotEqual(self.first_card(1.0, hp=80, attack=10), 0)
-        self.assertEqual(self.first_card(1.7, hp=80, attack=10), 0)
-        self.assertNotEqual(self.first_card(1.7, hp=40, attack=18), 0)  # not at half HP in front of a big hit
+    def test_demon_form_goes_down_on_the_first_turn_of_a_boss(self):
+        self.assertNotEqual(self.first_card(0.0), 0)  # as it was: 72 points against an attack and two Blocks
+        self.assertEqual(self.first_card(1.0), 0)
+
+    def test_not_late_in_the_fight_nor_when_it_would_kill_us(self):
+        self.assertNotEqual(self.first_card(1.0, round_no=9), 0)  # two rounds of Strength are not worth the turn
+        self.assertNotEqual(self.first_card(1.0, hp=18, attack=19), 0)
+        self.assertNotEqual(self.first_card(1.0, kind="monster"), 0)  # an ordinary fight is over in four turns
 
 
 class Disintegration(unittest.TestCase):
@@ -486,21 +495,3 @@ class SlipperyPotions(unittest.TestCase):
         self.assertEqual([a[1]["slot"] for a in combat.potion_actions(state, 0)], [1])
         vantom["status"] = []
         self.assertEqual([a[1]["slot"] for a in combat.potion_actions(state, 0)], [0, 1])
-
-
-class LateCaution(unittest.TestCase):
-    """The setting that prices our HP higher in the last rooms before a boss."""
-
-    def first_card(self, setting, floor):
-        from unittest import mock
-
-        swing = card(0, "BLUDGEON", "Bludgeon", "Attack", 1, "Deal 22 damage.", "AnyEnemy")
-        state = combat_state([swing, DEFEND(1)], [enemy("A", 120, attack=6)], energy=1, hp=60, max_hp=80)
-        state["run"] = {"act": 3, "floor": floor, "ascension": 3}
-        with mock.patch.dict(learn.KNOB, {"caution": 1.35, "late_caution": setting}):
-            return combat.choose_card(state)[1]["card_index"]
-
-    def test_the_setting_blocks_more_only_near_the_boss(self):
-        self.assertEqual(self.first_card(1.0, floor=45), 0)
-        self.assertEqual(self.first_card(1.4, floor=45), 1)
-        self.assertEqual(self.first_card(1.4, floor=40), 0)  # eight rooms from the boss: as usual
