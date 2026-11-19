@@ -424,6 +424,39 @@ class HandSelections(unittest.TestCase):
         picks = [a[1]["card_index"] for a in strategy.hand_select(state, Memory()) if a[0] == "combat_select_card"]
         self.assertNotEqual(picks[0], 1)
 
+    def insatiable(self, prompt):
+        """A Silent on 9 HP, the Insatiable on 59 with 36 Poison and Serpent Form up: two Strikes and any third card kill it."""
+        escape = card(0, "FRANTIC_ESCAPE", "Frantic Escape", "Status", 3, "Move 1 space away from the Sandpit.", "Self")
+        snake = card(3, "SNAKEBITE", "Snakebite", "Skill", 2, "Retain. Apply 7 Poison.", "AnyEnemy")
+        hand = [escape, STRIKE(1), STRIKE(2), snake, DEFEND(4)]
+        for c in hand:  # the selection screen leaves these two out
+            c.pop("target_type", None), c.pop("can_play", None)
+        boss = {"entity_id": "THE_INSATIABLE_0", "hp": 59, "max_hp": 321, "block": 0, "intents": [{"type": "Attack", "label": "12x2"}],
+                "status": [{"id": "POISON_POWER", "amount": 36}, {"id": "SANDPIT_POWER", "amount": 3}]}
+        return {
+            "state_type": "hand_select", "_fight": "boss",
+            "hand_select": {"prompt": prompt, "can_confirm": False, "cards": hand},
+            "battle": {"round": 9, "turn": "player", "is_play_phase": True, "enemies": [boss]},
+            "player": {"hp": 9, "max_hp": 79, "block": 0, "energy": 3, "hand": [], "status": [{"id": "SERPENT_FORM_POWER", "amount": 4}]},
+            "run": {"act": 2, "floor": 33},
+        }
+
+    def test_the_discard_is_a_card_the_turn_does_not_need(self):
+        # By rating alone a Strike went: without it the 24 damage that leaves the boss to its Poison is not there.
+        picks = [a[1]["card_index"] for a in strategy.hand_select(self.insatiable("Choose a card to Discard."), Memory()) if a[0] == "combat_select_card"]
+        self.assertNotIn(picks[0], (1, 2))
+        self.assertEqual(picks[-1], 0)  # and never the way out of the Sandpit
+
+    def test_a_card_is_not_exhausted_when_that_loses_the_kill(self):
+        picks = [a[1]["card_index"] for a in strategy.hand_select(self.insatiable("Choose a card to Exhaust."), Memory()) if a[0] == "combat_select_card"]
+        self.assertNotIn(picks[0], (1, 2))
+
+    def test_out_of_a_fight_the_rating_decides_as_before(self):
+        from sts2bot import handpick
+        state = self.insatiable("Choose a card to Discard.")
+        state["battle"]["enemies"] = []
+        self.assertIsNone(handpick.turn_costs(state, state["hand_select"]["cards"]))
+
     def test_the_card_put_back_on_the_deck_is_one_it_would_not_play(self):
         comet = card(0, "COMET", "Comet", "Attack", 3, "Deal 33 damage.", "AnyEnemy", rarity="Rare")
         pulse = card(1, "ASTRAL_PULSE", "Astral Pulse", "Attack", 0, "Deal 8 damage to ALL enemies twice.", "AllEnemies")

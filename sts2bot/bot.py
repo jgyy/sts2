@@ -114,6 +114,7 @@ class Bot:
         self._revive_fight: tuple = ()  # the fight in which the enemy last seen revives when beaten
         self._end_check: tuple = ()  # the hand we last thought about ending the turn on
         self._played_from: tuple = ()  # the hand as it was when we last played a card from it
+        self._fight_kind = "monster"  # monster, elite or boss: the fight we were last in
         self._played_at = 0.0
 
     # ------------------------------------------------------------ deciding
@@ -160,6 +161,8 @@ class Bot:
         }.get(kind)
         if kind == "fake_merchant":
             return strategy.shop(state, mem, key="fake_merchant")
+        if kind == "hand_select":
+            state = {**state, "_fight": self._fight_kind}  # the screen does not say what kind of fight it is in
         return handler(state, mem) if handler else []
 
     def _upgrade_gain(self, card: dict) -> float | None:
@@ -215,6 +218,7 @@ class Bot:
             return []  # combat is starting or just ended
         if battle.get("turn") != "player" or not battle.get("is_play_phase"):
             return []
+        self._fight_kind = str(state.get("state_type"))
         self._note_deck(state)
         key = (*self._where(state), battle.get("round"))
         if key != self._turn_key:

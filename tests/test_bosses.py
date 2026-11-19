@@ -181,9 +181,10 @@ class CardPlayTriggers(unittest.TestCase):
         self.assertEqual(combat.choose_card(s), ("play_card", {"card_index": 0}))
         s = self.subject(5, [bringer(0), defend(1)], sleight, energy=2)
         self.assertEqual(combat.choose_card(s), ("play_card", {"card_index": 0}))
-        # Without the Power there is no kill in the hand: Block is all that is left.
+        # Without the Power there is no kill in the hand, and no Block that saves us either
+        # (10 HP in front of 50): the attack that leaves the form on 5 HP is the best try.
         s = self.subject(33, [exterminate, bringer(1), defend(2)], [])
-        self.assertEqual(combat.choose_card(s), ("play_card", {"card_index": 2}))
+        self.assertEqual(combat.choose_card(s), ("play_card", {"card_index": 0}))
 
     def test_afterimage_and_strangle_count_for_every_card(self):
         from sts2bot import triggers
@@ -374,6 +375,117 @@ class DeadOnPaper(unittest.TestCase):
         state["player"]["hp"] = 20  # 24 short with nothing played: no Block in this hand mends that
         state["player"]["hand"] = state["player"]["hand"][1:]  # no card that draws
         self.assertIn(combat.choose_card(state)[1]["card_index"], (1, 4))
+
+
+class LostOnPaper(unittest.TestCase):
+    """When every line ends in our death, Block that leaves us short is worth nothing: the kill is."""
+
+    def state(self, hp):
+        swing = lambda i: card(i, "SWING", "Swing", "Attack", 1, "Deal 12 damage.", "AnyEnemy")
+        guard = card(2, "GUARD", "Guard", "Skill", 1, "Gain 8 Block.", "Self")
+        return combat_state([swing(0), swing(1), guard], [enemy("QUEEN_0", 30, attack=35)], energy=2, hp=hp, max_hp=80, kind="boss")
+
+    def test_the_bot_goes_for_the_kill_it_cannot_quite_count(self):
+        # 15 HP in front of 35: one attack and the Block loses 27, both attacks lose 35 and
+        # leave her on 6. Dead either way by the count; only the second can turn out a kill.
+        state = self.state(15)
+        self.assertEqual(combat.choose_card(state)[1]["card_index"], 0)
+        state["player"]["hand"] = [dict(c, index=n) for n, c in enumerate(state["player"]["hand"][1:])]
+        state["player"]["energy"] = 1
+        state["battle"]["enemies"][0]["hp"] = 18
+        self.assertEqual(combat.choose_card(state)[1]["card_index"], 0)  # the second attack, not the Block
+
+    def test_block_that_saves_us_is_still_played(self):
+        plan: dict = {}
+        combat.choose_card(self.state(30), plan)  # 30 HP: an attack and the Block lose 27
+        self.assertEqual(plan["lost"], 27)
+
+    def test_reach_is_what_has_to_die_for_the_blow_not_to_land(self):
+        from sts2bot.battle import kill_reach, read_enemies
+        queen = enemy("QUEEN_0", 300)
+        amalgam = enemy("AMALGAM_0", 12, attack=40, block=3, status=[{"id": "MINION_POWER", "amount": 1}, {"id": "POISON_POWER", "amount": 5}])
+        foes = read_enemies(combat_state([], [queen, amalgam]))
+        self.assertEqual(kill_reach(foes, True), 10)  # the minion that attacks: 12 less 5 Poison, and 3 Block
+        self.assertEqual(kill_reach(foes, False), 300)  # something else kills us too: only the fight's end helps
+        ghost = enemy("FYSH_0", 9, attack=20, status=[{"id": "INTANGIBLE_POWER", "amount": 1}])
+        self.assertEqual(kill_reach(read_enemies(combat_state([], [ghost])), True), float("inf"))
+
+
+class SmallReads(unittest.TestCase):
+    def test_debilitate_doubles_vulnerable_for_the_cards_after_it(self):
+        debilitate = card(0, "DEBILITATE", "Debilitate", "Attack", 1, "Deal 10 damage. Vulnerable and Weak are twice as effective against the enemy for the next 2 turns.", "AnyEnemy")
+        slam = card(1, "SLAM", "Slam", "Attack", 1, "Deal 13 damage.", "AnyEnemy")
+        # 15 for the Debilitate (Vulnerable), then 26 and not 19 for the Slam: 41 on 40 HP.
+        foe = enemy("A", 40, attack=30, status=[{"id": "VULNERABLE_POWER", "amount": 2}])
+        plan: dict = {}
+        self.assertEqual(combat.choose_card(combat_state([debilitate, slam], [foe], energy=2, hp=50), plan), ("play_card", {"card_index": 0, "target": "A"}))
+        self.assertEqual(plan["lost"], 0)
+
+    def test_energy_for_next_turn_is_worth_a_small_attack_now(self):
+        invoke = card(0, "INVOKE", "Invoke+", "Skill", 1, "Next turn, Summon 3 and gain [necrobinder_energy_icon.png][necrobinder_energy_icon.png][necrobinder_energy_icon.png].", "Self")
+        drain = card(1, "DRAIN_POWER", "Drain Power", "Attack", 1, "Deal 7 damage.", "AnyEnemy")
+        queen = enemy("QUEEN_0", 150, status=[{"id": "VULNERABLE_POWER", "amount": 4}])  # she only buffs this turn
+        state = combat_state([invoke, drain], [queen], energy=1, hp=35, max_hp=97, kind="boss")
+        state["battle"]["round"] = 9
+        self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 0}))
+
+    def test_a_bolt_at_random_is_not_let_loose_next_to_a_crab_it_could_kill(self):
+        rage = [{"id": "CRAB_RAGE_POWER", "amount": 1}]
+        crusher, rocket = enemy("CRUSHER_0", 3, status=rage), enemy("ROCKET_0", 20, attack=52, status=rage)
+        cool = card(0, "COOLHEADED", "Coolheaded", "Skill", 1, "Channel 1 Frost. Draw 1 card.", "Self")
+        strike = card(1, "ULTIMATE_STRIKE", "Ultimate Strike", "Attack", 1, "Deal 12 damage.", "AnyEnemy")
+        ball = card(2, "BALL_LIGHTNING", "Ball Lightning+", "Attack", 1, "Deal 9 damage. Channel 1 Lightning.", "AnyEnemy")
+        state = combat_state([cool, strike, ball], [crusher, rocket], energy=4, hp=3, max_hp=85, block=7, kind="boss")
+        bolt = {"id": "LIGHTNING_ORB", "name": "Lightning", "passive_val": 3, "evoke_val": 8}
+        state["player"].update(orbs=[bolt, bolt, bolt], orb_slots=3)
+        # Coolheaded first pushes a Lightning out at one of the two: on the Crusher it kills, and
+        # the Rocket takes 99 Block with its 52 still coming. The two attacks kill the Rocket first.
+        first = combat.choose_card(state)
+        self.assertEqual((first[1]["card_index"], first[1].get("target")), (1, "ROCKET_0"))
+
+
+class Asleep(unittest.TestCase):
+    """The Lagavulin Matriarch sleeps for three turns unless she loses HP: those turns are for setting up."""
+
+    def state(self, turns, round_no=1):
+        sleeper = {"entity_id": "LAGAVULIN_MATRIARCH_0", "hp": 222, "max_hp": 222, "block": 12,
+                   "status": [{"id": "PLATING_POWER", "amount": 12}, {"id": "ASLEEP_POWER", "amount": turns}],
+                   "intents": [{"type": "Sleep", "label": ""}]}
+        inflame = card(1, "INFLAME", "Inflame", "Power", 1, "Gain 2 Strength.", "Self")
+        state = combat_state([STRIKE(0), inflame, DEFEND(2), STRIKE(3)], [sleeper], energy=3, kind="boss")
+        state["battle"]["round"] = round_no
+        return state
+
+    def test_she_is_left_asleep_while_the_powers_go_down(self):
+        state = self.state(3)
+        self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 1}))
+        state["player"]["hand"] = [STRIKE(0), DEFEND(1), STRIKE(2)]
+        self.assertIsNone(combat.choose_card(state))  # nothing that lasts: the turn ends with the energy unspent
+
+    def test_the_last_turn_of_her_sleep_is_for_hitting(self):
+        state = self.state(1, round_no=3)
+        state["player"]["hand"] = [STRIKE(0), DEFEND(1), STRIKE(2)]
+        self.assertEqual(combat.choose_card(state)[1]["card_index"], 0)
+        # ... and so is round 3 if the count does not come down by itself.
+        self.assertIsNotNone(combat.choose_card(dict(self.state(3, round_no=3))))
+
+    def test_nothing_is_thrown_at_a_sleeper(self):
+        fire = {"slot": 0, "id": "FIRE_POTION", "name": "Fire Potion", "description": "Deal 20 damage to an enemy.", "target_type": "AnyEnemy", "can_use_in_combat": True}
+        flex = {"slot": 1, "id": "FLEX_POTION", "name": "Flex Potion", "description": "Gain 5 Strength this turn.", "target_type": "Self", "can_use_in_combat": True}
+        state = self.state(3)
+        state["player"]["potions"] = [fire, flex]
+        self.assertEqual([a[1]["slot"] for a in combat.potion_actions(state, 0)], [1])
+
+
+class SlipperyPotions(unittest.TestCase):
+    def test_strength_is_not_drunk_while_every_hit_takes_one_hp(self):
+        flex = {"slot": 0, "id": "FLEX_POTION", "name": "Flex Potion", "description": "Gain 5 Strength this turn.", "target_type": "Self", "can_use_in_combat": True}
+        swift = {"slot": 1, "id": "SWIFT_POTION", "name": "Swift Potion", "description": "Draw 3 cards.", "target_type": "Self", "can_use_in_combat": True}
+        vantom = enemy("VANTOM_0", 172, attack=7, status=[{"id": "SLIPPERY_POWER", "amount": 7}])
+        state = combat_state([STRIKE(0)], [vantom], kind="boss", potions=[flex, swift])
+        self.assertEqual([a[1]["slot"] for a in combat.potion_actions(state, 0)], [1])
+        vantom["status"] = []
+        self.assertEqual([a[1]["slot"] for a in combat.potion_actions(state, 0)], [0, 1])
 
 
 class LateCaution(unittest.TestCase):

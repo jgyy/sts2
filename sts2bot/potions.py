@@ -69,13 +69,15 @@ def potion_actions(state: dict, planned_loss: int | None = None) -> list[Action]
     # gone when it revives (Vulnerable from a potion lasted two turns of a
     # fifteen-turn fight). Potions aimed at the enemy wait for the second
     # form, 200 HP that hit 30, 40, 50 a turn: every turn off it counts most.
-    passing = any(e.adapts and e.enrage for e in enemies)
+    # (The same while an enemy sleeps: what is thrown at it only wakes it early.)
+    passing = any((e.adapts and e.enrage) or e.asleep >= 2 for e in enemies)
     for p in potions:
         if not p.get("can_use_in_combat", True):
             continue
         if not big_fight and len(out) >= spare:
             break
-        if slippery and re.search(r"deals? \d+ damage", str(p.get("description") or ""), re.I):
+        # (Nor what makes our hits bigger: two Flex Potions went on round 2 against a Vantom with 7 Slippery left.)
+        if slippery and re.search(r"deals? \d+ damage|\bstrength\b|\bvigor\b|\bvulnerable\b|\bpoison\b|\bdoom\b", str(p.get("description") or ""), re.I):
             continue  # every hit on a Slippery enemy takes 1 HP: keep it for later
         text = str(p.get("description") or "")
         if passing and not danger and (str(p.get("target_type")) in ("AnyEnemy", "AllEnemies") or re.search(r"enem(y|ies)", text, re.I)):
