@@ -166,6 +166,8 @@ def parse(card: dict) -> CardInfo:
     m = re.search(r"gain\s+((?:\[[a-z_]*energy_icon\.png\]\s*)+)", text, re.I)
     if m:  # the game writes energy as icons, one per point
         energy_gain = len(_ENERGY_ICON.findall(m.group(1)))
+    if re.search(r"when this card is exhausted,\s*gain", text, re.I):
+        energy_gain = 0  # Drum of Battle: playing it only draws; the energy comes if something Exhausts it
     hp_loss = _int(r"lose\s+(\d+)\s+hp", text)
     strength_text = full_text if ctype == "Power" and not _LATER.match(full_text.strip()) else text
     m = re.search(r"gain\s+(\d+)\s+strength(\s+this\s+turn)?", strength_text, re.I)
@@ -508,3 +510,21 @@ def upgrade_gain(base: dict, upgraded: dict) -> float:
         # Nothing we can read changed (a Power's numbers, an added keyword): still worth something.
         gain = 3.0 if str(base.get("description")) != str(upgraded.get("description")) else 0.5
     return gain
+
+
+def order_key(c: CardInfo) -> tuple:
+    if c.type == "Power" or c.key == "FRANTIC_ESCAPE":
+        rank = 0  # set-up first; an escape must not be left for energy that is gone
+    elif c.draw or c.energy_gain or c.star_gain:
+        rank = 1  # what later cards are paid with comes first
+    elif c.vulnerable:
+        rank = 2
+    elif c.damage and not c.is_x:
+        rank = 3
+    elif c.is_x:
+        rank = 4
+    elif c.block:
+        rank = 5
+    else:
+        rank = 6
+    return (rank, -c.total_damage, c.index)

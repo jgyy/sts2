@@ -280,3 +280,47 @@ def expected_loss(state: dict) -> int:
     player = state.get("player") or {}
     incoming = sum(e.incoming for e in read_enemies(state))
     return max(0, incoming - int(player.get("block") or 0) - end_of_turn_block(player) - osty_hp(player))
+
+
+def _sandpit(state: dict) -> int | None:
+    """Turns until the Sandpit swallows us (None when there is none)."""
+    creatures = [state.get("player") or {}, *((state.get("battle") or {}).get("enemies") or [])]
+    for c in creatures:
+        for p in c.get("status") or []:
+            if str(p.get("id", "")).upper() in ("SANDPIT", "SANDPIT_POWER"):
+                amount = p.get("amount")
+                return int(amount) if isinstance(amount, (int, float)) else 1
+    return None
+
+
+def _escape_odds(player: dict, hand_draw: int = 5) -> tuple:
+    """Chance that the next hand holds no Frantic Escape, and the same for a hand a few turns on.
+
+    The first from where the Escapes are right now (the draw pile, or what
+    will be shuffled back into it); the second from the deck as a whole.
+    """
+    def is_escape(c: dict) -> bool:
+        return str(c.get("name") or "").startswith("Frantic Escape")
+
+    def none(n: int, k: int, d: int) -> float:
+        """No Escape among d cards drawn from n that hold k of them."""
+        if n <= 0 or d <= 0:
+            return 1.0
+        d = min(d, n)
+        p = 1.0
+        for i in range(d):
+            p *= max(0.0, (n - k - i) / (n - i))
+        return p
+
+    draw = player.get("draw_pile")
+    if not isinstance(draw, list):
+        return (0.3, 0.3)
+    later = list(player.get("discard_pile") or []) + list(player.get("hand") or [])
+    n, k = len(draw), sum(map(is_escape, draw))
+    m, j = len(later), sum(map(is_escape, later))
+    if n >= hand_draw:
+        next_hand = none(n, k, hand_draw)
+    else:  # the pile runs out: the rest of the hand comes from the reshuffled discards
+        next_hand = none(n, k, n) * none(m, j, hand_draw - n)
+    usual = none(n + m, k + j, hand_draw) if n + m >= hand_draw else 0.3
+    return (next_hand, max(usual, 0.05))

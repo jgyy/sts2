@@ -127,3 +127,18 @@ def shunned(c, state: dict) -> bool:
         return False
     foes = sum(int(e.get("hp") or 0) for e in (state.get("battle") or {}).get("enemies") or [])
     return state.get("state_type") in ("boss", "elite") or foes > 60
+
+
+def boss_near(state: dict, rooms: int = 5) -> bool:
+    """A monster or elite fight in the last rooms before a boss.
+
+    HP lost there is HP missing at the boss: final bosses met on full HP were
+    beaten 7 times in 16, below that 0 in 24, and the last rest site gives
+    back only 30%.
+    """
+    floor = (state.get("run") or {}).get("floor")
+    return state.get("state_type") in ("monster", "elite") and isinstance(floor, int) and any(0 < boss - floor <= rooms for boss in (17, 33, 48))
+
+
+# Cards that make the next card of one type free ("The next Attack you play costs 0").
+FREE_NEXT = {"UNRELENTING": "Attack", "POUNCE": "Skill"}

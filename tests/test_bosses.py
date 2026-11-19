@@ -260,7 +260,17 @@ class Necrobinder(unittest.TestCase):
         s["player"]["pets"] = [{"name": "Osty", "hp": osty, "alive": osty > 0}]
         return s
 
-    def test_doom_on_ourselves_counts_as_hp_already_gone(self):
+    def test_an_osty_attack_goes_before_flatten_and_rattle(self):
+        flatten = card(0, "FLATTEN", "Flatten", "Attack", 2, "Osty deals 12 damage. This card costs 0 [necrobinder_energy_icon.png] if Osty has attacked this turn.", "AnyEnemy")
+        rattle = card(0, "RATTLE", "Rattle", "Attack", 1, "Osty deals 7 damage. Hits an additional time for each other time he has attacked this turn. (Hits 1 times)", "AnyEnemy")
+        # 2 energy: Flatten first leaves nothing for the Strike; after the Poke it is free.
+        s = self.state([flatten, self.POKE(1), STRIKE(2), STRIKE(3)], osty=3, foe_hp=90, attack=0, energy=2)
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)
+        # Rattle after the Poke hits twice.
+        s = self.state([rattle, self.POKE(1)], osty=3, foe_hp=90, attack=0, energy=1)
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)
+
+
         surge = card(0, "NEUROSURGE", "Neurosurge", "Power", 0, "Gain 3 energy. Draw 2 cards. At the start of your turn, apply 3 Doom to yourself.", "Self")
         boss = combat_state([surge, STRIKE(1)], [enemy("A", 300, attack=10)], hp=60, kind="boss")
         self.assertEqual(combat.choose_card(boss)[1]["card_index"], 1)  # a long fight: never
@@ -330,3 +340,55 @@ class Malaise(unittest.TestCase):
         foe["intents"] = [{"type": "Attack", "label": "5x6"}]
         state = combat_state([malaise], [foe], energy=3, hp=30)
         self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 0, "target": "A"}))
+
+
+class DeadOnPaper(unittest.TestCase):
+    """Aeonglass on 51 HP about to hit for 40, the bot on 26 behind 11 Block with a Wither in hand."""
+
+    def state(self, boss_hp, hail=True):
+        wither = card(2, "WITHER", "Wither+4", "Status", 0, "Unplayable. At the end of your turn, if this is in your Hand, take 15 damage.", "Self")
+        hand = [
+            card(0, "COOLHEADED", "Coolheaded", "Skill", 1, "Channel 1 Frost. Draw 1 card.", "Self"),
+            card(1, "MOMENTUM_STRIKE", "Momentum Strike+", "Attack", 0, "Deal 19 damage.", "AnyEnemy"),
+            {**wither, "can_play": False, "unplayable_reason": "HasUnplayableKeyword"},
+            card(3, "DEFEND_B", "Defend", "Skill", 1, "Gain 8 Block.", "Self"),
+            card(4, "FOCUSED_STRIKE", "Focused Strike+", "Attack", 1, "Deal 15 damage.", "AnyEnemy"),
+        ]
+        boss = enemy("AEONGLASS_0", boss_hp, 40, status=[{"id": "WITHERING_PRESENCE_POWER", "amount": 1}])
+        state = combat_state(hand, [boss], energy=3, hp=26, max_hp=89, block=11, kind="boss")
+        state["battle"]["round"] = 13
+        orbs = [{"id": f"{k}_ORB", "passive_val": p, "evoke_val": 8} for k, p in (("FROST", 2), ("GLASS", 4), ("LIGHTNING", 3))]
+        state["player"].update(orbs=orbs, orb_slots=3, status=[{"id": "HAILSTORM_POWER", "amount": 12}] if hail else [])
+        return state
+
+    def test_hailstorm_and_the_orbs_finish_the_boss_before_it_hits(self):
+        # 19 + 15 from the cards, 12 from Hailstorm, 4 and 3 from the orbs: 53 on a boss with 51.
+        plan: dict = {}
+        self.assertIsNotNone(combat.choose_card(self.state(51), plan))
+        self.assertLess(plan["lost"], 26)
+
+    def test_far_past_saving_the_bot_still_swings(self):
+        # Every card brings the next Wither, so playing nothing was "least dead" and the
+        # bot ended the turn with two attacks it could pay for.
+        state = self.state(200, hail=False)
+        state["player"]["hp"] = 20  # 24 short with nothing played: no Block in this hand mends that
+        state["player"]["hand"] = state["player"]["hand"][1:]  # no card that draws
+        self.assertIn(combat.choose_card(state)[1]["card_index"], (1, 4))
+
+
+class LateCaution(unittest.TestCase):
+    """The setting that prices our HP higher in the last rooms before a boss."""
+
+    def first_card(self, setting, floor):
+        from unittest import mock
+
+        swing = card(0, "BLUDGEON", "Bludgeon", "Attack", 1, "Deal 22 damage.", "AnyEnemy")
+        state = combat_state([swing, DEFEND(1)], [enemy("A", 120, attack=6)], energy=1, hp=60, max_hp=80)
+        state["run"] = {"act": 3, "floor": floor, "ascension": 3}
+        with mock.patch.dict(learn.KNOB, {"caution": 1.35, "late_caution": setting}):
+            return combat.choose_card(state)[1]["card_index"]
+
+    def test_the_setting_blocks_more_only_near_the_boss(self):
+        self.assertEqual(self.first_card(1.0, floor=45), 0)
+        self.assertEqual(self.first_card(1.4, floor=45), 1)
+        self.assertEqual(self.first_card(1.4, floor=40), 0)  # eight rooms from the boss: as usual

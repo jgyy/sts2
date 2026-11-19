@@ -32,6 +32,34 @@ class LearnedRatings(unittest.TestCase):
             self.assertEqual(again.shift("The Silent", "Footwork"), stats.shift("The Silent", "Footwork"))
             self.assertLessEqual(len(again.finals["The Silent"]), learn.HISTORY)
 
+    def test_an_elite_met_hurt_costs_more_than_its_average(self):
+        from unittest import mock
+
+        with mock.patch.dict(learn.KNOB, {"elite_worth": 2.5}):
+            way = [("Elite", 5), ("Monster", 6)]
+            healthy = strategy.path_value(way, 80, 80, 0, 2)
+            hurt = strategy.path_value(way, 56, 80, 0, 2)  # 70%: where a third of these fights were lost
+            low = strategy.path_value(way, 38, 80, 0, 2)
+        self.assertLess(hurt, healthy - 5.0)
+        self.assertLess(low, hurt - 5.0)
+
+    def test_star_makers_are_worth_less_once_nothing_spends_their_stars(self):
+        venerate = lambda i: card(i, "VENERATE", "Venerate", "Skill", 1, "Gain [star_icon.png][star_icon.png].", "Self")
+        deck = [venerate(0), venerate(1), STRIKE(2), STRIKE(3)]  # makes 4 Stars a cycle, spends none
+        cache = card(9, "HIDDEN_CACHE", "Hidden Cache", "Skill", 1, "Gain [star_icon.png]. Next turn, gain [star_icon.png][star_icon.png][star_icon.png].", "Self")
+        self.assertLess(strategy.deck_fit(cache, deck), -0.4)
+        self.assertEqual(strategy.deck_fit(cache, [STRIKE(0)]), 0.0)  # an empty star bank still wants makers
+
+    def test_a_card_is_judged_against_the_characters_other_picks(self):
+        from sts2bot import learn
+
+        stats = learn.CardStats(None)
+        # Every pick "beat the usual" (the bot got better meanwhile); Slice only by a little.
+        stats.cards["The Silent"] = {"FOOTWORK": [30.0, 300.0], "SLICE": [30.0, 60.0]}
+        stats.finals["The Silent"] = [20] * 10
+        self.assertGreater(stats.shift("The Silent", "Footwork"), 0.5)
+        self.assertLess(stats.shift("The Silent", "Slice"), -0.5)
+
 
 class EndOfRun(unittest.TestCase):
     def test_goes_through_the_summary_so_the_score_is_banked(self):
@@ -382,6 +410,20 @@ class Afflictions(unittest.TestCase):
 
 
 class HandSelections(unittest.TestCase):
+    def test_a_sly_card_is_the_one_discarded(self):
+        flick = card(1, "FLICK_FLACK", "Flick-Flack", "Attack", 1, "Deal 7 damage to ALL enemies.", "AllEnemies")
+        flick["keywords"] = [{"name": "Sly", "description": "If this card is discarded from your Hand before the end of your turn, play it for free."}]
+        state = {
+            "state_type": "hand_select",
+            "hand_select": {"prompt": "Choose a card to Discard.", "can_confirm": False, "cards": [STRIKE(0), flick, DEFEND(2)]},
+            "player": {"energy": 1},
+        }
+        picks = [a[1]["card_index"] for a in strategy.hand_select(state, Memory()) if a[0] == "combat_select_card"]
+        self.assertEqual(picks[0], 1)
+        state["hand_select"]["prompt"] = "Choose a card to Exhaust."
+        picks = [a[1]["card_index"] for a in strategy.hand_select(state, Memory()) if a[0] == "combat_select_card"]
+        self.assertNotEqual(picks[0], 1)
+
     def test_the_card_put_back_on_the_deck_is_one_it_would_not_play(self):
         comet = card(0, "COMET", "Comet", "Attack", 3, "Deal 33 damage.", "AnyEnemy", rarity="Rare")
         pulse = card(1, "ASTRAL_PULSE", "Astral Pulse", "Attack", 0, "Deal 8 damage to ALL enemies twice.", "AllEnemies")

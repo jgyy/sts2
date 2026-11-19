@@ -214,18 +214,23 @@ def set_fast_mode(client: Client, mode: str) -> bool:
     return True
 
 
-def set_light_graphics(client: Client, width: int = 960, height: int = 540) -> bool:
-    """Small window, no anti-aliasing, uncapped frame rate, for this session only.
+def set_light_graphics(client: Client, width: int = 960, height: int = 540, maximize: bool = True) -> bool:
+    """Maximised window, no anti-aliasing, uncapped frame rate, for this session only.
 
     The mod answers each request once per rendered frame, so cheaper frames
     make the whole bot faster. The saved graphics settings are left alone, so
-    the game looks normal when it is started by hand.
+    the game looks normal when it is started by hand. With `maximize` off the
+    window is shrunk to `width` x `height` instead (the old default; the user
+    asked for the full window on 2026-11-19, the machine has frames to spare).
     """
-    result = client.act("set_light_graphics", width=width, height=height)
+    result = client.act("set_light_graphics", width=width, height=height, maximize=maximize)
     if result.get("status") == "error" or "error" in result:
         log.warning("could not switch to light graphics (%s); re-run scripts/install_mod.sh", result.get("error"))
         return False
-    log.info("light graphics: %dx%d (was %.0f fps)", width, height, float(result.get("fps_before") or 0))
+    if maximize and not result.get("maximized"):
+        log.warning("the installed mod cannot maximise the window; re-run scripts/install_mod.sh")
+    size = "maximised window" if maximize else f"{width}x{height}"
+    log.info("light graphics: %s (was %.0f fps)", size, float(result.get("fps_before") or 0))
     return True
 
 
@@ -337,6 +342,7 @@ class Supervisor:
         manage_game: bool = True,
         fast_mode: str | None = "instant",
         light_graphics: bool = True,
+        small_window: bool = False,
         time_scale: float = 1.0,
         boot_timeout: float = 240.0,
         outage_grace: float = 45.0,
@@ -348,6 +354,7 @@ class Supervisor:
         self.manage_game = manage_game
         self.fast_mode = fast_mode
         self.light_graphics = light_graphics
+        self.small_window = small_window
         self.time_scale = time_scale
         self.boot_timeout = boot_timeout
         self.outage_grace = outage_grace
@@ -468,7 +475,7 @@ class Supervisor:
                 if self.fast_mode:
                     set_fast_mode(self.client, self.fast_mode)
                 if self.light_graphics:
-                    set_light_graphics(self.client)
+                    set_light_graphics(self.client, maximize=not self.small_window)
                 if self.time_scale and self.time_scale != 1.0 and set_time_scale(self.client, self.time_scale):
                     self.bot.time_scale = self.time_scale  # the bot keeps it set: the game resets it
                 self.bot.run(max_runs)

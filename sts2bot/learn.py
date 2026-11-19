@@ -22,9 +22,13 @@ log = logging.getLogger("sts2bot.learn")
 WIN_BONUS = 15  # a win counts as this many floors beyond the last one
 HISTORY = 300  # runs per character the "usual" result is taken from
 PRIOR_PICKS = 6.0  # a card needs about this many picks before its record counts for half
-FLOORS_PER_POINT = 4.0  # floors gained per pick that are worth one point of card rating
+FLOORS_PER_POINT = 3.0  # floors gained per pick (beyond the character's average pick) that are worth one point of card rating
 MAX_SHIFT = 2.5  # a rating never moves further than this
-CURIOSITY = 0.5  # head start for a card that has never been tried
+# Head start for a card that has never been tried (a third of it is left after 8 picks).
+# At 0.5 about a hundred cards offered 12 to 40 times each were never or once taken
+# (Juggernaut, Hologram, Accelerant, Expertise, Feel No Pain...), so the record could
+# say nothing about them and the hand-made guess stood for ever.
+CURIOSITY = 1.5
 
 
 def card_key(name: str) -> str:
@@ -57,7 +61,12 @@ class CardStats:
         if table is None and not self.finals.get(character):
             return 0.0
         picks, gained = (table or {}).get(card_key(name), (0.0, 0.0))
-        learned = gained / (picks + PRIOR_PICKS) / FLOORS_PER_POINT
+        # Measured against the character's other picks, not against zero: the bot
+        # has got better over time, so every card "beat the usual" (by 4 to 6
+        # floors a pick) and a card far below the rest still drifted up.
+        all_picks = sum(x[0] for x in (table or {}).values())
+        par = sum(x[1] for x in (table or {}).values()) / all_picks if all_picks >= 50 else 0.0
+        learned = (gained - picks * par) / (picks + PRIOR_PICKS) / FLOORS_PER_POINT
         return max(-MAX_SHIFT, min(MAX_SHIFT, learned)) + CURIOSITY / (1.0 + picks) ** 0.5
 
     def record(self, character: str, floor: int, won: bool, picks: list) -> None:
@@ -118,14 +127,16 @@ def seed_from_history(stats: CardStats, runs_file: Path) -> None:
 # more and more often from the settings whose runs have gone furthest
 # (Thompson sampling). Good settings end up being used nearly always.
 
-DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "early_setup": 1.0}
+DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "early_setup": 1.0, "late_caution": 1.0}
 CHOICES = {
     "caution": [0.75, 1.0, 1.35, 1.8],  # weight of HP lost in the combat planner
     "elite_worth": [0.8, 1.5, 2.5, 4.0],  # what an elite's rewards count for when planning a route
     "upgrade_worth": [1.3, 2.5, 4.0],  # what an upgrade counts for against resting
     "pickiness": [-1.0, 0.0, 1.0],  # added to the rating a card reward needs to be taken
     "early_setup": [1.0, 1.7],  # worth of lasting effects (Powers, Strength, orbs) in rounds 1-3 of boss and elite fights
+    "late_caution": [1.0, 1.4],  # times `caution` in monster and elite fights in the last 5 rooms before a boss
 }
+MIN_RUNS = 20  # runs a setting gets before the record alone decides how often it is drawn
 SPREAD = 12.0  # how far apart two runs of the same character usually end, in floors
 
 KNOB = dict(DEFAULTS)  # the settings in force right now
@@ -154,12 +165,23 @@ class Knobs:
         """Choose this run's settings and put them in force."""
         for name, choices in CHOICES.items():
             best, best_guess = DEFAULTS[name], None
+            seen = [self.table.get(name, {}).get(str(v), (0.0, 0.0)) for v in choices]
+            # An untried setting starts from what the tried ones average, not from
+            # zero: runs beat "the usual" by about 5 floors whatever the settings
+            # (the bot got better), so a new setting looked 5 floors worse than the
+            # old ones and was drawn 4 times in 32.
+            par = sum(g for _r, g in seen) / max(1.0, sum(r for r, _g in seen))
             for value in choices:
                 runs, gained = self.table.get(name, {}).get(str(value), (0.0, 0.0))
                 # What this setting's true average might be, given what we have seen of it.
-                guess = self.rng.gauss(gained / (runs + 1.0), SPREAD / (runs + 1.0) ** 0.5)
+                guess = self.rng.gauss((gained + par) / (runs + 1.0), SPREAD / (runs + 1.0) ** 0.5)
                 if best_guess is None or guess > best_guess:
                     best, best_guess = value, guess
+            # A setting needs a fair number of runs before four bad ones can bury it
+            # (a run is a noisy measurement): half the time, play one that has few.
+            few = [v for v, (r, _g) in zip(choices, seen) if r < MIN_RUNS]
+            if few and self.rng.random() < 0.5:
+                best = self.rng.choice(few)
             KNOB[name] = best
         return dict(KNOB)
 

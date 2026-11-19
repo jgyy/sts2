@@ -441,6 +441,22 @@ class OtherCharacters(unittest.TestCase):
         state = combat_state([poison, DEFEND(1)], [foe], energy=1, hp=30)
         self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 0, "target": "A"}))
 
+    def test_a_plasma_orb_is_evoked_to_pay_for_more_cards(self):
+        # Seen against the Insatiable: 1 energy, a Plasma orb in front, and the bot
+        # played Ball Lightning alone. Dualcast first is 4 energy: both attacks.
+        hand = [
+            card(0, "BALL_LIGHTNING", "Ball Lightning+", "Attack", 1, "Deal 10 damage. Channel 1 Lightning.", "AnyEnemy"),
+            card(1, "DUALCAST", "Dualcast", "Skill", 1, "Evoke your rightmost Orb twice.", "Self"),
+            card(2, "EXTERMINATE", "Exterminate", "Attack", 1, "Deal 4 damage to ALL enemies 4 times.", "AllEnemies"),
+            card(3, "STRIKE_D", "Strike", "Attack", 1, "Deal 6 damage.", "AnyEnemy"),
+        ]
+        state = combat_state(hand, [enemy("THE_INSATIABLE_0", 161, "10x2")], energy=1, hp=35, max_hp=75, kind="boss")
+        state["player"].update(orbs=[{"id": "PLASMA_ORB", "passive_val": 1, "evoke_val": 2}], orb_slots=3)
+        self.assertEqual(combat.choose_card(state)[1]["card_index"], 1)
+        # With nothing to spend it on, the orb and its energy every turn are kept.
+        state["player"]["hand"] = hand[:2]
+        self.assertEqual(combat.choose_card(state)[1]["card_index"], 0)
+
     def test_frost_orbs_count_as_block(self):
         foe = enemy("A", 100, attack=7)
         state = combat_state([DEFEND(0), STRIKE(1)], [foe], energy=1, hp=10)
@@ -570,3 +586,36 @@ class StockRespawn(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FreeNextCard(unittest.TestCase):
+    def test_the_attack_after_unrelenting_costs_nothing(self):
+        from sts2bot.battle import read_enemies
+
+        unrelenting = card(0, "UNRELENTING", "Unrelenting", "Attack", 2, "Deal 14 damage. The next Attack you play costs 0 [ironclad_energy_icon.png].", "AnyEnemy")
+        bludgeon = card(1, "BLUDGEON", "Bludgeon", "Attack", 3, "Deal 32 damage.", "AnyEnemy")
+        state = combat_state([unrelenting, bludgeon], [enemy("A", 200, attack=0)], energy=2)
+        line = [parse(unrelenting), parse(bludgeon)]
+        ctx = combat._context(state)
+        self.assertIsNotNone(combat.simulate(line, read_enemies(state), **ctx))
+        self.assertIsNone(combat.simulate(line[::-1], read_enemies(state), **ctx))  # Bludgeon first is 3 energy
+
+    def test_drum_of_battle_gives_no_energy_when_played(self):
+        drum = card(0, "DRUM_OF_BATTLE", "Drum of Battle", "Skill", 1, "Draw 2 cards. When this card is Exhausted, gain [ironclad_energy_icon.png][ironclad_energy_icon.png].", "Self")
+        self.assertEqual((parse(drum).draw, parse(drum).energy_gain), (2, 0))
+
+
+class StarsInTheBank(unittest.TestCase):
+    def test_more_stars_are_worth_little_once_plenty_are_held(self):
+        from sts2bot.battle import read_enemies
+
+        venerate = card(0, "VENERATE", "Venerate", "Skill", 1, "Gain [star_icon.png][star_icon.png].", "Self")
+
+        def worth(stars):
+            state = combat_state([venerate], [enemy("A", 60, attack=0)], energy=1)
+            state["player"]["stars"] = stars
+            ctx = combat._context(state)
+            return combat.simulate([parse(venerate)], read_enemies(state), **ctx).score - combat.simulate([], read_enemies(state), **ctx).score
+
+        self.assertGreater(worth(0), 4.0)
+        self.assertLess(worth(12), 1.0)
