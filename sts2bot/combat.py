@@ -16,9 +16,9 @@ from itertools import combinations, permutations
 from .battle import (  # noqa: F401  (also the names other modules and the tests reach through here)
     BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, SANDPIT_DEATH, WIN_BONUS, Enemy,
     _has_power, _is_attack, constrict, end_of_turn_block, end_of_turn_loss, expected_loss, hand_burns,
-    intent_damage, intent_hits, osty_hp, power_amount, read_enemies,
+    intent_damage, intent_hits, osty_hp, power_amount, read_enemies, _escape_odds, _sandpit,
 )
-from .cards import CardInfo, parse
+from .cards import CardInfo, order_key, parse
 from .potions import describe, potion_actions  # noqa: F401
 from . import triggers
 from .learn import knob
@@ -28,24 +28,6 @@ Action = tuple[str, dict]
 log = logging.getLogger("sts2bot.combat")
 
 MAX_SEARCH_CARDS = 11
-
-
-def _order_key(c: CardInfo) -> tuple:
-    if c.type == "Power" or c.key == "FRANTIC_ESCAPE":
-        rank = 0  # set-up first; an escape must not be left for energy that is gone
-    elif c.draw or c.energy_gain or c.star_gain:
-        rank = 1  # what later cards are paid with comes first
-    elif c.vulnerable:
-        rank = 2
-    elif c.damage and not c.is_x:
-        rank = 3
-    elif c.is_x:
-        rank = 4
-    elif c.block:
-        rank = 5
-    else:
-        rank = 6
-    return (rank, -c.total_damage, c.index)
 
 
 def _hit_count(e: Enemy, hits: int, double_if_vulnerable: bool = False) -> int:
@@ -286,6 +268,8 @@ def simulate(
     wither_hp: int = 5,  # ... and what that Wither will cost (each one is a point worse than the last)
     trig: triggers.Triggers | None = None,  # powers that act on every card played
     pet: int = -1,  # Osty's HP (already part of `block`); -1: no pet in the state
+    hail: int = 0,  # Hailstorm: damage to ALL enemies when the turn ends with a Frost orb held
+    care: float = 1.0,  # what our HP counts for here on top of `caution` (the last rooms before a boss)
 ) -> Outcome | None:
     """Score playing `line` in order. None if it cannot be afforded."""
     if card_limit is not None and len(line) > card_limit:
@@ -304,6 +288,8 @@ def simulate(
     chip_rate = min(1.0, 0.25 + 0.05 * max(0, round_no - 10))  # worth of temporary Block removed
     kept_block = {e.entity_id for e in enemies if e.keeps_block}
     escapes = 0  # Frantic Escape cards played in this line
+    osty_hits = 0  # Osty attacks played earlier in this line
+    free_next: str | None = None  # the kind of card that costs nothing next, after one that says so
     faced: str | None = None  # the last enemy a card was aimed at
     nimble = 0  # Dexterity gained from cards earlier in this line
     held = list(orbs)  # the Defect's orbs as the line goes on
@@ -343,14 +329,21 @@ def simulate(
                 return None
             x, energy = energy, 0
         else:
-            if c.cost > energy:
+            # Flatten "costs 0 if Osty has attacked this turn", Rattle "hits an additional
+            # time for each other time he has attacked": after a Poke in the same line too.
+            cost = 0 if (c.key == "FLATTEN" and osty_hits) or c.type == free_next else c.cost
+            free_next = None if c.type == free_next else free_next
+            if cost > energy:
                 return None
-            energy -= c.cost
+            energy -= cost
         energy += c.energy_gain
+        free_next = triggers.FREE_NEXT.get(c.key, free_next)  # Unrelenting: "The next Attack you play costs 0"
         self_loss += c.hp_loss
         if c.osty_attack and pet == 0:  # Osty is dead: his attacks do nothing (seen 12 times in 12)
             c = replace(c, damage=0, block=0 if c.osty_dies else c.block)
-        elif c.osty_dies and pet > 0:
+        elif c.osty_attack:
+            c, osty_hits = (replace(c, hits=c.hits + osty_hits) if c.key == "RATTLE" else c), osty_hits + 1
+        if c.osty_dies and pet > 0:
             block, pet = block - min(block, pet), 0  # ... and the HP he stood in front of us with goes with him
         pet += c.summon * x if pet >= 0 else 0
         if can_block and c.block:
@@ -447,8 +440,10 @@ def simulate(
                 trig or triggers.NONE, c, foes, before, lambda e, d: _hit(e, d, 1, raw=True), lambda e, hp: _progress(e, hp, chip_rate) * dmg_value * e.worth
             )
             score, block = score + won, block + (shield if can_block else 0)
+        # Stars are worth what they will be spent on: a Regent sat on 15 of them, still
+        # playing Hidden Cache and Venerate for more while it lost 71 HP to three bugs.
+        score += c.star_gain * (2.5 if stars < 4 else 1.0 if stars < 8 else 0.2) + c.souls * 2.5
         stars += c.star_gain
-        score += c.star_gain * 2.5 + c.souls * 2.5
         lasting += c.forge * 0.5
         later += c.next_energy * 5.0 + c.next_draw * 1.5 + c.next_block * 0.8
         if c.dexterity:
@@ -481,6 +476,7 @@ def simulate(
                 elif kind == "PLASMA":
                     energy += 2
         if c.evoke and held:
+            lasting -= 6.0 * (held[0][0] == "PLASMA")  # its energy every turn goes with it
             held.pop(0)  # evoking uses the orb up
         if c.evoke_all:  # Shatter: every orb goes off, and all of them are used up
             for kind, _passive, burst in held:
@@ -491,6 +487,7 @@ def simulate(
                         score += _orb_damage(kind, burst, foes, chip_rate, dmg_value)
                     elif kind == "PLASMA":
                         energy += 2
+            lasting -= 6.0 * sum(o[0] == "PLASMA" for o in held)
             held = []
         if c.key == "FRANTIC_ESCAPE":
             escapes += 1
@@ -539,6 +536,8 @@ def simulate(
             block += passive
         elif kind in ("LIGHTNING", "GLASS"):
             score += 0.9 * _orb_damage(kind, passive, foes, chip_rate, dmg_value)
+    if hail and any(o[0] == "FROST" for o in held):
+        score += sum(_progress(e, _hit(e, hail, 1, raw=True), chip_rate) * dmg_value * e.worth for e in foes if e.alive)
     score += lasting * span + later
     # Poison bites at the start of the enemy's turn, before it acts: one that
     # is poisoned through is as good as dead now. Otherwise it is damage on
@@ -681,14 +680,20 @@ def simulate(
     # (Pricing HP in boss fights as a race, cheap whatever is left of it, was
     # tried as a setting on 2026-11-18: 0 of 13 act 3 bosses against 5 of 20,
     # no better in acts 1 and 2. Removed.)
-    score -= lost * worth * (4.0 if doomed else 1.0) * knob("caution")
+    score -= lost * worth * (4.0 if doomed else 1.0) * knob("caution") * care
     if lost >= hp:
         # Dead on paper. If every line is, the least dead one is the one to
         # play: the most Block, and cards drawn while there is energy left to
         # play them (one of them may be the Block that is missing). A flat
         # penalty left that choice to the damage dealt, and a bot 4 HP short
         # played two Powers with a Defend+ in hand.
-        score -= LETHAL_PENALTY + 100.0 * (lost - hp) - (150.0 if energy > 0 else 30.0) * min(drawn, 3)
+        # Past 20 HP short no Block in the hand changes it, and only a kill does: there
+        # the loss is not priced, so the damage decides. (26 HP in front of 40 with a
+        # Wither waiting on the next card: the bot played nothing, two free attacks in
+        # hand and Aeonglass on 51, which they and the orbs would have finished.)
+        short = min(lost - hp, 20)
+        score += (lost - hp - short) * worth * knob("caution")
+        score -= LETHAL_PENALTY + 100.0 * short - (150.0 if energy > 0 else 30.0) * min(drawn, 3)
     return Outcome(score, first_target, int(lost))
 
 
@@ -738,6 +743,8 @@ def _context(state: dict) -> dict:
         focus_power=power_amount(player, "FOCUS") if _has_power(player, "FOCUS") else 0,
         shiv_damage=4 + max(0, power_amount(player, "ACCURACY")),
         tender=_has_power(player, "TENDER"),
+        hail=max(0, power_amount(player, "HAILSTORM")),
+        care=knob("late_caution") if triggers.boss_near(state) else 1.0,
         vigor=max(0, power_amount(player, "VIGOR")),
         giant=_has_power(player, "GIGANTIFICATION"),
         buffer=max(0, power_amount(player, "BUFFER")),
@@ -804,50 +811,6 @@ def _next_wither(player: dict, round_no: int = 1) -> int:
     return 3 * (level + 1)
 
 
-def _sandpit(state: dict) -> int | None:
-    """Turns until the Sandpit swallows us (None when there is none)."""
-    creatures = [state.get("player") or {}, *((state.get("battle") or {}).get("enemies") or [])]
-    for c in creatures:
-        for p in c.get("status") or []:
-            if str(p.get("id", "")).upper() in ("SANDPIT", "SANDPIT_POWER"):
-                amount = p.get("amount")
-                return int(amount) if isinstance(amount, (int, float)) else 1
-    return None
-
-
-def _escape_odds(player: dict, hand_draw: int = 5) -> tuple:
-    """Chance that the next hand holds no Frantic Escape, and the same for a hand a few turns on.
-
-    The first from where the Escapes are right now (the draw pile, or what
-    will be shuffled back into it); the second from the deck as a whole.
-    """
-    def is_escape(c: dict) -> bool:
-        return str(c.get("name") or "").startswith("Frantic Escape")
-
-    def none(n: int, k: int, d: int) -> float:
-        """No Escape among d cards drawn from n that hold k of them."""
-        if n <= 0 or d <= 0:
-            return 1.0
-        d = min(d, n)
-        p = 1.0
-        for i in range(d):
-            p *= max(0.0, (n - k - i) / (n - i))
-        return p
-
-    draw = player.get("draw_pile")
-    if not isinstance(draw, list):
-        return (0.3, 0.3)
-    later = list(player.get("discard_pile") or []) + list(player.get("hand") or [])
-    n, k = len(draw), sum(map(is_escape, draw))
-    m, j = len(later), sum(map(is_escape, later))
-    if n >= hand_draw:
-        next_hand = none(n, k, hand_draw)
-    else:  # the pile runs out: the rest of the hand comes from the reshuffled discards
-        next_hand = none(n, k, n) * none(m, j, hand_draw - n)
-    usual = none(n + m, k + j, hand_draw) if n + m >= hand_draw else 0.3
-    return (next_hand, max(usual, 0.05))
-
-
 def cards_left_this_turn(state: dict) -> int | None:
     """How many more cards we may play this turn, when something limits it."""
     player = state.get("player") or {}
@@ -879,7 +842,11 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
     # Cards we cannot pay for yet can still come later in a line that first
     # makes the energy or Stars for them. Left out, the Regent held Falling
     # Star all fight next to the Venerate that pays for it, and played Strikes.
-    makers = any(c.star_gain or c.energy_gain for c in playable)
+    # Evoking a Plasma orb is energy too: a Defect on 1 energy held Dualcast next to
+    # a Plasma (4 energy) and an Exterminate it could not pay for.
+    orbs = ctx["orbs"]
+    pays = lambda c: bool(c.energy_gain or c.star_gain or (c.evoke and orbs[:1] and orbs[0][0] == "PLASMA") or (c.evoke_all and any(o[0] == "PLASMA" for o in orbs)))
+    makers = any(pays(c) or c.key in triggers.FREE_NEXT for c in playable)
     if makers:
         playable += [c for c in hand if c.short and c not in playable]
     if len(playable) > MAX_SEARCH_CARDS:
@@ -896,9 +863,11 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
     elif any(e.slippery for e in enemies):
         # Slippery turns each hit into 1 damage: burn it off with the weakest
         # hits and keep the big ones for afterwards.
-        playable.sort(key=lambda c: (_order_key(c)[0] if not c.damage else 3, c.damage, c.index))
+        playable.sort(key=lambda c: (order_key(c)[0] if not c.damage else 3, c.damage, c.index))
     else:
-        playable.sort(key=_order_key)
+        # (Flatten and Rattle after Osty's other attacks: one is free then, the other hits again.)
+        after = lambda c: (order_key(c)[0], 1e3, c.index) if c.key in ("FLATTEN", "RATTLE") else order_key(c)
+        playable.sort(key=lambda c: ((1,) + order_key(c)[1:]) if pays(c) else after(c))
 
     # Bound cards: one per turn. Once one has been played the game marks the
     # rest unplayable, so any still playable means the allowance is unused.
@@ -920,7 +889,7 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
     budget = 2500
     for size in range(1, len(playable) + 1):
         found = False
-        for line in combinations(playable, size):  # keeps _order_key order
+        for line in combinations(playable, size):  # keeps order_key order
             if bound_left is not None and sum(c.bound for c in line) > bound_left:
                 continue  # "Only 1 Bound card can be played each turn."
             orders = [line]
@@ -940,7 +909,7 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
                     found = True
                     if out.score > best_score + 1e-9:
                         best_score, best_line, best_target, best_lost = out.score, list(order), out.first_target, out.lost
-                if not usable and not nth and not any(c.is_x or c.energy_gain or c.star_gain for c in line):
+                if not usable and not nth and not any(c.is_x or pays(c) or c.key == "FLATTEN" or c.key in triggers.FREE_NEXT for c in line):
                     break  # cannot be paid for in any order
         if not found:
             break

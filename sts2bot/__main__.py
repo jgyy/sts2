@@ -51,8 +51,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--full-graphics",
         action="store_true",
-        help="keep the game's normal window and graphics (default: small window, no anti-aliasing, for speed)",
+        help="keep the game's normal window and graphics (default: maximised window, no anti-aliasing, uncapped frame rate)",
     )
+    ap.add_argument("--small-window", action="store_true", help="shrink the game window to 960x540 instead of maximising it")
     ap.add_argument(
         "--time-scale",
         type=float,
@@ -84,7 +85,7 @@ def main(argv: list[str] | None = None) -> int:
         stuck_timeout=args.stuck_timeout,
         tune=not args.no_tuning,
     )
-    sup = Supervisor(bot, client, launch_cmd=args.launch_cmd, manage_game=not args.no_launch, fast_mode=None if args.fast_mode == "keep" else args.fast_mode, light_graphics=not args.full_graphics, time_scale=args.time_scale)
+    sup = Supervisor(bot, client, launch_cmd=args.launch_cmd, manage_game=not args.no_launch, fast_mode=None if args.fast_mode == "keep" else args.fast_mode, light_graphics=not args.full_graphics, small_window=args.small_window, time_scale=args.time_scale)
     logging.getLogger("sts2bot").info("logs and run history in %s", args.log_dir)
     try:
         sup.run(args.runs)

@@ -310,6 +310,11 @@ def path_value(
             cost = costs[kind]
             if kind == "Elite" and act == 1 and isinstance(row, int) and row < EARLY_ROWS:
                 cost = 32  # a starter deck against an elite
+            if kind == "Elite" and hp < 0.75 * max_hp:
+                # Elites met below three quarters HP killed 9 runs in 27 (2 in 101 above
+                # it), and the average cost says nothing of that: a third of what the
+                # rest of the run is worth, more when already below half.
+                score -= 6.0 if hp >= 0.5 * max_hp else 14.0
             hp += heal_after_fight - cost * harsh
             score += knob("elite_worth") if kind == "Elite" else 1.0
             gold += 30 if kind == "Elite" else 15
@@ -480,6 +485,10 @@ def deck_fit(card: dict, deck: list) -> float:
                 fit -= min(4.0, 0.7 * short)
         if give and demand > supply:
             fit += min(2.0, 0.4 * (demand - supply))
+        elif give and supply - STARS_AT_START >= demand + 3:
+            # Stars nothing in the deck spends: a Regent with Venerate, Hidden Cache,
+            # Gather Light and Genesis ended a fight holding 15 of them.
+            fit -= min(2.0, 0.5 * give)
     key = _card_key(card)
     copies = sum(1 for c in deck if _card_key(c) == key)
     fit -= 0.6 * copies
@@ -809,7 +818,14 @@ def hand_select(state: dict, mem: Memory) -> list[Action]:
         out.append(("combat_confirm_selection", {}))
     elif log.isEnabledFor(logging.DEBUG):
         log.debug("hand select (%s): %s", prompt, ", ".join(str(c.get("name")) for c in hs.get("cards") or []))
-    for c in _pick_order(hs.get("cards") or [], prompt, kind, mem.upgrade_gain):
+    ordered = _pick_order(hs.get("cards") or [], prompt, kind, mem.upgrade_gain)
+    if re.search(r"\bdiscard\b", prompt, re.I):
+        # A Sly card "discarded from your Hand before the end of your turn" is played
+        # for free: the best thing to throw away. (Flick-Flack was kept 9 times in 10
+        # while a Strike or a Defend went.)
+        sly = lambda c: any(str(k.get("name")) == "Sly" for k in c.get("keywords") or [])
+        ordered = sorted((c for c in ordered if sly(c)), key=deck_value, reverse=True) + [c for c in ordered if not sly(c)]
+    for c in ordered:
         out.append(("combat_select_card", {"card_index": int(c.get("index", 0))}))
     out.append(("combat_confirm_selection", {}))
     return out
