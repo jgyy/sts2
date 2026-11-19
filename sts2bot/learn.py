@@ -127,14 +127,15 @@ def seed_from_history(stats: CardStats, runs_file: Path) -> None:
 # more and more often from the settings whose runs have gone furthest
 # (Thompson sampling). Good settings end up being used nearly always.
 
-DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "early_setup": 1.0, "late_caution": 1.0}
+DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "long_game": 1.0}
 CHOICES = {
     "caution": [0.75, 1.0, 1.35, 1.8],  # weight of HP lost in the combat planner
     "elite_worth": [0.8, 1.5, 2.5, 4.0],  # what an elite's rewards count for when planning a route
     "upgrade_worth": [1.3, 2.5, 4.0],  # what an upgrade counts for against resting
     "pickiness": [-1.0, 0.0, 1.0],  # added to the rating a card reward needs to be taken
-    "early_setup": [1.0, 1.7],  # worth of lasting effects (Powers, Strength, orbs) in rounds 1-3 of boss and elite fights
-    "late_caution": [1.0, 1.4],  # times `caution` in monster and elite fights in the last 5 rooms before a boss
+    # (`early_setup`, 1.7 times every lasting effect in rounds 1-3 of boss and elite fights, was dropped on
+    # 2026-11-19: 21 runs, no better than the 100 without it.)
+    "long_game": [0.0, 1.0],  # 1: Powers, Strength, Dexterity and Forge count for the turns a boss or elite fight has left
 }
 MIN_RUNS = 20  # runs a setting gets before the record alone decides how often it is drawn
 SPREAD = 12.0  # how far apart two runs of the same character usually end, in floors

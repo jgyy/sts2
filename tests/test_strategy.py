@@ -43,6 +43,15 @@ class LearnedRatings(unittest.TestCase):
         self.assertLess(hurt, healthy - 5.0)
         self.assertLess(low, hurt - 5.0)
 
+    def test_a_fight_met_badly_hurt_is_priced_as_the_risk_it_is(self):
+        fight_first = [("Monster", 10), ("RestSite", 11), ("RestSite", 12), ("Boss", 13)]
+        rest_first = [("RestSite", 10), ("Monster", 11), ("RestSite", 12), ("Boss", 13)]
+        # On 25 of 80 HP in act 3 the fight that comes before any rest is the one that ends runs.
+        self.assertLess(strategy.path_value(fight_first, 25, 80, 100, 3), strategy.path_value(rest_first, 25, 80, 100, 3) - 8.0)
+        # Healthy, the order makes no difference; and act 1 fights are not priced this way at all.
+        self.assertAlmostEqual(strategy.path_value(fight_first, 70, 80, 100, 3), strategy.path_value(rest_first, 70, 80, 100, 3), delta=0.5)
+        self.assertGreater(strategy.path_value([("Monster", 10)], 25, 80, 100, 1), strategy.path_value([("Monster", 10)], 25, 80, 100, 3) + 7.0)
+
     def test_star_makers_are_worth_less_once_nothing_spends_their_stars(self):
         venerate = lambda i: card(i, "VENERATE", "Venerate", "Skill", 1, "Gain [star_icon.png][star_icon.png].", "Self")
         deck = [venerate(0), venerate(1), STRIKE(2), STRIKE(3)]  # makes 4 Stars a cycle, spends none

@@ -277,7 +277,6 @@ def simulate(
     trig: triggers.Triggers | None = None,  # powers that act on every card played
     pet: int = -1,  # Osty's HP (already part of `block`); -1: no pet in the state
     hail: int = 0,  # Hailstorm: damage to ALL enemies when the turn ends with a Frost orb held
-    care: float = 1.0,  # what our HP counts for here on top of `caution` (the last rooms before a boss)
 ) -> Outcome | None:
     """Score playing `line` in order. None if it cannot be afforded."""
     if card_limit is not None and len(line) > card_limit:
@@ -308,10 +307,17 @@ def simulate(
     span = {"boss": 3.0, "elite": 2.0}.get(fight, 1.0)
     late = {"boss": 7, "elite": 5}.get(fight, 3)
     span *= 1.0 if round_no <= late else 0.4
-    if fight != "monster" and round_no <= 3:
-        # Set up first: a setting under test (see learn.CHOICES). Scaling Powers
-        # were left in the hand more often than played (Sleight of Flesh 43 to 14).
-        span *= knob("early_setup")
+    # What lasts the whole fight (Powers, Strength, Dexterity, Forge) is worth the turns that
+    # are left, not a flat three times an ordinary fight: Demon Form is 3 Strength more every
+    # turn, some 300 damage over the ten rounds of a boss, and at 72 points it stayed in the
+    # hand on round 1 against the Queen on 83 of 87 HP; Echo Form was left on a turn the
+    # Insatiable only buffed. (A setting under test, see learn.CHOICES. Not for orbs: with
+    # three slots an orb is pushed out again within a turn or two.)
+    long = span
+    if knob("long_game") and fight in ("boss", "elite"):
+        long = max(1.2, min(8.0, 0.8 * (11 - round_no))) if fight == "boss" else max(0.8, min(4.2, 0.7 * (7 - round_no)))
+    enduring = 0.0  # worth of what stays for the whole fight (scaled by `long`)
+    future = 0.0  # everything in the score that only pays off after this turn
     might = 0  # Strength gained from cards earlier in this line
     attacks = 0  # Attacks played so far in this line
     summoned = 0  # HP this line gives Osty
@@ -452,13 +458,13 @@ def simulate(
         # playing Hidden Cache and Venerate for more while it lost 71 HP to three bugs.
         score += c.star_gain * (2.5 if stars < 4 else 1.0 if stars < 8 else 0.2) + c.souls * 2.5
         stars += c.star_gain
-        lasting += c.forge * 0.5
+        enduring += c.forge * 0.5
         # (Energy next turn at a flat 5: with the Queen only buffing, Invoke+ (3 energy) lost to a 7-damage attack.)
         later += (c.next_energy * 6.0 + c.next_draw * 2.0) * dmg_value + c.next_block * 0.8
         if c.dexterity:
             nimble += c.dexterity
             if c.dexterity_lasts:
-                lasting += c.dexterity * 3.5
+                enduring += c.dexterity * 3.5
         if c.channel or c.evoke or c.evoke_all:
             _rage_blocks(foes, known_dead)  # a crab this card killed has already handed on its Block
         for kind in c.channel * (x if c.is_x else 1):
@@ -522,11 +528,11 @@ def simulate(
             might += c.strength
             if c.strength_lasts:
                 # Pays off on every attack for the rest of the fight.
-                score += c.strength * 4.0 * span
+                future += c.strength * 4.0 * long
         if c.type == "Power" and c.strength_lasts:
             pass  # valued just above
         elif c.type == "Power":
-            score += POWER_VALUE.get(c.key, 5.0 + 2.0 * max(c.cost, 0)) * span
+            future += POWER_VALUE.get(c.key, 5.0 + 2.0 * max(c.cost, 0)) * long
         elif c.type in ("Status", "Curse"):
             score += 0.1  # only worth clearing out with energy nothing else can use
         elif not c.known:
@@ -549,7 +555,8 @@ def simulate(
             score += 0.9 * _orb_damage(kind, passive, foes, chip_rate, dmg_value)
     if hail and any(o[0] == "FROST" for o in held):
         score += sum(_progress(e, _hit(e, hail, 1, raw=True), chip_rate) * dmg_value * e.worth for e in foes if e.alive)
-    score += lasting * span + later
+    future += lasting * span + enduring * long + later
+    score += future
     # Poison bites at the start of the enemy's turn, before it acts: one that
     # is poisoned through is as good as dead now. Otherwise it is damage on
     # its way, a little less each turn.
@@ -691,7 +698,9 @@ def simulate(
     # (Pricing HP in boss fights as a race, cheap whatever is left of it, was
     # tried as a setting on 2026-11-18: 0 of 13 act 3 bosses against 5 of 20,
     # no better in acts 1 and 2. Removed.)
-    score -= lost * worth * (4.0 if doomed else 1.0) * knob("caution") * care
+    # (Pricing HP 1.4 times higher in the last five rooms before a boss was tried as a setting
+    # until 2026-11-19: 32 runs, no win, against 5 wins in 54; no further either. Removed.)
+    score -= lost * worth * (4.0 if doomed else 1.0) * knob("caution")
     if lost >= hp:
         # Dead on paper, and that is dead: of 115 turns ended this way none was lived
         # through (the loss expected is exact: 3 under-estimates of 3 HP or more in 7,880
@@ -702,7 +711,7 @@ def simulate(
         # planner gets wrong: a Silent blocked 17 of 35 and died 3 short with the Queen
         # on 25, where the Shivs and Serpent Form it did not count would have killed her.
         short = lost - hp
-        score += lost * worth * (4.0 if doomed else 1.0) * knob("caution") * care
+        score += lost * worth * (4.0 if doomed else 1.0) * knob("caution") - max(0.0, future)  # (nor is there a later)
         score -= LETHAL_PENALTY - (150.0 if energy > 0 else 30.0) * min(drawn, 3)
         score += 400.0 * max(0.0, 1.0 - short / 12.0) + 3000.0 * max(0.0, 1.0 - kill_reach(survivors, lost - through < hp) / 30.0)
     return Outcome(score, first_target, int(lost))
@@ -755,7 +764,6 @@ def _context(state: dict) -> dict:
         shiv_damage=4 + max(0, power_amount(player, "ACCURACY")),
         tender=_has_power(player, "TENDER"),
         hail=max(0, power_amount(player, "HAILSTORM")),
-        care=knob("late_caution") if triggers.boss_near(state) else 1.0,
         vigor=max(0, power_amount(player, "VIGOR")),
         giant=_has_power(player, "GIGANTIFICATION"),
         buffer=max(0, power_amount(player, "BUFFER")),

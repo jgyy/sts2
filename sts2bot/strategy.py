@@ -272,7 +272,8 @@ def _room_value(kind: str, hp: float, gold: int, early: bool = False, act: int |
 # (act -> room -> HP). A boss costs 35 to 50 HP even when it is beaten.
 # (Ascension 2, 2026-11-18 evening: act 1 elites cost 19.7 HP over 19 fights, act 2
 # elites 27.0 over 15 and 0.8 potions each; monsters 3.0, 7.8 and 10.6.)
-FIGHT_COST = {1: {"Monster": 5, "Elite": 20}, 2: {"Monster": 9, "Elite": 27}, 3: {"Monster": 11, "Elite": 40}}
+# (Ascension 4, 2026-11-19: act 3 monsters cost 13.9 HP over 104 fights; the rest of the table still held.)
+FIGHT_COST = {1: {"Monster": 5, "Elite": 20}, 2: {"Monster": 9, "Elite": 27}, 3: {"Monster": 14, "Elite": 40}}
 BAD_LUCK = 1.7  # how much more than average a fight costs when the draws go wrong
 BOSS_WORTH = 16.0  # what getting past the boss is worth, in the units of the room rewards below
 MAX_PATHS = 1500
@@ -316,6 +317,12 @@ def path_value(
                 # it), and the average cost says nothing of that: a third of what the
                 # rest of the run is worth, more when already below half.
                 score -= 6.0 if hp >= 0.5 * max_hp else 14.0
+            if kind == "Monster" and act >= 2 and hp < 0.35 * max_hp:
+                # The same for an ordinary fight met badly hurt: below 35% HP they ended 6 runs
+                # in 11 in act 3 and 3 in 12 in act 2 (above 55%: 4 in about 500).
+                score -= 8.0 if act >= 3 else 4.0
+            elif kind == "Monster" and act >= 3 and hp < 0.55 * max_hp:
+                score -= 1.5  # (2 deaths in 23)
             hp += heal_after_fight - cost * harsh
             score += knob("elite_worth") if kind == "Elite" else 1.0
             gold += 30 if kind == "Elite" else 15
