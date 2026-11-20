@@ -109,6 +109,7 @@ class Bot:
         self._boss_watch = BossWatch()
         self._turn_key: tuple = ()
         self._turn_plays = 0
+        self._turn_cards = 0  # ... and how many of those were cards (a potion is not one of the "3 cards each turn")
         self._last_where: tuple = ()
         self._seen_powers: set = set()
         self._wins_seen: int | None = None  # the game's win counter when we last looked
@@ -116,6 +117,8 @@ class Bot:
         self._timeline_idle = 0  # Timeline clicks in a row that changed nothing
         self._facing: str | None = None  # enemy we last aimed at in this fight
         self._facing_fight: tuple = ()
+        self._threat: dict = {}  # enemy id -> [damage it has aimed at us in this fight, rounds seen]
+        self._threat_fight: tuple = ()
         self._revive_fight: tuple = ()  # the fight in which the enemy last seen revives when beaten
         self._end_check: tuple = ()  # the hand we last thought about ending the turn on
         self._played_from: tuple = ()  # the hand as it was when we last played a card from it
@@ -210,7 +213,15 @@ class Bot:
         self._note_deck(state)
         key = (*strategy._where(state), battle.get("round"))
         if key != self._turn_key:
-            self._turn_key, self._turn_plays = key, 0
+            self._turn_key, self._turn_plays, self._turn_cards = key, 0, 0
+            # What each enemy has shown of itself so far: one intent says little (half of them
+            # attack every other turn), the average over the fight says who is doing the damage.
+            if key[:2] != self._threat_fight:
+                self._threat_fight, self._threat = key[:2], {}
+            for e in battle.get("enemies") or []:
+                seen = self._threat.setdefault(str(e.get("entity_id")), [0, 0])
+                seen[0] += sum(combat.intent_damage(i) for i in e.get("intents") or [])
+                seen[1] += 1
         if key[:2] != self._facing_fight:
             self._facing_fight, self._facing = key[:2], None  # a new fight
         if self._turn_plays >= MAX_PLAYS_PER_TURN:
@@ -226,7 +237,8 @@ class Bot:
         if standing:
             self._revive_fight = key[:2] if any(combat.power_amount(e, "ADAPTABLE") for e in standing) else ()
         revive = not standing and self._revive_fight == key[:2]
-        wanted = combat.actions({**state, "_plays_this_turn": self._turn_plays, "_facing": self._facing, "_revive_pending": revive})
+        threat = {k: total / rounds for k, (total, rounds) in self._threat.items()}
+        wanted = combat.actions({**state, "_plays_this_turn": self._turn_cards, "_facing": self._facing, "_revive_pending": revive, "_threat": threat})
         # Cards that draw (or reshuffle the hand, like Reboot) show up a moment
         # after the card that brought them: straight after Reboot the hand read
         # as empty, and the bot ended a turn with 4 energy and a kill in reach.
@@ -295,6 +307,9 @@ class Bot:
         elif action in ("play_card", "use_potion"):
             self._turn_plays += 1
             if action == "play_card":
+                # (Counted apart from potions: under Sloth a Regen Potion and two cards read as three
+                # cards played, and a Bodyguard stayed in the hand with the energy for it in front of 30.)
+                self._turn_cards += 1
                 self._played_from, self._played_at = self._hand_sig(state), self.clock()
             if params.get("target"):
                 self._facing = params["target"]  # we turn towards whatever we aim at

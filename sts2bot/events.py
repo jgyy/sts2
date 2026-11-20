@@ -55,21 +55,38 @@ _JUNK_NAMES = {
 # Scroll Boxes +4.4 over 10, Large Capsule -1.3 over 24, Fishing Rod +0.2 over 42, Arcane Scroll -2.8 over 19.
 # Act 2 picks, among runs that got there: Very Hot Cocoa +3.7 over 14 with 5 wins, Archaic Tooth -2.5 over 18
 # with none, Pael's Claw -7.3 over 5.)
+# (The second and third Ancients, 2026-11-20. Cards every turn do more for this bot than energy every turn: its
+# hands run out of cards before they run out of energy (4 energy or more at the last boss dealt 36.5 a turn,
+# 3 energy 34.3). Of 166 runs that reached act 2, 51% reached act 3; with Snecko Eye 4 of 5 and 3 wins, Pael's
+# Blood 15 of 19, Velvet Choker 5 of 6; with Yummy Cookie 1 of 9, Prismatic Gem 1 of 5, Philosopher's Stone 1 of
+# 4, Sozu 1 of 3, and Electric Shrymp and Sand Castle (as Yummy Cookie, upgrades and nothing after) no win in 28. Other players' runs
+# (tierspire.com, the share won with each relic of one Ancient) rank them the same way: Darv's Snecko Eye 56%,
+# Runic Pyramid 56%, Pandora's Box 52% against Philosopher's Stone 45%, Velvet Choker 41%, Sozu 40%, Ectoplasm
+# 38%; Orobas's Radiant Pearl and Prismatic Gem 50%, Alchemical Coffer 46%, Glass Eye 36%. Read word by word,
+# every relic that gives energy scored 12.5 or more, so Ectoplasm (no more gold, with two acts of shops ahead)
+# beat Snecko Eye.)
+# (The third Ancient, the same day, over the 200 runs that reached act 3 (24 won, 12%): Blessed Antler held 16
+# times and Spiked Gauntlets 15 without one win, Looming Fruit (+31 Max HP, taken 21 times in 21) 1; Whispering
+# Earring 4 in 16, War Hammer 3 in 11, Lord's Parasol 3 in 10. Max HP itself does not separate wins from
+# losses at the last boss (gained under 5: 4 of 20; over 30: 6 of 21).)
 _ANCIENT = {
     # more energy or cards every turn
-    "BLOOD_SOAKED_ROSE": 6.5, "SPIKED_GAUNTLETS": 13.5, "PHILOSOPHERS_STONE": 13.5, "SOZU": 12.5,
-    "BLESSED_ANTLER": 12.5, "PAELS_FLESH": 12.5, "PAELS_BLOOD": 13.0, "FIDDLE": 11.5, "WHISPERING_EARRING": 11.0,
+    "BLOOD_SOAKED_ROSE": 6.5, "SPIKED_GAUNTLETS": 8.5, "PHILOSOPHERS_STONE": 10.0, "SOZU": 8.5,
+    "BLESSED_ANTLER": 8.0, "PAELS_FLESH": 12.5, "PAELS_BLOOD": 13.5, "FIDDLE": 11.5, "WHISPERING_EARRING": 12.0,
     "PAELS_TEARS": 9.0, "VERY_HOT_COCOA": 11.5, "PUMPKIN_CANDLE": 8.5, "SEAL_OF_GOLD": 8.0, "BOOMING_CONCH": 5.5,
+    "SNECKO_EYE": 13.0, "VELVET_CHOKER": 11.5, "PRISMATIC_GEM": 9.0, "ECTOPLASM": 7.0, "RUNIC_PYRAMID": 9.0,
+    "IRON_CLUB": 9.5,
     # something every turn or every fight
-    "SAI": 13.0, "CROSSBOW": 12.0, "TOASTY_MITTENS": 11.0, "MUSIC_BOX": 10.0, "DELICATE_FROND": 10.0,
-    "CHOICES_PARADOX": 9.0, "DIAMOND_DIADEM": 9.0, "PAELS_LEGION": 8.0, "RADIANT_PEARL": 7.5, "JEWELED_MASK": 7.0,
-    "BRILLIANT_SCARF": 6.5, "FUR_COAT": 12.0,
+    "SAI": 13.0, "CROSSBOW": 12.0, "TOASTY_MITTENS": 11.0, "MUSIC_BOX": 10.0, "DELICATE_FROND": 12.0,
+    "CHOICES_PARADOX": 9.0, "DIAMOND_DIADEM": 9.0, "PAELS_LEGION": 8.0, "RADIANT_PEARL": 9.5, "JEWELED_MASK": 7.0,
+    "BRILLIANT_SCARF": 6.5, "FUR_COAT": 10.0, "BLACK_STAR": 8.5, "ALCHEMICAL_COFFER": 9.5,
     # health, gold, relics
-    "LOOMING_FRUIT": 13.0, "NUTRITIOUS_OYSTER": 8.5, "STONE_HUMIDIFIER": 9.5, "LORDS_PARASOL": 12.0,
+    "LOOMING_FRUIT": 8.5, "NUTRITIOUS_OYSTER": 8.5, "STONE_HUMIDIFIER": 9.5, "LORDS_PARASOL": 12.0,
     "SIGNET_RING": 9.5, "LARGE_CAPSULE": 8.5, "SMALL_CAPSULE": 8.0, "TOY_BOX": 9.0, "LAVA_ROCK": 8.0,
     "NEOWS_BONES": 7.0, "GOLDEN_PEARL": 6.5, "CURSED_PEARL": 6.0,
     # the deck
-    "YUMMY_COOKIE": 10.5, "PAELS_TOOTH": 10.0, "JEWELRY_BOX": 10.0, "WAR_HAMMER": 9.0, "FISHING_ROD": 8.5,
+    "YUMMY_COOKIE": 7.5, "PAELS_TOOTH": 10.0, "JEWELRY_BOX": 10.0, "WAR_HAMMER": 10.5, "FISHING_ROD": 8.5,
+    "PANDORAS_BOX": 10.5, "SAND_CASTLE": 8.5, "ELECTRIC_SHRYMP": 8.0, "GLASS_EYE": 6.0, "CALLING_BELL": 6.5,
     "BIIIG_HUG": 9.0, "ARCHAIC_TOOTH": 7.0, "NUTRITIOUS_SOUP": 8.5, "PAELS_CLAW": 7.0, "BEAUTIFUL_BRACELET": 8.0,
     "TRI_BOOMERANG": 7.5, "PAELS_GROWTH": 7.5, "PHIAL_HOLSTER": 7.5, "PRECISE_SCISSORS": 6.5, "PRESERVED_FOG": 7.0,
     "PRECARIOUS_SHEARS": 5.0, "LOST_COFFER": 6.5, "ARCANE_SCROLL": 6.5, "CLAWS": 7.0, "SILVER_CRUCIBLE": 7.0,

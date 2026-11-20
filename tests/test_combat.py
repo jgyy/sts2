@@ -191,9 +191,149 @@ class CombatPlanning(unittest.TestCase):
         shrug = card(0, "SHRUG_IT_OFF", "Shrug It Off", "Skill", 1, "Gain 8 Block. Draw 1 card.", "Self")
         barricade = card(0, "BARRICADE", "Barricade", "Power", 3, "Block is not removed at the start of your turn.", "Self")
         plain = card(0, "SOMETHING_NEW", "Something New", "Skill", 1, "Gain 8 Block. Draw 1 card.", "Self")
-        self.assertGreater(deck_value(shrug), deck_value(plain))
-        self.assertLess(deck_value(barricade), deck_value(plain))
-        self.assertGreater(deck_value({**shrug, "name": "Shrug It Off+", "id": None}), deck_value(plain))
+        from unittest import mock
+
+        from sts2bot import learn
+
+        with mock.patch.dict(learn.KNOB, {"crowd": 0.0}):  # our own table (other players' runs rate Barricade high)
+            self.assertGreater(deck_value(shrug), deck_value(plain))
+            self.assertLess(deck_value(barricade), deck_value(plain))
+            self.assertGreater(deck_value({**shrug, "name": "Shrug It Off+", "id": None}), deck_value(plain))
+
+    def test_an_enemy_that_grows_every_turn_is_raced(self):
+        sculptor = lambda powers: enemy("DEVOTED_SCULPTOR_0", 150, attack=12, status=powers)
+        hand = [STRIKE(0), STRIKE(1), DEFEND(2), DEFEND(3)]
+        first = lambda powers, hp=70: combat.choose_card(combat_state(hand, [sculptor(powers)], energy=2, hp=hp, max_hp=90))[1]["card_index"]
+        self.assertIn(first([]), (2, 3))  # an enemy like any other: 12 coming, two Defends
+        self.assertIn(first([{"id": "RITUAL_POWER", "amount": 9}]), (0, 1))  # 9 Strength a turn: every turn it lives is dearer
+        self.assertIn(first([{"id": "RITUAL_POWER", "amount": 9}], hp=14), (2, 3))  # ... but not into the grave
+        self.assertEqual(combat.read_enemies(combat_state([], [sculptor([{"id": "STRENGTH_POWER", "amount": 6}])]))[0].grows, 6.0)
+        late = combat_state([], [sculptor([{"id": "STRENGTH_POWER", "amount": 6}])])
+        late["battle"]["round"] = 4
+        self.assertEqual(combat.read_enemies(late)[0].grows, 2.0)  # 6 Strength in three turns
+
+    def test_a_big_attack_is_not_spent_on_a_minion_that_is_not_attacking(self):
+        squeeze = card(0, "SQUEEZE", "Squeeze", "Attack", 1, "Osty deals 35 damage.", "AnyEnemy")
+        egg = {**enemy("TOUGH_EGG_0", 17), "status": [{"id": "MINION_POWER", "amount": 1}], "intents": [{"type": "Summon", "label": ""}]}
+        copter = enemy("OVICOPTER_0", 105, attack=16)
+        state = combat_state([squeeze], [egg, copter], hp=69)
+        state["player"]["pets"] = [{"name": "Osty", "hp": 3, "alive": True}]
+        self.assertEqual(combat.choose_card(state)[1]["target"], "OVICOPTER_0")
+        # A small attack that just kills the egg is still a kill worth taking, and so is any kill of a minion about to hit us.
+        poke = card(0, "STRIKE_X", "Strike", "Attack", 1, "Deal 18 damage.", "AnyEnemy")
+        self.assertEqual(combat._pick_target(combat.read_enemies(combat_state([poke], [egg, copter])), 18, 1).entity_id, "TOUGH_EGG_0")
+        biter = {**egg, "intents": [{"type": "Attack", "label": "6"}]}
+        self.assertEqual(combat._pick_target(combat.read_enemies(combat_state([squeeze], [biter, copter])), 35, 1).entity_id, "TOUGH_EGG_0")
+
+    def test_the_enemy_that_does_most_for_its_health_is_hit_first(self):
+        bug = enemy("BOWLBUG_ROCK_0", 46, attack=15)
+        beetle = {**enemy("SLUMBERING_BEETLE_0", 83), "intents": [{"type": "Attack", "label": "16"}, {"type": "Buff", "label": ""}]}
+        state = combat_state([STRIKE(0)], [bug, beetle], hp=80)
+        target = lambda s: combat.choose_card(s)[1]["target"]
+        self.assertEqual(target(state), "BOWLBUG_ROCK_0")  # nothing known of them: the one that dies soonest
+        # Four rounds in: the bug has hit every other turn, the beetle slept for three and now grows every turn.
+        seen = {**state, "_threat": {"BOWLBUG_ROCK_0": 7.5, "SLUMBERING_BEETLE_0": 4.0}}
+        self.assertEqual(target(seen), "SLUMBERING_BEETLE_0")
+        self.assertEqual(combat.read_enemies(seen)[1].threat, 24.0)
+        # ... but a bug nearly dead is finished first, and two that hit alike are taken lowest first.
+        seen["battle"]["enemies"][0]["hp"] = 12
+        self.assertEqual(target(seen), "BOWLBUG_ROCK_0")
+        twins = combat_state([STRIKE(0)], [enemy("A", 50, attack=10), enemy("B", 40, attack=10)], hp=80)
+        self.assertEqual(target({**twins, "_threat": {"A": 10.0, "B": 10.0}}), "B")
+        # Boss and elite fights keep their own order (the crabs, minions and their leaders).
+        boss = {**seen, "state_type": "boss"}
+        boss["battle"]["enemies"][0]["hp"] = 46
+        self.assertEqual(target(boss), "BOWLBUG_ROCK_0")
+
+    def test_energy_written_as_a_number_and_an_icon_is_read(self):
+        icon = "[defect_energy_icon.png]"
+        boost = card(0, "SUPERCRITICAL", "Supercritical", "Skill", 0, f"Gain 4{icon}. Exhaust.", "Self")
+        self.assertEqual(parse(boost).energy_gain, 4)
+        self.assertEqual(parse(card(0, "TURBO", "TURBO", "Skill", 0, f"Gain {icon}{icon}. Add a Void into your Discard Pile.", "Self")).energy_gain, 2)
+        # With it, the 3-cost attack that the energy in hand cannot pay for is played.
+        big = card(1, "METEOR", "Meteor", "Attack", 3, "Deal 30 damage.", "AnyEnemy")
+        state = combat_state([boost, big], [enemy("JAW_WORM_0", 80)], energy=1)
+        state["player"]["hand"][1].update(can_play=False, unplayable_reason="EnergyCostTooHigh")
+        self.assertEqual(combat.choose_card(state)[1]["card_index"], 0)
+
+    def test_borrowed_time_makes_the_cards_after_it_dearer(self):
+        icon = "[necrobinder_energy_icon.png]"
+        time = card(0, "BORROWED_TIME", "Borrowed Time", "Skill", 1, f"Gain 4{icon}. Cards cost an additional {icon} this turn.", "Self")
+        foe = [combat.Enemy("A", 200, 0, False, False, 0)]
+        ctx = dict(energy=3, stars=0, hp=60, max_hp=60, block=0)
+        strikes = [parse(STRIKE(i)) for i in range(1, 5)]
+        # 3 - 1 + 4 = 6 energy at 2 a Strike: three of them, not four.
+        self.assertIsNotNone(combat.simulate([parse(time), *strikes[:3]], foe, **ctx))
+        self.assertIsNone(combat.simulate([parse(time), *strikes], foe, **ctx))
+        self.assertIsNotNone(combat.simulate(strikes[:3], foe, **ctx))
+
+    def test_cards_that_pay_for_or_repeat_the_next_one(self):
+        foe = lambda: [combat.Enemy("A", 200, 0, False, False, 0)]
+        ctx = dict(energy=3, stars=0, hp=60, max_hp=60, block=0)
+        big = parse(card(1, "METEOR", "Meteor", "Attack", 3, "Deal 30 damage.", "AnyEnemy"))
+        strike, guard = parse(STRIKE(2)), parse(DEFEND(3))
+        value = lambda line, **kw: combat.simulate(line, foe(), **{**ctx, **kw}).score - combat.simulate([], foe(), **{**ctx, **kw}).score
+        # One-Two Punch: the next Attack twice, and only the next one.
+        punch = parse(card(0, "ONE_TWO_PUNCH", "One-Two Punch", "Skill", 1, "This turn, your next Attack is played an extra time.", "Self"))
+        self.assertEqual(value([punch, strike, strike]), 18.0)
+        self.assertEqual(value([punch, guard, strike]), 12.0)  # a Skill in between does not use it up
+        # Burst: the next Skill's Block twice.
+        burst = parse(card(0, "BURST", "Burst", "Skill", 1, "This turn, your next Skill is played an extra time.", "Self"))
+        hit = [combat.Enemy("A", 200, 0, False, False, 20, incoming_hits=1)]
+        self.assertEqual(combat.simulate([burst, guard], hit, **ctx).lost, 10)
+        # Double Energy: 3 - 1 = 2, doubled, pays for the 3-cost card with one to spare.
+        double = parse(card(0, "DOUBLE_ENERGY", "Double Energy", "Skill", 1, "Double your Energy. Exhaust.", "Self"))
+        self.assertIsNone(combat.simulate([big, strike], foe(), **ctx))
+        self.assertEqual(value([double, big, strike]), 36.0)
+        # Bullet Time: what is left of the hand costs nothing.
+        bullet = parse(card(0, "BULLET_TIME", "Bullet Time", "Skill", 3, "You cannot draw additional cards this turn. ALL cards in your Hand are free to play this turn.", "Self"))
+        self.assertEqual(value([bullet, big, strike, strike]), 42.0)
+
+    def test_a_power_other_players_win_with_is_worth_playing(self):
+        from sts2bot import battle
+
+        barricade = card(0, "BARRICADE", "Barricade", "Power", 3, "Block is not removed at the start of your turn.", "Self")
+        self.assertGreater(battle._power_worth(parse(barricade)), 12.0)  # (our own table says 4)
+        unknown = card(0, "NEW_POWER", "New Power", "Power", 2, "Something nobody has rated.", "Self")
+        self.assertEqual(battle._power_worth(parse(unknown)), 9.0)
+        # A boss that is only buffing itself: the turn goes to Barricade, not to three Strikes.
+        hand = [barricade, STRIKE(1), STRIKE(2), STRIKE(3)]
+        quiet = combat_state(hand, [enemy("QUEEN_0", 400)], hp=80, kind="boss")
+        self.assertEqual(combat.choose_card(quiet)[1]["card_index"], 0)
+        # An ordinary fight is over before it pays: there the three Strikes go first, as they always did.
+        self.assertEqual(battle._power_worth(parse(barricade), long_fight=False), 4.0)
+        self.assertNotEqual(combat.choose_card({**quiet, "state_type": "monster"})[1]["card_index"], 0)
+
+    def test_block_left_over_counts_once_it_stays(self):
+        guard = card(0, "IMPERVIOUS", "Impervious", "Skill", 2, "Gain 30 Block. Exhaust.", "Self")
+        state = combat_state([guard], [enemy("A", 200, attack=10)], energy=2, hp=40)
+        foes = combat.read_enemies(state)
+        plain = combat.simulate([parse(guard)], foes, **combat._context(state)).score
+        state["player"]["status"] = [{"id": "BARRICADE_POWER", "amount": 1}]
+        held = combat.simulate([parse(guard)], foes, **combat._context(state)).score
+        self.assertGreater(held, plain + 15.0)  # 20 Block for next turn
+
+    def test_an_ethereal_power_is_played_while_it_can_be(self):
+        echo = card(0, "ECHO_FORM", "Echo Form", "Power", 3, "Ethereal. The first card you play each turn is played an extra time.", "Self")
+        self.assertTrue(parse(echo).ethereal)
+        hand = [echo, STRIKE(1), STRIKE(2), DEFEND(3)]
+        boss = combat_state(hand, [enemy("AEONGLASS_0", 500, attack=22)], hp=75, max_hp=80, kind="boss")
+        self.assertEqual(combat.choose_card(boss)[1]["card_index"], 0)  # 22 damage taken for the rest of the fight doubled
+        dying = combat_state(hand, [enemy("AEONGLASS_0", 500, attack=22)], hp=12, max_hp=80, kind="boss")
+        self.assertNotEqual(combat.choose_card(dying)[1]["card_index"], 0)
+
+    def test_a_heal_is_worth_the_hp_it_gives_back(self):
+        heal = parse(card(0, "NOT_YET", "Not Yet", "Skill", 2, "Heal 10 HP. Exhaust.", "Self"))
+        self.assertEqual(heal.heal, 10)
+        foe = [combat.Enemy("A", 200, 0, False, False, 0)]
+        hurt = dict(energy=3, stars=0, hp=20, max_hp=60, block=0)
+        self.assertGreater(combat.simulate([heal], foe, **hurt).score, combat.simulate([], foe, **hurt).score + 20)
+        full = dict(energy=3, stars=0, hp=60, max_hp=60, block=0)
+        self.assertLess(combat.simulate([heal], foe, **full).score, combat.simulate([], foe, **full).score + 1)
+        # ... and it is there for the blow that comes this turn.
+        foe = [combat.Enemy("A", 200, 0, False, False, 25, incoming_hits=1)]
+        self.assertLess(combat.simulate([heal], foe, **hurt).score, 0)  # 30 HP against 25: hurt badly
+        self.assertGreater(combat.simulate([heal], foe, **hurt).score, combat.simulate([], foe, **hurt).score + 100_000)  # ... not dead
 
     def test_plating_counts_as_block(self):
         s = combat_state([STRIKE(0), DEFEND(1)], [enemy("A_0", 40, attack=5)], energy=1)
@@ -242,6 +382,23 @@ class Potions(unittest.TestCase):
         state = combat_state([STRIKE(0)], [enemy("A", foe_hp, attack=10)], hp=hp, max_hp=75, block=block, kind=kind, potions=potions)
         state["run"]["floor"] = floor
         return [a[1]["slot"] for a in combat.potion_actions(state)]
+
+    def test_a_belt_that_refills_every_fight_is_emptied_every_fight(self):
+        strength = self.potion(0, "Strength Potion", "Gain 2 Strength.")
+        fire = self.potion(1, "Fire Potion", "Deal 20 damage.", "AnyEnemy")
+        state = combat_state([STRIKE(0)], [enemy("A", 60, attack=10)], hp=75, max_hp=75, potions=[strength, fire])
+        state["run"]["floor"] = 40
+        state["player"]["max_potion_slots"] = 3
+        self.assertEqual(combat.potion_actions(state), [])  # an ordinary fight, nothing wrong
+        state["player"]["relics"] = [{"id": "DELICATE_FROND", "description": "At the start of each combat, fill all empty potion slots with random Potions."}]
+        self.assertEqual([a[1]["slot"] for a in combat.potion_actions(state)], [0, 1])
+
+    def test_fruit_juice_is_drunk_in_the_first_fight(self):
+        juice = self.potion(0, "Fruit Juice", "Gain 5 Max HP.")
+        strength = self.potion(1, "Strength Potion", "Gain 2 Strength.")
+        # An ordinary fight, nothing wrong, a belt with room: the Strength Potion waits, the juice does not.
+        self.assertEqual(self.boss([juice, strength], floor=5, kind="monster"), [0])
+        self.assertEqual(self.boss([strength], floor=5, kind="monster"), [])
 
     def test_potions_thrown_at_the_enemy_wait_out_the_test_subjects_first_form(self):
         vuln = self.potion(0, "Vulnerable Potion", "Apply 3 Vulnerable.", "AnyEnemy")
@@ -538,9 +695,13 @@ class OtherCharacters(unittest.TestCase):
 
     def test_osty_takes_the_hit(self):
         foe = enemy("A", 100, attack=8)
-        state = combat_state([DEFEND(0), STRIKE(1)], [foe], energy=1, hp=10)
+        state = combat_state([DEFEND(0), STRIKE(1)], [foe], energy=1, hp=80)
         state["player"]["pets"] = [{"id": "OSTY", "alive": True, "hp": 9, "max_hp": 9}]
+        self.assertEqual(combat.expected_end_loss(state), 0)
         self.assertEqual(combat.choose_card(state)[1]["card_index"], 1)
+        # ... but what he soaks now he cannot soak later: badly hurt, the Defend keeps him standing.
+        state["player"]["hp"] = 10
+        self.assertEqual(combat.choose_card(state)[1]["card_index"], 0)
 
     def test_stars_pay_for_star_cards(self):
         venerate = card(0, "VENERATE", "Venerate", "Skill", 1, "Gain [star_icon.png][star_icon.png].")

@@ -61,6 +61,28 @@ class LearnedRatings(unittest.TestCase):
         self.assertLess(strategy.deck_fit(cache, deck), -0.4)
         self.assertEqual(strategy.deck_fit(cache, [STRIKE(0)]), 0.0)  # an empty star bank still wants makers
 
+    def test_a_strike_is_removed_before_a_defend(self):
+        cards_ = [DEFEND(0), STRIKE(1), card(2, "POMMEL_STRIKE", "Pommel Strike", "Attack", 1, "Deal 9 damage. Draw 1 card.", "AnyEnemy")]
+        order = strategy._pick_order(cards_, "Choose a card to Remove.")
+        self.assertEqual([c["index"] for c in order], [1, 0, 2])
+
+    def test_an_attack_is_worth_more_to_a_deck_that_cannot_kill(self):
+        attack = card(0, "DEFILE", "Defile", "Attack", 1, "Ethereal. Deal 13 damage.", "AnyEnemy")
+        block = card(1, "DEFY", "Defy", "Skill", 1, "Gain 6 Block. Apply 1 Weak.", "AnyEnemy")
+        starter = [STRIKE(i) for i in range(4)] + [DEFEND(i) for i in range(4, 10)]
+        first = strategy.deck_fit(attack, starter, 1)
+        self.assertGreater(first, 1.0)  # the starter deck does 2.4 for an energy
+        self.assertEqual(strategy.deck_fit(block, starter, 1), 0.0)
+        self.assertEqual(strategy.deck_fit(attack, starter), 0.0)  # (no act: no opinion)
+        # Each attack taken makes the next one matter less, and a deck with enough of them gets no nudge.
+        second = strategy.deck_fit(attack, starter + [{**attack, "name": "Something Else", "id": "ELSE"}], 1)
+        self.assertLess(second, first)
+        armed = starter + [card(i, f"BIG_{i}", f"Big {i}", "Attack", 1, "Deal 14 damage.", "AnyEnemy") for i in range(10, 18)]
+        self.assertEqual(strategy.deck_fit(attack, armed, 2), 0.0)
+        # A deck of Block and Powers late in a run is as short of damage as the starter was.
+        soft = starter + [{**block, "id": f"B{i}", "name": f"B{i}"} for i in range(10)]
+        self.assertGreater(strategy.deck_fit(attack, soft, 2), 1.0)
+
     def test_a_card_is_judged_against_the_characters_other_picks(self):
         from sts2bot import learn
 
@@ -476,6 +498,34 @@ class HandSelections(unittest.TestCase):
         picks = [a[1]["card_index"] for a in strategy.hand_select(self.insatiable("Choose a card to Exhaust."), Memory()) if a[0] == "combat_select_card"]
         self.assertNotIn(picks[0], (1, 2))
 
+    def test_an_escape_is_exhausted_when_every_other_card_is_the_kill(self):
+        """The Insatiable on 59 HP, the bot on 7 before 12x2: three attacks and the Bone Shards make 60 once the Mittens' Strength is in."""
+        escape = card(0, "FRANTIC_ESCAPE", "Frantic Escape", "Status", 2, "Get farther away. Increase Sandpit by 1. Increase the cost of this card by 1.", "Self")
+        hand = [
+            escape,
+            card(1, "DEBILITATE", "Debilitate", "Attack", 1, "Deal 19 damage. Vulnerable and Weak are twice as effective against the enemy for the next 2 turns.", "AnyEnemy"),
+            card(2, "VEILPIERCER", "Veilpiercer", "Attack", 1, "Deal 19 damage.", "AnyEnemy"),
+            card(3, "BONE_SHARDS", "Bone Shards", "Attack", 1, "If Osty is alive, he deals 9 damage to ALL enemies and you gain 9 Block. Osty dies.", "AllEnemies"),
+            card(4, "STRIKE_NECROBINDER", "Strike", "Attack", 1, "Deal 10 damage.", "AnyEnemy"),
+        ]
+        for c in hand:
+            c.pop("target_type", None), c.pop("can_play", None)
+        boss = {"entity_id": "THE_INSATIABLE_0", "hp": 59, "max_hp": 321, "block": 0, "intents": [{"type": "Attack", "label": "12x2"}],
+                "status": [{"id": "SANDPIT_POWER", "amount": 2}]}
+        state = {
+            "state_type": "hand_select", "_fight": "boss",
+            "hand_select": {"prompt": "Choose a card to Exhaust.", "can_confirm": False, "cards": hand},
+            "battle": {"round": 10, "turn": "player", "is_play_phase": True, "enemies": [boss]},
+            "player": {"hp": 7, "max_hp": 66, "block": 0, "energy": 5, "hand": [], "pets": [{"name": "Osty", "hp": 2, "alive": True}],
+                       "relics": [{"id": "TOASTY_MITTENS", "description": "At the start of your turn, Exhaust 1 card from your Hand and gain 1 Strength."}]},
+            "run": {"act": 2, "floor": 33},
+        }
+        first = lambda: [a[1]["card_index"] for a in strategy.hand_select(state, Memory()) if a[0] == "combat_select_card"][0]
+        self.assertEqual(first(), 0)  # 20 + 20 + 9 + 11 = 60: the Escape is the card nothing is lost with
+        # With the boss out of reach the Escape is kept as before, and the lowest-rated card goes.
+        boss["hp"] = 200
+        self.assertNotEqual(first(), 0)
+
     def test_out_of_a_fight_the_rating_decides_as_before(self):
         from sts2bot import handpick
         state = self.insatiable("Choose a card to Discard.")
@@ -514,6 +564,61 @@ class RewardBar(unittest.TestCase):
     def test_small_decks_have_the_same_bar_in_every_act(self):
         self.assertEqual(strategy.reward_bar(10, 1), strategy.reward_bar(10, 3))
         self.assertEqual(strategy.reward_bar(10, None), strategy.reward_bar(10, 1))
+
+
+class Crowd(unittest.TestCase):
+    """Other players' runs as a second opinion on a card (crowd.py)."""
+
+    SOW = card(0, "SOW", "Sow", "Attack", 1, "Retain. Deal 8 damage to ALL enemies.", "AllEnemies")
+    DEFY = card(1, "DEFY", "Defy", "Skill", 1, "Gain 6 Block. Apply 1 Weak.", "AnyEnemy")
+
+    def test_every_card_in_the_tables_gets_a_rating(self):
+        from sts2bot import crowd
+
+        self.assertEqual(len(crowd.RATING), 5 * 80 + 33)
+        self.assertTrue(all(1.5 <= v <= 8.0 for v in crowd.RATING.values()))
+        self.assertGreater(crowd.rating("AFTERIMAGE"), crowd.rating("DAGGER_SPRAY") + 3.0)
+        # A card known by its name only is spelt differently from its id.
+        self.assertEqual(crowd.rating("TIME_S_UP"), crowd.rating("TIMES_UP"))
+        self.assertIsNone(crowd.rating("STRIKE_NECROBINDER"))
+
+    def test_the_crowd_moves_a_rating_only_as_far_as_the_setting_says(self):
+        from unittest import mock
+
+        with mock.patch.dict(learn.KNOB, {"crowd": 0.0}):
+            ours = deck_value(self.SOW)
+            self.assertGreater(ours, deck_value(self.DEFY))  # our own table: the attack first
+            self.assertEqual(deck_value({**self.SOW, "is_upgraded": True}), ours + 0.7)
+        with mock.patch.dict(learn.KNOB, {"crowd": 0.6}):
+            self.assertLess(deck_value(self.SOW), deck_value(self.DEFY))  # a quarter of the runs with Sow were won
+            self.assertLess(deck_value(self.SOW), ours)
+            # A card our table does not list is read from its text, and that is mixed the same way.
+            demesne = card(2, "DEMESNE", "Demesne", "Power", 3, "Ethereal. At the start of your turn, gain [necrobinder_energy_icon.png] and draw 1 additional card.", rarity="Rare")
+            self.assertGreater(deck_value(demesne), 5.0)
+            # ... but not for a card that is only good in hands that can do what the bot cannot.
+            stoke = card(3, "STOKE", "Stoke", "Skill", 1, "Exhaust your Hand. Add 1 random card into your Hand for each card Exhausted.", rarity="Rare")
+            self.assertEqual(deck_value(stoke), 2.0)
+
+    def test_cards_every_turn_come_before_energy_with_a_price(self):
+        ev = lambda *titles: {"options": [{"index": i, "title": t, "description": "Gain [necrobinder_energy_icon.png] at the start of each turn.", "relic_name": t} for i, t in enumerate(titles)]}
+        state = {"state_type": "event", "run": {"act": 2, "floor": 18}, "player": {"hp": 60, "max_hp": 80}}
+        first = lambda *titles: strategy.event({**state, "event": ev(*titles)}, Memory())[0][1]["index"]
+        self.assertEqual(first("Ectoplasm", "Snecko Eye", "Philosopher's Stone"), 1)
+        self.assertEqual(first("Sozu", "Velvet Choker"), 1)
+        self.assertEqual(first("Pael's Flesh", "Pael's Blood"), 1)
+
+    def test_a_relic_can_limit_the_cards_played_in_a_turn(self):
+        state = combat_state([STRIKE(i) for i in range(3)], [enemy("JAW_WORM_0", 40)])
+        self.assertIsNone(combat.cards_left_this_turn(state))
+        state["player"]["relics"] = [{"id": "VELVET_CHOKER", "description": "Gain [ironclad_energy_icon.png] at the start of each turn. You cannot play more than 6 cards per turn."}]
+        self.assertEqual(combat.cards_left_this_turn({**state, "_plays_this_turn": 4}), 2)
+        self.assertIsNone(combat.choose_card({**state, "_plays_this_turn": 6}))
+        self.assertIsNotNone(combat.choose_card({**state, "_plays_this_turn": 5}))
+
+    def test_snecko_eye_is_bought_like_any_relic(self):
+        items = [{"index": 0, "category": "relic", "price": 150, "is_stocked": True, "can_afford": True, "relic_id": "SNECKO_EYE"}]
+        state = {"state_type": "shop", "run": {"act": 1, "floor": 5}, "player": {"hp": 80, "max_hp": 80, "gold": 250, "potions": []}, "shop": {"items": items, "can_proceed": True}}
+        self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 0}))
 
 
 if __name__ == "__main__":

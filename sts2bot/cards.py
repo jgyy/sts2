@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from .crowd import rating as crowd_rating
+
 _WORD_NUM = {"twice": 2, "thrice": 3}
 _BASIC = re.compile(r"^(strike|defend)(_[a-z]+)?$", re.I)
 
@@ -63,6 +65,8 @@ class CardInfo:
     osty_dies: bool = False  # Bone Shards: Osty dies, and with him the HP that stood in front of us
     doom_kills: bool = False  # End of Days: enemies with as much Doom as HP die at once, not at the end of their turn
     debris: int = 0  # Debris (1 energy: Exhaust) it adds to our hand; -1: as many as the hand has room for (Crash Landing)
+    heal: int = 0  # HP it gives back when played (Not Yet)
+    ethereal: bool = False  # gone for the fight if it is still in the hand when the turn ends
 
     @property
     def is_x(self) -> bool:
@@ -84,7 +88,11 @@ def _int(pattern: str, text: str) -> int:
 
 
 def _icons(text: str) -> int:
-    """Energy gained, as the game writes it: "Gain" and one icon per point."""
+    """Energy gained, as the game writes it: "Gain" and one icon per point, or a number and one icon
+    ("Gain 4[icon]": Supercritical and Borrowed Time were cards the planner could make nothing of)."""
+    m = re.search(r"gain\s+(\d+)\s*\[[a-z_]*energy_icon\.png\]", text, re.I)
+    if m:
+        return int(m.group(1))
     m = re.search(r"gain\s+((?:\[[a-z_]*energy_icon\.png\]\s*)+)", text, re.I)
     return len(_ENERGY_ICON.findall(m.group(1))) if m else 0
 
@@ -196,7 +204,8 @@ def parse(card: dict) -> CardInfo:
     doom = _int(r"apply\s+(\d+)\s+doom", text)
     if not doom and re.search(r"apply\s+doom\s+equal\s+to\s+damage\s+dealt", text, re.I):
         doom = _int(r"deals?\s+(\d+)\s+damage", text)  # Blight Strike: as much Doom as it hits for
-    shivs = _int(r"add\s+(\d+)\s+shivs?\s+into\s+your\s+hand", text)
+    shivs = _int(r"add\s+(\d+)\s+(?:\w+\s+)?shivs?\s+into\s+your\s+hand", text)  # ("2 Inky Shivs" too: Blade of Ink)
+    heal = _int(r"\bheal\s+(\d+)\s+hp", text)
     m = re.search(r"gain\s+(\d+)?\s*((?:\[star_icon\.png\]\s*)+)", text, re.I)
     star_gain = (int(m.group(1)) if m.group(1) else len(re.findall(r"star_icon", m.group(2)))) if m else 0
     forge = _int(r"forge\s+(\d+)", text)
@@ -223,7 +232,7 @@ def parse(card: dict) -> CardInfo:
     random_target = bool(re.search(r"random\s+enemy", text, re.I))
     known = any(
         (damage, block, vulnerable, weak, draw, energy_gain, strength, enemy_strength_loss, poison, doom, shivs)
-        + (star_gain, forge, summon, dexterity, len(channel), evoke, evoke_all, next_energy, next_draw, next_block, enemy_hp_loss, souls)
+        + (star_gain, forge, summon, dexterity, len(channel), evoke, evoke_all, next_energy, next_draw, next_block, enemy_hp_loss, souls, heal)
     )
 
     can_play = bool(card.get("can_play", True))
@@ -234,12 +243,13 @@ def parse(card: dict) -> CardInfo:
         vulnerable=vulnerable, weak=weak, draw=draw, energy_gain=energy_gain, hp_loss=hp_loss, known=known, strength=strength,
         strength_lasts=strength_lasts, enemy_strength_loss=enemy_strength_loss, poison=poison, doom=doom, shivs=shivs, star_gain=star_gain,
         forge=forge, summon=summon, dexterity=dexterity, dexterity_lasts=dexterity_lasts, channel=channel, evoke=evoke, evoke_all=evoke_all,
-        next_energy=next_energy, next_draw=next_draw, next_block=next_block, enemy_hp_loss=enemy_hp_loss, souls=souls,
+        next_energy=next_energy, next_draw=next_draw, next_block=next_block, enemy_hp_loss=enemy_hp_loss, souls=souls, heal=heal,
         needs_target=target == "AnyEnemy", playable=can_play,
         deadly=bool(re.search(r"\bdie\b", full_text, re.I)),
         block_lock=bool(re.search(r"(cannot|can't|can not)\s+gain\s+(any\s+)?block", full_text, re.I)),
         osty_attack=bool(re.search(r"\bOsty\b[^.]*\bdeals\b|if\s+Osty\s+is\s+alive", full_text, re.I)),
-        osty_dies=bool(re.search(r"Osty\s+dies", full_text, re.I)),
+        ethereal=bool(re.search(r"\bEthereal\b", full_text)),
+        osty_dies=bool(re.search(r"\b(?:Osty|he)\s+dies", full_text, re.I)),  # (Sacrifice: "If Osty is alive, he dies and ...")
         doom_kills=bool(re.search(r"kill\s+enemies\s+with\s+at\s+least\s+as\s+much\s+Doom", full_text, re.I)),
         debris=-1 if re.search(r"fill\s+your\s+hand\s+with\s+debris", text, re.I) else _int(r"add\s+(\d+)\s+debris", text) or int(bool(re.search(r"add\s+a\s+debris", text, re.I))),
         bound=any(str(k.get("name")).lower() == "bound" for k in card.get("keywords") or [] if isinstance(k, dict)),
@@ -356,9 +366,11 @@ _TIER = {
     "DOUBLE_ENERGY": 3.5, "STORM": 3.5, "THUNDER": 3.5, "SCRAPE": 3.0, "ALL_FOR_ONE": 3.0, "HOTFIX": 3.0,
     "VOLTAIC": 3.0, "FERAL": 3.0, "TRASH_TO_TREASURE": 3.0, "ITERATION": 2.5,
     # --- met on 2026-11-18 (all characters)
+    # (Friendship, energy every turn for 2 Strength, was 6.0 until 2026-11-20: 48 picks ending 1.4 floors short of
+    # the Necrobinder's average pick, like every other way to more energy this bot has been given.)
     # (Six Necrobinder cards stood here a second time with their old ratings until 2026-11-19, and the
     # later entry of a dict wins: the ratings reset above from 67 runs had never applied.)
-    "MACHINE_LEARNING": 6.5, "DEFRAGMENT": 7.5, "GLACIER": 6.0, "FRIENDSHIP": 6.0, "GENESIS": 5.5, "ECHO_FORM": 6.5,
+    "MACHINE_LEARNING": 6.5, "DEFRAGMENT": 7.5, "GLACIER": 6.0, "FRIENDSHIP": 4.5, "GENESIS": 5.5, "ECHO_FORM": 6.5,
     "HYPERBEAM": 5.5, "DEVASTATE": 5.0, "SKIM": 5.0, "COOLANT": 5.0, "BUFFER": 5.0, "SPINNER": 5.0, "QUADCAST": 5.0,
     "GUIDING_STAR": 4.5, "ADAPTIVE_STRIKE": 4.5, "BONE_SHARDS": 4.5,
     "NULL": 4.5, "LOOP": 4.5, "SENTRY_MODE": 4.5, "CHILL": 4.0,
@@ -384,6 +396,20 @@ def is_known(card: dict) -> bool:
 
 _RARITY = {"Basic": 0.0, "Common": 1.0, "Uncommon": 2.2, "Rare": 3.5, "Ancient": 4.5, "Event": 2.0}
 
+# Cards the crowd's numbers (crowd.py) are not asked about: what makes them good in other
+# hands is what this bot cannot do. The Gambit can end the run.
+# (Neurosurge stood here while triggers.shunned kept it out of every boss and elite fight.)
+# Stoke Exhausts what is left of the hand (the planner would play it last, on the cards it could not pay
+# for); GUARDS!!! turns the hand into Minion Sacrifices; Banshee's Cry (9 energy, 2 less for each Ethereal card
+# played) and Knife Trap (every Shiv in the Exhaust Pile) are only cards in decks built for them.
+_OWN_VIEW = {"THE_GAMBIT", "STOKE", "GUARDS", "BANSHEES_CRY", "BANSHEE_S_CRY", "KNIFE_TRAP"}
+
+
+def _crowd_share() -> float:
+    from .learn import knob  # (learn.py reads this module for its card keys)
+
+    return knob("crowd")
+
 
 def deck_value(card: dict) -> float:
     """How much we want this card in the deck (higher is better).
@@ -399,9 +425,15 @@ def deck_value(card: dict) -> float:
         # with every copy) lost several boss fights on its own, while a limit
         # of three cards a turn rarely matters to how the bot plays.
         return _AFFLICTION.get(_card_key(card), -8.0)
-    tier = _TIER.get(_card_key(card))
+    key = _card_key(card)
+    upgraded = 0.7 if card.get("is_upgraded") else 0.0
+    # Our own rating and the crowd's, mixed (a setting under test, see learn.CHOICES): where
+    # ours put the plain attacks first, half a million runs a character put them last.
+    crowd = None if key in _OWN_VIEW else crowd_rating(key)
+    share = _crowd_share() if crowd is not None else 0.0
+    tier = _TIER.get(key)
     if tier is not None:
-        return tier + (0.7 if card.get("is_upgraded") else 0.0)
+        return (1.0 - share) * tier + share * (crowd or 0.0) + upgraded
     info = parse(card)
     if info.deadly:
         return -6.0  # e.g. "If you take unblocked attack damage this combat, die."
@@ -434,9 +466,8 @@ def deck_value(card: dict) -> float:
     score -= info.hp_loss * 0.1
     if is_basic(card):
         score -= 2.5
-    if card.get("is_upgraded"):
-        score += 0.7
-    return score + _known_nudge(card)
+    score += _known_nudge(card)
+    return (1.0 - share) * score + share * (crowd or 0.0) + upgraded
 
 
 def upgrade_gain(base: dict, upgraded: dict) -> float:
@@ -472,8 +503,8 @@ def order_key(c: CardInfo) -> tuple:
         rank = 0  # set-up first; an escape must not be left for energy that is gone
     elif c.draw or c.energy_gain or c.star_gain:
         rank = 1  # what later cards are paid with comes first
-    elif c.vulnerable:
-        rank = 2
+    elif c.vulnerable or (c.summon and not c.is_x) or (c.doom and not c.damage):
+        rank = 2  # (a Summon before Osty's attacks: Unleash hits for his HP; Doom before what counts it)
     elif c.damage and not c.is_x:
         rank = 3
     elif c.is_x:

@@ -55,6 +55,14 @@ def potion_actions(state: dict, planned_loss: int | None = None) -> list[Action]
     # rest only once the fight has gone wrong.
     hurt = kind == "elite" and hp <= 0.5 * max_hp
     big_fight = danger or hurt or kind == "boss"
+    # Delicate Frond fills the belt again at the start of every fight: nothing is being saved.
+    if any("fill all empty potion slots" in str(r.get("description") or "").lower() for r in player.get("relics") or []):
+        big_fight, spare = True, len(potions)
+    # What a potion gives for good is worth the same in any fight, and the slot it sits in is half
+    # the belt on Ascension 4: Fruit Juice ("Gain 5 Max HP") goes at the first chance.
+    keeps = [("use_potion", {"slot": int(p.get("slot", 0))}) for p in potions if p.get("can_use_in_combat", True) and re.search(r"gain \d+ max hp", str(p.get("description") or ""), re.I)]
+    if keeps:
+        return keeps
     if not (big_fight or spare):
         return []
     left = sum(e.hp + e.block for e in enemies if e.worth > 0)

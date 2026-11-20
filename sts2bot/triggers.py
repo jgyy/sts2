@@ -120,14 +120,37 @@ def shunned(c, state: dict) -> bool:
     Neurosurge (3 energy and 2 cards now, 3 Doom on ourselves every turn for
     the rest of the fight): Doom kills us at the end of our turn once it
     reaches our HP. Three boss fights ended that way with 24 to 31 HP left
-    (Aeonglass in round 6 with two of them up; the Insatiable in round 14).
-    It is only for fights that will be over in a few turns.
+    (Aeonglass in round 6 with two of them up; the Insatiable in round 14),
+    all played on sight in round 1. It is for a fight that will be over before
+    the Doom adds up: an ordinary one nearly won, or a boss or elite with few
+    enough turns left in it at the pace this fight has gone so far, and our
+    HP well above what the Doom will be by then. (Other players win 53% of
+    the runs that hold it, the most of any Necrobinder card: their fights are
+    short. Until 2026-11-20 it was never played against a boss or an elite.)
     """
     if c.key != "NEUROSURGE":
         return False
-    foes = sum(int(e.get("hp") or 0) for e in (state.get("battle") or {}).get("enemies") or [])
-    return state.get("state_type") in ("boss", "elite") or foes > 60
+    battle, player = state.get("battle") or {}, state.get("player") or {}
+    foes = [e for e in battle.get("enemies") or [] if 0 < int(e.get("hp") or 0) < 100_000]
+    left = sum(int(e.get("hp") or 0) + int(e.get("block") or 0) for e in foes)
+    if state.get("state_type") not in ("boss", "elite"):
+        return left > 60
+    rounds = int(battle.get("round") or 1) - 1
+    dealt = sum(max(0, int(e.get("max_hp") or 0) - int(e.get("hp") or 0)) for e in foes)
+    pace = max(15.0, dealt / rounds) if rounds >= 2 else 25.0
+    turns = -(-left // pace) + 1  # (and one to spare: fights run over)
+    doom = max(0, power_amount(player, "DOOM")) + (3 + max(0, power_amount(player, "NEUROSURGE"))) * turns
+    return doom > 0.4 * int(player.get("hp") or 0)
 
 
 # Cards that make the next card of one type free ("The next Attack you play costs 0").
 FREE_NEXT = {"UNRELENTING": "Attack", "POUNCE": "Skill"}
+# ... and cards that make every card after them dearer this turn (Borrowed Time: 4 energy, "Cards cost an additional" 1).
+SURCHARGE = {"BORROWED_TIME": 1}
+# Cards that play the next card of one type an extra time ("This turn, your next Skill is played an extra time").
+ECHO_NEXT = {"BURST": "Skill", "ONE_TWO_PUNCH": "Attack"}
+# Cards that pay for others without saying "gain energy": Double Energy doubles what is left, and after
+# Bullet Time everything in the hand is free. (Other players rate all four among their characters' best;
+# read as nothing, they were worth a flat 3 points to the planner whatever was in the hand.)
+PAYS = {"DOUBLE_ENERGY", "BULLET_TIME"}
+READ = {*ECHO_NEXT, *PAYS, "CASCADE", "TIMES_UP", "TIME_S_UP"}  # cards with no numbers in their text that the planner works out all the same
