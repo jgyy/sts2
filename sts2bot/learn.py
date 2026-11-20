@@ -30,7 +30,9 @@ MAX_SHIFT = 2.5  # a rating never moves further than this
 # At 0.5 about a hundred cards offered 12 to 40 times each were never or once taken
 # (Juggernaut, Hologram, Accelerant, Expertise, Feel No Pain...), so the record could
 # say nothing about them and the hand-made guess stood for ever.
-CURIOSITY = 1.5
+# (0.8 since 2026-11-20: by then most of them had been tried once or twice, and crowd.py gives the untried
+# ones a rating from half a million runs. At 1.5 an untried card the crowd puts last still beat a proven one.)
+CURIOSITY = 0.8
 
 
 def _load(path: Path | None, what: str) -> dict:
@@ -142,7 +144,7 @@ def seed_from_history(stats: CardStats, runs_file: Path) -> None:
 # more and more often from the settings whose runs have gone furthest
 # (Thompson sampling). Good settings end up being used nearly always.
 
-DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "long_game": 1.0}
+DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "crowd": 0.6}
 CHOICES = {
     "caution": [0.75, 1.0, 1.35, 1.8],  # weight of HP lost in the combat planner
     # What an elite's rewards count for when planning a route. (Since the boss-odds curve was refitted on
@@ -155,7 +157,11 @@ CHOICES = {
     "pickiness": [-1.0, 0.0, 1.0],  # added to the rating a card reward needs to be taken
     # (`early_setup`, 1.7 times every lasting effect in rounds 1-3 of boss and elite fights, was dropped on
     # 2026-11-19: 21 runs, no better than the 100 without it.)
-    "long_game": [0.0, 1.0],  # 1: Powers, Strength, Dexterity and Forge count for the turns a boss or elite fight has left
+    # (`long_game`, Powers and lasting Strength priced by the turns a boss fight has left, was dropped on
+    # 2026-11-20: 20 runs, 4.4 floors a run behind the 38 without it.)
+    # How much of a card's rating comes from other players' runs (crowd.py) and how much from our own table
+    # (cards._TIER). 0: ours alone, as until 2026-11-20. Judge by floors and by the bosses beaten, then drop the loser.
+    "crowd": [0.0, 0.6],
 }
 MIN_RUNS = 20  # runs a setting gets before the record alone decides how often it is drawn
 SPREAD = 12.0  # how far apart two runs of the same character usually end, in floors

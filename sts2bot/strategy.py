@@ -425,18 +425,43 @@ def _stars(card: dict) -> tuple[int, int]:
     return need, info.star_gain + later
 
 
-def deck_fit(card: dict, deck: list) -> float:
+# What the cards of a deck should do for an energy, on average, before damage stops being what it is
+# short of (act -> damage). The starter decks do about 3; final decks 5.0, 6.5 and 8.2 by third.
+# (Act 1 was 5.0 with a nudge of at most 1.5 for the first two hours: under the `crowd` setting 39% of
+# act 1 picks were attacks, against 58% before and 54% without it, and its act 1 fights took 4.1
+# rounds against 3.5. Now the first four or five picks of a run lean to attacks under either setting.)
+PUNCH_FLOOR = {1: 5.5, 2: 5.5, 3: 6.0}
+
+
+def _punch(card: dict) -> float:
+    """Damage a card does for an energy, counting what stands in for damage (Doom, Poison, Shivs, orbs)."""
+    i = _parse(card)
+    x = 2 if i.is_x else 1
+    dealt = i.total_damage * (1.4 if i.aoe else 1.0) * x + 0.8 * i.doom + 3.0 * i.poison + 4.0 * i.shivs + i.enemy_hp_loss + 6.0 * len(i.channel)
+    return dealt / max(1, 2 if i.is_x else i.cost)
+
+
+def deck_fit(card: dict, deck: list, act: int | None = None) -> float:
     """How much better or worse a card is in *this* deck than on its own.
 
-    The ratings in cards.py judge a card alone. Two things they cannot see:
+    The ratings in cards.py judge a card alone. Three things they cannot see:
     the Regent's Stars (a 5-Star Comet is dead weight in a deck that makes
     two Stars a cycle; one run reached its boss holding five such cards it
-    could never play) and copies (the third Astral Pulse is worth less than
-    the first).
+    could never play), copies (the third Astral Pulse is worth less than
+    the first), and a deck that cannot kill: one Necrobinder reached floor 25
+    with 21 cards of Block, Souls and Powers around five small attacks, dealt
+    76 damage in eight rounds of an ordinary fight and died there from 55 HP
+    (and other players' runs rate the plain attacks lowest of all, see crowd.py).
     """
     if not deck:
         return 0.0
     fit = 0.0
+    floor = PUNCH_FLOOR.get(act) if len(deck) >= 8 else None
+    if floor and _punch(card) >= 8.0:
+        # Worth more for as long as the deck is short of damage: about the first three attacks
+        # of a run (a flat 0.8 for every act 1 attack until 2026-11-20), and any later deck that
+        # has filled up with other things.
+        fit += min(2.0, max(0.0, 0.9 * (floor - sum(map(_punch, deck)) / len(deck))))
     need, give = _stars(card)
     if need or give:
         pairs = [_stars(c) for c in deck]
@@ -479,12 +504,13 @@ def card_reward(state: dict, mem: Memory) -> list[Action]:
     who = str((state.get("player") or {}).get("character") or "")
 
     def worth(c: dict) -> float:
-        v = deck_value(c) + deck_fit(c, mem.deck)
+        v = deck_value(c) + deck_fit(c, mem.deck, act if isinstance(act, int) else None)
         if mem.card_stats is not None:
             v += mem.card_stats.shift(who, str(c.get("name")))
-        # The starter deck cannot kill anything quickly; until that is fixed,
-        # an attack is worth more than one more way to block.
-        if act == 1 and mem.deck_size < 18 and str(c.get("type")) == "Attack" and v > 0:
+        # The starter deck cannot kill anything quickly; until that is fixed, an attack is worth
+        # more than one more way to block. (deck_fit sees to it once the deck is known; this is
+        # for a run picked up before its first fight.)
+        if not mem.deck and act == 1 and mem.deck_size < 18 and str(c.get("type")) == "Attack" and v > 0:
             v += 0.8
         return v
 
@@ -574,11 +600,12 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
         if cat == "card_removal":
             want = 9.0
         elif cat == "relic":
-            # Snecko Eye randomises card costs, which the planner cannot work with.
-            bad = "SNECKO" in str(item.get("relic_id") or item.get("relic_name") or "").upper()
-            want = -1.0 if bad else 8.0 - price / 200.0
+            # (Snecko Eye was refused here until 2026-11-20, as costs the planner could not count on. It reads
+            # the cost of every card in hand as drawn, and 3 of the 5 runs that held one were won.)
+            want = 8.0 - price / 200.0
         elif cat == "card":
-            v = deck_value(_shop_card(item)) + deck_fit(_shop_card(item), mem.deck)
+            act = (state.get("run") or {}).get("act")
+            v = deck_value(_shop_card(item)) + deck_fit(_shop_card(item), mem.deck, act if isinstance(act, int) else None)
             # Only cards that make the deck better, and more freely when rich.
             bar = 4.0 if gold - price >= 200 else 4.5 if mem.deck_size < BIG_DECK else 5.5
             want = v if v >= bar else -1.0
@@ -624,7 +651,10 @@ def _removal_rank(card: dict) -> float:
         return -100.0
     v = deck_value(card)
     if is_basic(card):
-        v -= 5.0
+        # (A Strike before a Defend: the two rate alike, and it was the order on the screen that
+        # decided. Every guide says Strikes first, and the Necrobinder's decks with none left got
+        # past act 2 in 12 runs of 20, with Strikes in 17 of 60.)
+        v -= 5.5 if _card_key(card).startswith("STRIKE") else 5.0
     return v
 
 
@@ -784,9 +814,14 @@ def hand_select(state: dict, mem: Memory) -> list[Action]:
         # so there the rating decides unless the choice would cost a kill or our life.
         def price(c: dict) -> float:
             cost = costs[int(c.get("index", 0))]
-            if sly(c) or _card_key(c) in KEEP_AT_ALL_COSTS:
-                return float("-inf") if sly(c) else float("inf")
-            return float(round(cost / 2.0)) if discarding else float(cost >= handpick.RUINOUS)
+            if sly(c):
+                return float("-inf")
+            if discarding:
+                return float("inf") if _card_key(c) in KEEP_AT_ALL_COSTS else float(round(cost / 2.0))
+            # (A Frantic Escape too, when every other card is the kill: with the Insatiable on 59 the bot
+            # Exhausted the Bone Shards that made 60 and kept an Escape it had no further use for.
+            # Otherwise its rating keeps it last in line.)
+            return float(cost >= handpick.RUINOUS)
 
         ordered = sorted(ordered, key=price)  # (stable: equal prices keep the order above)
     return out + [("combat_select_card", {"card_index": int(c.get("index", 0))}) for c in ordered] + [("combat_confirm_selection", {})]

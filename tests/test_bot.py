@@ -39,6 +39,37 @@ class FullLoop(unittest.TestCase):
         self.assertEqual(game.clicks, 1)
         self.assertEqual(game.state()["state_type"], "event")
 
+    def test_a_potion_is_not_one_of_the_cards_a_turn_allows(self):
+        bot = make_bot(FakeGame())
+        state = combat_state([STRIKE(0), DEFEND(1)], [enemy("KNOWLEDGE_DEMON_0", 200, attack=30)], hp=38)
+        state["player"]["status"] = [{"id": "SLOTH_POWER", "amount": 2}]
+        bot._combat(state)
+        bot._after_success(state, "use_potion", {"slot": 0})
+        bot._after_success(state, "play_card", {"card_index": 0})
+        bot._after_success(state, "play_card", {"card_index": 0})
+        bot._played_from = None  # (the hand as it was when the last card left it: not what this test is about)
+        self.assertEqual(bot._combat(state)[0][0], "play_card")  # the third card of three, potion or no potion
+        bot._after_success(state, "play_card", {"card_index": 0})
+        bot._played_from = None
+        self.assertEqual(bot._combat(state), [])  # (one more look before ending a turn with energy left)
+        self.assertEqual(bot._combat(state)[0][0], "end_turn")
+
+    def test_what_each_enemy_has_done_so_far_is_remembered_for_the_fight(self):
+        bot = make_bot(FakeGame())
+        bug, beetle = enemy("BUG_0", 46, attack=15), enemy("BEETLE_0", 86)
+        state = combat_state([STRIKE(0)], [bug, beetle])
+        bot._combat(state)
+        bot._combat(state)  # the same turn seen again counts once
+        self.assertEqual(bot._threat, {"BUG_0": [15, 1], "BEETLE_0": [0, 1]})
+        state["battle"]["round"] = 2
+        state["battle"]["enemies"] = [enemy("BUG_0", 46), enemy("BEETLE_0", 86, attack=16)]
+        bot._combat(state)
+        self.assertEqual(bot._threat, {"BUG_0": [15, 2], "BEETLE_0": [16, 2]})
+        state["run"]["floor"] = 4  # the next fight starts from nothing
+        state["battle"]["round"] = 1
+        bot._combat(state)
+        self.assertEqual(bot._threat, {"BUG_0": [0, 1], "BEETLE_0": [16, 1]})
+
     def test_a_purchase_that_never_happens_is_given_up(self):
         """The shop said yes to a potion a relic forbids; the bot must leave in the end."""
 

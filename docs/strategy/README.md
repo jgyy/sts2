@@ -33,7 +33,14 @@ into the code yet: these are candidates to try, one at a time, against the bot's
 | Use a sleeping enemy's turns for set-up | `combat.choose_card` (Asleep) |
 | Kaiser Crab: do not leave one claw alive for long | `combat._rage_blocks` and the Crab Rage cost in `simulate` |
 | The Insatiable is a timer | the Sandpit handling in `combat.simulate` |
-| Osty's HP is Block that stays | `combat._context`, `simulate` |
+| Osty's HP is Block that stays, and worth keeping; Summon before Unleash | `combat._context`, `simulate` (every HP he keeps is priced), `cards.order_key` |
+| Card ratings from run data | `crowd.py` (tierspire.com win and pick rates), mixed into `cards.deck_value` by the `crowd` setting |
+| A deck needs damage before anything else | `strategy.deck_fit`: attacks are worth more while the deck does under 5 to 6 damage an energy |
+| Fruit Juice at once | `potions.potion_actions` |
+| Focus the enemy that does the most for its health | `combat._pick_target` in ordinary fights (`Bot._threat` remembers what each enemy has done) |
+| Race an enemy that gains Strength every turn (Devoted Sculptor, cultists) | `Enemy.grows` raises what damage is worth in `combat.simulate` |
+| Entomancer: few big attacks, since every Attack that hits it adds Dazed | `Enemy.hive`, priced per hit in `combat.simulate` |
+| Powers and Ethereal cards played while they can be, in long fights | `battle._power_worth` (not below what other players' results say), 1.6 times for Ethereal Powers |
 
 ## Candidates to try
 
@@ -44,19 +51,24 @@ are second-hand.
    refuses Snecko Eye. Guides call these traps, and the first is fatal to a planner that reads intents: Runic
    Dome (hides intents), Ectoplasm (no more gold), Velvet Choker (six cards a turn), Glass Cannon, Busted Crown,
    Brimstone. Rank `relic_select` and skip these in the shop.
-2. **Ancient relic ratings to re-check** (`events._ANCIENT`): the bot rates Philosopher's Stone 13.5 and Sozu
-   12.5; guides put Philosopher's Stone low (enemy Strength against multi-hit attacks) and Sozu as costly for boss
-   fights, which is where the bot's potions go. Guides rate Silver Crucible and Arcane Scroll (7.0 here) and
-   Booming Conch (8.0) among the best Neow picks. Compare with the run history before moving any.
-3. **Potions that are not for a fight's bad turn.** Fruit Juice (permanent Max HP) should be drunk at once;
-   Fairy in a Bottle should never be drunk (it works by itself). `potion_actions` treats both like any potion.
+2. **Ancient relic ratings** (`events._ANCIENT`): done on 2026-11-20 for the second and third Ancients, from the
+   bot's own runs and tierspire.com's win rates (cards every turn before energy with a drawback: Snecko Eye and
+   Pael's Blood up; Philosopher's Stone, Sozu, Ectoplasm, Blessed Antler, Spiked Gauntlets and Looming Fruit
+   down). Neow's offers were re-rated from the run history the same day; the crowd's numbers for them are too
+   close together to add anything.
+3. **Potions that are not for a fight's bad turn.** Fruit Juice is drunk at once now; Fairy in a Bottle is never
+   drunk (the game does not offer it). Still open: one-turn potions (Flex, Energy, Swift, Gigantification,
+   Duplicator) go on round 1 of a boss fight like the rest; pricing each by the planner's score with and without
+   it would hold them for a turn that uses them.
 4. **Which card to remove.** Guides: curse, then Strike, then Defend; the Regent one Strike and one Defend
    early; no early Defend removals for the Defect and the Necrobinder; the Silent removes Strikes hard.
    `strategy._removal_rank` goes by rating only.
 5. **Roles in the deck.** Count front-loaded damage, AoE, scaling, Block and draw, and add to a reward that
    fills a role the next act needs (act 2: one or two AoE cards, one source of scaling, 15-20 Block on demand;
-   act 3: damage that grows over 8-12 turns). `strategy.deck_fit` only knows Stars and copies.
-6. **Card ratings that disagree with `cards._TIER`** (test through `learn.py`'s record, do not just copy):
+   act 3: damage that grows over 8-12 turns). `strategy.deck_fit` knows Stars, copies and, since 2026-11-20,
+   damage an energy; AoE, scaling and draw are not counted yet.
+6. **Card ratings that disagree with `cards._TIER`**: now measured through the `crowd` setting (see `crowd.py`)
+   instead of by hand. The guides' points, for reference:
    - Ironclad: guides rate Unmovable (4.0 here), Dark Embrace (3.0), Colossus (3.0) and Evil Eye (3.5) near the
      top as an Exhaust engine, and say to skip Cinder (4.0) and to leave Demon Form (8.0) until after act 1.
    - Silent: Prepared (2.5) and Acrobatics (5.0) are the key enablers of the discard/Sly deck, rated the
@@ -65,7 +77,7 @@ are second-hand.
    - Regent: upgrade Glow first; extra copies of Falling Star lose value; skip mediocre commons.
    - Defect: Lightning Rod (4.5) high; Focus only for the first one or two cards; damage first in act 1.
 7. **Fight rules not in the planner yet.**
-   - Entomancer adds Dazed for each Attack card that hits it: prefer few big attacks. (One source.)
+   - Entomancer adds Dazed for each Attack card that hits it: done on 2026-11-20 (the game's text confirms it).
    - Skulking Colony's Hardened Shell caps the HP it loses in a *turn*; the planner's `hit_cap` is per hit.
    - Ceremonial Beast under Ringing: the one card should be the biggest Block when it attacks. The planner sorts
      by damage plus Block (`choose_card`, few plays allowed), which already comes close.

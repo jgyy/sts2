@@ -178,13 +178,13 @@ class CardPlayTriggers(unittest.TestCase):
         sleight = [{"id": "SLEIGHT_OF_FLESH_POWER", "amount": 13}]
         # 33 HP: the attack takes 28, the two debuffs 13 each. The form dies and its 50 damage never comes.
         s = self.subject(33, [exterminate, bringer(1), defend(2)], sleight)
-        self.assertEqual(combat.choose_card(s), ("play_card", {"card_index": 0}))
+        self.assertIn(combat.choose_card(s)[1]["card_index"], (0, 1))  # (either first: the two together are the kill)
         s = self.subject(5, [bringer(0), defend(1)], sleight, energy=2)
         self.assertEqual(combat.choose_card(s), ("play_card", {"card_index": 0}))
         # Without the Power there is no kill in the hand, and no Block that saves us either
         # (10 HP in front of 50): the attack that leaves the form on 5 HP is the best try.
         s = self.subject(33, [exterminate, bringer(1), defend(2)], [])
-        self.assertEqual(combat.choose_card(s), ("play_card", {"card_index": 0}))
+        self.assertIn(combat.choose_card(s)[1]["card_index"], (0, 1))  # (the Doom card goes first now; both are played)
 
     def test_afterimage_and_strangle_count_for_every_card(self):
         from sts2bot import triggers
@@ -200,31 +200,45 @@ class CardPlayTriggers(unittest.TestCase):
         self.assertIsNone(triggers.read(combat_state([DEFEND(0)], [enemy("A", 5)])))
 
 
-class LongGame(unittest.TestCase):
-    """What lasts the whole fight is worth the turns the fight has left (the `long_game` setting)."""
+class PersonalHive(unittest.TestCase):
+    """The Entomancer: every Attack that hits it puts Dazed into our draw pile."""
 
-    def first_card(self, setting, round_no=1, hp=83, attack=19, kind="boss"):
-        from unittest import mock
+    def first(self, hive, hand, junk=0, energy=1):
+        foe = enemy("ENTOMANCER_0", 140, status=[{"id": "PERSONAL_HIVE_POWER", "amount": hive}])
+        s = combat_state(hand, [foe], energy=energy, hp=60, kind="elite")
+        s["player"]["draw_pile"] = [STRIKE(9)] * (12 - junk) + [card(9, "DAZED", "Dazed", "Status", 0, "Unplayable. Ethereal.")] * junk
+        s["player"]["discard_pile"] = []
+        act = combat.choose_card(s)
+        return None if act is None else act[1]["card_index"]
 
-        demon = card(0, "DEMON_FORM", "Demon Form+", "Power", 3, "At the start of your turn, gain 4 Strength.", "Self")
-        brk = card(1, "BREAK", "Break+", "Attack", 1, "Deal 38 damage.", "AnyEnemy")
-        hand = [demon, brk, card(2, "TAUNT", "Taunt", "Skill", 1, "Gain 12 Block.", "Self"), DEFEND(3)]
-        state = combat_state(hand, [enemy("QUEEN_0", 400, attack=attack)], hp=hp, max_hp=87, kind=kind)
-        state["battle"]["round"] = round_no
-        with mock.patch.dict(learn.KNOB, {"caution": 1.0, "long_game": setting}):
-            return combat.choose_card(state)[1]["card_index"]
-
-    def test_demon_form_goes_down_on_the_first_turn_of_a_boss(self):
-        self.assertNotEqual(self.first_card(0.0), 0)  # as it was: 72 points against an attack and two Blocks
-        self.assertEqual(self.first_card(1.0), 0)
-
-    def test_not_late_in_the_fight_nor_when_it_would_kill_us(self):
-        self.assertNotEqual(self.first_card(1.0, round_no=9), 0)  # two rounds of Strength are not worth the turn
-        self.assertNotEqual(self.first_card(1.0, hp=18, attack=19), 0)
-        self.assertNotEqual(self.first_card(1.0, kind="monster"), 0)  # an ordinary fight is over in four turns
+    def test_small_attacks_stop_as_the_hive_grows(self):
+        big = card(1, "BLUDGEON", "Bludgeon", "Attack", 1, "Deal 32 damage.", "AnyEnemy")
+        doom = card(2, "NO_ESCAPE", "No Escape", "Skill", 1, "Apply 15 Doom.", "AnyEnemy")
+        solid = card(0, "DRAIN_POWER", "Drain Power", "Attack", 1, "Deal 12 damage.", "AnyEnemy")
+        self.assertEqual(self.first(1, [solid]), 0)  # one Dazed for 12 damage: worth it
+        self.assertIsNone(self.first(1, [STRIKE(0)]))  # ... for 6 it is a card thrown away later for less than a card now
+        self.assertIsNone(self.first(3, [solid]))  # three of them: not for 12 either
+        self.assertEqual(self.first(3, [STRIKE(0), big]), 1)  # a big one is
+        self.assertEqual(self.first(3, [STRIKE(0), doom]), 2)  # and what is not an Attack costs nothing
+        self.assertEqual(self.first(3, [solid], junk=8), 0)  # (in a deck already full of them a draw is worth little)
+        self.assertEqual(combat.read_enemies(combat_state([], [enemy("E", 9, status=[{"id": "PERSONAL_HIVE_POWER", "amount": 2}])]))[0].hive, 2)
 
 
 class Disintegration(unittest.TestCase):
+    def test_block_stops_constrict_too(self):
+        state = combat_state([DEFEND(0), DEFEND(1), STRIKE(2)], [enemy("SLITHERING_STRANGLER_0", 40)], energy=2, hp=40)
+        state["player"]["status"] = [{"id": "CONSTRICT_POWER", "amount": 6}]
+        self.assertEqual(combat.expected_end_loss(state), 6)  # no attack coming: the squeeze alone
+        plays = []
+        while (act := combat.choose_card(state)) is not None and len(plays) < 3:
+            c = next(h for h in state["player"]["hand"] if h["index"] == act[1]["card_index"])
+            plays.append(c["name"])
+            state["player"]["hand"].remove(c)
+            state["player"]["energy"] -= 1
+            state["player"]["block"] += 5 * (c["name"] == "Defend")
+        self.assertEqual(sorted(plays), ["Defend", "Strike"])  # one Defend takes 5 of the 6; the Strike is worth more than the last point
+        self.assertEqual(combat.expected_end_loss(state), 1)
+
     def test_block_stops_the_burn_like_any_other_damage(self):
         state = combat_state([DEFEND(0), DEFEND(1)], [enemy("KNOWLEDGE_DEMON_0", 80, attack=6)], energy=2, hp=40, kind="boss")
         state["player"]["status"] = [{"id": "DISINTEGRATION_POWER", "amount": 8}]
@@ -270,6 +284,76 @@ class Necrobinder(unittest.TestCase):
         s["player"]["pets"] = [{"name": "Osty", "hp": osty, "alive": osty > 0}]
         return s
 
+    def test_a_summon_goes_before_unleash(self):
+        unleash = card(0, "UNLEASH", "Unleash", "Attack", 1, "Osty deals 7 damage. Deals additional damage equal to Osty's current HP.", "AnyEnemy")
+        guard = card(1, "BODYGUARD", "Bodyguard", "Skill", 1, "Summon 5.", "Self")
+        s = self.state([unleash, guard], osty=1, attack=0)
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)
+        foe = combat.read_enemies(s)
+        ctx = combat._context(s)
+        first = combat.simulate([parse(guard), parse(unleash)], foe, **ctx)
+        self.assertEqual(first.score - combat.simulate([parse(unleash), parse(guard)], foe, **ctx).score, 5.0)  # 12 damage, not 7
+        # After Bone Shards he is dead, whatever was Summoned before it.
+        dead = combat.simulate([parse(self.SHARDS(2)), parse(unleash)], foe, **ctx)
+        self.assertLess(dead.score, combat.simulate([parse(unleash), parse(self.SHARDS(2))], foe, **ctx).score)
+
+    def test_times_up_hits_for_the_doom_on_the_enemy(self):
+        times = card(0, "TIMES_UP", "Time's Up", "Attack", 2, "Deal damage equal to the enemy's Doom.", "AnyEnemy")
+        pulse = card(1, "NEGATIVE_PULSE", "Negative Pulse", "Skill", 1, "Gain 5 Block. Apply 7 Doom to ALL enemies.", "AllEnemies")
+        s = self.state([times, pulse], osty=1, foe_hp=200, attack=0, doom=30)
+        foes, ctx = combat.read_enemies(s), combat._context(s)
+        base = combat.simulate([], foes, **ctx).score
+        self.assertEqual(combat.simulate([parse(times)], foes, **ctx).score - base, 30.0)
+        # ... and the Doom applied first counts: the pulse goes before it.
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)
+        self.assertGreater(combat.simulate([parse(pulse), parse(times)], foes, **ctx).score, combat.simulate([parse(times), parse(pulse)], foes, **ctx).score + 6.0)
+
+    def test_deaths_door_blocks_three_times_after_doom(self):
+        door = card(0, "DEATHS_DOOR", "Death's Door", "Skill", 1, "Gain 6 Block. If you applied Doom this turn, gain Block 2 additional times.", "Self")
+        pulse = card(1, "NEGATIVE_PULSE", "Negative Pulse", "Skill", 1, "Gain 5 Block. Apply 7 Doom to ALL enemies.", "AllEnemies")
+        s = self.state([door, pulse], osty=0, foe_hp=200, attack=30)
+        foes, ctx = combat.read_enemies(s), combat._context(s)
+        self.assertEqual(combat.simulate([parse(door), parse(pulse)], foes, **ctx).lost, 19)  # 6 + 5
+        self.assertEqual(combat.simulate([parse(pulse), parse(door)], foes, **ctx).lost, 7)  # 5 + 18
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)
+
+    def test_sacrifice_takes_osty_with_it(self):
+        sacrifice = card(0, "SACRIFICE", "Sacrifice", "Skill", 1, "Retain. If Osty is alive, he dies and you gain Block equal to triple his Max HP. (Gain 15 Block)", "Self")
+        self.assertTrue(parse(sacrifice).osty_dies)
+        s = self.state([sacrifice], osty=5, attack=24)
+        out = combat.simulate([parse(sacrifice)], combat.read_enemies(s), **combat._context(s))
+        self.assertEqual(out.lost, 9)  # 15 Block against 24: his 5 HP are gone with him
+        gone = self.state([sacrifice], osty=0, attack=24)
+        self.assertEqual(combat.simulate([parse(sacrifice)], combat.read_enemies(gone), **combat._context(gone)).lost, 24)
+
+    def test_under_necro_mastery_what_osty_takes_the_enemy_takes(self):
+        s = self.state([DEFEND(0)], osty=10, attack=10, energy=1)
+        foes, ctx = combat.read_enemies(s), combat._context(s)
+        plain = combat.simulate([], foes, **ctx).score
+        s["player"]["status"] = [{"id": "NECRO_MASTERY_POWER", "amount": 1}]
+        self.assertEqual(combat.simulate([], foes, **combat._context(s)).score - plain, 10.0)
+
+    def test_hang_hits_twice_as_hard_each_time(self):
+        hang = lambda i: card(i, "HANG", "Hang", "Attack", 1, "Deal 10 damage. Double the damage ALL Hang cards deal to this enemy.", "AnyEnemy")
+        foe = enemy("SLUG_0", 100, status=[{"id": "HANG_POWER", "amount": 4}])
+        s = combat_state([hang(0), hang(1)], [foe], energy=2)
+        foes = combat.read_enemies(s)
+        self.assertEqual(foes[0].hang, 4)
+        ctx = combat._context(s)
+        one = combat.simulate([parse(hang(0))], foes, **ctx).score - combat.simulate([], foes, **ctx).score
+        two = combat.simulate([parse(hang(0)), parse(hang(1))], foes, **ctx).score - combat.simulate([], foes, **ctx).score
+        self.assertEqual(one, 40.0)  # 10 x 4
+        self.assertGreater(two, combat.WIN_BONUS)  # 40 + 80: the enemy is dead
+        fresh = combat.read_enemies(combat_state([hang(0)], [enemy("SLUG_0", 100)]))
+        self.assertEqual(combat.simulate([parse(hang(0))], fresh, **ctx).score - combat.simulate([], fresh, **ctx).score, 10.0)
+
+    def test_block_that_keeps_osty_standing_is_worth_something(self):
+        s = self.state([DEFEND(0)], osty=10, attack=10, energy=1)
+        self.assertEqual(combat.expected_end_loss(s), 0)  # he takes it all
+        self.assertEqual(combat.choose_card(s), ("play_card", {"card_index": 0}))  # ... and with 5 Block keeps 5 HP
+        s = self.state([DEFEND(0)], osty=10, attack=0, energy=1)
+        self.assertIsNone(combat.choose_card(s))  # nothing coming: nothing to protect him from
+
     def test_an_osty_attack_goes_before_flatten_and_rattle(self):
         flatten = card(0, "FLATTEN", "Flatten", "Attack", 2, "Osty deals 12 damage. This card costs 0 [necrobinder_energy_icon.png] if Osty has attacked this turn.", "AnyEnemy")
         rattle = card(0, "RATTLE", "Rattle", "Attack", 1, "Osty deals 7 damage. Hits an additional time for each other time he has attacked this turn. (Hits 1 times)", "AnyEnemy")
@@ -280,12 +364,21 @@ class Necrobinder(unittest.TestCase):
         s = self.state([rattle, self.POKE(1)], osty=3, foe_hp=90, attack=0, energy=1)
         self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)
 
-
+    def test_doom_on_ourselves_counts_as_hp_already_gone(self):
         surge = card(0, "NEUROSURGE", "Neurosurge", "Power", 0, "Gain 3 energy. Draw 2 cards. At the start of your turn, apply 3 Doom to yourself.", "Self")
         boss = combat_state([surge, STRIKE(1)], [enemy("A", 300, attack=10)], hp=60, kind="boss")
-        self.assertEqual(combat.choose_card(boss)[1]["card_index"], 1)  # a long fight: never
+        self.assertEqual(combat.choose_card(boss)[1]["card_index"], 1)  # a long fight ahead: not yet
         small = combat_state([surge], [enemy("A", 30, attack=10)], hp=60)
         self.assertEqual(combat.choose_card(small), ("play_card", {"card_index": 0}))
+        # Round 8, the boss on 90 of 300 at 30 a round: three turns and one to spare is 12 Doom, on 60 HP.
+        late = combat_state([surge, STRIKE(1)], [{**enemy("A", 90, attack=10), "max_hp": 300}], hp=60, kind="boss")
+        late["battle"]["round"] = 8
+        self.assertEqual(combat.choose_card(late)[1]["card_index"], 0)
+        late["player"]["hp"] = 25  # ... which is too much of 25
+        self.assertEqual(combat.choose_card(late)[1]["card_index"], 1)
+        late["player"]["hp"] = 60
+        late["player"]["status"] = [{"id": "DOOM_POWER", "amount": 15}, {"id": "NEUROSURGE_POWER", "amount": 3}]  # a second one on top
+        self.assertEqual(combat.choose_card(late)[1]["card_index"], 1)
         # 75 HP with 66 Doom and 3 more on the way is 6 HP as far as the plan goes.
         hurt = combat_state([STRIKE(0)], [enemy("A", 300, attack=10)], hp=75, kind="boss")
         self.assertEqual(combat._context(hurt)["hp"], 75)

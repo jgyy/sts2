@@ -8,7 +8,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .cards import parse
+from .cards import CardInfo, parse
+from .crowd import rating as crowd_rating
 
 LETHAL_PENALTY = 1_000_000.0
 WIN_BONUS = 10_000.0
@@ -38,9 +39,13 @@ POWER_VALUE = {
     "WELL_LAID_PLANS": 5.0, "TRACKING": 5.0, "SHROUD": 5.0, "HAUNT": 5.0, "ORBIT": 5.0, "STORM": 5.0,
     "THUNDER": 5.0, "ACCELERANT": 4.0, "PILLAR_OF_CREATION": 4.0, "PALE_BLUE_DOT": 4.0, "FERAL": 4.0,
     "ITERATION": 3.0, "TRASH_TO_TREASURE": 3.0, "ROYALTIES": 2.0,
-    "ECHO_FORM": 18.0, "FRIENDSHIP": 12.0, "MACHINE_LEARNING": 10.0, "DEFRAGMENT": 10.0, "GENESIS": 9.0,
+    "ECHO_FORM": 22.0, "FRIENDSHIP": 12.0, "MACHINE_LEARNING": 10.0, "DEFRAGMENT": 10.0, "GENESIS": 9.0,
     # (Energy and a card every turn; 5 more on the Sovereign Blade every turn; 6 Doom every turn.)
     "DEMESNE": 20.0, "FURNACE": 10.0, "COUNTDOWN": 8.0,
+    # (Doom for every point of attack damage: half as much again to kill; two free cards every turn;
+    # the Sovereign Blade twice; Strength for every card made; a quarter more from Vulnerable enemies.)
+    "REAPER_FORM": 20.0, "VOID_FORM": 16.0, "SWORD_SAGE": 10.0, "ARSENAL": 8.0, "CRUELTY": 8.0, "MONARCHS_GAZE": 8.0,
+    "AUTOMATION": 7.0, "DEVOUR_LIFE": 6.0, "SPIRIT_OF_ASH": 6.0,
     "COOLANT": 8.0, "SPINNER": 8.0, "BUFFER": 8.0, "SENTRY_MODE": 8.0, "NECRO_MASTERY": 8.0, "LOOP": 7.0,
     "BLACK_HOLE": 7.0, "SLEIGHT_OF_FLESH": 6.0, "NEUROSURGE": 6.0, "DANSE_MACABRE": 4.0, "SUBROUTINE": 3.0,
     "PAGESTORM": 2.0,
@@ -93,6 +98,10 @@ class Enemy:
     asleep: int = 0  # Asleep: turns until it wakes by itself (losing HP wakes it at once)
     imbalanced: bool = False  # Imbalanced (Bowlbug Rock): Stunned next turn if its attack is blocked whole
     skittish: int = 0  # Skittish: Block it gains the first time it is hit this turn (0 once that has happened)
+    hang: int = 0  # Hang: what the Hang cards' damage on it is multiplied by (2, 4, 8 ...; 0: none played yet)
+    threat: float = 0.0  # damage a turn it has been doing in this fight (ordinary fights only; 0: not known)
+    grows: float = 0.0  # Strength it gains a turn (Ritual, Territorial, or what its Strength so far comes to)
+    hive: int = 0  # Personal Hive (the Entomancer): Dazed put into our draw pile for every Attack that hits it
 
     @property
     def worth(self) -> float:
@@ -215,10 +224,19 @@ def read_enemies(state: dict) -> list[Enemy]:
     player = state.get("player") or {}
     listed = (state.get("battle") or {}).get("enemies") or []
     raw = {str(e.get("entity_id")): e for e in listed}
+    seen = (state.get("_threat") or {}) if state.get("state_type") == "monster" else {}
+    rounds = max(1, int((state.get("battle") or {}).get("round") or 1) - 1)
     for e in listed:
         hp = int(e.get("hp") or 0)
         if hp <= 0:
             continue
+        # What it has done a turn so far in this fight. One that attacks and Buffs itself in the same
+        # move is growing: what it does now and half as much again, whatever it did while it slept.
+        kinds = [str(i.get("type", "")).lower() for i in e.get("intents") or []]
+        grows = any("buff" in k and "debuff" not in k for k in kinds) and any(map(_is_attack, e.get("intents") or []))
+        threat = float(seen.get(str(e.get("entity_id")), 0.0))
+        if grows and seen:
+            threat = 1.5 * max(threat, float(sum(intent_damage(i) for i in e.get("intents") or [])))
         # The Waterfall Giant, once killed, stands there on 999,999,999 HP for
         # the turn it takes to blow up. Nothing we do to it counts any more.
         spent = hp >= BEYOND_REACH
@@ -257,6 +275,10 @@ def read_enemies(state: dict) -> list[Enemy]:
                 adapts=_has_power(e, "ADAPTABLE"),
                 asleep=_stacks(e, "ASLEEP"),
                 imbalanced=_has_power(e, "IMBALANCED"),
+                hang=_stacks(e, "HANG"),
+                threat=threat,
+                hive=_stacks(e, "PERSONAL_HIVE"),
+                grows=max(float(_stacks(e, "RITUAL") + _stacks(e, "TERRITORIAL")), _stacks(e, "STRENGTH") / rounds),
                 skittish=0 if int(e.get("block") or 0) else _stacks(e, "SKITTISH"),  # (Block on it: it has been hit already)
                 max_hp=int(e.get("max_hp") or 0),
             )
@@ -429,3 +451,68 @@ def _next_wither(player: dict, round_no: int = 1) -> int:
             if m:
                 level = max(level, int(m.group(1) or 0))
     return 3 * (level + 1)
+
+
+def cards_left_this_turn(state: dict) -> int | None:
+    """How many more cards we may play this turn, when something limits it."""
+    player = state.get("player") or {}
+    played = int(state.get("_plays_this_turn") or 0)
+    limits = []
+    if _has_power(player, "RINGING"):  # "You can only play 1 card this turn."
+        limits.append(1)
+    if _has_power(player, "SLOTH"):  # "You cannot play more than 3 cards each turn."
+        limits.append(3)
+    for c in [*(player.get("hand") or []), *(player.get("relics") or [])]:  # (a relic too: Velvet Choker, 6 a turn)
+        m = re.search(r"cannot play more than (\d+) cards", str(c.get("description") or ""), re.I)
+        if m:
+            limits.append(int(m.group(1)))
+    return max(0, min(limits) - played) if limits else None
+
+
+def _poison_total(stack: int, turns: int) -> int:
+    """HP a Poison stack takes over the next `turns` turns (it loses 1 a turn)."""
+    stack = max(0, stack)
+    if stack >= turns:
+        return turns * stack - turns * (turns - 1) // 2
+    return stack * (stack + 1) // 2
+
+
+def _power_worth(c: CardInfo, long_fight: bool = True) -> float:
+    """What playing a Power is worth in an ordinary fight: from the table, else a guess from its cost.
+
+    In a boss or elite fight not less than other players' results say (crowd.py): a Power they
+    win with and the bot will not pay for is a dead card in the deck. An Ironclad took Barricade
+    (3 energy, 4 points here) and Dark Embrace as its best rewards and held them unplayed through
+    the fight it died in. (Not in an ordinary fight, four rounds long: with the floor there too,
+    act 2 rooms took 6.3 rounds instead of 4.5 for a quarter of an hour.)
+    """
+    worth = POWER_VALUE.get(c.key, 5.0 + 2.0 * max(c.cost, 0))
+    crowd = crowd_rating(c.key) if long_fight else None
+    return worth if crowd is None else max(worth, 2.5 * max(c.cost, 1) + 2.0 * (crowd - 4.0))
+
+
+def _set_up(playable: list[CardInfo], energy: int) -> tuple | None:
+    """A card worth playing with nobody to aim at: the enemy is gone for the turn and comes back.
+
+    Between two of the Test Subject's forms the bot used to end the turn with
+    energy in hand and Powers unplayed (Child of the Stars, Prowess, Loop).
+    Whatever lasts is worth playing now: Powers, orbs, Strength, next turn's
+    energy; and cards drawn while there is energy to use what they bring.
+    """
+    best, best_worth = None, 0.0
+    for c in playable:
+        if c.needs_target or c.type in ("Status", "Curse") or c.deadly or c.block_lock or (c.is_x and energy <= 0):
+            continue
+        # (X cards too: Dirge, "Summon 3 X times", stayed in the hand with 2 energy spare and Osty all that stood before 30 damage.)
+        x, cost = (energy, energy) if c.is_x else (1, c.cost)
+        worth = _power_worth(c) if c.type == "Power" else 0.0
+        worth += (4.0 * len(c.channel) + c.summon + 1.5 * c.souls) * x + 0.5 * c.forge + 2.5 * c.star_gain
+        worth += 4.0 * c.strength * c.strength_lasts + 3.5 * c.dexterity * c.dexterity_lasts
+        worth += 5.0 * c.next_energy + 1.5 * c.next_draw + 0.8 * c.next_block
+        if energy - cost > 0 or c.energy_gain:
+            worth += 1.0 * c.draw + 2.0 * c.energy_gain
+        worth -= 3.0 * c.hp_loss
+        worth /= cost + 0.5
+        if worth > best_worth:
+            best, best_worth = c, worth
+    return ("play_card", {"card_index": best.index}) if best is not None else None

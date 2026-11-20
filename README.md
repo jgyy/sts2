@@ -29,13 +29,19 @@ Slay the Spire 2  <-- STS2_MCP mod (HTTP on localhost:15526) -->  sts2bot (Pytho
     working when cards are added or rebalanced. For deck building it also has
     a hand-made rating of the cards met so far; cards it has no rating for are
     judged from their text.
+  - `crowd.py` is a second opinion on those ratings: how often other players'
+    runs were won with each card and how often they took it (tierspire.com,
+    about half a million runs a character). The two are mixed, and how much
+    the crowd counts is one of the settings `learn.py` tunes. Refresh the
+    tables after a game patch.
   - `learn.py` corrects those ratings from the bot's own results: for every
     card taken from a card reward it records how much further that run got
     than the character usually gets from that floor, and shifts the card's
     rating up or down accordingly (kept in `card_stats.json`).
     It also tunes a few of the bot's own settings the same way (how much HP
     is worth against damage, how eagerly to fight elites, when to upgrade
-    instead of rest, how picky to be with card rewards): every run plays with
+    instead of rest, how picky to be with card rewards, how much other
+    players' results count in a card's rating): every run plays with
     one value of each, chosen more and more often from the values whose runs
     went furthest (kept in `tuning.json`; `--no-tuning` turns this off).
   - `supervisor.py` starts Steam if it is not running, launches the game,
@@ -47,9 +53,10 @@ The bot is heuristic, not an LLM: it costs nothing to run nonstop. It plays
 simple, sensible Spire (kill when it can, block when it must) and will lose
 plenty of runs.
 
-Status: plays the real game (v0.111). With the Ironclad it regularly reaches
-the last boss and has beaten it once in about 80 runs. Other characters are
-played from the text on their cards only, and do worse.
+Status (2026-11-20): plays the real game (v0.111) with all five characters.
+27 wins in about 680 runs; every character has won on Ascension 4, and the
+Silent and the Defect on Ascension 5. About one run in twenty is won there;
+most runs end at the act 2 boss or the last one.
 
 ## Setup
 
@@ -167,7 +174,12 @@ In `~/.local/state/sts2bot/` (change with `--log-dir`):
 `scripts/fightlog.py` reads them fight by fight (the bot has to run with `-v`):
 `bosses` prints the record against each boss, `costs` what each ordinary
 encounter costs in HP, and `show 'YYYY-MM-DD HH:MM'` one fight round by round
-with the cards that were in hand and what was played.
+with the cards that were in hand and what was played. For judging a change:
+`knobs` (how runs went under each value of each tuned setting), `deaths` (the
+fight every run ended in), `pace` (rounds and damage a round in ordinary
+fights, by act), `reads` (what the planner read on each card against what
+playing it did) and `unplayed` (cards left in the hand on turns that could
+have paid for them).
 
 ## Options
 
@@ -203,7 +215,8 @@ real game.
 ## Strategy notes
 
 `docs/strategy/` holds community strategy collected for the bot to consider (general play, and each character),
-with a list of what the bot already does and what is worth trying next. Nothing in it is wired into the code.
+with a list of what the bot already does and what is worth trying next. The notes themselves are not wired into
+the code; the card and relic win rates in `sts2bot/crowd.py` and `sts2bot/events.py` are.
 
 ## Uninstall
 

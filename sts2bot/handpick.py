@@ -36,11 +36,14 @@ def turn_costs(state: dict, cards: list[dict]) -> dict[int, float] | None:
 
     pool = [whole(c) for c in cards]
     kind = state.get("_fight") if state.get("_fight") in FIGHTS else "monster"
+    # Toasty Mittens ("Exhaust 1 card from your Hand and gain 1 Strength") asks before it gives: the
+    # texts on show are a point short on every attack, and one kill was missed by exactly that.
+    gift = sum(int(m.group(1)) for r in player.get("relics") or [] if (m := re.search(r"exhaust 1 card from your hand and gain (\d+) strength", str(r.get("description") or ""), re.I)))
     scores: list[float] = []
     for skip in range(len(pool)):
         rest = [{**c, "index": n} for n, c in enumerate(c for i, c in enumerate(pool) if i != skip)]
         plan: dict = {}
-        combat.choose_card({**state, "state_type": kind, "player": {**player, "hand": rest}}, plan)
+        combat.choose_card({**state, "state_type": kind, "_might": gift, "player": {**player, "hand": rest}}, plan)
         if "score" not in plan:
             return None
         scores.append(plan["score"])
