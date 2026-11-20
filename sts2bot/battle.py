@@ -136,44 +136,46 @@ def intent_hits(intent: dict) -> int:
     return 1 if intent_damage(intent) else 0
 
 
+def _shown(creature: dict, power_id: str, blank: int, missing=None):
+    """The number the game shows on a power (`blank` if it shows none; `missing` if the creature has no such power).
+
+    The game names them like VULNERABLE_POWER."""
+    for p in creature.get("status") or []:
+        if str(p.get("id", "")).upper().removesuffix("_POWER") == power_id:
+            amount = p.get("amount")
+            return int(amount) if isinstance(amount, (int, float)) else blank
+    return missing
+
+
 def power_amount(creature: dict, power_id: str) -> int:
-    """Stacks of a power on a creature. The game names them like VULNERABLE_POWER."""
-    for p in creature.get("status") or []:
-        pid = str(p.get("id", "")).upper()
-        if pid.endswith("_POWER"):
-            pid = pid[: -len("_POWER")]
-        if pid == power_id:
-            amount = p.get("amount")
-            return int(amount) if isinstance(amount, (int, float)) and amount else 1
-    return 0
-
-
-def _slow_percent(creature: dict) -> int:
-    for p in creature.get("status") or []:
-        if str(p.get("id", "")).upper() in ("SLOW", "SLOW_POWER"):
-            amount = p.get("amount")
-            return int(amount) if isinstance(amount, (int, float)) else 0
-    return -1
+    """Stacks of a power on a creature (1 for a power that shows no number)."""
+    n = _shown(creature, power_id, 1)
+    return 0 if n is None else n or 1
 
 
 def _has_power(creature: dict, power_id: str) -> bool:
     return power_amount(creature, power_id) != 0
 
 
+def _stacks(creature: dict, power_id: str) -> int:
+    return max(0, power_amount(creature, power_id))
+
+
 def end_of_turn_block(player: dict) -> int:
     """Block the player gains by itself when the turn ends (Plating)."""
-    return max(0, power_amount(player, "PLATING"))
+    return _stacks(player, "PLATING")
 
 
 # (The mod turns line breaks into spaces: Beckon reads "... in your Hand,  lose 6 HP." with two.
 # With one space in the pattern the Soul Fysh's Beckons went unseen, 6 HP a card every turn.)
+_WITHER = re.compile(r"Wither(?:\+(\d+))?$")
 _HAND_BURN = re.compile(r"at the end of your turn,\s*if this is in your hand,\s*(?:lose|take)\s+(\d+)\s+(?:hp|damage)", re.I)
 
 
 def end_of_turn_loss(player: dict) -> int:
     """Damage we take when our turn ends, before the enemy moves (Disintegration). It eats
     into Block first. Leaving it out made the bot think it could afford a hit that killed it."""
-    return max(0, power_amount(player, "DISINTEGRATION")) if _has_power(player, "DISINTEGRATION") else 0
+    return _stacks(player, "DISINTEGRATION")
 
 
 def hand_burns(player: dict) -> tuple:
@@ -190,7 +192,7 @@ def hand_burns(player: dict) -> tuple:
         m = _HAND_BURN.search(text)
         if m:
             amount = int(m.group(1))
-            w = re.match(r"Wither(?:\+(\d+))?$", str(c.get("name") or ""))
+            w = _WITHER.match(str(c.get("name") or ""))
             if w:  # whatever the text says, a Wither has cost 3 for each level
                 amount = max(amount, 3 * (int(w.group(1) or 0) + 1))
             out.append((int(c.get("index", -1)), amount, "damage" in m.group(0).lower()))
@@ -206,7 +208,10 @@ def osty_hp(player: dict) -> int:
 
 def read_enemies(state: dict) -> list[Enemy]:
     out = []
-    for e in (state.get("battle") or {}).get("enemies") or []:
+    player = state.get("player") or {}
+    listed = (state.get("battle") or {}).get("enemies") or []
+    raw = {str(e.get("entity_id")): e for e in listed}
+    for e in listed:
         hp = int(e.get("hp") or 0)
         if hp <= 0:
             continue
@@ -221,44 +226,42 @@ def read_enemies(state: dict) -> list[Enemy]:
                 block=int(e.get("block") or 0),
                 vulnerable=_has_power(e, "VULNERABLE"),
                 weak=_has_power(e, "WEAK"),
-                vuln_turns=max(0, power_amount(e, "VULNERABLE")),
-                weak_turns=max(0, power_amount(e, "WEAK")),
-                slippery=max(0, power_amount(e, "SLIPPERY")),
+                vuln_turns=_stacks(e, "VULNERABLE"),
+                weak_turns=_stacks(e, "WEAK"),
+                slippery=_stacks(e, "SLIPPERY"),
                 damage_mult=0.0 if spent else 0.5 if _has_power(e, "FLUTTER") or _has_power(e, "SOAR") else 1.0,
                 # Intangible: every hit takes 1 HP, whatever its size.
-                hit_cap=1 if _has_power(e, "INTANGIBLE") else max(0, power_amount(e, "HARD_TO_KILL")),
-                enrage=max(0, power_amount(e, "ENRAGE")),
-                thorns=max(0, power_amount(e, "THORNS")),
+                hit_cap=1 if _has_power(e, "INTANGIBLE") else _stacks(e, "HARD_TO_KILL"),
+                enrage=_stacks(e, "ENRAGE"),
+                thorns=_stacks(e, "THORNS"),
                 revives=_has_power(e, "ILLUSION"),
-                stun_at=max(0, power_amount(e, "PLOW")),
-                slow=_slow_percent(e),
+                stun_at=_stacks(e, "PLOW"),
+                slow=_shown(e, "SLOW", 0, -1),
                 minion=_has_power(e, "MINION"),
                 keeps_block=_has_power(e, "BURROWED") or _has_power(e, "BARRICADE"),
-                artifact=max(0, power_amount(e, "ARTIFACT")),
-                poison=max(0, power_amount(e, "POISON")),
-                doom=max(0, power_amount(e, "DOOM")),
+                artifact=_stacks(e, "ARTIFACT"),
+                poison=_stacks(e, "POISON"),
+                doom=_stacks(e, "DOOM"),
                 incoming=sum(intent_damage(i) for i in e.get("intents") or []),
                 incoming_hits=sum(intent_hits(i) for i in e.get("intents") or []),
                 vuln_mult=2.0 if _has_power(e, "DEBILITATE") else 1.5,
                 weak_cut=0.5 if _has_power(e, "DEBILITATE") else 0.75,
-                weak_mult=1.5 if _has_power(state.get("player") or {}, "TRACKING") else 1.0,
+                weak_mult=1.5 if _has_power(player, "TRACKING") else 1.0,
                 scar=8.0 * _has_power(e, "PAPER_CUTS") + 8.0 * _has_power(e, "PAINFUL_STABS"),
                 rage=_has_power(e, "CRAB_RAGE"),
-                respawns=max(0, power_amount(e, "STOCK")),
+                respawns=_stacks(e, "STOCK"),
                 adapts=_has_power(e, "ADAPTABLE"),
-                asleep=max(0, power_amount(e, "ASLEEP")),
+                asleep=_stacks(e, "ASLEEP"),
                 max_hp=int(e.get("max_hp") or 0),
             )
         )
     # Surrounded: we face whoever we targeted last, and the one behind us hits
     # 50% harder. The fight starts with us facing right.
-    if _has_power(state.get("player") or {}, "SURROUNDED"):
+    if _has_power(player, "SURROUNDED"):
         facing = state.get("_facing")
-        raw = {str(e.get("entity_id")): e for e in (state.get("battle") or {}).get("enemies") or []}
         for e in out:
-            left = _has_power(raw.get(e.entity_id) or {}, "BACK_ATTACK_LEFT")
-            right = _has_power(raw.get(e.entity_id) or {}, "BACK_ATTACK_RIGHT")
-            e.flanker = left or right
+            left = _has_power(raw[e.entity_id], "BACK_ATTACK_LEFT")
+            e.flanker = left or _has_power(raw[e.entity_id], "BACK_ATTACK_RIGHT")
             if e.flanker:
                 e.behind = e.entity_id != facing if facing in raw else left
 
@@ -295,7 +298,7 @@ def kill_reach(survivors: list, blow_is_all: bool) -> float:
 
 def constrict(player: dict) -> int:
     """Damage we take at the end of our turn while the Strangler lives."""
-    return max(0, power_amount(player, "CONSTRICT")) if _has_power(player, "CONSTRICT") else 0
+    return _stacks(player, "CONSTRICT")
 
 
 def expected_loss(state: dict) -> int:
@@ -308,12 +311,7 @@ def expected_loss(state: dict) -> int:
 def _sandpit(state: dict) -> int | None:
     """Turns until the Sandpit swallows us (None when there is none)."""
     creatures = [state.get("player") or {}, *((state.get("battle") or {}).get("enemies") or [])]
-    for c in creatures:
-        for p in c.get("status") or []:
-            if str(p.get("id", "")).upper() in ("SANDPIT", "SANDPIT_POWER"):
-                amount = p.get("amount")
-                return int(amount) if isinstance(amount, (int, float)) else 1
-    return None
+    return next((n for c in creatures if (n := _shown(c, "SANDPIT", 1)) is not None), None)
 
 
 def _escape_odds(player: dict, hand_draw: int = 5) -> tuple:
@@ -398,7 +396,7 @@ def _next_wither(player: dict, round_no: int = 1) -> int:
     level = max(0, (round_no - 1) // 3)
     for pile in ("hand", "draw_pile", "discard_pile", "exhaust_pile"):
         for c in player.get(pile) or []:
-            m = re.match(r"Wither(?:\+(\d+))?$", str(c.get("name") or ""))
+            m = _WITHER.match(str(c.get("name") or ""))
             if m:
                 level = max(level, int(m.group(1) or 0))
     return 3 * (level + 1)

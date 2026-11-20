@@ -6,6 +6,7 @@ import json
 import urllib.error
 import urllib.request
 from typing import Any
+from urllib.parse import quote
 
 
 class GameUnavailable(Exception):
@@ -21,12 +22,8 @@ class Client:
         self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
     def _request(self, url: str, body: dict | None = None) -> dict[str, Any]:
-        data = None
-        headers = {}
-        if body is not None:
-            data = json.dumps(body).encode()
-            headers["Content-Type"] = "application/json"
-        req = urllib.request.Request(url, data=data, headers=headers)
+        data = None if body is None else json.dumps(body).encode()
+        req = urllib.request.Request(url, data=data, headers={} if body is None else {"Content-Type": "application/json"})
         try:
             with self._opener.open(req, timeout=self.timeout) as resp:
                 raw = resp.read()
@@ -63,8 +60,6 @@ class Client:
 
     def card(self, card_id: str) -> dict[str, Any] | None:
         """The game's own entry for a card we have met: its text as it is and as it is upgraded."""
-        from urllib.parse import quote
-
         found = self._request(f"{self.base}/api/v1/wiki?type=card&limit=3&q={quote(card_id)}")
         for entry in found.get("results") or []:
             if str(entry.get("id")) == card_id:

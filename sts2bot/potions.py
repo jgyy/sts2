@@ -76,10 +76,10 @@ def potion_actions(state: dict, planned_loss: int | None = None) -> list[Action]
             continue
         if not big_fight and len(out) >= spare:
             break
-        # (Nor what makes our hits bigger: two Flex Potions went on round 2 against a Vantom with 7 Slippery left.)
-        if slippery and re.search(r"deals? \d+ damage|\bstrength\b|\bvigor\b|\bvulnerable\b|\bpoison\b|\bdoom\b", str(p.get("description") or ""), re.I):
-            continue  # every hit on a Slippery enemy takes 1 HP: keep it for later
         text = str(p.get("description") or "")
+        # (Nor what makes our hits bigger: two Flex Potions went on round 2 against a Vantom with 7 Slippery left.)
+        if slippery and re.search(r"deals? \d+ damage|\bstrength\b|\bvigor\b|\bvulnerable\b|\bpoison\b|\bdoom\b", text, re.I):
+            continue  # every hit on a Slippery enemy takes 1 HP: keep it for later
         if passing and not danger and (str(p.get("target_type")) in ("AnyEnemy", "AllEnemies") or re.search(r"enem(y|ies)", text, re.I)):
             continue
         both = re.search(r"deals? (\d+) damage to all (?:players|characters)", text, re.I)
@@ -97,7 +97,7 @@ def potion_actions(state: dict, planned_loss: int | None = None) -> list[Action]
             continue  # healing is wasted on a full bar; it is for later in the fight
         if "SNECKO" in f"{p.get('id')} {p.get('name')}".upper().replace(" ", "_"):
             continue  # random card costs wreck a planner that counts on its energy
-        if _DEFENSIVE_POTION.search(str(p.get("description") or "")) and expected_loss(state) < min(12, hp):
+        if _DEFENSIVE_POTION.search(text) and expected_loss(state) < min(12, hp):
             continue  # Block, Weak and the like are for the turn something big is coming
         params: dict = {"slot": int(p.get("slot", 0))}
         if str(p.get("target_type")) == "AnyEnemy":
@@ -110,9 +110,10 @@ def describe(state: dict) -> str:
     """One line with everything the planner looked at (for the debug log)."""
     player = state.get("player") or {}
     battle = state.get("battle") or {}
+    powers_of = lambda c: ",".join(f"{str(s.get('id', '')).replace('_POWER', '')}:{s.get('amount')}" for s in c.get("status") or [])
     foes = []
     for e in battle.get("enemies") or []:
-        powers = ",".join(f"{str(s.get('id', '')).replace('_POWER', '')}:{s.get('amount')}" for s in e.get("status") or [])
+        powers = powers_of(e)
         intents = "+".join(f"{i.get('type')}{i.get('label') or ''}" for i in e.get("intents") or [])
         foes.append(f"{e.get('entity_id')} {e.get('hp')}hp/{e.get('block')}blk [{powers}] {intents}")
     def read(c: dict) -> str:
@@ -126,7 +127,7 @@ def describe(state: dict) -> str:
         f"{c.get('index')}:{c.get('name')}({c.get('cost')}{'' if c.get('can_play', True) else '!'}{read(c)})"
         for c in player.get("hand") or []
     )
-    mine = ",".join(f"{str(s.get('id', '')).replace('_POWER', '')}:{s.get('amount')}" for s in player.get("status") or [])
+    mine = powers_of(player)
     extra = ""
     if player.get("stars") is not None:
         extra += f" stars {player.get('stars')}"

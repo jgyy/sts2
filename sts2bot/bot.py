@@ -17,6 +17,11 @@ from .strategy import Memory
 log = logging.getLogger("sts2bot")
 
 COMBAT_STATES = ("monster", "elite", "boss")
+# Screens strategy.py has a handler for, under the screen's own name (the map's is map_screen).
+SCREENS = {
+    "hand_select", "rewards", "card_reward", "map", "event", "rest_site", "shop", "treasure", "card_select",
+    "bundle_select", "relic_select", "crystal_sphere", "game_over", "overlay",
+}
 MAX_STRIKES = 2  # failed attempts before an action is shelved for the current state
 MAX_PLAYS_PER_TURN = 40
 _VOLATILE = {"is_hovered", "is_highlighted"}
@@ -143,26 +148,11 @@ class Bot:
             return strategy.menu(state, mem, self.character)
         if kind in COMBAT_STATES:
             return self._combat(state)
-        handler = {
-            "hand_select": strategy.hand_select,
-            "rewards": strategy.rewards,
-            "card_reward": strategy.card_reward,
-            "map": strategy.map_screen,
-            "event": strategy.event,
-            "rest_site": strategy.rest_site,
-            "shop": strategy.shop,
-            "treasure": strategy.treasure,
-            "card_select": strategy.card_select,
-            "bundle_select": strategy.bundle_select,
-            "relic_select": strategy.relic_select,
-            "crystal_sphere": strategy.crystal_sphere,
-            "game_over": strategy.game_over,
-            "overlay": strategy.overlay,
-        }.get(kind)
         if kind == "fake_merchant":
             return strategy.shop(state, mem, key="fake_merchant")
         if kind == "hand_select":
             state = {**state, "_fight": self._fight_kind}  # the screen does not say what kind of fight it is in
+        handler = getattr(strategy, "map_screen" if kind == "map" else str(kind), None) if kind in SCREENS else None
         return handler(state, mem) if handler else []
 
     def _upgrade_gain(self, card: dict) -> float | None:
@@ -183,32 +173,30 @@ class Bot:
             self._upgrades[cid] = gain
         return self._upgrades[cid]
 
+    def _profile(self) -> dict | None:
+        """The game's own records (None if they cannot be asked for: an old mod or a hiccup must not stop the bot)."""
+        try:
+            profile = self.client.profile()
+            return profile if isinstance(profile, dict) else None
+        except Exception as e:
+            log.debug("could not read the profile: %s", e)
+            return None
+
+    @staticmethod
+    def _epochs(profile: dict) -> dict:
+        return {str(e.get("id")): str(e.get("state")) for e in profile.get("epochs") or [] if e.get("id")}
+
     def _refresh_ascensions(self) -> None:
         """Ask the game how far each character has climbed (used to pick who plays next)."""
-        fetch = getattr(self.client, "profile", None)
-        if fetch is None:
+        profile = self._profile()
+        if profile is None:
             return
+        if isinstance(profile.get("total_wins"), (int, float)):
+            self._wins_seen = int(profile["total_wins"])
         try:
-            profile = fetch()
-            if isinstance(profile.get("total_wins"), (int, float)):
-                self._wins_seen = int(profile["total_wins"])
-            self.mem.epochs = {str(e.get("id")): str(e.get("state")) for e in profile.get("epochs") or [] if e.get("id")}
-            chars = profile.get("characters") or []
-            self.mem.max_ascension = {str(c.get("id")): int(c.get("max_ascension") or 0) for c in chars if c.get("id")}
-            kills: dict = {str(c.get("id")).upper(): 0 for c in chars if c.get("id")}
-            for enc in profile.get("encounter_stats") or []:
-                if str(enc.get("id")).upper().endswith("_BOSS"):
-                    for row in enc.get("by_character") or []:
-                        who = str(row.get("character")).upper()
-                        kills[who] = kills.get(who, 0) + int(row.get("wins") or 0)
-            self.mem.boss_kills = kills
-            # How far each character has been getting lately ("The Defect" in our records is DEFECT here).
-            for name, finals in self.card_stats.finals.items():
-                recent = finals[-15:]
-                for cid in kills:
-                    if cid in name.upper().replace(" ", "") and recent:
-                        self.mem.strength[cid] = min(1.0, sum(recent) / len(recent) / 48.0)
-        except Exception as e:  # an old mod or a hiccup must not stop the run from starting
+            self.mem.max_ascension = {str(c.get("id")): int(c.get("max_ascension") or 0) for c in profile.get("characters") or [] if c.get("id")}
+            self.mem.epochs = self._epochs(profile)
+        except (AttributeError, TypeError, ValueError) as e:
             log.debug("could not read the profile: %s", e)
 
     def _combat(self, state: dict) -> list[tuple[str, dict]]:
@@ -220,7 +208,7 @@ class Bot:
             return []
         self._fight_kind = str(state.get("state_type"))
         self._note_deck(state)
-        key = (*self._where(state), battle.get("round"))
+        key = (*strategy._where(state), battle.get("round"))
         if key != self._turn_key:
             self._turn_key, self._turn_plays = key, 0
         if key[:2] != self._facing_fight:
@@ -280,19 +268,14 @@ class Bot:
                 self.mem.deck_size = len(player.get("hand") or []) + int(player.get("draw_pile_count") or 0)
             return
         keep = ("id", "name", "type", "cost", "star_cost", "description", "rarity", "is_upgraded")
-        cards = [{k: c.get(k) for k in keep if c.get(k) is not None} for c in player.get("hand") or []]
         pile = player.get("draw_pile")
-        if isinstance(pile, list) and len(pile) == int(player.get("draw_pile_count") or 0):
-            cards += [{k: c.get(k) for k in keep if c.get(k) is not None} for c in pile]
+        whole = isinstance(pile, list) and len(pile) == int(player.get("draw_pile_count") or 0)
+        cards = [{k: c.get(k) for k in keep if c.get(k) is not None} for c in (player.get("hand") or []) + (pile if whole else [])]
+        if whole:
             self.mem.deck = [c for c in cards if str(c.get("type")) != "Status" and str(c.get("name")) not in NOT_OURS]
             self.mem.deck_size = len(self.mem.deck)
         else:  # a mod that does not show the piles: the count has to do
             self.mem.deck_size = len(cards) + int(player.get("draw_pile_count") or 0)
-
-    @staticmethod
-    def _where(state: dict) -> tuple:
-        run = state.get("run") or {}
-        return (run.get("act"), run.get("floor"))
 
     # -------------------------------------------------------------- acting
 
@@ -307,7 +290,7 @@ class Bot:
                     self.mem.deck_size += 1
                     self.mem.picks.append([(state.get("run") or {}).get("floor"), str(c.get("name"))])
         elif action == "skip_card_reward":
-            where = self._where(state)
+            where = strategy._where(state)
             self.mem.card_skips[where] = self.mem.card_skips.get(where, 0) + 1
         elif action in ("play_card", "use_potion"):
             self._turn_plays += 1
@@ -319,7 +302,6 @@ class Bot:
             option = str(params.get("option"))
             if state.get("menu_screen") == "character_select" and option not in ("confirm", "embark"):
                 self.mem.character_selected = True
-                self.mem.current_character = option
             elif option == "abandon_run":
                 log.warning("abandoning the current run")
             elif option in ("yes", "confirm") and self.abandon_next and state.get("menu_screen") == "popup":
@@ -347,26 +329,22 @@ class Bot:
     def _note_powers(self, state: dict) -> None:
         """Log each power's rules text the first time it is met (the planner only
         knows the ones it was taught; this is how the rest get noticed)."""
+        def once(seen: str, message: str, *args) -> None:
+            if seen not in self._seen_powers:
+                self._seen_powers.add(seen)
+                log.info(message, *args)
+
         creatures = [state.get("player") or {}, *((state.get("battle") or {}).get("enemies") or [])]
         for c in creatures:
             for p in c.get("status") or []:
-                pid = str(p.get("id"))
-                if pid not in self._seen_powers:
-                    self._seen_powers.add(pid)
-                    log.info("power %s (on %s): %s", pid, c.get("name") or c.get("character") or "player", p.get("description"))
+                once(str(p.get("id")), "power %s (on %s): %s", p.get("id"), c.get("name") or c.get("character") or "player", p.get("description"))
         # Same for keywords on our cards (enchantments, afflictions a boss puts on them, ...),
         # and for the cards a fight puts in our hand (Wither, Beckon, Frantic Escape, ...).
         for c in (state.get("player") or {}).get("hand") or []:
             if str(c.get("type")) in ("Status", "Curse"):
-                name = "card:" + str(c.get("name"))
-                if name not in self._seen_powers:
-                    self._seen_powers.add(name)
-                    log.info("card %s (%s, cost %s): %s", c.get("name"), c.get("type"), c.get("cost"), c.get("description"))
+                once(f"card:{c.get('name')}", "card %s (%s, cost %s): %s", c.get("name"), c.get("type"), c.get("cost"), c.get("description"))
             for k in c.get("keywords") or []:
-                name = "kw:" + str(k.get("name"))
-                if name not in self._seen_powers:
-                    self._seen_powers.add(name)
-                    log.info("keyword %s (on %s): %s", k.get("name"), c.get("name"), k.get("description"))
+                once(f"kw:{k.get('name')}", "keyword %s (on %s): %s", k.get("name"), c.get("name"), k.get("description"))
 
     def _note_state(self, state: dict) -> None:
         kind = state.get("state_type")
@@ -383,7 +361,7 @@ class Bot:
                 # wins (the Regent's and the Silent's first) went down as losses.
                 self._wins_asked = True
                 self._wins_seen = self._profile_wins()
-            where = self._where(state)
+            where = strategy._where(state)
             if where != self._last_where:
                 self._last_where = where
                 p = state.get("player") or {}
@@ -402,34 +380,19 @@ class Bot:
 
     def _profile_wins(self) -> int | None:
         """Total wins according to the game's own records (None if it cannot be asked)."""
-        fetch = getattr(self.client, "profile", None)
-        if fetch is None:
-            return None
-        try:
-            wins = fetch().get("total_wins")
-        except Exception as e:
-            log.debug("could not read the profile: %s", e)
-            return None
+        wins = (self._profile() or {}).get("total_wins")
         return int(wins) if isinstance(wins, (int, float)) else None
 
     def _note_epochs_earned(self) -> None:
-        """Keep count of runs that earned a character nothing, so "auto" can move on from it."""
-        who = self.mem.current_character.upper()
-        fetch = getattr(self.client, "profile", None)
-        if not who or fetch is None:
+        """Log the Timeline epochs the run just finished has earned, and remember where the Timeline stands."""
+        profile = self._profile()
+        if profile is None:
             return
-        try:
-            epochs = {str(e.get("id")): str(e.get("state")) for e in fetch().get("epochs") or [] if e.get("id")}
-        except Exception as e:
-            log.debug("could not read the profile: %s", e)
-            return
+        epochs = self._epochs(profile)
         earned = lambda table: {k for k, v in table.items() if v in strategy._EARNED}
         new = earned(epochs) - earned(self.mem.epochs)
         if new:
             log.info("epochs earned this run: %s", ", ".join(sorted(new)))
-            self.mem.epoch_drought[who] = 0
-        else:
-            self.mem.epoch_drought[who] = self.mem.epoch_drought.get(who, 0) + 1
         self.mem.epochs = epochs
 
     def _record_run(self, state: dict) -> None:
@@ -590,11 +553,7 @@ class Bot:
             fragile = action in ("proceed", "shop_purchase")
             # Embarking loads the whole run; clicking the character again
             # while it does crashed the game. Wait for the menu to go away.
-            embarking = (
-                action == "menu_select"
-                and state.get("menu_screen") == "character_select"
-                and str(params.get("option")) in ("confirm", "embark")
-            )
+            embarking = action == "menu_select" and state.get("menu_screen") == "character_select" and str(params.get("option")) in ("confirm", "embark")
             if fragile or embarking:
                 self.sleep(0.4)
             if self.clock() < self.careful_until:

@@ -13,8 +13,8 @@ from dataclasses import dataclass, field
 
 from .learn import knob
 from .potions import BOSS_FLOORS
-from .events import _ANCIENT, _event_option_value, event  # noqa: F401  (events live in their own module)
-from .cards import _card_key, deck_value, is_basic, is_junk, is_known as _known_card, parse as _parse
+from .events import _event_option_value, event  # noqa: F401  (events live in their own module)
+from .cards import _card_key, deck_value, is_basic, is_junk, parse as _parse
 from . import handpick
 
 Action = tuple[str, dict]
@@ -49,10 +49,6 @@ class Memory:
     max_ascension: dict = field(default_factory=dict)  # character id -> highest unlocked ascension
     ascension_waits: int = 0  # times we held off embarking for the ascension level to show
     epochs: dict = field(default_factory=dict)  # epoch id -> state, from the game's profile
-    epoch_drought: dict = field(default_factory=dict)  # character id -> runs in a row that earned no epoch
-    boss_kills: dict | None = None  # character id -> bosses killed so far, from the game's records
-    strength: dict = field(default_factory=dict)  # character id -> how far its recent runs got (0..1)
-    current_character: str = ""  # who the run in progress is played with
     timeline_done: bool = False  # the Timeline has nothing more to reveal this visit
     timeline_stuck: set = field(default_factory=set)  # epochs it could not reveal (not retried)
 
@@ -75,20 +71,15 @@ def _where(state: dict) -> tuple:
     return (run.get("act"), run.get("floor"))
 
 
-def _hp_ratio(state: dict) -> float:
+def _vitals(state: dict) -> tuple[dict, int, int]:
+    """(the player, HP, Max HP)."""
     p = state.get("player") or {}
-    return int(p.get("hp") or 0) / max(1, int(p.get("max_hp") or 1))
+    return p, int(p.get("hp") or 0), max(1, int(p.get("max_hp") or 1))
 
 
 def _option_names(options) -> list[str]:
     """Menu options come either as strings or as {name, enabled} objects."""
-    out = []
-    for o in options or []:
-        if isinstance(o, str):
-            out.append(o)
-        elif isinstance(o, dict) and o.get("enabled", True) and o.get("name"):
-            out.append(str(o["name"]))
-    return out
+    return [str(o if isinstance(o, str) else o["name"]) for o in options or [] if isinstance(o, str) or (isinstance(o, dict) and o.get("enabled", True) and o.get("name"))]
 
 
 # --------------------------------------------------------------------- menu
@@ -118,20 +109,15 @@ def menu(state: dict, mem: Memory, character: str) -> list[Action]:
     if screen == "character_select":
         chars = [c for c in state.get("characters") or [] if not c.get("locked")]
         ids = [str(c.get("id")) for c in chars]
-        want = choose_character(
-            character, ids, mem.runs_finished, mem.max_ascension, mem.epochs, mem.epoch_drought, mem.boss_kills, mem.strength
-        )
+        want = choose_character(character, ids, mem.runs_finished, mem.max_ascension, mem.epochs)
         select = [("menu_select", {"option": want})] if want else []
         embark = pick("confirm", "embark")
         if not mem.character_selected:
             return select + embark
         # Every run is played at the highest level the character has unlocked:
         # a win there is what unlocks the next one.
-        raise_asc: list[Action] = []
         top, now = state.get("max_ascension"), state.get("ascension")
-        aim = top
-        if isinstance(aim, int) and isinstance(now, int) and now != aim:
-            raise_asc = [("set_ascension", {"level": aim})]
+        raise_asc: list[Action] = [("set_ascension", {"level": top})] if isinstance(top, int) and isinstance(now, int) and now != top else []
         # The screen takes a moment to show the levels of the character just
         # picked. Embarking before it does started the run at ascension 0 even
         # though a higher one was unlocked, so wait for it (but not for ever).
@@ -162,30 +148,10 @@ def missing_epochs(character: str, epochs: dict | None) -> int:
     return sum(1 for eid, state in (epochs or {}).items() if prefix.match(str(eid).upper()) and state not in _EARNED)
 
 
-BOSSES_FOR_EPOCH = 15
-TOTAL_EPOCHS = 57  # the profile only lists the score epochs as they come up
-
-
-def epochs_left(epochs: dict | None) -> bool:
-    """True while the Timeline still has something to unlock (or we cannot tell)."""
-    if not epochs:
-        return False  # no profile to go by: behave as if there were no Timeline
-    return len(epochs) < TOTAL_EPOCHS or any(state not in _EARNED for state in epochs.values())
-
-
 _SESSION = random.SystemRandom().getrandbits(32)  # so a restart does not replay the same draws
 
 
-def choose_character(
-    setting: str,
-    unlocked: list[str],
-    runs_finished: int,
-    max_ascension: dict | None = None,
-    epochs: dict | None = None,
-    drought: dict | None = None,
-    boss_kills: dict | None = None,
-    strength: dict | None = None,
-) -> str | None:
+def choose_character(setting: str, unlocked: list[str], runs_finished: int, max_ascension: dict | None = None, epochs: dict | None = None) -> str | None:
     """`setting` is a character id, or "auto" / "cycle" / "random" over the unlocked ones.
 
     "auto" first plays the characters that still have a Timeline epoch of
@@ -229,16 +195,7 @@ def choose_character(
 
 # ---------------------------------------------------------------------- map
 
-_ROOM_BASE = {
-    "Monster": 1.5,
-    "Unknown": 2.2,
-    "Treasure": 4.0,
-    "RestSite": 3.0,
-    "Shop": 1.0,
-    "Elite": 2.5,
-    "Boss": 0.0,
-    "Ancient": 3.0,
-}
+_ROOM_BASE = {"Unknown": 2.2, "Treasure": 4.0, "Boss": 0.0, "Ancient": 3.0}  # (the other kinds are worked out below)
 
 
 EARLY_ROWS = 8  # act 1 rows where the deck is still close to the starter deck
@@ -295,9 +252,7 @@ def boss_odds(hp_ratio: float) -> float:
 REST_HEAL = 0.3  # of Max HP
 
 
-def path_value(
-    rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, act: int, heal_after_fight: int = 0, harsh: float = 1.0
-) -> float:
+def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, act: int, harsh: float = 1.0) -> float:
     """Expected worth of walking through `rooms` (type, row) in order, starting at `hp`.
 
     Rewards along the way (relics, cards, upgrades) are weighed against the
@@ -323,7 +278,7 @@ def path_value(
                 score -= 8.0 if act >= 3 else 4.0
             elif kind == "Monster" and act >= 3 and hp < 0.55 * max_hp:
                 score -= 1.5  # (2 deaths in 23)
-            hp += heal_after_fight - cost * harsh
+            hp -= cost * harsh
             score += knob("elite_worth") if kind == "Elite" else 1.0
             gold += 30 if kind == "Elite" else 15
             if hp <= 0:
@@ -336,10 +291,10 @@ def path_value(
             hp = min(hp, max_hp)
         elif kind == "RestSite":
             onward = rooms[n + 1 :]
-            smith = knob("upgrade_worth") + path_value(onward, hp, max_hp, gold, act, heal_after_fight, harsh)
+            smith = knob("upgrade_worth") + path_value(onward, hp, max_hp, gold, act, harsh)
             if hp >= 0.95 * max_hp:
                 return score + smith
-            rest = path_value(onward, min(float(max_hp), hp + REST_HEAL * max_hp), max_hp, gold, act, heal_after_fight, harsh)
+            rest = path_value(onward, min(float(max_hp), hp + REST_HEAL * max_hp), max_hp, gold, act, harsh)
             return score + max(smith, rest)
         elif kind == "Treasure":
             score += 2.0
@@ -357,7 +312,7 @@ def path_value(
     return score
 
 
-def best_onward(nodes: dict, key, rooms: list, hp: float, max_hp: int, gold: int, act: int, mend: int, budget: list) -> float:
+def best_onward(nodes: dict, key, rooms: list, hp: float, max_hp: int, gold: int, act: int, budget: list) -> float:
     """Best value over every way on from node `key` (`rooms` is the way so far, that node included)."""
     kids = [tuple(c) for c in (nodes.get(key) or {}).get("children") or [] if tuple(c) in nodes]
     if not kids or budget[0] <= 0:
@@ -365,19 +320,10 @@ def best_onward(nodes: dict, key, rooms: list, hp: float, max_hp: int, gold: int
         # Fights do not cost their average: a route is also judged by how it
         # goes when they cost a good deal more. A route that only works out on
         # average led through two forced elites at 18 HP.
-        usual = path_value(rooms, hp, max_hp, gold, act, mend)
-        unlucky = path_value(rooms, hp, max_hp, gold, act, mend, BAD_LUCK)
-        return 0.6 * usual + 0.4 * unlucky
-    return max(best_onward(nodes, k, rooms + [(str(nodes[k].get("type")), k[1])], hp, max_hp, gold, act, mend, budget) for k in kids)
-
-
-def _mend(player: dict) -> int:
-    """HP that comes back after every fight, beyond what FIGHT_COST already allows for.
-
-    (Nothing at present: the measured costs include the Ironclad's Burning
-    Blood, and without it the other characters lose about the same.)
-    """
-    return 0
+        # (No healing after fights is added: the measured costs include the Ironclad's
+        # Burning Blood, and without it the other characters lose about the same.)
+        return 0.6 * path_value(rooms, hp, max_hp, gold, act) + 0.4 * path_value(rooms, hp, max_hp, gold, act, BAD_LUCK)
+    return max(best_onward(nodes, k, rooms + [(str(nodes[k].get("type")), k[1])], hp, max_hp, gold, act, budget) for k in kids)
 
 
 def map_screen(state: dict, mem: Memory) -> list[Action]:
@@ -385,27 +331,20 @@ def map_screen(state: dict, mem: Memory) -> list[Action]:
     options = m.get("next_options") or []
     if not options:
         return []
-    player = state.get("player") or {}
-    hp_now, max_hp = int(player.get("hp") or 0), max(1, int(player.get("max_hp") or 1))
+    player, hp_now, max_hp = _vitals(state)
     hp = hp_now / max_hp
     gold = int(player.get("gold") or 0)
     nodes = {(n.get("col"), n.get("row")): n for n in m.get("nodes") or []}
     act = (state.get("run") or {}).get("act")
-    mend = _mend(player)
-    act_no = act if isinstance(act, int) else 1
+    budget = [MAX_PATHS]
 
     def is_early(row) -> bool:
         return act == 1 and isinstance(row, int) and row < EARLY_ROWS
 
-    budget = [MAX_PATHS]
-
-    def best_path(key, rooms: list) -> float:
-        return best_onward(nodes, key, rooms, hp_now, max_hp, gold, act_no, mend, budget)
-
     def value(opt: dict) -> float:
         key = (opt.get("col"), opt.get("row"))
         if key in nodes:
-            return best_path(key, [(str(nodes[key].get("type")), key[1])])
+            return best_onward(nodes, key, [(str(nodes[key].get("type")), key[1])], hp_now, max_hp, gold, act if isinstance(act, int) else 1, budget)
         kids = opt.get("leads_to") or []
         ahead = max((_room_value(str(k.get("type")), hp, gold, is_early(k.get("row")), act) for k in kids), default=0.0)
         return _room_value(str(opt.get("type")), hp, gold, is_early(opt.get("row")), act) + 0.9 * ahead
@@ -534,21 +473,14 @@ def card_reward(state: dict, mem: Memory) -> list[Action]:
         return v
 
     ranked = sorted(cards, key=worth, reverse=True)
-    out: list[Action] = []
-    # Be pickier as the deck grows: every mediocre card makes the good ones
-    # show up less often.
     threshold = reward_bar(mem.deck_size, act)
     if log.isEnabledFor(logging.DEBUG):
         log.debug("card reward (deck %d, need %.1f): %s", mem.deck_size, threshold, ", ".join(f"{c.get('name')} {worth(c):.1f}" for c in ranked))
     take = [("select_card_reward", {"card_index": int(c.get("index", 0))}) for c in ranked]
+    skip: list[Action] = [("skip_card_reward", {})]
     if ranked and worth(ranked[0]) >= threshold:
-        out += take
-        if cr.get("can_skip", True):
-            out.append(("skip_card_reward", {}))
-    else:
-        out.append(("skip_card_reward", {}))
-        out += take
-    return out
+        return take + (skip if cr.get("can_skip", True) else [])
+    return skip + take
 
 
 # ---------------------------------------------------------------- rest site
@@ -557,9 +489,8 @@ def card_reward(state: dict, mem: Memory) -> list[Action]:
 def rest_site(state: dict, mem: Memory) -> list[Action]:
     rs = state.get("rest_site") or {}
     opts = [o for o in rs.get("options") or [] if o.get("is_enabled", True)]
-    hp = _hp_ratio(state)
-    player = state.get("player") or {}
-    hp_now, max_hp = int(player.get("hp") or 0), max(1, int(player.get("max_hp") or 1))
+    player, hp_now, max_hp = _vitals(state)
+    hp = hp_now / max_hp
 
     # Rest or upgrade: whichever leaves the rest of the way to the boss better
     # off. Without the map (a run picked up at a rest site) the old rule of
@@ -568,7 +499,7 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
     node = mem.map_nodes.get(mem.map_at) if mem.map_nodes else None
     if node is not None and str(node.get("type")) == "RestSite" and (node.get("children") or []):
         act = (state.get("run") or {}).get("act")
-        args = (max_hp, int(player.get("gold") or 0), act if isinstance(act, int) else 1, _mend(player))
+        args = (max_hp, int(player.get("gold") or 0), act if isinstance(act, int) else 1)
         smith = knob("upgrade_worth") + best_onward(mem.map_nodes, mem.map_at, [], hp_now, *args, [MAX_PATHS])
         healed = min(float(max_hp), hp_now + REST_HEAL * max_hp)
         rest = best_onward(mem.map_nodes, mem.map_at, [], healed, *args, [MAX_PATHS])
@@ -600,15 +531,7 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
 
 
 def _shop_card(item: dict) -> dict:
-    return {
-        "id": item.get("card_id"),
-        "name": item.get("card_name"),
-        "type": item.get("card_type"),
-        "cost": item.get("card_cost"),
-        "star_cost": item.get("card_star_cost"),
-        "rarity": item.get("card_rarity"),
-        "description": item.get("card_description"),
-    }
+    return {k: item.get("card_" + k) for k in ("id", "name", "type", "cost", "star_cost", "rarity", "description")}
 
 
 def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
@@ -845,10 +768,7 @@ def hand_select(state: dict, mem: Memory) -> list[Action]:
             return float(round(cost / 2.0)) if discarding else float(cost >= handpick.RUINOUS)
 
         ordered = sorted(ordered, key=price)  # (stable: equal prices keep the order above)
-    for c in ordered:
-        out.append(("combat_select_card", {"card_index": int(c.get("index", 0))}))
-    out.append(("combat_confirm_selection", {}))
-    return out
+    return out + [("combat_select_card", {"card_index": int(c.get("index", 0))}) for c in ordered] + [("combat_confirm_selection", {})]
 
 
 def bundle_select(state: dict, mem: Memory) -> list[Action]:
@@ -856,11 +776,7 @@ def bundle_select(state: dict, mem: Memory) -> list[Action]:
     out: list[Action] = []
     if bs.get("preview_showing") or bs.get("can_confirm"):
         out.append(("confirm_bundle_selection", {}))
-    bundles = sorted(
-        bs.get("bundles") or [],
-        key=lambda b: sum(deck_value(c) for c in b.get("cards") or []),
-        reverse=True,
-    )
+    bundles = sorted(bs.get("bundles") or [], key=lambda b: sum(deck_value(c) for c in b.get("cards") or []), reverse=True)
     out += [("select_bundle", {"index": int(b.get("index", 0))}) for b in bundles]
     out.append(("confirm_bundle_selection", {}))
     return out

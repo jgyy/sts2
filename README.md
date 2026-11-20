@@ -195,6 +195,11 @@ The tests run the bot against a small simulated game (`tests/fake_game.py`)
 that speaks the same state and action format as the mod. They do not need the
 real game.
 
+## Strategy notes
+
+`docs/strategy/` holds community strategy collected for the bot to consider (general play, and each character),
+with a list of what the bot already does and what is worth trying next. Nothing in it is wired into the code.
+
 ## Uninstall
 
 ```sh
