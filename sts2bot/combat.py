@@ -14,9 +14,10 @@ from dataclasses import dataclass, replace
 from itertools import combinations, permutations
 
 from .battle import (  # noqa: F401  (also the names other modules and the tests reach through here)
-    BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, SANDPIT_DEATH, WIN_BONUS, Enemy,
+    BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, SANDPIT_DEATH, SLIP_WORTH, WIN_BONUS, Enemy,
     _has_power, _is_attack, constrict, end_of_turn_block, end_of_turn_loss, expected_loss, hand_burns,
     intent_damage, intent_hits, kill_reach, osty_hp, power_amount, read_enemies, _bare_block, _draw_worth, _escape_odds, _next_wither, _sandpit,
+    deck_count, junk_cost,
 )
 from .cards import CardInfo, order_key, parse
 from .potions import describe, potion_actions  # noqa: F401
@@ -56,6 +57,9 @@ def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = Fal
         if absorbed and e.block == 0 and e.keeps_block:
             e.keeps_block = False
             e.incoming = 0  # "Stunned if all Block is removed."
+        # Skittish (Phantasmal Gardener): the first hit of a turn lands, and the rest meet 6 Block.
+        # Four of them took 11 rounds and 38 of 51 HP from a bot that hit one twice a turn.
+        e.block, e.skittish = e.block + e.skittish, 0
         through = per - absorbed
         if through <= 0:
             continue
@@ -63,6 +67,7 @@ def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = Fal
             through = min(through, e.hit_cap)
         if e.slippery > 0:
             e.slippery -= 1
+            e.stripped += 1
             through = 1
         lost = min(e.hp, through)
         e.hp -= lost
@@ -159,7 +164,9 @@ def _pick_target(enemies: list[Enemy], dmg_per_hit: int, hits: int, double_if_vu
             return max(useful, key=lambda e: (e.worth > 0, e.incoming, e.hp + e.block))
     # Otherwise focus whoever dies soonest, counting Vulnerable as less health;
     # leaders before their minions, never something that just comes back.
-    return min(alive, key=lambda e: (-e.worth, (e.hp + e.block) / (1.5 if e.vulnerable else 1.0), -e.incoming))
+    # (Not one whose Block would swallow the whole attack, when another would lose HP to it.)
+    soaks = lambda e: e.block >= dmg_per_hit * hits and not e.keeps_block
+    return min(alive, key=lambda e: (-e.worth, soaks(e), (e.hp + e.block) / (1.5 if e.vulnerable else 1.0), -e.incoming))
 
 
 def _resists(e: Enemy) -> bool:
@@ -225,6 +232,11 @@ def _progress(e: Enemy, hp_removed: int, chip_rate: float) -> float:
     a turn) and blocked every turn instead, for 180 rounds.
     """
     chip, e.chipped = e.chipped, 0
+    # A Slippery stack taken off is a later hit that lands in full. Counted as the 1 HP it removes,
+    # eight stacks were not worth a Defend: Vantom fights that still had Slippery on round 5 were
+    # lost 4 times in 8 (2 in 19 when it was gone by round 4; one bot took until round 8).
+    strip, e.stripped = e.stripped, 0
+    hp_removed += strip * min(SLIP_WORTH, e.hp / 3.0)
     return hp_removed + chip * (1.0 if e.keeps_block or (e.incoming == 0 and chip and e.block == 0 and chip_rate >= 1) else chip_rate)
 
 
@@ -276,11 +288,12 @@ def simulate(
     trig: triggers.Triggers | None = None,  # powers that act on every card played
     pet: int = -1,  # Osty's HP (already part of `block`); -1: no pet in the state
     hail: int = 0,  # Hailstorm: damage to ALL enemies when the turn ends with a Frost orb held
+    deck: tuple = (20, 0),  # cards in the hand and both piles, and how many of them are dead weight
 ) -> Outcome | None:
     """Score playing `line` in order. None if it cannot be afforded."""
     if card_limit is not None and len(line) > card_limit:
         return None
-    foes = [replace(e, chipped=0, vuln_added=0, weak_added=0) for e in enemies]
+    foes = [replace(e, chipped=0, stripped=0, vuln_added=0, weak_added=0) for e in enemies]
     score = 0.0
     first_target: str | None = None
     self_loss = 0
@@ -321,6 +334,7 @@ def simulate(
     attacks = 0  # Attacks played so far in this line
     summoned = 0  # HP this line gives Osty
     drawn = 0  # cards this line draws
+    debris = 0  # Debris this line leaves in our deck
     tainted = 0
     known_dead = {e.entity_id for e in foes if not e.alive}
 
@@ -497,6 +511,8 @@ def simulate(
             held = []
         if c.key == "FRANTIC_ESCAPE":
             escapes += 1
+        if c.debris:  # (Crash Landing fills what room the hand has left: fewest when it is played first)
+            debris += c.debris if c.debris > 0 else max(0, 10 - (hand_size - (n + 1) + drawn + debris))
         buffer += c.key == "BUFFER"  # played now, it stops this turn's hit (held at 6 HP in front of 27: dead)
         for e in foes:
             if e.slow >= 0:
@@ -520,7 +536,9 @@ def simulate(
         if c.type == "Power":
             future += 0.0 if c.strength_lasts else _power_worth(c) * long  # (lasting Strength is valued just above)
         elif c.type in ("Status", "Curse"):
-            score += 0.1  # only worth clearing out with energy nothing else can use
+            # Only worth clearing out with energy nothing else can use, unless playing it is what
+            # gets it out of the deck (Debris, Slimed): then it is every later draw it would have been.
+            score += 0.1 + (junk_cost(fight, round_no, (deck[0] - 1, max(0, deck[1] - 1))) * dmg_value if c.key in ("DEBRIS", "SLIMED") else 0.0)
         elif not c.known:
             score += 2.5 + max(c.cost, 0)
 
@@ -543,6 +561,8 @@ def simulate(
         score += sum(_progress(e, _hit(e, hail, 1, raw=True), chip_rate) * dmg_value * e.worth for e in foes if e.alive)
     future += lasting * span + enduring * long + later
     score += future
+    if debris:
+        score -= junk_cost(fight, round_no, deck, debris) * dmg_value
     # Poison bites at the start of the enemy's turn, before it acts: one that
     # is poisoned through is as good as dead now. Otherwise it is damage on
     # its way, a little less each turn.
@@ -657,6 +677,16 @@ def simulate(
     lost = through + self_loss + end_loss + burnt
     lost = max(0, lost - min(regen, max(0, max_hp - hp + self_loss)))  # Regen mends what was missing first
     ratio = hp / max(1, max_hp)
+    # Imbalanced (Bowlbug Rock): an attack of his that our Block stops whole leaves him Stunned for
+    # his next turn. He moves first; with 15 Block or more up he was Stunned 58 times in 67, with
+    # less never in 87, and the bot had that Block up on four turns in ten. (Osty's HP is left
+    # out: whether a hit he takes counts is not known.)
+    cover = max(0, block - max(pet, 0) - scorch)
+    for e in survivors:
+        hit = e.incoming + tainted * e.incoming_hits
+        if e.imbalanced and hit and cover >= hit:
+            score += 0.85 * hit * (1.5 + 2.5 * (1.0 - ratio)) * knob("caution")
+        cover -= min(cover, hit)
     # Osty keeps the HP he is not hit for: unlike Block it is still there next
     # turn (and Unleash hits harder for it). The bot never summoned on a turn
     # without an attack coming, which is exactly when it costs nothing.
@@ -740,6 +770,7 @@ def _context(state: dict) -> dict:
         shiv_damage=4 + max(0, power_amount(player, "ACCURACY")),
         tender=_has_power(player, "TENDER"),
         hail=max(0, power_amount(player, "HAILSTORM")),
+        deck=deck_count(player),
         vigor=max(0, power_amount(player, "VIGOR")),
         giant=_has_power(player, "GIGANTIFICATION"),
         buffer=max(0, power_amount(player, "BUFFER")),

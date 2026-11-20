@@ -95,6 +95,24 @@ class CombatPlanning(unittest.TestCase):
         s = combat_state([big, STRIKE(1)], [enemy("V_0", 100, status=deep)], energy=1)
         self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)  # never pay HP for 1 damage
 
+    def test_a_slippery_stack_taken_off_is_worth_a_hit(self):
+        # Vantom, round 1: 8 Slippery and a 7 coming. Each stack is a later hit that lands in
+        # full, so the hits go first and the Defends wait: fights that still had Slippery on
+        # round 5 were lost 4 times in 8.
+        twin = card(0, "TWIN_STRIKE", "Twin Strike", "Attack", 1, "Deal 5 damage twice.", "AnyEnemy")
+        slip = [{"id": "SLIPPERY_POWER", "amount": 8}]
+        s = combat_state([twin, DEFEND(1), STRIKE(2), DEFEND(3), STRIKE(4)], [enemy("VANTOM_0", 173, attack=7, status=slip)], energy=3, kind="boss")
+        line = []
+        for _ in range(3):
+            index = combat.choose_card(s)[1]["card_index"]
+            line.append(index)
+            s["player"]["hand"] = [c for c in s["player"]["hand"] if c["index"] != index]
+            s["player"]["energy"] -= 1
+        self.assertEqual(sorted(line), [0, 2, 4])
+        # ... but not in front of the big hit when already hurt: there the Block comes first.
+        s = combat_state([twin, DEFEND(1), DEFEND(3)], [enemy("VANTOM_0", 173, attack=26, status=slip)], energy=2, hp=30, kind="boss")
+        self.assertIn(combat.choose_card(s)[1]["card_index"], (1, 3))
+
     def test_never_plays_a_card_that_can_kill_us(self):
         gambit = card(0, "THE_GAMBIT", "The Gambit", "Skill", 0, "Gain 50 Block. If you take unblocked attack damage this combat, die.", "Self")
         self.assertTrue(parse(gambit).deadly)
@@ -394,6 +412,16 @@ class PowersThePlannerKnows(unittest.TestCase):
         self.assertLess(strategy.deck_fit(comet, deck), -2.0)
         self.assertGreater(strategy.deck_fit(glow, deck), 0.5)
         self.assertEqual(strategy.deck_fit(glow, [STRIKE(0)]), 0.0)
+
+    def test_the_stars_a_fight_starts_with_do_not_pay_for_every_cycle(self):
+        # The starter deck (Falling Star 2, Venerate +2) with one Astral Pulse: a third star card
+        # would ask for 8 Stars a cycle of a deck that makes 2 (and has 3 once, when the fight starts).
+        star = lambda cid, name, n: {**card(0, cid, name, "Attack", 0, "Deal 8 damage.", "AnyEnemy"), "star_cost": n}
+        venerate = card(0, "VENERATE", "Venerate", "Skill", 1, "Gain [star_icon.png][star_icon.png].", "Self")
+        deck = [STRIKE(i) for i in range(4)] + [DEFEND(i) for i in range(4)] + [star("FALLING_STAR", "Falling Star", 2), venerate, star("ASTRAL_PULSE", "Astral Pulse", 3)]
+        self.assertLess(strategy.deck_fit(star("GAMMA_BLAST", "Gamma Blast", 3), deck), -2.0)
+        genesis = card(0, "GENESIS", "Genesis", "Power", 2, "At the start of your turn, gain [star_icon.png][star_icon.png].", "Self")
+        self.assertGreater(strategy.deck_fit(star("GAMMA_BLAST", "Gamma Blast", 3), deck + [genesis]), -0.1)  # Genesis pays for it
 
 
 class OtherCharacters(unittest.TestCase):

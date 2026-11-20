@@ -345,6 +345,9 @@ class Bot:
                 once(f"card:{c.get('name')}", "card %s (%s, cost %s): %s", c.get("name"), c.get("type"), c.get("cost"), c.get("description"))
             for k in c.get("keywords") or []:
                 once(f"kw:{k.get('name')}", "keyword %s (on %s): %s", k.get("name"), c.get("name"), k.get("description"))
+        # ... and for the potions on the belt: the mod's wiki has no potions, so this is the only place their text shows.
+        for p in (state.get("player") or {}).get("potions") or []:
+            once(f"potion:{p.get('name')}", "potion %s (%s): %s", p.get("name"), p.get("target_type"), p.get("description"))
 
     def _note_state(self, state: dict) -> None:
         kind = state.get("state_type")

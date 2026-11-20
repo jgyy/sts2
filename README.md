@@ -164,6 +164,11 @@ In `~/.local/state/sts2bot/` (change with `--log-dir`):
 - `card_stats.json`: what the bot has learned about each card (see `learn.py`).
 - `tuning.json`: how runs went with each value of the settings it tunes.
 
+`scripts/fightlog.py` reads them fight by fight (the bot has to run with `-v`):
+`bosses` prints the record against each boss, `costs` what each ordinary
+encounter costs in HP, and `show 'YYYY-MM-DD HH:MM'` one fight round by round
+with the cards that were in hand and what was played.
+
 ## Options
 
 | Option | Default | Meaning |

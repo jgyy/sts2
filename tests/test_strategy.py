@@ -38,8 +38,10 @@ class LearnedRatings(unittest.TestCase):
         with mock.patch.dict(learn.KNOB, {"elite_worth": 2.5}):
             way = [("Elite", 5), ("Monster", 6)]
             healthy = strategy.path_value(way, 80, 80, 0, 2)
-            hurt = strategy.path_value(way, 56, 80, 0, 2)  # 70%: where a third of these fights were lost
+            sore = strategy.path_value(way, 56, 80, 0, 2)  # 70%: 1 lost in 8
+            hurt = strategy.path_value(way, 48, 80, 0, 2)  # 60%: where a third of these fights were lost
             low = strategy.path_value(way, 38, 80, 0, 2)
+        self.assertLess(sore, healthy - 2.0)
         self.assertLess(hurt, healthy - 5.0)
         self.assertLess(low, hurt - 5.0)
 
@@ -150,8 +152,9 @@ class Strategy(unittest.TestCase):
 
     def test_route_keeps_enough_health_for_the_boss(self):
         # An elite right before the boss costs more than its relic is worth, even from
-        # full health, and one rest site in between does not pay for an act 2 elite
-        # (27 HP, measured); two do, unless we are badly hurt.
+        # full health. With a rest site in between an act 1 elite (20 HP) is paid for:
+        # from 80% HP up a boss is beaten as often as from full. An act 2 elite (27 HP)
+        # needs two, and nothing pays for one met badly hurt.
         def route(mid):
             mids = mid.split("+")
             nodes = [{"col": 0, "row": 12, "type": "Elite", "children": [[0, 13]]}, {"col": 1, "row": 12, "type": "Monster", "children": [[0, 13]]}]
@@ -160,12 +163,20 @@ class Strategy(unittest.TestCase):
             opts = [{"index": 0, "col": 0, "row": 12, "type": "Elite"}, {"index": 1, "col": 1, "row": 12, "type": "Monster"}]
             return {"next_options": opts, "nodes": nodes}
 
-        pick = lambda hp, mid: strategy.map_screen(self.base("map", hp=hp, map=route(mid)), Memory())[0][1]["index"]
+        def pick(hp, mid, act=1):
+            state = self.base("map", hp=hp, map=route(mid))
+            state["run"]["act"] = act
+            return strategy.map_screen(state, Memory())[0][1]["index"]
+
         self.assertEqual(pick(80, "Unknown"), 1)
-        self.assertEqual(pick(80, "RestSite"), 1)
-        self.assertEqual(pick(80, "RestSite+RestSite"), 0)
+        self.assertEqual(pick(80, "RestSite"), 0)
+        self.assertEqual(pick(60, "RestSite"), 1)
+        self.assertEqual(pick(80, "RestSite", act=2), 1)
+        self.assertEqual(pick(80, "RestSite+RestSite", act=2), 0)
         self.assertEqual(pick(40, "RestSite+RestSite"), 1)
-        self.assertGreater(strategy.boss_odds(0.9), strategy.boss_odds(0.6))
+        self.assertEqual(strategy.boss_odds(0.9), strategy.boss_odds(1.0))
+        self.assertGreater(strategy.boss_odds(0.8), 2 * strategy.boss_odds(0.6) - 0.1)
+        self.assertGreater(strategy.boss_odds(0.6), strategy.boss_odds(0.5))
 
     def test_rests_before_the_boss_unless_nearly_full(self):
         opts = [{"index": 0, "id": "REST", "is_enabled": True}, {"index": 1, "id": "SMITH", "is_enabled": True}]
@@ -224,6 +235,11 @@ class Strategy(unittest.TestCase):
         mem.map_at = (0, 14)
         saved, learn.KNOB["upgrade_worth"] = learn.KNOB["upgrade_worth"], 2.5
         try:
+            self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 0)
+            # From 85% HP up the act 1 and 2 bosses are beaten as often as from full: upgrade then.
+            s["player"]["hp"] = 66
+            self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 1)
+            s["run"]["act"] = 3  # ... but not before the last boss
             self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 0)
         finally:
             learn.KNOB["upgrade_worth"] = saved

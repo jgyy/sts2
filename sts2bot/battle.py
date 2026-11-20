@@ -15,6 +15,7 @@ WIN_BONUS = 10_000.0
 SANDPIT_DEATH = 600.0  # what being eaten by the Sandpit costs, in points (the run ends there)
 BEYOND_REACH = 100_000  # HP no enemy really has: the game's way of saying it cannot be hurt any more
 RAGE_BLOCK = 99  # Crab Rage: Block a crab gains for each ally that dies (gone again when its next turn starts)
+SLIP_WORTH = 7.0  # what taking one Slippery stack off is worth, in damage: the hit it lets through later
 
 
 # What playing each Power is worth in an ordinary fight, in points of damage
@@ -64,6 +65,7 @@ class Enemy:
     incoming_hits: int = 0  # how many separate hits make up `incoming`
     keeps_block: bool = False  # Burrowed: its Block stays until we break it, which Stuns it
     chipped: int = 0  # Block our attacks have removed so far in this plan
+    stripped: int = 0  # ... and Slippery stacks our hits have taken off
     artifact: int = 0  # the next N debuffs we apply do nothing
     hit_cap: int = 0  # Hard to Kill: no single hit removes more HP than this
     enrage: int = 0  # Strength it gains whenever we play a Skill
@@ -89,6 +91,8 @@ class Enemy:
     adapts: bool = False  # Adaptable (the Test Subject): killed, it is gone for the turn and back, stronger, the next
     adapted: bool = False  # ... and this plan has done that
     asleep: int = 0  # Asleep: turns until it wakes by itself (losing HP wakes it at once)
+    imbalanced: bool = False  # Imbalanced (Bowlbug Rock): Stunned next turn if its attack is blocked whole
+    skittish: int = 0  # Skittish: Block it gains the first time it is hit this turn (0 once that has happened)
 
     @property
     def worth(self) -> float:
@@ -252,6 +256,8 @@ def read_enemies(state: dict) -> list[Enemy]:
                 respawns=_stacks(e, "STOCK"),
                 adapts=_has_power(e, "ADAPTABLE"),
                 asleep=_stacks(e, "ASLEEP"),
+                imbalanced=_has_power(e, "IMBALANCED"),
+                skittish=0 if int(e.get("block") or 0) else _stacks(e, "SKITTISH"),  # (Block on it: it has been hit already)
                 max_hp=int(e.get("max_hp") or 0),
             )
         )
@@ -345,6 +351,29 @@ def _escape_odds(player: dict, hand_draw: int = 5) -> tuple:
         next_hand = none(n, k, n) * none(m, j, hand_draw - n)
     usual = none(n + m, k + j, hand_draw) if n + m >= hand_draw else 0.3
     return (next_hand, max(usual, 0.05))
+
+
+def deck_count(player: dict) -> tuple:
+    """(cards we are cycling through this fight: hand, draw and discard piles; how many of them are dead weight)."""
+    piles = [c for pile in ("hand", "draw_pile", "discard_pile") for c in (player.get(pile) if isinstance(player.get(pile), list) else [])]
+    if not isinstance(player.get("draw_pile"), list):
+        return (len(piles) + int(player.get("draw_pile_count") or 0) + int(player.get("discard_pile_count") or 0), 0)
+    dead = lambda c: bool(re.search(r"\bunplayable\b", str(c.get("description") or ""), re.I)) or str(c.get("description") or "").strip() == "Exhaust."
+    return (len(piles), sum(map(dead, piles)))
+
+
+def junk_cost(fight: str, round_no: int, deck: tuple, added: int = 1) -> float:
+    """What `added` more dead cards in the deck cost over the rest of the fight, in damage.
+
+    Each comes round again with every shuffle and takes a card's place in the
+    hand: half a Strike a time, more as the deck fills up with them. A Regent
+    played Crash Landing ("Fill your Hand with Debris") on rounds 3, 8 and 9
+    of a boss fight and by round 12 drew three Debris in a hand of five.
+    """
+    cards, junk = deck
+    turns = max(1, {"boss": 10, "elite": 6}.get(fight, 4) - round_no)
+    size = max(10, cards + added)
+    return added * (turns * 5.0 / size) * 3.0 * (1.0 + 2.0 * (junk + added) / size)
 
 
 def _bare_block(player: dict) -> int:

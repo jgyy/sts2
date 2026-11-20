@@ -495,3 +495,79 @@ class SlipperyPotions(unittest.TestCase):
         self.assertEqual([a[1]["slot"] for a in combat.potion_actions(state, 0)], [1])
         vantom["status"] = []
         self.assertEqual([a[1]["slot"] for a in combat.potion_actions(state, 0)], [0, 1])
+
+
+class Debris(unittest.TestCase):
+    """Crash Landing fills the hand with Debris (1 energy: Exhaust), which stays in the deck for the fight."""
+
+    CRASH = staticmethod(lambda i: card(i, "CRASH_LANDING", "Crash Landing", "Attack", 1, "Deal 21 damage to ALL enemies. Fill your Hand with Debris.", "AllEnemies"))
+
+    def state(self, enemies, kind="boss", round_no=2):
+        s = combat_state([STRIKE(0), self.CRASH(1), DEFEND(2), DEFEND(3), STRIKE(4)], enemies, energy=3, hp=70, max_hp=75, kind=kind)
+        s["battle"]["round"] = round_no
+        s["player"]["draw_pile_count"], s["player"]["discard_pile_count"] = 9, 5
+        return s
+
+    def line(self, s):
+        played = []
+        for _ in range(3):
+            action = combat.choose_card(s)
+            if action is None:
+                break
+            played.append(action[1]["card_index"])
+            s["player"]["hand"] = [c for c in s["player"]["hand"] if c["index"] != played[-1]]
+            s["player"]["energy"] -= 1
+        return played
+
+    def test_it_is_read_as_filling_the_hand(self):
+        self.assertEqual(parse(self.CRASH(0)).debris, -1)
+        course = card(0, "COLLISION_COURSE", "Collision Course", "Attack", 0, "Deal 10 damage. Add a Debris into your Hand.", "AnyEnemy")
+        self.assertEqual(parse(course).debris, 1)
+
+    def test_early_in_a_boss_fight_it_stays_in_the_hand(self):
+        # Six dead cards in a deck of nineteen, for eight more rounds: Regent bosses with
+        # Crash Landing in the deck were won 1 time in 6 (22 in 34 without).
+        self.assertNotIn(1, self.line(self.state([enemy("LAGAVULIN_MATRIARCH_0", 200, attack=14)])))
+
+    def test_it_finishes_a_fight_and_clears_a_room(self):
+        self.assertEqual(self.line(self.state([enemy("LAGAVULIN_MATRIARCH_0", 20, attack=14)]))[0], 1)  # the kill: no later to pay for
+        self.assertIn(1, self.line(self.state([enemy("LAGAVULIN_MATRIARCH_0", 60, attack=14)], round_no=9)))  # the fight is nearly done
+        three = [enemy("A_0", 30, attack=8), enemy("B_0", 28, attack=7), enemy("C_0", 25, attack=6)]
+        self.assertEqual(self.line(self.state(three, kind="monster", round_no=1))[0], 1)
+
+    def test_debris_is_cleared_with_energy_left_over(self):
+        debris = card(1, "DEBRIS", "Debris", "Status", 1, "Exhaust.", "None")
+        s = combat_state([STRIKE(0), debris], [enemy("LAGAVULIN_MATRIARCH_0", 200)], energy=2, kind="boss")
+        self.assertEqual(self.line(s), [0, 1])
+
+
+class Imbalanced(unittest.TestCase):
+    def line(self, status):
+        rock = enemy("BOWLBUG_ROCK_0", 60, attack=15, status=status)
+        big = card(0, "BLUDGEON", "Bludgeon", "Attack", 1, "Deal 16 damage.", "AnyEnemy")
+        state = combat_state([big, DEFEND(1), DEFEND(2), DEFEND(3)], [rock], energy=3, hp=70, max_hp=75)
+        played = []
+        for _ in range(3):
+            played.append(combat.choose_card(state)[1]["card_index"])
+            state["player"]["hand"] = [c for c in state["player"]["hand"] if c["index"] != played[-1]]
+            state["player"]["energy"] -= 1
+            state["player"]["block"] += 5 if played[-1] else 0
+        return sorted(played)
+
+    def test_the_rocks_attack_is_blocked_whole(self):
+        # Bowlbug (Rock): "If its attacks are fully blocked, it becomes Stunned." Three Defends stop
+        # its 15 and take its next turn away; two of them and an attack only save 10 HP.
+        self.assertEqual(self.line([{"id": "IMBALANCED_POWER", "amount": 1}]), [1, 2, 3])
+        self.assertEqual(self.line([]), [0, 1, 2])
+
+
+class Skittish(unittest.TestCase):
+    def test_each_gardener_is_hit_once_a_turn(self):
+        # "The first time it is hit each turn, it gains 6 Block": a second Strike on the same one does nothing.
+        skittish = [{"id": "SKITTISH_POWER", "amount": 6}]
+        foes = [enemy("PHANTASMAL_GARDENER_0", 29, status=skittish), enemy("PHANTASMAL_GARDENER_1", 30, status=skittish)]
+        state = combat_state([STRIKE(0), STRIKE(1)], foes, energy=2)
+        first = combat.choose_card(state)[1]
+        foes[int(first["target"][-1])].update(hp=23, block=6)  # hit once: 6 HP gone, 6 Block up
+        state["player"]["hand"], state["player"]["energy"] = [STRIKE(1)], 1
+        self.assertNotEqual(combat.choose_card(state)[1]["target"], first["target"])
