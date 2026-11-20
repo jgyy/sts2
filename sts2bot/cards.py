@@ -72,9 +72,20 @@ class CardInfo:
         return self.damage * self.hits
 
 
+def key_of(name) -> str:
+    """A card's name or id as the tables spell it: DEMON_FORM for "Demon Form+"."""
+    return re.sub(r"[^A-Z0-9]+", "_", str(name or "").upper().rstrip("+")).strip("_")
+
+
 def _int(pattern: str, text: str) -> int:
     m = re.search(pattern, text, re.I)
     return int(m.group(1)) if m else 0
+
+
+def _icons(text: str) -> int:
+    """Energy gained, as the game writes it: "Gain" and one icon per point."""
+    m = re.search(r"gain\s+((?:\[[a-z_]*energy_icon\.png\]\s*)+)", text, re.I)
+    return len(_ENERGY_ICON.findall(m.group(1))) if m else 0
 
 
 def _cost(raw) -> int:
@@ -127,11 +138,7 @@ def parse(card: dict) -> CardInfo:
     text = "" if ctype == "Power" else immediate_text(full_text)
 
     # "Next turn, gain 4 Block." is read separately below, not as this turn's.
-    next_text = (
-        " ".join(x for x in re.split(r"(?<=[.!?])\s+", full_text) if x.strip().lower().startswith("next turn"))
-        if ctype != "Power"
-        else ""
-    )
+    next_text = "" if ctype == "Power" else " ".join(x for x in re.split(r"(?<=[.!?])\s+", full_text) if x.strip().lower().startswith("next turn"))
     damage = _int(r"deals?\s+(\d+)\s+damage", text)
     if not damage:
         # "Deal damage equal to your Block. (Deals 14 damage)"
@@ -162,17 +169,19 @@ def parse(card: dict) -> CardInfo:
     vulnerable = _int(r"apply\s+(\d+)\s+vulnerable", text) or _int(r"(\d+)\s+(?:weak\s+and\s+)?vulnerable", text)
     weak = _int(r"apply\s+(\d+)\s+weak", text) or _int(r"(\d+)\s+(?:vulnerable\s+and\s+)?weak", text)
     draw = _int(r"draw\s+(\d+)\s+card", text) or (1 if re.search(r"draw\s+a\s+card", text, re.I) else 0)
-    energy_gain = _int(r"gain\s+(\d+)\s+energy", text)
-    m = re.search(r"gain\s+((?:\[[a-z_]*energy_icon\.png\]\s*)+)", text, re.I)
-    if m:  # the game writes energy as icons, one per point
-        energy_gain = len(_ENERGY_ICON.findall(m.group(1)))
+    energy_gain = _icons(text) or _int(r"gain\s+(\d+)\s+energy", text)  # the game writes energy as icons, one per point
     if re.search(r"when this card is exhausted,\s*gain", text, re.I):
         energy_gain = 0  # Drum of Battle: playing it only draws; the energy comes if something Exhausts it
     hp_loss = _int(r"lose\s+(\d+)\s+hp", text)
-    strength_text = full_text if ctype == "Power" and not _LATER.match(full_text.strip()) else text
-    m = re.search(r"gain\s+(\d+)\s+strength(\s+this\s+turn)?", strength_text, re.I)
-    strength = int(m.group(1)) if m else 0
-    strength_lasts = bool(m) and not m.group(2)
+    stat_text = full_text if ctype == "Power" and not _LATER.match(full_text.strip()) else text
+
+    def stat(name: str) -> tuple[int, bool]:
+        """(Strength or Dexterity gained, whether it is kept after this turn)."""
+        m = re.search(rf"gain\s+(\d+)\s+{name}(\s+this\s+turn)?", stat_text, re.I)
+        return (int(m.group(1)), not m.group(2)) if m else (0, False)
+
+    strength, strength_lasts = stat("strength")
+    dexterity, dexterity_lasts = stat("dexterity")
     enemy_strength_loss = _int(r"enem(?:y|ies)\s+loses?\s+(\d+)\s+strength", text)
     # "X" amounts on an X-cost card (Malaise: "Enemy loses X Strength. Apply X Weak."): 1 per energy spent.
     # Read as nothing, Malaise was played 9 times in 51 hands.
@@ -191,9 +200,6 @@ def parse(card: dict) -> CardInfo:
     star_gain = (int(m.group(1)) if m.group(1) else len(re.findall(r"star_icon", m.group(2)))) if m else 0
     forge = _int(r"forge\s+(\d+)", text)
     summon = _int(r"summon\s+(\d+)", text)
-    m = re.search(r"gain\s+(\d+)\s+dexterity(\s+this\s+turn)?", full_text if ctype == "Power" and not _LATER.match(full_text.strip()) else text, re.I)
-    dexterity = int(m.group(1)) if m else 0
-    dexterity_lasts = bool(m) and not m.group(2)
     channel = tuple(
         orb.upper()
         for count, orb in re.findall(r"channel\s+(\d+)\s+(lightning|frost|dark|plasma|glass)", text, re.I)
@@ -206,8 +212,7 @@ def parse(card: dict) -> CardInfo:
         evoke = 2 if re.search(r"evoke[^.]*twice", text, re.I) else _int(r"evoke[^.]*?(\d+)\s+times", text) or 1
     m = re.search(r"\bevoke\s+all\s+(?:of\s+)?your\s+orbs(\s+twice)?", text, re.I)
     evoke_all = (2 if m.group(1) else 1) if m else 0
-    m = re.search(r"gain\s+((?:\[[a-z_]*energy_icon\.png\]\s*)+)", next_text, re.I)
-    next_energy = len(_ENERGY_ICON.findall(m.group(1))) if m else 0
+    next_energy = _icons(next_text)
     next_draw = _int(r"draw\s+(\d+)\s+cards?", next_text)
     next_block = _int(r"gain\s+(\d+)\s+block", next_text)
     enemy_hp_loss = _int(r"enemy\s+loses\s+(\d+)\s+hp", text)
@@ -220,53 +225,23 @@ def parse(card: dict) -> CardInfo:
         + (star_gain, forge, summon, dexterity, len(channel), evoke, evoke_all, next_energy, next_draw, next_block, enemy_hp_loss, souls)
     )
 
+    can_play = bool(card.get("can_play", True))
     return CardInfo(
-        index=int(card.get("index", 0)),
-        name=str(card.get("name") or card.get("id") or "?"),
-        type=ctype,
-        cost=_cost(card.get("cost")),
-        star_cost=_cost(card.get("star_cost")) if card.get("star_cost") not in (None, "") else 0,
-        damage=damage,
-        hits=hits,
-        double_if_vulnerable=double_if_vulnerable,
-        aoe=aoe,
-        random_target=random_target,
-        block=block,
-        vulnerable=vulnerable,
-        weak=weak,
-        draw=draw,
-        energy_gain=energy_gain,
-        hp_loss=hp_loss,
-        needs_target=target == "AnyEnemy",
-        playable=bool(card.get("can_play", True)),
+        index=int(card.get("index", 0)), name=str(card.get("name") or card.get("id") or "?"), type=ctype, cost=_cost(card.get("cost")),
+        star_cost=_cost(card.get("star_cost")) if card.get("star_cost") not in (None, "") else 0, key=_card_key(card),
+        damage=damage, hits=hits, double_if_vulnerable=double_if_vulnerable, aoe=aoe, random_target=random_target, block=block,
+        vulnerable=vulnerable, weak=weak, draw=draw, energy_gain=energy_gain, hp_loss=hp_loss, known=known, strength=strength,
+        strength_lasts=strength_lasts, enemy_strength_loss=enemy_strength_loss, poison=poison, doom=doom, shivs=shivs, star_gain=star_gain,
+        forge=forge, summon=summon, dexterity=dexterity, dexterity_lasts=dexterity_lasts, channel=channel, evoke=evoke, evoke_all=evoke_all,
+        next_energy=next_energy, next_draw=next_draw, next_block=next_block, enemy_hp_loss=enemy_hp_loss, souls=souls,
+        needs_target=target == "AnyEnemy", playable=can_play,
         deadly=bool(re.search(r"\bdie\b", full_text, re.I)),
         block_lock=bool(re.search(r"(cannot|can't|can not)\s+gain\s+(any\s+)?block", full_text, re.I)),
-        known=known,
-        strength=strength,
-        strength_lasts=strength_lasts,
-        enemy_strength_loss=enemy_strength_loss,
-        key=_card_key(card),
-        poison=poison,
-        doom=doom,
-        shivs=shivs,
-        star_gain=star_gain,
-        forge=forge,
-        summon=summon,
-        dexterity=dexterity,
-        dexterity_lasts=dexterity_lasts,
-        channel=channel,
-        evoke=evoke,
-        evoke_all=evoke_all,
-        next_energy=next_energy,
-        next_draw=next_draw,
-        next_block=next_block,
-        enemy_hp_loss=enemy_hp_loss,
-        souls=souls,
         osty_attack=bool(re.search(r"\bOsty\b[^.]*\bdeals\b|if\s+Osty\s+is\s+alive", full_text, re.I)),
         osty_dies=bool(re.search(r"Osty\s+dies", full_text, re.I)),
         doom_kills=bool(re.search(r"kill\s+enemies\s+with\s+at\s+least\s+as\s+much\s+Doom", full_text, re.I)),
         bound=any(str(k.get("name")).lower() == "bound" for k in card.get("keywords") or [] if isinstance(k, dict)),
-        short=not card.get("can_play", True)
+        short=not can_play
         and bool(card.get("unplayable_reason"))
         and all(r.strip() in ("EnergyCostTooHigh", "StarCostTooHigh") for r in str(card.get("unplayable_reason")).split(",")),
     )
@@ -275,31 +250,19 @@ def parse(card: dict) -> CardInfo:
 # A nudge for cards whose real strength the text does not show (or
 # overstates). The text-based score below still does most of the work, so
 # cards that are not listed are judged on what they say. Values are in the
-# same units as deck_value: +1 is roughly one rarity step.
+# same units as deck_value: +1 is roughly one rarity step. (Only cards _TIER
+# does not rate: a card it rates never gets as far as the nudge.)
 _KNOWN = {
-    # strong for what they cost
-    "OFFERING": 3.0, "SHOCKWAVE": 3.0, "IMMOLATE": 3.0, "IMPERVIOUS": 2.0, "FLAME_BARRIER": 2.0,
-    "SHRUG_IT_OFF": 2.0, "UPPERCUT": 2.0, "DISARM": 2.0, "REAPER": 2.0, "FEED": 1.5,
-    "BATTLE_TRANCE": 1.0, "INFLAME": 1.5, "DEMON_FORM": 1.5, "POMMEL_STRIKE": 1.5, "CARNAGE": 1.5,
-    "SPOT_WEAKNESS": 1.5, "METALLICIZE": 1.5, "TWIN_STRIKE": 1.0, "THUNDERCLAP": 1.0, "HEMOKINESIS": 1.0,
-    "WHIRLWIND": 1.0, "BLUDGEON": 1.0, "CLEAVE": 1.0, "IRON_WAVE": 1.0, "ARMAMENTS": 1.0,
-    "POWER_THROUGH": 1.0, "GHOSTLY_ARMOR": 1.0, "SEEING_RED": 1.0, "INTIMIDATE": 1.0, "FIEND_FIRE": 1.0,
-    "HEADBUTT": 0.5, "ANGER": 0.5, "TRUE_GRIT": 0.5, "BURNING_PACT": 0.5, "RAMPAGE": 0.5,
-    "PERFECTED_STRIKE": 0.5, "COMBUST": 0.5, "DOUBLE_TAP": 0.5,
-    # need a deck built around them, or are just weak
-    "BARRICADE": -1.5, "ENTRENCH": -1.5, "BODY_SLAM": -1.0, "JUGGERNAUT": -1.0, "CLASH": -1.0,
-    "RUPTURE": -1.0, "SEARING_BLOW": -1.0, "RECKLESS_CHARGE": -1.0, "FEEL_NO_PAIN": -1.0,
-    "DARK_EMBRACE": -1.0, "FIRE_BREATHING": -1.0, "EVOLVE": -1.0, "BERSERK": -0.5, "WARCRY": -0.5,
-    "HAVOC": -0.5, "WILD_STRIKE": -0.5, "DUAL_WIELD": -0.5, "RAGE": -0.5, "LIMIT_BREAK": -0.5,
+    "IMMOLATE": 3.0, "DISARM": 2.0, "REAPER": 2.0, "CARNAGE": 1.5, "SPOT_WEAKNESS": 1.5, "METALLICIZE": 1.5,
+    "CLEAVE": 1.0, "POWER_THROUGH": 1.0, "GHOSTLY_ARMOR": 1.0, "SEEING_RED": 1.0, "INTIMIDATE": 1.0, "COMBUST": 0.5,
+    "DOUBLE_TAP": 0.5, "ENTRENCH": -1.5, "CLASH": -1.0, "SEARING_BLOW": -1.0, "RECKLESS_CHARGE": -1.0,
+    "FIRE_BREATHING": -1.0, "EVOLVE": -1.0, "BERSERK": -0.5, "WARCRY": -0.5, "WILD_STRIKE": -0.5, "DUAL_WIELD": -0.5,
+    "LIMIT_BREAK": -0.5,
 }
 
 
 def _known_nudge(card: dict) -> float:
-    for field in ("id", "name"):
-        key = re.sub(r"[^A-Z0-9]+", "_", str(card.get(field) or "").upper().rstrip("+")).strip("_")
-        if key in _KNOWN:
-            return _KNOWN[key]
-    return 0.0
+    return next((_KNOWN[k] for k in (key_of(card.get("id")), key_of(card.get("name"))) if k in _KNOWN), 0.0)
 
 
 # (2026-11-18: cards that scale over a fight were raised by 0.5 to 1.5. Damage per turn against
@@ -406,7 +369,7 @@ _AFFLICTION = {"SLOTH": -6.5, "MIND_ROT": -7.5, "WASTE_AWAY": -8.5, "DISINTEGRAT
 
 
 def _card_key(card: dict) -> str:
-    return re.sub(r"[^A-Z0-9]+", "_", str(card.get("id") or card.get("name") or "").upper().rstrip("+")).strip("_")
+    return key_of(card.get("id") or card.get("name"))
 
 
 def is_known(card: dict) -> bool:
@@ -482,28 +445,12 @@ def upgrade_gain(base: dict, upgraded: dict) -> float:
     def worth(i: CardInfo) -> float:
         channels = len(i.channel) if i.type != "Power" else 0
         return (
-            i.total_damage * (1.6 if i.aoe else 1.0)
-            + i.block
-            + i.draw * 3.0
-            + i.energy_gain * 5.0
-            + min(i.vulnerable, 4) * 2.5
-            + min(i.weak, 4) * 2.0
-            + i.strength * (4.0 if i.strength_lasts else 1.5)
-            + i.dexterity * (4.0 if i.dexterity_lasts else 1.5)
-            + i.poison * 2.0
-            + i.doom * 0.6
-            + i.shivs * 4.0
-            + i.star_gain * 2.5
-            + i.forge * 0.6
-            + i.summon
-            + channels * 4.0
-            + i.evoke * 3.0
-            + i.enemy_strength_loss * 1.5
-            + i.next_energy * 4.0
-            + i.next_draw * 1.5
-            + i.next_block * 0.7
-            + i.enemy_hp_loss
-            + i.souls * 3.0
+            i.total_damage * (1.6 if i.aoe else 1.0) + i.block + i.draw * 3.0 + i.energy_gain * 5.0
+            + min(i.vulnerable, 4) * 2.5 + min(i.weak, 4) * 2.0
+            + i.strength * (4.0 if i.strength_lasts else 1.5) + i.dexterity * (4.0 if i.dexterity_lasts else 1.5)
+            + i.poison * 2.0 + i.doom * 0.6 + i.shivs * 4.0 + i.star_gain * 2.5 + i.forge * 0.6 + i.summon
+            + channels * 4.0 + i.evoke * 3.0 + i.enemy_strength_loss * 1.5
+            + i.next_energy * 4.0 + i.next_draw * 1.5 + i.next_block * 0.7 + i.enemy_hp_loss + i.souls * 3.0
         )
 
     cost = lambda i: 3 if i.is_x else i.cost

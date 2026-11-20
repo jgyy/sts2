@@ -182,12 +182,6 @@ def _expose(e: Enemy, turns: int = 1) -> None:
         e.vuln_added += fresh
 
 
-def _sap(e: Enemy, strength: int) -> None:
-    """The enemy loses Strength for this turn: every hit it makes is that much weaker."""
-    if not _resists(e):
-        e.incoming = max(0, e.incoming - strength * e.incoming_hits)
-
-
 def _debuff(e: Enemy, c: CardInfo, x: int = 1) -> None:
     """Everything a card puts on one enemy. (Cards that sap ALL enemies used to do nothing in the plan:
     Piercing Wail was played twice in 456 hands, and a Silent died behind a 60-damage attack it would have cut to 24.)"""
@@ -195,8 +189,8 @@ def _debuff(e: Enemy, c: CardInfo, x: int = 1) -> None:
         _expose(e, c.vulnerable * x)
     if c.weak:
         _weaken(e, c.weak * x)
-    if c.enemy_strength_loss:
-        _sap(e, c.enemy_strength_loss * x)
+    if c.enemy_strength_loss and not _resists(e):  # the enemy loses Strength for this turn: every hit is that much weaker
+        e.incoming = max(0, e.incoming - c.enemy_strength_loss * x * e.incoming_hits)
     if c.key == "DEBILITATE" and e.vuln_mult < 2.0 and not _resists(e):
         # "Vulnerable and Weak are twice as effective": for the attacks that follow it this turn too.
         e.incoming = int(e.incoming * 0.5 / e.weak_cut) if e.weak else e.incoming
@@ -232,6 +226,11 @@ def _progress(e: Enemy, hp_removed: int, chip_rate: float) -> float:
     """
     chip, e.chipped = e.chipped, 0
     return hp_removed + chip * (1.0 if e.keeps_block or (e.incoming == 0 and chip and e.block == 0 and chip_rate >= 1) else chip_rate)
+
+
+def _power_worth(c: CardInfo) -> float:
+    """What playing a Power is worth in an ordinary fight: from the table, else a guess from its cost."""
+    return POWER_VALUE.get(c.key, 5.0 + 2.0 * max(c.cost, 0))
 
 
 @dataclass
@@ -325,6 +324,16 @@ def simulate(
     tainted = 0
     known_dead = {e.entity_id for e in foes if not e.alive}
 
+    def evoke(orb: tuple, plasma: bool = True) -> None:
+        nonlocal block, score, energy
+        kind, _passive, burst = orb
+        if kind == "FROST" and can_block:
+            block += burst
+        elif kind in ("LIGHTNING", "DARK", "GLASS"):
+            score += _orb_damage(kind, burst, foes, chip_rate, dmg_value)
+        elif kind == "PLASMA" and plasma:
+            energy += 2
+
     for n, c in enumerate(line):
         _respawns(foes)
         _rage_blocks(foes, known_dead)  # a crab that died with the last card hands its ally Block
@@ -373,6 +382,9 @@ def simulate(
         if c.deadly:
             score -= LETHAL_PENALTY  # never gamble the run on one card
 
+        xs = x if c.is_x else 1
+        alive = [e for e in foes if e.alive]
+        t = focused = next((e for e in alive if e.entity_id == focus), None)  # the enemy this card is aimed at, if any
         if c.damage:
             per, hits = c.damage + might, c.hits * x
             if c.type == "Attack":
@@ -381,30 +393,23 @@ def simulate(
                     per -= vigor
                 attacks += 1
             per = max(0, per)
-            alive = [e for e in foes if e.alive]
             if c.aoe:
-                for e in alive:
-                    self_loss += e.thorns * _hit_count(e, hits, c.double_if_vulnerable)
-                    score += _progress(e, _hit(e, per, hits, c.double_if_vulnerable), chip_rate) * dmg_value * e.worth
-                    if e.alive:
-                        _debuff(e, c, x if c.is_x else 1)
+                t, struck = None, alive
             elif c.random_target and len(alive) > 1:
+                t, struck = None, []
                 score += per * hits * 0.8 * dmg_value
             else:
-                t = next((e for e in foes if e.alive and e.entity_id == focus), None) or _pick_target(
-                    foes, per, hits, c.double_if_vulnerable
-                )
-                if t is not None:
-                    faced = t.entity_id
-                    if n == 0:
-                        first_target = t.entity_id
-                    self_loss += t.thorns * _hit_count(t, hits, c.double_if_vulnerable)
-                    score += _progress(t, _hit(t, per, hits, c.double_if_vulnerable), chip_rate) * dmg_value * t.worth
-                    if t.alive:
-                        _debuff(t, c, x if c.is_x else 1)
+                t = focused or _pick_target(foes, per, hits, c.double_if_vulnerable)
+                struck = [t] if t is not None else []
+            for e in struck:
+                self_loss += e.thorns * _hit_count(e, hits, c.double_if_vulnerable)
+                score += _progress(e, _hit(e, per, hits, c.double_if_vulnerable), chip_rate) * dmg_value * e.worth
+                if e.alive:
+                    _debuff(e, c, xs)
         elif c.needs_target:
-            alive = [e for e in foes if e.alive]
-            if c.enemy_strength_loss:
+            if focused is not None:
+                pass
+            elif c.enemy_strength_loss:
                 t = max(alive, key=lambda e: min(e.incoming, c.enemy_strength_loss * e.incoming_hits), default=None)
             elif c.weak and not c.vulnerable:
                 # Weaken the hardest hitter that is not Weak yet.
@@ -413,16 +418,16 @@ def simulate(
                 # Vulnerable goes on the enemy we will be hitting the longest.
                 fresh = [e for e in alive if not e.vulnerable] or alive
                 t = max(fresh, key=lambda e: e.hp + e.block, default=None)
-            t = next((e for e in alive if e.entity_id == focus), None) or t
             if t is not None:
-                faced = t.entity_id
-                if n == 0:
-                    first_target = t.entity_id
-                _debuff(t, c, x if c.is_x else 1)
-        elif c.aoe:
-            for e in foes:
-                if e.alive:
-                    _debuff(e, c, x if c.is_x else 1)
+                _debuff(t, c, xs)
+        else:
+            t = None
+            for e in alive if c.aoe else []:
+                _debuff(e, c, xs)
+        if t is not None:
+            faced = t.entity_id
+            if n == 0:
+                first_target = t.entity_id
 
         alive_now = [e for e in foes if e.alive]
         aimed = next((e for e in alive_now if e.entity_id == (faced or focus)), None)
@@ -467,13 +472,9 @@ def simulate(
                 enduring += c.dexterity * 3.5
         if c.channel or c.evoke or c.evoke_all:
             _rage_blocks(foes, known_dead)  # a crab this card killed has already handed on its Block
-        for kind in c.channel * (x if c.is_x else 1):
+        for kind in c.channel * xs:
             if orb_slots and len(held) >= orb_slots:
-                old = held.pop(0)  # no room: the oldest orb is evoked to make space
-                if old[0] == "FROST" and can_block:
-                    block += old[2]
-                elif old[0] in ("LIGHTNING", "DARK", "GLASS"):
-                    score += _orb_damage(old[0], old[2], foes, chip_rate, dmg_value)
+                evoke(held.pop(0), plasma=False)  # no room: the oldest orb is evoked to make space
             passive, burst = ORB_VALUES.get(kind, (3, 6))
             if kind != "PLASMA":
                 passive, burst = max(0, passive + focus_power), max(0, burst + focus_power)
@@ -483,27 +484,15 @@ def simulate(
         # lists first. Taking it for the newest, the bot counted on a fresh
         # Frost's Block from Dualcast, got a Glass orb's damage instead and
         # died 3 HP short with the boss on 51.
-        for _ in range(c.evoke * (x if c.is_x else 1)):
-            if held:
-                kind, passive, burst = held[0]
-                if kind == "FROST" and can_block:
-                    block += burst
-                elif kind in ("LIGHTNING", "DARK", "GLASS"):
-                    score += _orb_damage(kind, burst, foes, chip_rate, dmg_value)
-                elif kind == "PLASMA":
-                    energy += 2
+        for _ in range(c.evoke * xs if held else 0):
+            evoke(held[0])
         if c.evoke and held:
             lasting -= 6.0 * (held[0][0] == "PLASMA")  # its energy every turn goes with it
             held.pop(0)  # evoking uses the orb up
         if c.evoke_all:  # Shatter: every orb goes off, and all of them are used up
-            for kind, _passive, burst in held:
+            for orb in held:
                 for _ in range(c.evoke_all):
-                    if kind == "FROST" and can_block:
-                        block += burst
-                    elif kind in ("LIGHTNING", "DARK", "GLASS"):
-                        score += _orb_damage(kind, burst, foes, chip_rate, dmg_value)
-                    elif kind == "PLASMA":
-                        energy += 2
+                    evoke(orb)
             lasting -= 6.0 * sum(o[0] == "PLASMA" for o in held)
             held = []
         if c.key == "FRANTIC_ESCAPE":
@@ -517,22 +506,19 @@ def simulate(
             nimble -= 1
         if c.type == "Skill":
             tainted += taint
-        if c.type == "Skill":
             # Enrage: every Skill makes each of its hits stronger for as long as
             # it lives. Against the Test Subject's first form (100 HP) the bot
             # played seven Skills and then took a 39-point hit: the price is the
             # extra damage on every turn the enemy still has in it.
             score -= sum(e.enrage * 2.0 * max(1, e.incoming_hits) * min(4.0, 1.0 + e.hp / 35.0) for e in foes if e.alive)
-        drawn += c.draw * x if c.is_x else c.draw
+        drawn += c.draw * xs
         if c.strength:
             might += c.strength
             if c.strength_lasts:
                 # Pays off on every attack for the rest of the fight.
                 future += c.strength * 4.0 * long
-        if c.type == "Power" and c.strength_lasts:
-            pass  # valued just above
-        elif c.type == "Power":
-            future += POWER_VALUE.get(c.key, 5.0 + 2.0 * max(c.cost, 0)) * long
+        if c.type == "Power":
+            future += 0.0 if c.strength_lasts else _power_worth(c) * long  # (lasting Strength is valued just above)
         elif c.type in ("Status", "Curse"):
             score += 0.1  # only worth clearing out with energy nothing else can use
         elif not c.known:
@@ -596,11 +582,9 @@ def simulate(
     score += 40.0 * sum(1 for e in foes if e.adapted)  # a form beaten: that much of the fight is done
     survivors = [e for e in foes if e.alive]
     # The fight is over once every leader is dead: minions leave with them.
-    if not any(not e.minion for e in survivors) and any(not e.minion for e in enemies):
+    if not survivors or (all(e.minion for e in survivors) and not all(e.minion for e in enemies)):
         score += WIN_BONUS
         survivors = []
-    elif not survivors:
-        score += WIN_BONUS
 
     if kills and survivors:
         # Crab Rage: the one left standing gets 99 Block (its attacks this turn
@@ -679,12 +663,8 @@ def simulate(
     score += 1.1 * min(summoned, max(0, block - incoming))
     # Every leader left is Doomed to die at the end of its turn: the fight is
     # won if we live through that turn, so more damage is wasted energy.
-    doomed = (
-        bool(survivors)
-        and all(e.doom >= e.hp for e in survivors if not e.minion)
-        and any(not e.minion for e in survivors)
-        and not any(e.adapts or e.spent for e in survivors)
-    )
+    leaders = [e for e in survivors if not e.minion]
+    doomed = bool(leaders) and all(e.doom >= e.hp for e in leaders) and not any(e.adapts or e.spent for e in survivors)
     if doomed:
         score += WIN_BONUS / 2
     # A point of our HP is worth more than a point of enemy HP even at full
@@ -700,7 +680,8 @@ def simulate(
     # no better in acts 1 and 2. Removed.)
     # (Pricing HP 1.4 times higher in the last five rooms before a boss was tried as a setting
     # until 2026-11-19: 32 runs, no win, against 5 wins in 54; no further either. Removed.)
-    score -= lost * worth * (4.0 if doomed else 1.0) * knob("caution")
+    price = lost * worth * (4.0 if doomed else 1.0) * knob("caution")
+    score -= price
     if lost >= hp:
         # Dead on paper, and that is dead: of 115 turns ended this way none was lived
         # through (the loss expected is exact: 3 under-estimates of 3 HP or more in 7,880
@@ -711,7 +692,7 @@ def simulate(
         # planner gets wrong: a Silent blocked 17 of 35 and died 3 short with the Queen
         # on 25, where the Shivs and Serpent Form it did not count would have killed her.
         short = lost - hp
-        score += lost * worth * (4.0 if doomed else 1.0) * knob("caution") - max(0.0, future)  # (nor is there a later)
+        score += price - max(0.0, future)  # (nor is there a later)
         score -= LETHAL_PENALTY - (150.0 if energy > 0 else 30.0) * min(drawn, 3)
         score += 400.0 * max(0.0, 1.0 - short / 12.0) + 3000.0 * max(0.0, 1.0 - kill_reach(survivors, lost - through < hp) / 30.0)
     return Outcome(score, first_target, int(lost))
@@ -722,8 +703,7 @@ def expected_end_loss(state: dict) -> int | None:
     enemies = read_enemies(state)
     if not enemies:
         return None
-    out = simulate([], enemies, **_context(state))
-    return out.lost if out is not None else None
+    return simulate([], enemies, **_context(state)).lost  # (an empty line can always be afforded)
 
 
 def _context(state: dict) -> dict:
@@ -750,11 +730,7 @@ def _context(state: dict) -> dict:
         wither_hp=_next_wither(player, int(battle.get("round") or 1)),
         draw_worth=_draw_worth(player),
         orbs=tuple(
-            (
-                str(o.get("id") or o.get("name") or "").upper().replace("_ORB", ""),
-                int(o.get("passive_val") or 0),
-                int(o.get("evoke_val") or 0),
-            )
+            (str(o.get("id") or o.get("name") or "").upper().replace("_ORB", ""), int(o.get("passive_val") or 0), int(o.get("evoke_val") or 0))
             for o in player.get("orbs") or []
         ),
         orb_slots=int(player.get("orb_slots") or 0),
@@ -909,7 +885,7 @@ def _set_up(playable: list[CardInfo], energy: int) -> Action | None:
             continue
         # (X cards too: Dirge, "Summon 3 X times", stayed in the hand with 2 energy spare and Osty all that stood before 30 damage.)
         x, cost = (energy, energy) if c.is_x else (1, c.cost)
-        worth = POWER_VALUE.get(c.key, 5.0 + 2.0 * max(c.cost, 0)) if c.type == "Power" else 0.0
+        worth = _power_worth(c) if c.type == "Power" else 0.0
         worth += (4.0 * len(c.channel) + c.summon + 1.5 * c.souls) * x + 0.5 * c.forge + 2.5 * c.star_gain
         worth += 4.0 * c.strength * c.strength_lasts + 3.5 * c.dexterity * c.dexterity_lasts
         worth += 5.0 * c.next_energy + 1.5 * c.next_draw + 0.8 * c.next_block

@@ -12,16 +12,8 @@ Action = tuple[str, dict]
 log = logging.getLogger("sts2bot.strategy")
 
 _GOOD = [
-    (r"\brelics?\b", 6.0),
-    (r"\bremove\b", 4.0),
-    (r"\bupgrade\b", 4.0),
-    (r"\bmax hp\b", 3.0),
-    (r"\bheal\b", 2.5),
-    (r"\bgold\b", 2.0),
-    (r"\btransform\b", 2.0),
-    (r"\bpotions?\b", 1.5),
-    (r"\bcards?\b", 1.0),
-    (r"\benchant\b", 3.0),
+    (r"\brelics?\b", 6.0), (r"\bremove\b", 4.0), (r"\bupgrade\b", 4.0), (r"\bmax hp\b", 3.0), (r"\bheal\b", 2.5), (r"\bgold\b", 2.0),
+    (r"\btransform\b", 2.0), (r"\bpotions?\b", 1.5), (r"\bcards?\b", 1.0), (r"\benchant\b", 3.0),
     (r"draw \d+ additional cards?", 5.0),  # every turn, for the rest of the run
     (r"energy_icon", 5.0),
 ]
@@ -94,7 +86,6 @@ def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0) -> float
     for pat, w in _GOOD:
         if re.search(pat, text) and not re.search(r"(?:lose|pay|give)[^.]*" + pat, text):
             score += w
-    # "Obtain the Sword of Stone", "Receive the Spoils Map": a relic by name.
     if _CURSE_GAIN.search(text):
         score -= 6.0
     # "Obtain the Sword of Stone", "Receive the Spoils Map": a relic by name.
@@ -136,10 +127,7 @@ def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0) -> float
     m = re.search(r"(?:lose|take)\s+(\d+)\s+(?:hp|damage)", text)
     if m:
         loss = int(m.group(1))
-        if loss >= hp:
-            score -= 1000.0
-        else:
-            score -= 12.0 * loss / max(1, hp)
+        score -= 1000.0 if loss >= hp else 12.0 * loss / max(1, hp)
         if bled >= 5:
             # This event has already taken HP from us: each further bite costs more,
             # so a chain of small losses is stopped before it adds up.
@@ -163,14 +151,9 @@ def event(state: dict, mem) -> list[Action]:
     if eid != mem.event_id:
         mem.event_id, mem.event_hp0 = eid, hp
     bled = max(0, mem.event_hp0 - hp)
-    proceeds = [o for o in opts if o.get("is_proceed")]
-    rest = [o for o in opts if not o.get("is_proceed")]
-    rest.sort(key=lambda o: _event_option_value(o, hp, max_hp, bled), reverse=True)
+    worth = lambda o: _event_option_value(o, hp, max_hp, bled)
+    rest = sorted((o for o in opts if not o.get("is_proceed")), key=worth, reverse=True)
     if log.isEnabledFor(logging.DEBUG) and rest:
-        log.debug(
-            "event %s: %s",
-            ev.get("event_id"),
-            " | ".join(f"[{_event_option_value(o, hp, max_hp, bled):.1f}] {o.get('title')}: {o.get('description')}" for o in rest),
-        )
-    ordered = proceeds + rest if proceeds else rest
+        log.debug("event %s: %s", ev.get("event_id"), " | ".join(f"[{worth(o):.1f}] {o.get('title')}: {o.get('description')}" for o in rest))
+    ordered = [o for o in opts if o.get("is_proceed")] + rest
     return [("choose_event_option", {"index": int(o.get("index", 0))}) for o in ordered]

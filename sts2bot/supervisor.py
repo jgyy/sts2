@@ -31,10 +31,7 @@ PROCESS_NAME = "SlayTheSpire2"
 # skipping the Timeline screen. That also kept everything the Timeline unlocks
 # (ascension levels, new characters, cards) locked for good, so the game now
 # runs the normal way and the bot clicks through the Timeline itself.
-GAME_ENV = {
-    "SteamAppId": str(STEAM_APP_ID),
-    "SteamGameId": str(STEAM_APP_ID),
-}
+GAME_ENV = {"SteamAppId": str(STEAM_APP_ID), "SteamGameId": str(STEAM_APP_ID)}
 
 
 def game_dir() -> Path:
@@ -82,19 +79,21 @@ def mod_is_stale() -> bool:
         return True
 
 
+def _game_log(since: float) -> str:
+    """The game's log ("" if there is none, or it was last written before `since`)."""
+    try:
+        return GAME_LOG.read_text(errors="replace") if GAME_LOG.stat().st_mtime >= since else ""
+    except OSError:
+        return ""
+
+
 def mod_load_error(since: float = 0.0) -> str | None:
     """Why the game refused to load the mod, read from the game's log (None if it did not).
 
     `since` (a time.time() value) skips a log left over from an earlier launch.
     """
-    try:
-        if GAME_LOG.stat().st_mtime < since:
-            return None
-        text = GAME_LOG.read_text(errors="replace")
-    except OSError:
-        return None
-    marker = f"Exception thrown while loading mod {MOD_NAME}"
-    at = text.find(marker)
+    text = _game_log(since)
+    at = text.find(f"Exception thrown while loading mod {MOD_NAME}")
     if at < 0:
         return None
     for line in text[at:].splitlines()[1:12]:
@@ -106,12 +105,7 @@ def mod_load_error(since: float = 0.0) -> str | None:
 
 def started_without_steam(since: float = 0.0) -> bool:
     """True if the game's log says it came up with no Steam client to talk to."""
-    try:
-        if GAME_LOG.stat().st_mtime < since:
-            return False
-        return "Steam is probably not running" in GAME_LOG.read_text(errors="replace")
-    except OSError:
-        return False
+    return "Steam is probably not running" in _game_log(since)
 
 
 def rebuild_mod() -> bool:
@@ -122,9 +116,7 @@ def rebuild_mod() -> bool:
     log.warning("rebuilding the bridge mod against the current game files")
     fingerprint = game_fingerprint()
     try:
-        done = subprocess.run(
-            ["bash", str(INSTALL_SCRIPT)], capture_output=True, text=True, timeout=900, stdin=subprocess.DEVNULL
-        )
+        done = subprocess.run(["bash", str(INSTALL_SCRIPT)], capture_output=True, text=True, timeout=900, stdin=subprocess.DEVNULL)
     except (OSError, subprocess.TimeoutExpired) as e:
         log.error("rebuilding the bridge mod failed: %s", e)
         return False
@@ -169,8 +161,16 @@ def game_running() -> bool:
     for proc in list(_children):
         if proc.poll() is not None:  # reaps it if it has exited
             _children.remove(proc)
-    out = subprocess.run(["ps", "-C", PROCESS_NAME, "-o", "stat="], capture_output=True, text=True).stdout
+    return _process_running(PROCESS_NAME)
+
+
+def _process_running(name: str) -> bool:
+    out = subprocess.run(["ps", "-C", name, "-o", "stat="], capture_output=True, text=True).stdout
     return any(line.strip() and not line.strip().startswith("Z") for line in out.splitlines())
+
+
+def _failed(result: dict) -> bool:
+    return result.get("status") == "error" or "error" in result
 
 
 def kill_game(grace: float = 10.0) -> None:
@@ -203,12 +203,8 @@ def set_fast_mode(client: Client, mode: str) -> bool:
             break
         time.sleep(1.0)
         result = client.act("set_fast_mode", mode=mode)
-    if result.get("status") == "error" or "error" in result:
-        log.warning(
-            "could not set fast mode %r (%s); re-run scripts/install_mod.sh to update the mod",
-            mode,
-            result.get("error"),
-        )
+    if _failed(result):
+        log.warning("could not set fast mode %r (%s); re-run scripts/install_mod.sh to update the mod", mode, result.get("error"))
         return False
     log.info("fast mode: %s", mode)
     return True
@@ -224,7 +220,7 @@ def set_light_graphics(client: Client, width: int = 960, height: int = 540, maxi
     asked for the full window on 2026-11-19, the machine has frames to spare).
     """
     result = client.act("set_light_graphics", width=width, height=height, maximize=maximize)
-    if result.get("status") == "error" or "error" in result:
+    if _failed(result):
         log.warning("could not switch to light graphics (%s); re-run scripts/install_mod.sh", result.get("error"))
         return False
     if maximize and not result.get("maximized"):
@@ -242,7 +238,7 @@ def set_time_scale(client: Client, scale: float) -> bool:
     all run on the engine clock, which the mod can speed up.
     """
     result = client.act("set_time_scale", scale=scale)
-    if result.get("status") == "error" or "error" in result:
+    if _failed(result):
         log.warning("could not set the time scale (%s); re-run scripts/install_mod.sh to update the mod", result.get("error"))
         return False
     log.info("time scale: x%g", scale)
@@ -261,9 +257,10 @@ def _detached(argv: list[str]) -> list[str]:
     return argv
 
 
-def _process_running(name: str) -> bool:
-    out = subprocess.run(["ps", "-C", name, "-o", "stat="], capture_output=True, text=True).stdout
-    return any(line.strip() and not line.strip().startswith("Z") for line in out.splitlines())
+def _spawn(argv: list[str], **kw) -> None:
+    """Start a process of its own (Steam, the game) and remember it, to reap it when it dies."""
+    quiet = dict(stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    _children.append(subprocess.Popen(_detached(argv), **quiet, start_new_session=True, **kw))
 
 
 def steam_running() -> bool:
@@ -285,17 +282,10 @@ def ensure_steam(timeout: float = 180.0) -> bool:
         return False
     log.info("Steam is not running; starting it")
     try:
-        proc = subprocess.Popen(
-            _detached([steam, "-silent"]),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-        )
+        _spawn([steam, "-silent"])
     except OSError as e:
         log.error("could not start Steam: %s", e)
         return False
-    _children.append(proc)
     # The client is usable once its web helper (the UI process) is up; it
     # updates itself first, which can take a while.
     deadline = time.monotonic() + timeout
@@ -320,16 +310,7 @@ def launch_game(cmd: str) -> None:
     log.info("launching game: %s", cmd)
     env = {**os.environ, **GAME_ENV}
     env.pop("STS2_DEV_SKIP", None)
-    proc = subprocess.Popen(
-        _detached(argv),
-        cwd=exe.parent if exe.is_absolute() and exe.parent.is_dir() else None,
-        env=env,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
-    _children.append(proc)
+    _spawn(argv, cwd=exe.parent if exe.is_absolute() and exe.parent.is_dir() else None, env=env)
 
 
 class Supervisor:

@@ -14,8 +14,10 @@ from __future__ import annotations
 
 import json
 import logging
-import re
+import random
 from pathlib import Path
+
+from .cards import key_of as card_key
 
 log = logging.getLogger("sts2bot.learn")
 
@@ -31,8 +33,32 @@ MAX_SHIFT = 2.5  # a rating never moves further than this
 CURIOSITY = 1.5
 
 
-def card_key(name: str) -> str:
-    return re.sub(r"[^A-Z0-9]+", "_", str(name).upper().rstrip("+")).strip("_")
+def _load(path: Path | None, what: str) -> dict:
+    """The JSON object kept in `path` ({} when there is none yet, or it cannot be read)."""
+    if path is None:
+        return {}
+    try:
+        data = json.loads(path.read_text())
+        if isinstance(data, dict):
+            return data
+        raise ValueError("not a JSON object")
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError) as e:
+        log.warning("could not read %s (%s); starting the %s afresh", path, e, what)
+        return {}
+
+
+def _save(path: Path | None, data: dict, what: str) -> None:
+    if path is None:
+        return
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, indent=1, sort_keys=True))
+        tmp.replace(path)
+    except OSError as e:
+        log.warning("could not save the %s: %s", what, e)
 
 
 class CardStats:
@@ -40,15 +66,12 @@ class CardStats:
         self.path = path
         self.finals: dict[str, list[int]] = {}  # character -> results of its latest runs
         self.cards: dict[str, dict[str, list[float]]] = {}  # character -> card -> [picks, floors gained in total]
-        if path is not None:
-            try:
-                data = json.loads(path.read_text())
-                self.finals = {k: list(v) for k, v in (data.get("finals") or {}).items()}
-                self.cards = {k: {c: list(x) for c, x in v.items()} for k, v in (data.get("cards") or {}).items()}
-            except FileNotFoundError:
-                pass
-            except (OSError, ValueError) as e:
-                log.warning("could not read %s (%s); starting the card statistics afresh", path, e)
+        data = _load(path, "card statistics")
+        try:
+            self.finals = {k: list(v) for k, v in (data.get("finals") or {}).items()}
+            self.cards = {k: {c: list(x) for c, x in v.items()} for k, v in (data.get("cards") or {}).items()}
+        except (AttributeError, TypeError, ValueError) as e:
+            log.warning("could not use %s (%s); starting the card statistics afresh", path, e)
 
     def usual(self, character: str, floor: int) -> float | None:
         """What a run of this character that got to `floor` usually ends on."""
@@ -87,15 +110,7 @@ class CardStats:
         self.save()
 
     def save(self) -> None:
-        if self.path is None:
-            return
-        try:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = self.path.with_suffix(".tmp")
-            tmp.write_text(json.dumps({"finals": self.finals, "cards": self.cards}, indent=1, sort_keys=True))
-            tmp.replace(self.path)
-        except OSError as e:
-            log.warning("could not save the card statistics: %s", e)
+        _save(self.path, {"finals": self.finals, "cards": self.cards}, "card statistics")
 
 
 def seed_from_history(stats: CardStats, runs_file: Path) -> None:
@@ -149,18 +164,10 @@ def knob(name: str) -> float:
 
 class Knobs:
     def __init__(self, path: Path | None = None, rng=None):
-        import random
-
         self.path = path
         self.rng = rng or random.Random()
-        self.table: dict[str, dict[str, list[float]]] = {}  # knob -> setting -> [runs, floors gained in total]
-        if path is not None:
-            try:
-                self.table = {k: {c: list(x) for c, x in v.items()} for k, v in json.loads(path.read_text()).items()}
-            except FileNotFoundError:
-                pass
-            except (OSError, ValueError) as e:
-                log.warning("could not read %s (%s); starting the tuning afresh", path, e)
+        # knob -> setting -> [runs, floors gained in total]
+        self.table: dict[str, dict[str, list[float]]] = {k: {c: list(x) for c, x in v.items()} for k, v in _load(path, "tuning").items()}
 
     def draw(self) -> dict:
         """Choose this run's settings and put them in force."""
@@ -194,12 +201,4 @@ class Knobs:
             entry = self.table.setdefault(name, {}).setdefault(str(KNOB[name]), [0.0, 0.0])
             entry[0] += 1.0
             entry[1] += gained
-        if self.path is None:
-            return
-        try:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = self.path.with_suffix(".tmp")
-            tmp.write_text(json.dumps(self.table, indent=1, sort_keys=True))
-            tmp.replace(self.path)
-        except OSError as e:
-            log.warning("could not save the tuning: %s", e)
+        _save(self.path, self.table, "tuning")
