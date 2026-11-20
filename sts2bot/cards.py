@@ -62,6 +62,7 @@ class CardInfo:
     osty_attack: bool = False  # "Osty deals N damage": nothing happens while Osty is dead
     osty_dies: bool = False  # Bone Shards: Osty dies, and with him the HP that stood in front of us
     doom_kills: bool = False  # End of Days: enemies with as much Doom as HP die at once, not at the end of their turn
+    debris: int = 0  # Debris (1 energy: Exhaust) it adds to our hand; -1: as many as the hand has room for (Crash Landing)
 
     @property
     def is_x(self) -> bool:
@@ -240,6 +241,7 @@ def parse(card: dict) -> CardInfo:
         osty_attack=bool(re.search(r"\bOsty\b[^.]*\bdeals\b|if\s+Osty\s+is\s+alive", full_text, re.I)),
         osty_dies=bool(re.search(r"Osty\s+dies", full_text, re.I)),
         doom_kills=bool(re.search(r"kill\s+enemies\s+with\s+at\s+least\s+as\s+much\s+Doom", full_text, re.I)),
+        debris=-1 if re.search(r"fill\s+your\s+hand\s+with\s+debris", text, re.I) else _int(r"add\s+(\d+)\s+debris", text) or int(bool(re.search(r"add\s+a\s+debris", text, re.I))),
         bound=any(str(k.get("name")).lower() == "bound" for k in card.get("keywords") or [] if isinstance(k, dict)),
         short=not can_play
         and bool(card.get("unplayable_reason"))
@@ -325,6 +327,9 @@ _TIER = {
     "PARRY": 4.0, "KINGLY_KICK": 3.5, "STARDUST": 3.5, "MAKE_IT_SO": 3.5, "BEAT_INTO_SHAPE": 3.5,
     "COSMIC_INDIFFERENCE": 3.5, "TERRAFORMING": 3.5, "SUMMON_FORTH": 3.5, "DECISIONS_DECISIONS": 3.5,
     "TYRANNY": 3.5, "ORBIT": 3.5, "MONOLOGUE": 3.0, "ROYAL_GAMBLE": 3.0, "ROYALTIES": 3.0,
+    # (Crash Landing fills the hand with Debris: an AoE for ordinary fights and a finisher, a liability in
+    # a boss fight. Regent bosses with it in the deck: 1 won in 6, against 22 in 34 without.)
+    "CRASH_LANDING": 4.5, "SEVEN_STARS": 5.5,
     "PILLAR_OF_CREATION": 3.0, "SPECTRUM_SHIFT": 3.0, "PALE_BLUE_DOT": 3.0,
     # --- The Necrobinder
     # (Reset on 2026-11-18 from 67 Necrobinder runs, floors gained per pick: Eradicate +7.9, End of Days +6.4,
@@ -404,7 +409,8 @@ def deck_value(card: dict) -> float:
     score = _RARITY.get(str(card.get("rarity") or card.get("card_rarity") or ""), 1.0)
 
     dmg = info.total_damage * (1.6 if info.aoe else 1.0)
-    score += max(0.0, dmg / cost - 6.0) * 0.45
+    # (Capped: uncapped, Crash Landing came to 15.9 and Seven Stars to 12.1, above every card rated by hand.)
+    score += min(4.0, max(0.0, dmg / cost - 6.0) * 0.45)
     score += max(0.0, info.block / cost - 5.0) * 0.45
     score += min(info.strength, 4) * (1.0 if info.strength_lasts else 0.4)
     score += info.draw * 0.8 + info.energy_gain * 1.2

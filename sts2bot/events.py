@@ -49,26 +49,32 @@ _JUNK_NAMES = {
 # worth to this bot, on the scale of the scores below. Reading their text word
 # by word got these badly wrong: energy every turn with a curse attached
 # scored below "upgrade a card", and +31 Max HP below a random relic.
+# (Neow's offers re-rated on 2026-11-20 from 282 runs, floors beyond what the same character reaches on the same
+# ascension: Booming Conch -4.4 over 34 picks (the bot meets half an elite an act; 12 of the 34 died in act 1),
+# Stone Humidifier +9.6 over 9 with 4 wins (it rests at seven rest sites in ten), Lead Paperweight +7.1 over 12,
+# Scroll Boxes +4.4 over 10, Large Capsule -1.3 over 24, Fishing Rod +0.2 over 42, Arcane Scroll -2.8 over 19.
+# Act 2 picks, among runs that got there: Very Hot Cocoa +3.7 over 14 with 5 wins, Archaic Tooth -2.5 over 18
+# with none, Pael's Claw -7.3 over 5.)
 _ANCIENT = {
     # more energy or cards every turn
     "BLOOD_SOAKED_ROSE": 6.5, "SPIKED_GAUNTLETS": 13.5, "PHILOSOPHERS_STONE": 13.5, "SOZU": 12.5,
     "BLESSED_ANTLER": 12.5, "PAELS_FLESH": 12.5, "PAELS_BLOOD": 13.0, "FIDDLE": 11.5, "WHISPERING_EARRING": 11.0,
-    "PAELS_TEARS": 9.0, "VERY_HOT_COCOA": 10.0, "PUMPKIN_CANDLE": 8.5, "SEAL_OF_GOLD": 8.0, "BOOMING_CONCH": 8.0,
+    "PAELS_TEARS": 9.0, "VERY_HOT_COCOA": 11.5, "PUMPKIN_CANDLE": 8.5, "SEAL_OF_GOLD": 8.0, "BOOMING_CONCH": 5.5,
     # something every turn or every fight
     "SAI": 13.0, "CROSSBOW": 12.0, "TOASTY_MITTENS": 11.0, "MUSIC_BOX": 10.0, "DELICATE_FROND": 10.0,
     "CHOICES_PARADOX": 9.0, "DIAMOND_DIADEM": 9.0, "PAELS_LEGION": 8.0, "RADIANT_PEARL": 7.5, "JEWELED_MASK": 7.0,
     "BRILLIANT_SCARF": 6.5, "FUR_COAT": 12.0,
     # health, gold, relics
-    "LOOMING_FRUIT": 13.0, "NUTRITIOUS_OYSTER": 8.5, "STONE_HUMIDIFIER": 7.0, "LORDS_PARASOL": 12.0,
-    "SIGNET_RING": 9.5, "LARGE_CAPSULE": 9.5, "SMALL_CAPSULE": 9.0, "TOY_BOX": 9.0, "LAVA_ROCK": 8.0,
+    "LOOMING_FRUIT": 13.0, "NUTRITIOUS_OYSTER": 8.5, "STONE_HUMIDIFIER": 9.5, "LORDS_PARASOL": 12.0,
+    "SIGNET_RING": 9.5, "LARGE_CAPSULE": 8.5, "SMALL_CAPSULE": 8.0, "TOY_BOX": 9.0, "LAVA_ROCK": 8.0,
     "NEOWS_BONES": 7.0, "GOLDEN_PEARL": 6.5, "CURSED_PEARL": 6.0,
     # the deck
-    "YUMMY_COOKIE": 10.5, "PAELS_TOOTH": 10.0, "JEWELRY_BOX": 10.0, "WAR_HAMMER": 9.0, "FISHING_ROD": 9.0,
-    "BIIIG_HUG": 9.0, "ARCHAIC_TOOTH": 8.5, "NUTRITIOUS_SOUP": 8.5, "PAELS_CLAW": 8.0, "BEAUTIFUL_BRACELET": 8.0,
-    "TRI_BOOMERANG": 7.5, "PAELS_GROWTH": 7.5, "PHIAL_HOLSTER": 7.5, "PRECISE_SCISSORS": 7.0, "PRESERVED_FOG": 7.0,
-    "PRECARIOUS_SHEARS": 5.0, "LOST_COFFER": 7.0, "ARCANE_SCROLL": 7.0, "CLAWS": 7.0, "SILVER_CRUCIBLE": 7.0,
-    "GLITTER": 7.0, "POMANDER": 6.5, "KALEIDOSCOPE": 6.5, "SCROLL_BOXES": 6.5, "DEMON_GLASS": 6.5,
-    "LEAD_PAPERWEIGHT": 6.5, "DUSTY_TOME": 6.5, "STORYBOOK": 6.5, "NEOWS_TALISMAN": 6.0, "NEW_LEAF": 5.5,
+    "YUMMY_COOKIE": 10.5, "PAELS_TOOTH": 10.0, "JEWELRY_BOX": 10.0, "WAR_HAMMER": 9.0, "FISHING_ROD": 8.5,
+    "BIIIG_HUG": 9.0, "ARCHAIC_TOOTH": 7.0, "NUTRITIOUS_SOUP": 8.5, "PAELS_CLAW": 7.0, "BEAUTIFUL_BRACELET": 8.0,
+    "TRI_BOOMERANG": 7.5, "PAELS_GROWTH": 7.5, "PHIAL_HOLSTER": 7.5, "PRECISE_SCISSORS": 6.5, "PRESERVED_FOG": 7.0,
+    "PRECARIOUS_SHEARS": 5.0, "LOST_COFFER": 6.5, "ARCANE_SCROLL": 6.5, "CLAWS": 7.0, "SILVER_CRUCIBLE": 7.0,
+    "GLITTER": 7.0, "POMANDER": 6.5, "KALEIDOSCOPE": 6.5, "SCROLL_BOXES": 7.5, "DEMON_GLASS": 6.5,
+    "LEAD_PAPERWEIGHT": 8.5, "DUSTY_TOME": 6.5, "STORYBOOK": 6.5, "NEOWS_TALISMAN": 6.0, "NEW_LEAF": 5.5,
     "DOWSING_ROD": 5.5, "TANXS_WHISTLE": 5.5, "NEOWS_TORMENT": 5.5, "PAELS_HORN": 5.5, "GOLDEN_COMPASS": 5.0,
     # things the bot cannot make use of
     "WINGED_BOOTS": 4.0, "PAELS_WING": 4.0, "MEAT_CLEAVER": 3.5, "PAELS_EYE": 3.0, "DISTINGUISHED_CAPE": 3.0,

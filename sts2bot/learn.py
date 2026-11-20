@@ -145,8 +145,13 @@ def seed_from_history(stats: CardStats, runs_file: Path) -> None:
 DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "long_game": 1.0}
 CHOICES = {
     "caution": [0.75, 1.0, 1.35, 1.8],  # weight of HP lost in the combat planner
-    "elite_worth": [0.8, 1.5, 2.5, 4.0],  # what an elite's rewards count for when planning a route
-    "upgrade_worth": [1.3, 2.5, 4.0],  # what an upgrade counts for against resting
+    # What an elite's rewards count for when planning a route. (Since the boss-odds curve was refitted on
+    # 2026-11-20 this decides something: 0.8 never takes an elite, 2.5 takes one from full HP with a rest
+    # site after it, 4.0 from 85% HP, 6.0 from 75%. 1.5 did the same as 0.8 and was dropped; 6.0 is new.)
+    "elite_worth": [0.8, 2.5, 4.0, 6.0],
+    # What an upgrade counts for against resting. (6.0 added on 2026-11-20: the record rose with every
+    # step, +1.8 floors a run at 1.3, +2.7 at 2.5, +3.1 at 4.0, and the bot upgrades twice a run by the act 2 boss.)
+    "upgrade_worth": [1.3, 2.5, 4.0, 6.0],
     "pickiness": [-1.0, 0.0, 1.0],  # added to the rating a card reward needs to be taken
     # (`early_setup`, 1.7 times every lasting effect in rounds 1-3 of boss and elite fights, was dropped on
     # 2026-11-19: 21 runs, no better than the 100 without it.)

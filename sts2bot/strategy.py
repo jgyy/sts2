@@ -237,16 +237,22 @@ MAX_PATHS = 1500
 
 
 def boss_odds(hp_ratio: float) -> float:
-    """Chance of beating the boss given how healthy we arrive.
+    """Chance of beating the boss given how healthy we arrive, next to arriving at full HP.
 
-    From the run history: at 75% HP or more the act 1 boss was beaten four
-    times in five, between 50% and 75% one time in four, below that never.
-    The last stretch counts for the most: act 2 bosses met at 95% HP or more
-    were beaten 27 times in 45 against 10 in 44 below, and every one of seven
-    act 3 wins started at full HP (7 of 16; 0 of 24 below). So the curve
-    bends: 0.26 at 60% HP, 0.58 at 80%, 0.78 at 90%.
+    Below 60% HP a boss is hardly ever beaten (1 in 12); from 80% up it makes
+    no difference that the results show. From 246 boss fights on Ascension 3
+    and 4, acts 1 and 2 together, as a share of the win rate at full HP:
+    90-97% HP 0.95, 80-90% 1.00, 70-80% 0.72, 60-70% 0.85 (8 fights), below
+    that 0.15. (Until 2026-11-20 this was ((hp - 0.3) / 0.7) ** 1.6, fitted
+    when half the bosses were still met below 60% HP: it put 80% HP at 0.58
+    and 90% at 0.78, so 20 HP at the boss weighed more than three relics and
+    an elite on offer was taken 5 times in 78 at 85% HP or more.)
     """
-    return max(0.0, min(1.0, (hp_ratio - 0.30) / 0.70)) ** 1.6
+    if hp_ratio >= 0.85:
+        return 1.0
+    if hp_ratio >= 0.6:
+        return 0.45 + 0.55 * (hp_ratio - 0.6) / 0.25
+    return max(0.0, 0.45 * (hp_ratio - 0.3) / 0.3)
 
 
 REST_HEAL = 0.3  # of Max HP
@@ -271,7 +277,10 @@ def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, 
                 # Elites met below three quarters HP killed 9 runs in 27 (2 in 101 above
                 # it), and the average cost says nothing of that: a third of what the
                 # rest of the run is worth, more when already below half.
-                score -= 6.0 if hp >= 0.5 * max_hp else 14.0
+                # (By band on Ascension 3-4: 65-75% HP 1 death in 8, 50-65% 3 in 8, below
+                # half 5 in 5. Runs start on 80% HP now, so the top band is where most
+                # elites are met.)
+                score -= 2.5 if hp >= 0.65 * max_hp else 6.0 if hp >= 0.5 * max_hp else 14.0
             if kind == "Monster" and act >= 2 and hp < 0.35 * max_hp:
                 # The same for an ordinary fight met badly hurt: below 35% HP they ended 6 runs
                 # in 11 in act 3 and 3 in 12 in act 2 (above 55%: 4 in about 500).
@@ -397,7 +406,12 @@ def rewards(state: dict, mem: Memory) -> list[Action]:
     return out
 
 
-STARS_AT_START = 3  # the Regent's starting relic
+# The Regent's starting relic gives 3 Stars a fight, once. A boss fight goes through the deck two or
+# three times, so they pay for half as much each time round: counted in full, a deck that needed
+# 8 Stars a cycle and made 2 passed for supplied (Falling Star, Gamma Blast and Astral Pulse sat
+# unplayable through most of a lost Vantom fight, next to one Venerate). Star-locked cards were
+# left in the hand on 34% of the turns of lost boss fights, 23% of won ones.
+STARS_AT_START = 1.5
 
 
 def _stars(card: dict) -> tuple[int, int]:
@@ -406,6 +420,8 @@ def _stars(card: dict) -> tuple[int, int]:
     need = 2 if info.star_cost < 0 else info.star_cost
     text = str(card.get("description") or "")
     later = sum(len(re.findall(r"star_icon", m)) for m in re.findall(r"next turn, gain ((?:\[star_icon\.png\]\s*)+)", text, re.I))
+    # Genesis ("At the start of your turn, gain 2 Stars"): about three turns to a cycle of the deck.
+    later += 3 * sum(len(re.findall(r"star_icon", m)) for m in re.findall(r"start of (?:your|each) turn, gain ((?:\[star_icon\.png\]\s*)+)", text, re.I))
     return need, info.star_gain + later
 
 
@@ -495,10 +511,15 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
     # Rest or upgrade: whichever leaves the rest of the way to the boss better
     # off. Without the map (a run picked up at a rest site) the old rule of
     # thumb decides.
-    heal_first = hp < (0.95 if mem.boss_next else 0.6)
+    act = (state.get("run") or {}).get("act")
+    # What counts as healthy enough to meet the boss without healing first. Acts 1 and 2: bosses
+    # met on 80-97% HP were beaten as often as from full (41 of 60 against 94 of 117), so from
+    # 85% up the rest site is an upgrade. The last boss is a longer fight, and its few results
+    # do not say the same (0 of 6 on 80-97%, 6 of 23 from full).
+    full = 0.95 if not isinstance(act, int) or act >= 3 else 0.85
+    heal_first = hp < (full if mem.boss_next else 0.6)
     node = mem.map_nodes.get(mem.map_at) if mem.map_nodes else None
     if node is not None and str(node.get("type")) == "RestSite" and (node.get("children") or []):
-        act = (state.get("run") or {}).get("act")
         args = (max_hp, int(player.get("gold") or 0), act if isinstance(act, int) else 1)
         smith = knob("upgrade_worth") + best_onward(mem.map_nodes, mem.map_at, [], hp_now, *args, [MAX_PATHS])
         healed = min(float(max_hp), hp_now + REST_HEAL * max_hp)
@@ -508,7 +529,7 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
         # won: one act 3 bot walked into the boss at 6 of 109 HP. Heal then.
         # Before a boss a heal is worth more than the flat upgrade bonus: the
         # bot skipped the rest 29 times below 90% HP and fought the boss weaker.
-        heal_first = hp < 0.5 or (rest > smith and hp < 0.95) or (mem.boss_next and hp < 0.95)
+        heal_first = hp < 0.5 or (rest > smith and hp < 0.95) or (mem.boss_next and hp < full)
         log.debug("rest site at %d/%d: rest %.1f, upgrade %.1f", hp_now, max_hp, rest, smith)
 
     def rank(o: dict) -> float:
