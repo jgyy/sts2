@@ -153,7 +153,7 @@ def seed_from_history(stats: CardStats, runs_file: Path) -> None:
 # more and more often from the settings whose runs have gone furthest
 # (Thompson sampling). Good settings end up being used nearly always.
 
-DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "crowd": 0.6, "punch": 0.9, "weak_want": 0.0, "attack_room": 99.0, "block_want": 0.0, "cards_first": 0.0}
+DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "crowd": 0.6, "punch": 0.9, "weak_want": 0.0, "attack_room": 99.0, "block_want": 0.0, "cards_first": 0.0, "debuff_worth": 1.0}
 CHOICES = {
     # Weight of HP lost in the combat planner. (1.35 and 1.8 were dropped on 2026-11-21. Runs since
     # 2026-11-19 20:06 that reached the act 2 boss got past it 44 times in 74 at 1.0 and 19 in 54 at 1.35,
@@ -248,6 +248,16 @@ CHOICES = {
     # fights cost (-0.3% of Max HP a fight for one more, 131 runs), where a Block card shows at once.
     # From Ascension 6 the price also climbs 50 with each removal.
     "cards_first": [0.0, 1.0],
+    # What a turn of Vulnerable or Weak that outlasts this one counts for in the combat planner, as a multiple
+    # of what it was (7 points a turn of Vulnerable and 5 of Weak on a boss, 5 and 3.5 on an elite, 3 and 2
+    # otherwise). Added on 2026-11-21 from the fight logs: a round that began with a lone boss Vulnerable
+    # dealt 14.6 more than the other rounds of the same fight in act 1 (55 rounds, 26 fights), 10.9 in act 2
+    # (44, 17) and 35 in act 3 (11, 5), which at 1.5 points a damage is 16 points and up; and bosses attack
+    # for 10.7, 19.3 and 22.7 a round by act, so a turn of Weak is 2.7 to 5.7 of our HP at 2 to 3 points each.
+    # Both say the old numbers are about half. What it changes is which card goes first when energy is short
+    # (a Weak or Vulnerable card before a Strike or a Defend), so judge it by boss records and by what a boss
+    # fight costs (`fightlog.py rooms debuff_worth` for the ordinary fights), then `knobs`.
+    "debuff_worth": [1.0, 2.0],
 }
 MIN_RUNS = 20  # runs a setting gets before the record alone decides how often it is drawn
 SPREAD = 12.0  # how far apart two runs of the same character usually end, in floors

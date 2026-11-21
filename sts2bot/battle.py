@@ -13,7 +13,6 @@ from .crowd import rating as crowd_rating
 
 LETHAL_PENALTY = 1_000_000.0
 WIN_BONUS = 10_000.0
-SANDPIT_DEATH = 600.0  # what being eaten by the Sandpit costs, in points (the run ends there)
 BEYOND_REACH = 100_000  # HP no enemy really has: the game's way of saying it cannot be hurt any more
 REATTACH_REACH = 40  # Decimillipede: HP the other segments may have left for a kill to be the start of the end (they have two turns)
 RAGE_BLOCK = 99  # Crab Rage: Block a crab gains for each ally that dies (gone again when its next turn starts)

@@ -14,14 +14,15 @@ from dataclasses import dataclass, replace
 from itertools import combinations, permutations
 
 from .battle import (  # noqa: F401  (also the names other modules and the tests reach through here)
-    BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, REATTACH_REACH, SANDPIT_DEATH, SLIP_WORTH, WIN_BONUS, Enemy,
+    BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, REATTACH_REACH, SLIP_WORTH, WIN_BONUS, Enemy,
     _has_power, _is_attack, constrict, end_of_turn_block, end_of_turn_loss, expected_loss, hand_burns,
     intent_damage, intent_hits, kill_reach, osty_hp, power_amount, read_enemies, _bare_block, _draw_worth, _escape_odds, _next_wither, _sandpit, _wither_bill,
     deck_count, junk_cost, cards_left_this_turn, free_plays, _hit, _hit_count, _poison_total, _power_worth, _set_up, _rage_blocks, _respawns, loss_cap,
 )
 from .cards import CardInfo, order_key, parse
 from .potions import fortifier, describe, potion_actions  # noqa: F401
-from . import triggers
+from . import sandpit as pit
+from . import artifact, triggers
 from .learn import knob
 
 Action = tuple[str, dict]
@@ -228,6 +229,7 @@ def simulate(
     mastery: int = 0,  # Necro Mastery: whenever Osty loses HP, ALL enemies lose that much HP as well (times its amount)
     might0: int = 0,  # Strength that is on its way and not in the card texts yet (Toasty Mittens, once its Exhaust is chosen)
     holds: bool = False,  # Barricade: Block is not removed when our next turn starts
+    strip: tuple = (0.0, 0.0),  # Artifact: (what a charge taken off an enemy is worth, debuffs the deck will still apply), artifact.outlook
     friends: int = 0,  # Friendships already in play (each is an energy a turn, and the next one is worth less)
     free: int = 0,  # Void Form: this many of the next cards cost no energy
     doubled: bool = False,  # Duplication (the Duplicator potion): the next card is played an extra time, whatever it is
@@ -618,14 +620,18 @@ def simulate(
     # Vulnerable is half again our damage and Weak a quarter off theirs, for
     # every turn they last. A flat bonus undersold both in long fights, where
     # they are worth more than any single attack.
-    vuln_turn = {"boss": 7.0, "elite": 5.0}.get(fight, 3.0)
-    weak_turn = {"boss": 5.0, "elite": 3.5}.get(fight, 2.0)
+    # (Still undersold, by the logs of 2026-11-21: a round begun with the boss Vulnerable dealt 11 to 15 more
+    # than the other rounds of the same fight, 17 points and up where this says 7; and Weak is a quarter off
+    # 19 a round at an act 2 boss, some 12 points of our HP where this says 5. On trial as `debuff_worth`.)
+    vuln_turn = {"boss": 7.0, "elite": 5.0}.get(fight, 3.0) * knob("debuff_worth")
+    weak_turn = {"boss": 5.0, "elite": 3.5}.get(fight, 2.0) * knob("debuff_worth")
     for e in foes:
         if e.alive:
             # The first turn of Weak is already in `incoming`; Vulnerable used
             # this turn is already in the damage dealt.
             score += (max(0, e.vuln_added - 1) + 0.5 * min(1, e.vuln_added)) * vuln_turn * e.worth
             score += (max(0, e.weak_added - 1) + 0.3 * min(1, e.weak_added)) * weak_turn * (1.0 if e.incoming_hits or not e.minion else 0.5)
+    score += sum(artifact.gain(orig.artifact, e.artifact, strip) * e.worth for e, orig in zip(foes, enemies) if e.alive and e.artifact < orig.artifact)
     # Doom finishes an enemy at the end of its turn once it covers its HP.
     score += 20.0 * sum(e.worth for e, orig in zip(foes, enemies) if e.alive and e.doom >= e.hp and orig.doom < orig.hp)
     _respawns(foes)  # a Stock enemy killed by the last card comes back too
@@ -651,22 +657,13 @@ def simulate(
                 e.incoming += 6 * e.incoming_hits * len(kills)
 
     if sandpit is not None and survivors:
-        # The Insatiable: Sandpit counts down every turn and at 0 we are eaten,
-        # whatever our HP. Each Frantic Escape played pushes it back by one.
-        left = sandpit + escapes
-        if left <= 1:
+        # The Insatiable: Sandpit counts down every turn and at 0 we are eaten, whatever our HP; each
+        # Frantic Escape played pushes it back by one. Priced by the rounds the fight still needs (sandpit.py).
+        if sandpit + escapes <= 1:
             score -= LETHAL_PENALTY
         else:
-            # Ending the turn on 2 means the next hand has to hold an Escape,
-            # and three hands in ten do not: eight of fifteen lost fights
-            # ended in the pit with HP to spare, one with the boss on 4 HP.
-            # So the margin is priced by the chance of running out of it.
-            no_escape, usually = escape_odds
-            risk = no_escape * usually ** (left - 2)
-            # (The floor is what the risk is worth at the usual odds: a bot that
-            # trusted better ones ended a turn on 2 with an Escape and the energy
-            # for it in hand, and was eaten on 47 HP.)
-            score -= max(SANDPIT_DEATH * risk, {2: 180.0, 3: 55.0, 4: 16.0, 5: 5.0}.get(left, 0.0))
+            dealt = max((e.max_hp - e.hp for e in enemies if not e.minion), default=0)
+            score -= pit.price(sandpit + escapes, max(e.hp for e in survivors), dealt, round_no, escape_odds)
 
     if faced is not None:
         # Turning to face an enemy takes away its 50% bonus and gives it to the other one.
@@ -828,6 +825,7 @@ def _context(state: dict) -> dict:
         tender=_has_power(player, "TENDER"),
         hail=max(0, power_amount(player, "HAILSTORM")),
         deck=deck_count(player),
+        strip=artifact.outlook(player, str(state.get("state_type") or "monster"), int(battle.get("round") or 1)) if any(_has_power(e, "ARTIFACT") for e in battle.get("enemies") or []) else (0.0, 0.0),
         vigor=max(0, power_amount(player, "VIGOR")),
         giant=_has_power(player, "GIGANTIFICATION"),
         buffer=max(0, power_amount(player, "BUFFER")),
