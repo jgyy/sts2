@@ -387,6 +387,8 @@ def simulate(
         if c.key in ("DEATHS_DOOR", "DEATH_S_DOOR") and dooming and can_block:  # "If you applied Doom this turn, gain Block 2 additional times"
             block += 2 * max(0, c.block + nimble)
         dooming = dooming or bool(c.doom)
+        if c.key == "FIEND_FIRE":  # "Exhaust your Hand. Deal 7 damage for each card Exhausted": a hit for every card still in it
+            c = replace(c, hits=max(0, hand_size - n - 1 + drawn))
         if c.damage:
             per, hits = c.damage + (0 if c.osty_attack else might), c.hits * x  # (Osty's attacks take no Strength: Unleash+ read 11 at Strength 10)
             if c.type == "Attack":
@@ -465,9 +467,10 @@ def simulate(
                 if c.poison and not _resists(e):
                     e.poison += c.poison * x
                 if c.doom and not _resists(e):
+                    doom = c.doom * x + triggers.more_doom(c, e)
                     # (Doom beyond its HP is worth nothing, unless another form follows.)
-                    score += (c.doom * x if e.adapts else min(c.doom * x, max(0, e.hp - e.doom))) * 0.8 * dmg_value * e.worth
-                    e.doom += c.doom * x
+                    score += (doom if e.adapts else min(doom, max(0, e.hp - e.doom))) * 0.8 * dmg_value * e.worth
+                    e.doom += doom
                 if c.enemy_hp_loss:
                     lost_hp = min(e.hp, c.enemy_hp_loss)
                     e.hp -= lost_hp
@@ -858,7 +861,7 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
     player = state.get("player") or {}
     enemies = read_enemies(state)
     ctx = _context(state)
-    hand = [parse(c) for c in player.get("hand") or []]
+    hand = triggers.counted([parse(c) for c in player.get("hand") or []])
     free = ctx["free"]
     if free:
         # Void Form: with free plays left every card shows as costing 0. What each costs after them is what the
@@ -903,8 +906,8 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
         # hits and keep the big ones for afterwards.
         playable.sort(key=lambda c: (order_key(c)[0] if not c.damage else 3, c.damage, c.index))
     else:
-        # (Flatten and Rattle after Osty's other attacks: one is free then, the other hits again.)
-        after = lambda c: (order_key(c)[0], 1e3, c.index) if c.key in ("FLATTEN", "RATTLE") else order_key(c)
+        # (Flatten and Rattle after Osty's other attacks: one is free then, the other hits again. No Escape after the other Doom.)
+        after = lambda c: (order_key(c)[0], 1e3, c.index) if c.key in ("FLATTEN", "RATTLE", "NO_ESCAPE") else order_key(c)
         playable.sort(key=lambda c: ((1,) + order_key(c)[1:]) if pays(c) else after(c))
     # (Void Form itself says "End your turn": played first, as a Power, it threw away two potions and
     # 62 damage in hand on round 1 of the Queen, and the turn's Block with them. It goes last.)

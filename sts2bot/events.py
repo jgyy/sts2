@@ -5,7 +5,9 @@ from __future__ import annotations
 import logging
 import re
 
+from . import relics
 from .cards import deck_value, is_basic, is_known as _known_card
+from .potions import boss_worth
 
 Action = tuple[str, dict]
 
@@ -84,11 +86,17 @@ _JUNK_NAMES = {
 # times and Spiked Gauntlets 15 without one win, Looming Fruit (+31 Max HP, taken 21 times in 21) 1; Whispering
 # Earring 4 in 16, War Hammer 3 in 11, Lord's Parasol 3 in 10. Max HP itself does not separate wins from
 # losses at the last boss (gained under 5: 4 of 20; over 30: 6 of 21).)
+# (These are where each relic starts: relics.py moves every one of them by what the runs that held it did, up
+# to 3 points either way. Seal of Gold, an energy every turn for 3 Gold, was 8.0 until 2026-11-21 and so never
+# taken beside Very Hot Cocoa or Toasty Mittens: energy from the first turn is what both fight models say a
+# deck is shortest of (scripts/demonfight.py: 33 to 56 points of a Knowledge Demon's win chance; roomfight.py:
+# 8 of the 25 HP an ordinary act 2 fight costs), act 2 bosses met on 4 energy or more cost 18% of Max HP less
+# than the same character's others (27 of 85 fights), and its 15 runs ended 5.7 floors over the usual.)
 _ANCIENT = {
     # more energy or cards every turn
     "BLOOD_SOAKED_ROSE": 6.5, "SPIKED_GAUNTLETS": 8.5, "PHILOSOPHERS_STONE": 10.0, "SOZU": 8.5,
     "BLESSED_ANTLER": 8.0, "PAELS_FLESH": 12.5, "PAELS_BLOOD": 13.5, "FIDDLE": 11.5, "WHISPERING_EARRING": 12.0,
-    "PAELS_TEARS": 9.0, "VERY_HOT_COCOA": 11.5, "PUMPKIN_CANDLE": 8.5, "SEAL_OF_GOLD": 8.0, "BOOMING_CONCH": 5.5,
+    "PAELS_TEARS": 9.0, "VERY_HOT_COCOA": 11.5, "PUMPKIN_CANDLE": 8.5, "SEAL_OF_GOLD": 10.0, "BOOMING_CONCH": 5.5,
     "SNECKO_EYE": 13.0, "VELVET_CHOKER": 11.5, "PRISMATIC_GEM": 9.0, "ECTOPLASM": 7.0, "RUNIC_PYRAMID": 9.0,
     "IRON_CLUB": 9.5,
     # something every turn or every fight
@@ -108,6 +116,9 @@ _ANCIENT = {
     "GLITTER": 7.0, "POMANDER": 6.5, "KALEIDOSCOPE": 6.5, "SCROLL_BOXES": 7.5, "DEMON_GLASS": 6.5,
     "LEAD_PAPERWEIGHT": 8.5, "DUSTY_TOME": 6.5, "STORYBOOK": 6.5, "NEOWS_TALISMAN": 6.0, "NEW_LEAF": 5.5,
     "DOWSING_ROD": 5.5, "TANXS_WHISTLE": 5.5, "NEOWS_TORMENT": 5.5, "PAELS_HORN": 5.5, "GOLDEN_COMPASS": 5.0,
+    # (Four that were read word by word until 2026-11-21, which made Astrolabe 13.5 and Empty Cage 11.5, over
+    # Philosopher's Stone and Sozu every time: their runs ended 1.4 and 1.0 floors under the usual, Driftwood's 4.9.)
+    "ASTROLABE": 9.0, "EMPTY_CAGE": 8.5, "THROWING_AXE": 7.5, "DRIFTWOOD": 6.5,
     # things the bot cannot make use of
     "WINGED_BOOTS": 4.0, "PAELS_WING": 4.0, "MEAT_CLEAVER": 3.5, "PAELS_EYE": 3.0, "DISTINGUISHED_CAPE": 3.0,
 }
@@ -116,11 +127,12 @@ _ANCIENT = {
 ACT3_HP = 1.6  # how much more a point of HP given up in an event costs in act 3 (the last boss is won from full HP: 6 in 16, none in 12 below 90%)
 
 
-def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int | None = None) -> float:
+def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int | None = None, potions: list | None = None) -> float:
     text = f"{opt.get('title') or ''}. {opt.get('description') or ''}".lower()
-    known = _ANCIENT.get(re.sub(r"[^A-Z0-9]+", "_", re.sub(r"['\u2019]", "", str(opt.get("title") or "")).upper()).strip("_"))
+    key = re.sub(r"[^A-Z0-9]+", "_", re.sub(r"['\u2019]", "", str(opt.get("title") or "")).upper()).strip("_")
+    known = _ANCIENT.get(key)
     if known is not None:
-        return known
+        return known + relics.shift(key)  # (the table's number, moved by how the runs that held it went)
     score = 0.5
     if opt.get("relic_name"):
         score += 6.0
@@ -152,9 +164,20 @@ def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int
                 break
     if _DUPLICATE_DECK.search(text):
         score -= 12.0
-    m = re.search(r"\bpay (\d+) gold", text)
+    m = re.search(r"\b(?:pay|give|lose) (\d+) gold", text)
     if m:
-        score -= int(m.group(1)) / 150.0
+        score -= int(m.group(1)) / (300.0 if act is not None and act >= 3 else 150.0)  # (gold has little left to buy in act 3)
+    # A potion handed over is one fewer at the boss, where the second one on the belt goes with twice the
+    # wins. Until 2026-11-22 it cost nothing: "Give Attack Potion", "Give 100 Gold" and "Give Anchor" for a
+    # relic all scored 6.5 and the first was taken, with 112 Gold in hand; two floors on a Clarity Extract
+    # went for an upgraded card, and that run met the last boss holding one potion and 240 Gold.
+    for p in potions or []:
+        name = str(p.get("name") or "").strip().lower()
+        if name and re.search(r"\b(?:lose|give|insert)\b[^.]*\b" + re.escape(name), text):
+            score -= (1.0 + boss_worth(p) / 12.0) * (1.5 if act is not None and act >= 3 else 1.0)
+            break
+    if potions is not None and len(potions) < 2 and re.search(r"\bprocure\b[^.]*\bpotions?\b", text) and "foul" not in text:
+        score += 1.0  # (a belt short of two: the potion is worth more than the flat 1.5 above)
     for pat, w in _BAD:
         if re.search(pat, text):
             score -= w
@@ -205,7 +228,7 @@ def event(state: dict, mem) -> list[Action]:
         mem.event_id, mem.event_hp0 = eid, hp
     bled = max(0, mem.event_hp0 - hp)
     act = (state.get("run") or {}).get("act")
-    worth = lambda o: _event_option_value(o, hp, max_hp, bled, act if isinstance(act, int) else None)
+    worth = lambda o: _event_option_value(o, hp, max_hp, bled, act if isinstance(act, int) else None, player.get("potions") or [])
     rest = sorted((o for o in opts if not o.get("is_proceed")), key=worth, reverse=True)
     if log.isEnabledFor(logging.DEBUG) and rest:
         log.debug("event %s: %s", ev.get("event_id"), " | ".join(f"[{worth(o):.1f}] {o.get('title')}: {o.get('description')}" for o in rest))

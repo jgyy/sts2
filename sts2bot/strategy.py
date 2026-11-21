@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from .learn import knob
 from .potions import BOSS_FLOORS, boss_worth
 from .events import _event_option_value, event  # noqa: F401  (events live in their own module)
-from .cards import _card_key, deck_value, is_basic, is_junk, parse as _parse
+from .cards import _card_key, deck_value, is_basic, is_junk, kind as _kind, parse as _parse
 from .decks import BIG_DECK, SKIP_THRESHOLD, _blocks, _hitters, _punch, _stars, deck_fit, reward_bar  # noqa: F401  (what a card is worth in this deck: its own module)
 from . import afflictions, handpick
 
@@ -469,7 +469,7 @@ def card_reward(state: dict, mem: Memory) -> list[Action]:
     def worth(c: dict) -> float:
         v = deck_value(c) + deck_fit(c, mem.deck, act if isinstance(act, int) else None, mem.max_energy)
         if mem.card_stats is not None:
-            v += mem.card_stats.shift(who, str(c.get("name")))
+            v += mem.card_stats.shift(who, str(c.get("name")), _kind(c))
         # The starter deck cannot kill anything quickly; until that is fixed, an attack is worth
         # more than one more way to block. (deck_fit sees to it once the deck is known; this is
         # for a run picked up before its first fight.)
@@ -541,6 +541,7 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
 
 
 REMOVAL_EARLY = {1: 3.5, 2: 1.5}  # what a card removal is worth less in acts 1 and 2 under the `cards_first` setting
+SEAL_RESERVE = 45  # Gold a Merchant does not get while Seal of Gold is held (3 a turn for an energy: a boss fight is 10 to 15 turns)
 
 # What the Fake Merchant's relics are worth next to a real one at 7 (by what their text does over a run).
 _FAKES = {
@@ -580,6 +581,8 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
         mem.parasol = (*_where(state), looks)
         return [("proceed", {})] if looks > 8 or not any(i.get("is_stocked", True) for i in s.get("items") or []) else []
 
+    # (The bot leaves a Merchant with 35 to 58 Gold on average, and with less than a boss fight's worth often enough.)
+    reserve = SEAL_RESERVE if any(str(r.get("id")) == "SEAL_OF_GOLD" for r in player.get("relics") or []) else 0
     scored: list[tuple[float, dict]] = []
     shelf: list[str] = []  # (for the log: what was on offer, what it cost and what we made of it)
     for item in s.get("items") or []:
@@ -612,6 +615,8 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
         elif cat == "card":
             act = (state.get("run") or {}).get("act")
             v = deck_value(_shop_card(item)) + deck_fit(_shop_card(item), mem.deck, act if isinstance(act, int) else None, mem.max_energy)
+            if mem.card_stats is not None:  # (what our own runs say of the card and of its kind, as at a card reward)
+                v += mem.card_stats.shift(str(player.get("character") or ""), str(item.get("card_name")), _kind(_shop_card(item)))
             # Only cards that make the deck better, and more freely when rich.
             bar = 4.0 if gold - price >= 200 else 4.5 if mem.deck_size < BIG_DECK else 5.5
             want, rated = (v if v >= bar else -1.0), v
@@ -622,6 +627,10 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
             # for a shop that comes after the boss, or never.
             floor = (state.get("run") or {}).get("floor")
             boss_next = isinstance(floor, int) and any(0 < boss - floor <= 3 for boss in BOSS_FLOORS)
+            # ... and all through act 3: nothing a Merchant sells there has longer than the last boss to pay
+            # for itself, and that boss was met with one potion or none 14 times in 31 (never beaten so; one
+            # run reached it holding one potion and 240 Gold).
+            boss_next = boss_next or (isinstance(floor, int) and floor > BOSS_FLOORS[1])
             if belt_full:
                 want = -1.0
             elif boss_next:
@@ -635,7 +644,7 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
                 want = 2.0 if gold - price >= 60 else -1.0
         else:
             want = -1.0
-        afford = bool(item.get("can_afford", price <= gold))
+        afford = bool(item.get("can_afford", price <= gold)) and (not reserve or gold - price >= reserve)
         shelf.append(f"{cat} {item.get('card_name') or item.get('relic_name') or item.get('potion_name') or ''} {price}{'' if afford else '!'} [{want if rated is None else rated:.1f}]".replace("  ", " "))
         if want > 0 and afford:
             scored.append((want, item))

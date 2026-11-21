@@ -24,7 +24,7 @@ class LearnedRatings(unittest.TestCase):
                 stats.record("The Silent", floor, False, [])
             self.assertEqual(stats.shift("The Regent", "Footwork"), 0.0)  # nothing known: no opinion
             fresh = stats.shift("The Silent", "Footwork")
-            for _ in range(8):
+            for _ in range(40):  # (a card's own record counts slowly: learn.PRIOR_PICKS)
                 stats.record("The Silent", 45, False, [[3, "Footwork+"], [5, "Slice"]])
                 stats.record("The Silent", 8, False, [[3, "Slice"]])
             self.assertGreater(stats.shift("The Silent", "Footwork"), fresh + 0.5)
@@ -227,7 +227,7 @@ class LearnedRatings(unittest.TestCase):
 
         stats = learn.CardStats(None)
         # Every pick "beat the usual" (the bot got better meanwhile); Slice only by a little.
-        stats.cards["The Silent"] = {"FOOTWORK": [30.0, 300.0], "SLICE": [30.0, 60.0]}
+        stats.cards["The Silent"] = {"FOOTWORK": [120.0, 1200.0], "SLICE": [120.0, 240.0]}
         stats.finals["The Silent"] = [20] * 10
         self.assertGreater(stats.shift("The Silent", "Footwork"), 0.5)
         self.assertLess(stats.shift("The Silent", "Slice"), -0.5)

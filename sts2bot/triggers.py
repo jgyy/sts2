@@ -9,7 +9,7 @@ kill that would have cancelled the attack, and died on 10 HP.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Callable
 
 from .battle import Enemy, power_amount
@@ -114,6 +114,32 @@ def fire(t: Triggers, c, foes: list[Enemy], before: list[tuple], hit: Callable, 
     return score, block
 
 
+def counted(hand: list) -> list:
+    """The hand, with the cards whose numbers depend on the hand read for this one.
+
+    Flechettes, "Deal 5 damage for each Skill in your Hand": the text gives the 5 and nothing else, so it
+    was one hit of 5 whatever it stood beside. (Fiend Fire, a hit for each card left when it is played, is
+    counted in combat.simulate, where the cards played before it are known: read as its bare 7 it was never
+    played, and an Ironclad with four cards beside it, one play allowed that turn and a boss on 44 Vulnerable
+    played a Defend, then lost the fight with the boss on 2.)
+    """
+    skills = sum(1 for c in hand if c.type == "Skill")
+    return [replace(c, hits=skills) if c.key == "FLECHETTES" else c for c in hand]
+
+
+def more_doom(c, e) -> int:
+    """Doom a card applies beyond the number its text begins with.
+
+    No Escape: "Apply 10 Doom, plus an additional 5 Doom for every 10 Doom already on this enemy". Read as
+    its 10 it was a card worth less than a Defile; on a boss carrying 67 Doom it is 40, three cards' worth
+    for one energy (and it was played before the turn's other Doom as often as after it).
+    """
+    return 5 * (e.doom // 10) if c.key == "NO_ESCAPE" else 0
+
+
+BURNS_HAND = {"FIEND_FIRE", "SECOND_WIND", "STOKE"}  # "Exhaust your Hand" (Second Wind: all of it that is not an Attack)
+
+
 def shunned(c, state: dict) -> bool:
     """Cards the planner must not play here, whatever they seem to offer.
 
@@ -128,9 +154,13 @@ def shunned(c, state: dict) -> bool:
     the runs that hold it, the most of any Necrobinder card: their fights are
     short. Until 2026-11-20 it was never played against a boss or an elite.)
     """
+    battle, player = state.get("battle") or {}, state.get("player") or {}
+    if c.key in BURNS_HAND:
+        # What it burns is gone for the fight, and the planner counts that as nothing: not while a Power is
+        # in the hand beside it (a Demon Form it cannot pay for this turn is worth more than 7 damage).
+        return any(str(h.get("type")) == "Power" for h in player.get("hand") or [])
     if c.key != "NEUROSURGE":
         return False
-    battle, player = state.get("battle") or {}, state.get("player") or {}
     foes = [e for e in battle.get("enemies") or [] if 0 < int(e.get("hp") or 0) < 100_000]
     left = sum(int(e.get("hp") or 0) + int(e.get("block") or 0) for e in foes)
     if state.get("state_type") not in ("boss", "elite"):
