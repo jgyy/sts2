@@ -23,8 +23,15 @@ log = logging.getLogger("sts2bot.learn")
 
 WIN_BONUS = 15  # a win counts as this many floors beyond the last one
 HISTORY = 300  # runs per character the "usual" result is taken from
-PRIOR_PICKS = 6.0  # a card needs about this many picks before its record counts for half
-FLOORS_PER_POINT = 3.0  # floors gained per pick (beyond the character's average pick) that are worth one point of card rating
+# A card needs about this many picks before its record counts for half. (6 until 2026-11-21. Two runs of
+# one character end 12 floors apart on average, so a card's record after 15 picks is 3 floors either way
+# by chance alone, and the spread of all the records was no wider than that chance: at 6 a card moved 0.7
+# points on nothing. What cards truly differ by came out at about a floor a pick; 150 is what that asks for.)
+PRIOR_PICKS = 150.0
+# Floors gained per pick (beyond the character's average pick) that are worth one point of card rating.
+# (3.0 until 2026-11-21. A point of other players' rating went with 0.4 floors a pick in our own record,
+# and that measure is blurred downwards.)
+FLOORS_PER_POINT = 1.0
 MAX_SHIFT = 2.5  # a rating never moves further than this
 # Head start for a card that has never been tried (a third of it is left after 8 picks).
 # At 0.5 about a hundred cards offered 12 to 40 times each were never or once taken
@@ -32,7 +39,9 @@ MAX_SHIFT = 2.5  # a rating never moves further than this
 # say nothing about them and the hand-made guess stood for ever.
 # (0.8 since 2026-11-20: by then most of them had been tried once or twice, and crowd.py gives the untried
 # ones a rating from half a million runs. At 1.5 an untried card the crowd puts last still beat a proven one.)
-CURIOSITY = 0.8
+# (0.4 since 2026-11-21: with the record counting for so little a card, a first try teaches next to nothing,
+# and 0.8 for being new was as much as 137 bad picks took off Sow.)
+CURIOSITY = 0.4
 
 
 def _load(path: Path | None, what: str) -> dict:
@@ -144,7 +153,7 @@ def seed_from_history(stats: CardStats, runs_file: Path) -> None:
 # more and more often from the settings whose runs have gone furthest
 # (Thompson sampling). Good settings end up being used nearly always.
 
-DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "crowd": 0.6}
+DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "crowd": 0.6, "punch": 0.9}
 CHOICES = {
     # Weight of HP lost in the combat planner. (1.35 and 1.8 were dropped on 2026-11-21. Runs since
     # 2026-11-19 20:06 that reached the act 2 boss got past it 44 times in 74 at 1.0 and 19 in 54 at 1.35,
@@ -166,8 +175,21 @@ CHOICES = {
     # (`long_game`, Powers and lasting Strength priced by the turns a boss fight has left, was dropped on
     # 2026-11-20: 20 runs, 4.4 floors a run behind the 38 without it.)
     # How much of a card's rating comes from other players' runs (crowd.py) and how much from our own table
-    # (cards._TIER). 0: ours alone, as until 2026-11-20. Judge by floors and by the bosses beaten, then drop the loser.
-    "crowd": [0.0, 0.6],
+    # (cards._TIER). (0.0, ours alone, was dropped on 2026-11-21 and 1.0 added. Runs since 2026-11-20 21:05 that
+    # reached the act 2 boss got past it 6 times in 20 at 0.0 and 12 in 26 at 0.6. And over the 189 cards taken
+    # 8 times or more, how far the runs that took a card went beyond the character's other picks goes with the
+    # crowd's rating (r = +0.28, 0.4 floors a pick for each point; so for every character on its own) and not
+    # with ours (r = +0.06): mixed at 0.6 r = +0.26, at 0.8 +0.28. Sow: ours 5.0, theirs 1.9, 137 picks, 1.7
+    # floors a pick under par; Big Bang: theirs 8.0, 5.7 over.)
+    "crowd": [0.6, 1.0],
+    # How hard a deck short of damage leans to attacks at a card reward: rating points for each point its
+    # average damage an energy is under strategy.PUNCH_FLOOR (up to 2.2 times this). Added on 2026-11-21:
+    # final decks since the 20th averaged 5.7-5.9 damage an energy with `crowd` 0.0, 4.5-4.8 at 0.6 and
+    # 3.5-4.3 at 1.0 (the floor is 5.5), and ordinary act 2 fights cost the Regent 13.2%, 15.1% and 19.7%
+    # of Max HP (4.0, 4.3 and 5.4 rounds; the Necrobinder 14.8% and 16.7%), while the act 2 boss went the
+    # other way (7 in 24 against 12 in 29). Judge by both: `fightlog.py knobs`, and rounds and cost of
+    # ordinary act 2 fights by arm.
+    "punch": [0.9, 1.8],
 }
 MIN_RUNS = 20  # runs a setting gets before the record alone decides how often it is drawn
 SPREAD = 12.0  # how far apart two runs of the same character usually end, in floors

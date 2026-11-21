@@ -29,19 +29,24 @@ Slay the Spire 2  <-- STS2_MCP mod (HTTP on localhost:15526) -->  sts2bot (Pytho
     working when cards are added or rebalanced. For deck building it also has
     a hand-made rating of the cards met so far; cards it has no rating for are
     judged from their text.
-  - `crowd.py` is a second opinion on those ratings: how often other players'
-    runs were won with each card and how often they took it (tierspire.com,
-    about half a million runs a character). The two are mixed, and how much
-    the crowd counts is one of the settings `learn.py` tunes. Refresh the
+  - `crowd.py` rates the same cards from other players' runs: how often runs
+    were won with each card and how often it was taken (tierspire.com, about
+    half a million runs a character). Measured against the bot's own results
+    card by card, these numbers say which cards its runs go further with and
+    the hand-made ones do not, so they count for most of a rating; how much
+    (0.6 or all of it) is one of the settings `learn.py` tunes. Refresh the
     tables after a game patch.
   - `learn.py` corrects those ratings from the bot's own results: for every
     card taken from a card reward it records how much further that run got
     than the character usually gets from that floor, and shifts the card's
-    rating up or down accordingly (kept in `card_stats.json`).
+    rating up or down accordingly (kept in `card_stats.json`). One run says
+    little, so a card's record only starts to count after a hundred picks
+    or so.
     It also tunes a few of the bot's own settings the same way (how much HP
     is worth against damage, how eagerly to fight elites, when to upgrade
     instead of rest, how picky to be with card rewards, how much other
-    players' results count in a card's rating): every run plays with
+    players' results count in a card's rating, how hard a deck short of
+    damage leans to attacks): every run plays with
     one value of each, chosen more and more often from the values whose runs
     went furthest (kept in `tuning.json`; `--no-tuning` turns this off).
   - `supervisor.py` starts Steam if it is not running, launches the game,
@@ -53,10 +58,10 @@ The bot is heuristic, not an LLM: it costs nothing to run nonstop. It plays
 simple, sensible Spire (kill when it can, block when it must) and will lose
 plenty of runs.
 
-Status (2026-11-20): plays the real game (v0.111) with all five characters.
-27 wins in about 680 runs; every character has won on Ascension 4, and the
-Silent and the Defect on Ascension 5. About one run in twenty is won there;
-most runs end at the act 2 boss or the last one.
+Status (2026-11-21): plays the real game (v0.111) with all five characters.
+30 wins in about 770 runs; every character has won on Ascension 5 (5 wins in
+127 runs there) and plays on Ascension 6 now. Most runs end at the act 2 boss
+or the last one.
 
 ## Setup
 
@@ -179,7 +184,10 @@ with the cards that were in hand and what was played. For judging a change:
 fight every run ended in), `pace` (rounds and damage a round in ordinary
 fights, by act), `reads` (what the planner read on each card against what
 playing it did) and `unplayed` (cards left in the hand on turns that could
-have paid for them).
+have paid for them) and `rooms SETTING` (what ordinary fights cost under each
+value of one setting). For finding what the planner gets wrong: `surprises`
+(turns that cost more HP than the plan expected, by enemy) and `idle` (turns
+ended with energy and a card it could pay for while HP was about to be lost).
 
 ## Options
 

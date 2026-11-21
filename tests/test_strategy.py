@@ -94,6 +94,40 @@ class LearnedRatings(unittest.TestCase):
         soft = starter + [{**block, "id": f"B{i}", "name": f"B{i}"} for i in range(10)]
         self.assertGreater(strategy.deck_fit(attack, soft, 2), 1.0)
 
+    def test_the_first_attack_of_a_run_comes_before_what_pays_off_later(self):
+        strike = {"id": "STRIKE_REGENT", "name": "Strike", "type": "Attack", "cost": 1, "description": "Deal 6 damage."}
+        defend = {"id": "DEFEND_REGENT", "name": "Defend", "type": "Skill", "cost": 1, "description": "Gain 5 Block."}
+        star = {"id": "FALLING_STAR", "name": "Falling Star", "type": "Attack", "cost": 0, "star_cost": 2, "description": "Deal 8 damage. Apply 1 Weak. Apply 1 Vulnerable."}
+        attack = {"id": "KINGLY_PUNCH", "name": "Kingly Punch", "type": "Attack", "cost": 1, "description": "Deal 8 damage."}
+        starter = [strike] * 4 + [defend] * 4 + [star]
+        first = strategy.deck_fit(attack, starter, 1)
+        self.assertGreaterEqual(first, 3.0)  # (the Regent's own Falling Star is not one it has taken)
+        second = strategy.deck_fit(attack, starter + [{**attack, "id": "OTHER", "name": "Other"}], 1)
+        self.assertLessEqual(second, 2.0)
+        self.assertLessEqual(strategy.deck_fit(attack, starter, 2), 2.0)  # act 1 only
+        # How hard a deck short of damage leans to attacks is a setting under test.
+        from unittest import mock
+
+        from sts2bot import learn
+
+        soft = starter + [{**defend, "id": f"B{i}", "name": f"B{i}"} for i in range(8)] + [{**attack, "id": "OTHER", "name": "Other"}]
+        with mock.patch.dict(learn.KNOB, {"punch": 1.8}):
+            self.assertGreater(strategy.deck_fit(attack, soft, 2), 3.0)
+        with mock.patch.dict(learn.KNOB, {"punch": 0.9}):
+            self.assertLessEqual(strategy.deck_fit(attack, soft, 2), 2.0)
+
+    def test_a_card_dearer_than_a_turns_energy_is_not_the_damage_a_deck_is_short_of(self):
+        strike = {"id": "STRIKE_NECROBINDER", "name": "Strike", "type": "Attack", "cost": 1, "description": "Deal 6 damage."}
+        defend = {"id": "DEFEND_NECROBINDER", "name": "Defend", "type": "Skill", "cost": 1, "description": "Gain 5 Block."}
+        bury = {"id": "BURY", "name": "Bury", "type": "Attack", "cost": 4, "description": "Deal 52 damage."}
+        kick = {"id": "KINGLY_KICK", "name": "Kingly Kick", "type": "Attack", "cost": 4, "description": "Deal 27 damage. Whenever you draw this card, reduce its cost by 1."}
+        wisp = {"id": "WISP", "name": "Wisp", "type": "Skill", "cost": 0, "description": "Gain [necrobinder_energy_icon.png]. Exhaust."}
+        deck = [strike] * 4 + [defend] * 4 + [{**strike, "id": "REAVE", "name": "Reave", "description": "Deal 10 damage."}]
+        self.assertLessEqual(strategy.deck_fit(bury, deck, 2), -3.0)  # 13 damage an energy on paper, and never played
+        self.assertGreater(strategy.deck_fit(bury, deck, 2, 4), 0.0)  # with a fourth energy it is what the deck wants
+        self.assertGreater(strategy.deck_fit(bury, deck + [wisp, wisp], 2), strategy.deck_fit(bury, deck, 2))
+        self.assertGreaterEqual(strategy.deck_fit(kick, deck, 2), 0.0)  # one that gets cheaper is not held against
+
     def test_a_card_is_judged_against_the_characters_other_picks(self):
         from sts2bot import learn
 

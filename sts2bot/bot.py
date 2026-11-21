@@ -275,6 +275,8 @@ class Bot:
             and not int(player.get("discard_pile_count") or 0)
             and not int(player.get("exhaust_pile_count") or 0)
         )
+        if fresh and int(player.get("max_energy") or 0) > 0:
+            self.mem.max_energy = int(player["max_energy"])
         if not fresh:
             if self.mem.deck_size <= 0:
                 self.mem.deck_size = len(player.get("hand") or []) + int(player.get("draw_pile_count") or 0)

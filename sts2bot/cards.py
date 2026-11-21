@@ -41,6 +41,7 @@ class CardInfo:
     strength: int = 0  # Strength we gain when it is played
     strength_lasts: bool = False  # ... and keep after this turn
     enemy_strength_loss: int = 0  # "Enemy loses N Strength this turn."
+    enemy_strength_lasts: bool = False  # ... or for good, without the "this turn" (Shared Fate, Resonance)
     key: str = ""  # card id without the upgrade mark, e.g. DEMON_FORM
     bound: bool = False  # afflicted with Bound: only one such card can be played per turn
     # --- other characters' mechanics
@@ -191,7 +192,12 @@ def parse(card: dict) -> CardInfo:
 
     strength, strength_lasts = stat("strength")
     dexterity, dexterity_lasts = stat("dexterity")
+    # "Lose 2 Strength." as the price of the card (Friendship, Shared Fate): for the rest of the fight.
+    # Read as nothing, two Friendships went down on sight and the deck's Strikes hit for 2 from then on.
+    if not strength and (m := re.search(r"(?:^|\.\s+)lose\s+(\d+)\s+strength\b(?!\s+this\s+turn)", stat_text, re.I)):
+        strength, strength_lasts = -int(m.group(1)), True
     enemy_strength_loss = _int(r"enem(?:y|ies)\s+loses?\s+(\d+)\s+strength", text)
+    enemy_strength_lasts = bool(enemy_strength_loss) and not re.search(r"enem(?:y|ies)\s+loses?\s+\d+\s+strength\s+this\s+turn", text, re.I)
     # "X" amounts on an X-cost card (Malaise: "Enemy loses X Strength. Apply X Weak."): 1 per energy spent.
     # Read as nothing, Malaise was played 9 times in 51 hands.
     if re.search(r"enem(?:y|ies)\s+loses?\s+X\s+strength", text, re.I):
@@ -241,7 +247,7 @@ def parse(card: dict) -> CardInfo:
         star_cost=_cost(card.get("star_cost")) if card.get("star_cost") not in (None, "") else 0, key=_card_key(card),
         damage=damage, hits=hits, double_if_vulnerable=double_if_vulnerable, aoe=aoe, random_target=random_target, block=block,
         vulnerable=vulnerable, weak=weak, draw=draw, energy_gain=energy_gain, hp_loss=hp_loss, known=known, strength=strength,
-        strength_lasts=strength_lasts, enemy_strength_loss=enemy_strength_loss, poison=poison, doom=doom, shivs=shivs, star_gain=star_gain,
+        strength_lasts=strength_lasts, enemy_strength_loss=enemy_strength_loss, enemy_strength_lasts=enemy_strength_lasts, poison=poison, doom=doom, shivs=shivs, star_gain=star_gain,
         forge=forge, summon=summon, dexterity=dexterity, dexterity_lasts=dexterity_lasts, channel=channel, evoke=evoke, evoke_all=evoke_all,
         next_energy=next_energy, next_draw=next_draw, next_block=next_block, enemy_hp_loss=enemy_hp_loss, souls=souls, heal=heal,
         needs_target=target == "AnyEnemy", playable=can_play,

@@ -205,14 +205,15 @@ def hand_burns(player: dict) -> tuple:
     for c in player.get("hand") or []:
         text = str(c.get("description") or "")
         m = _HAND_BURN.search(text)
-        if m:
+        # (Regret first: its text begins like the others, "... lose 1 HP", and read as 1 it cost 5 with five cards held.)
+        if re.search(r"if this is in your hand,\s*lose 1 hp for each card in your hand", text, re.I):
+            out.append((int(c.get("index", -1)), -1, False))
+        elif m:
             amount = int(m.group(1))
             w = _WITHER.match(str(c.get("name") or ""))
             if w:  # whatever the text says, a Wither has cost 3 for each level
                 amount = max(amount, 3 * (int(w.group(1) or 0) + 1))
             out.append((int(c.get("index", -1)), amount, "damage" in m.group(0).lower()))
-        elif re.search(r"if this is in your hand,\s*lose 1 hp for each card in your hand", text, re.I):
-            out.append((int(c.get("index", -1)), -1, False))
     return tuple(out)
 
 

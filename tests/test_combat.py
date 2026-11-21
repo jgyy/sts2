@@ -419,6 +419,21 @@ class Potions(unittest.TestCase):
         state = combat_state([STRIKE(0)], [foe], hp=75, max_hp=75, kind="boss", potions=[fire])
         self.assertEqual(combat.potion_actions(state), [])  # 20 damage would take 1 HP this turn
 
+    def test_a_potion_does_not_go_into_artifact(self):
+        """Seen 2026-11-21: a Weak Potion on round 1 against Aeonglass, Artifact 3."""
+        weak = self.potion(0, "Weak Potion", "Apply 3 Weak.", "AnyEnemy")
+        strength = self.potion(1, "Strength Potion", "Gain 2 Strength.")
+
+        def used(powers, hp=75):
+            foe = enemy("AEONGLASS_0", 500, attack=22, status=powers)
+            state = combat_state([STRIKE(0)], [foe], hp=hp, max_hp=75, kind="boss", potions=[weak, strength])
+            state["run"]["floor"] = 48
+            return [a[1]["slot"] for a in combat.potion_actions(state)]
+
+        self.assertEqual(used([{"id": "ARTIFACT_POWER", "amount": 3}]), [1])
+        self.assertEqual(used([]), [0, 1])
+        self.assertEqual(used([{"id": "ARTIFACT_POWER", "amount": 3}], hp=20), [0, 1])  # about to die: nothing is being saved
+
     def test_a_potion_that_hits_us_too_waits_for_block(self):
         foul = self.potion(0, "Foul Potion", "Deal 12 damage to ALL players and enemies. Can be thrown at the Merchant for 100 Gold instead.")
         fire = self.potion(1, "Fire Potion", "Deal 20 damage.", "AnyEnemy")
@@ -702,6 +717,60 @@ class OtherCharacters(unittest.TestCase):
         # ... but what he soaks now he cannot soak later: badly hurt, the Defend keeps him standing.
         state["player"]["hp"] = 10
         self.assertEqual(combat.choose_card(state)[1]["card_index"], 0)
+
+    def test_regret_costs_a_point_for_every_card_still_held(self):
+        regret = card(0, "REGRET", "Regret", "Curse", 0, "Unplayable. At the end of your turn, if this is in your Hand, lose 1 HP for each card in your Hand.")
+        regret["can_play"] = False
+        state = combat_state([regret, DEFEND(1), DEFEND(2), STRIKE(3)], [enemy("A", 100)], energy=0, hp=30)
+        self.assertEqual(combat.expected_end_loss(state), 4)  # (it was read as "lose 1 HP")
+        state["player"]["energy"] = 1
+        self.assertIsNotNone(combat.choose_card(state))  # a card played is a point saved
+
+    def test_osty_does_not_stop_what_burns_in_the_hand(self):
+        """Seen 2026-11-21: Osty on 20, two Toxics in hand, "expecting to lose 0", and 10 HP gone."""
+        toxic = lambda i: card(i, "TOXIC", "Toxic", "Status", 1, "At the end of your turn, if this is in your Hand, take 5 damage. Exhaust.")
+        state = combat_state([toxic(0), toxic(1)], [enemy("A", 100, attack=6)], energy=0, hp=21, max_hp=75)
+        state["player"]["pets"] = [{"id": "OSTY", "alive": True, "hp": 20, "max_hp": 20}]
+        self.assertEqual(combat.expected_end_loss(state), 10)  # he takes the attack; the Toxics are ours
+        state["player"]["block"] = 7
+        self.assertEqual(combat.expected_end_loss(state), 3)  # our own Block does stop them
+        state["player"]["pets"][0]["hp"] = 2
+        self.assertEqual(combat.expected_end_loss(state), 7)  # ... and then there is none left for the attack he cannot take whole
+
+    def test_strength_given_up_for_good_is_counted(self):
+        """Seen 2026-11-21: two Friendships down on sight, Strikes hitting for 2, 7 energy and nothing to spend it on."""
+        friendship = lambda i: card(i, "FRIENDSHIP", "Friendship", "Power", 1, "Lose 2 Strength. Gain [necrobinder_energy_icon.png] at the start of each turn.")
+        info = parse(friendship(0))
+        self.assertEqual((info.strength, info.strength_lasts), (-2, True))
+        flex = parse(card(0, "FLEX", "Flex", "Skill", 0, "Gain 2 Strength. At the end of your turn, lose 2 Strength."))
+        self.assertEqual(flex.strength, 2)  # (given back at the end of the turn is not a price paid)
+        foes = lambda: combat.read_enemies(combat_state([], [enemy("A", 300)]))
+        kw = dict(energy=3, stars=0, hp=70, max_hp=80, block=0, fight="boss")
+        nothing = combat.simulate([], foes(), **kw).score
+        first = combat.simulate([info], foes(), **kw).score
+        second = combat.simulate([info], foes(), friends=1, **kw).score
+        both = combat.simulate([info, parse(friendship(1))], foes(), **kw).score
+        self.assertGreater(first, nothing)  # an energy every turn of a boss fight is worth 2 Strength
+        self.assertLess(second, nothing)  # ... a second one is not
+        self.assertLess(both, first)
+        # In the same line the Strength is gone for the attacks after it.
+        strike = parse(STRIKE(2))
+        after = combat.simulate([info, strike], foes(), **kw).score - first
+        before = combat.simulate([strike], foes(), **kw).score - nothing
+        self.assertLess(after, before)
+
+    def test_strength_taken_off_an_enemy_for_good_is_for_the_one_that_hits_often(self):
+        fate = card(0, "SHARED_FATE", "Shared Fate", "Skill", 0, "Lose 2 Strength. Enemy loses 2 Strength. Exhaust.", "AnyEnemy")
+        info = parse(fate)
+        self.assertEqual((info.strength, info.enemy_strength_loss, info.enemy_strength_lasts), (-2, 2, True))
+        wail = parse(card(0, "PIERCING_WAIL", "Piercing Wail", "Skill", 1, "ALL enemies lose 6 Strength this turn. Exhaust."))
+        self.assertFalse(wail.enemy_strength_lasts)
+        kw = dict(energy=3, stars=0, hp=70, max_hp=80, block=30, fight="boss")  # (behind Block: only what lasts is being weighed)
+        gain = lambda attack: combat.simulate([info], combat.read_enemies(combat_state([], [enemy("A", 300, attack=attack)])), **kw).score - combat.simulate(
+            [], combat.read_enemies(combat_state([], [enemy("A", 300, attack=attack)])), **kw).score
+        self.assertGreater(gain("8x3"), 0)  # 6 off every such turn for our 2 Strength
+        self.assertLess(gain("20"), 0)  # 2 off a single hit is not worth them
+        self.assertGreater(gain("8x3"), gain("20"))
 
     def test_stars_pay_for_star_cards(self):
         venerate = card(0, "VENERATE", "Venerate", "Skill", 1, "Gain [star_icon.png][star_icon.png].")
