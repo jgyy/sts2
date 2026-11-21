@@ -5,8 +5,7 @@ import unittest
 from sts2bot import combat, events, strategy
 from sts2bot.strategy import Memory
 
-from .fake_game import combat_state, enemy
-from .helpers import STRIKE
+from .helpers import STRIKE, combat_state, enemy
 
 
 def potion(slot, name, text, target="AnyPlayer"):

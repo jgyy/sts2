@@ -58,6 +58,30 @@ class Record(unittest.TestCase):
         self.assertGreater(stats.shift("The Defect", "Claw", "free"), stats.shift("The Defect", "Zap", "") + 0.5)
         self.assertLessEqual(stats.kind_shift("free"), learn.MAX_KIND)
 
+    def test_the_free_lean_setting_takes_the_start_off_free_attacks_only(self):
+        stats = learn.CardStats(None)
+        stats.finals["The Necrobinder"] = [25] * 20
+        # Par is zero here, so a free attack's kind is worth its whole record: 800 floors over 200 picks.
+        stats.cards["The Necrobinder"] = {"POKE": [200.0, 800.0], "DEFILE": [200.0, -800.0]}
+        stats.kinds.update(POKE="free", DEFILE="draw")
+        saved = learn.KNOB["free_lean"]
+        try:
+            learn.KNOB["free_lean"] = 1.0
+            on = stats.shift("The Necrobinder", "Fetch", "free")
+            learn.KNOB["free_lean"] = 0.0
+            off = stats.shift("The Necrobinder", "Fetch", "free")
+            # Only free attacks are affected: a draw card starts from its kind at either setting.
+            learn.KNOB["free_lean"] = 1.0
+            draw_on = stats.shift("The Necrobinder", "Dredge", "draw")
+            learn.KNOB["free_lean"] = 0.0
+            draw_off = stats.shift("The Necrobinder", "Dredge", "draw")
+        finally:
+            learn.KNOB["free_lean"] = saved
+        self.assertGreater(on, off + 1.0)  # about 1.5 floors of kind start, less at 0.0
+        self.assertEqual(draw_on, draw_off)
+        self.assertIn("free_lean", learn.CHOICES)
+        self.assertEqual(learn.DEFAULTS["free_lean"], 1.0)  # the arm that is today's behaviour
+
     def test_a_cards_own_record_outweighs_its_kind_in_the_end(self):
         stats = learn.CardStats(None)
         stats.finals["The Necrobinder"] = [25] * 20
