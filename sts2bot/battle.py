@@ -65,7 +65,7 @@ class Enemy:
     damage_mult: float = 1.0  # e.g. Flutter: 50% less damage from attacks
     thorns: int = 0  # damage we take back per hit
     revives: bool = False  # Illusion: comes back next turn at full HP
-    stun_at: int = 0  # Plow: Stunned (and loses its Strength) once HP drops to this
+    stun_at: int = 0  # Plow, Shriek (the Terror Eel): Stunned once HP drops to this, and its move this turn is gone
     slow: int = -1  # Slow: % extra attack damage taken so far this turn, +10 per card we play (-1: none)
     minion: bool = False  # leaves the fight when its leader dies
     incoming_hits: int = 0  # how many separate hits make up `incoming`
@@ -104,6 +104,9 @@ class Enemy:
     grows: float = 0.0  # Strength it gains a turn (Ritual, Territorial, or what its Strength so far comes to)
     reattach: int = 0  # Reattach (a Decimillipede segment): killed while another segment lives, it is back two turns later on this much HP
     hive: int = 0  # Personal Hive (the Entomancer): Dazed put into our draw pile for every Attack that hits it
+    flutter: int = 0  # Flutter (the Thieving Hopper): Attack hits still to land before it is Stunned and takes full damage again
+    thief: bool = False  # Swipe: it holds a card of ours, which comes back if it dies and is gone for good if it gets away
+    shell: int = -1  # Hardened Shell (the Skulking Colony): HP it can still lose this turn (-1: no limit)
 
     @property
     def worth(self) -> float:
@@ -112,7 +115,7 @@ class Enemy:
             return 0.0
         if self.minion:
             return 1.0 if self.main_threat else 0.4
-        return 1.0
+        return 1.3 if self.thief else 1.0
 
     @property
     def alive(self) -> bool:
@@ -260,7 +263,9 @@ def read_enemies(state: dict) -> list[Enemy]:
                 enrage=_stacks(e, "ENRAGE"),
                 thorns=_stacks(e, "THORNS"),
                 revives=_has_power(e, "ILLUSION"),
-                stun_at=_stacks(e, "PLOW"),
+                # (Shriek: the Eel on 77 before a 22 was hit to 64, Stunned, after 12 Block had gone up for nothing.)
+                stun_at=_stacks(e, "PLOW") or _stacks(e, "SHRIEK"),
+                shell=_shown(e, "HARDENED_SHELL", 0, -1),
                 slow=_shown(e, "SLOW", 0, -1),
                 minion=_has_power(e, "MINION"),
                 keeps_block=_has_power(e, "BURROWED") or _has_power(e, "BARRICADE"),
@@ -281,9 +286,12 @@ def read_enemies(state: dict) -> list[Enemy]:
                 hang=_stacks(e, "HANG"),
                 threat=threat,
                 hive=_stacks(e, "PERSONAL_HIVE"),
+                flutter=_stacks(e, "FLUTTER"),
+                thief=_has_power(e, "SWIPE"),
                 reattach=_stacks(e, "REATTACH"),
                 grows=max(float(_stacks(e, "RITUAL") + _stacks(e, "TERRITORIAL")), _stacks(e, "STRENGTH") / rounds),
-                skittish=0 if int(e.get("block") or 0) else _stacks(e, "SKITTISH"),  # (Block on it: it has been hit already)
+                # (Block on it: it has been hit already. Curl Up, the Louse Progenitor's, is the same once a fight: 14.)
+                skittish=0 if int(e.get("block") or 0) else _stacks(e, "SKITTISH") or _stacks(e, "CURL_UP"),
                 max_hp=int(e.get("max_hp") or 0),
             )
         )
@@ -309,6 +317,67 @@ def read_enemies(state: dict) -> list[Enemy]:
             if e.minion and e.incoming >= 15 and e.incoming > 2 * leader_hits and e.hp + e.block <= 0.6 * leader_hp:
                 e.main_threat = True
     return out
+
+
+def _hit_count(e: Enemy, hits: int, double_if_vulnerable: bool = False) -> int:
+    return hits * (2 if double_if_vulnerable and e.vulnerable else 1)
+
+
+def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False, raw: bool = False) -> int:
+    """Apply an attack hit by hit, return HP actually removed.
+
+    `raw` is damage that is not an Attack (an orb's): Vulnerable does nothing
+    for it (a Lightning evoked twice did 16 to a Vulnerable enemy, 18 times in 18).
+    """
+    per = dmg_per_hit * (e.damage_mult if not (raw and e.damage_mult) else 1.0)  # (Flutter and Soar: "less damage from Attacks")
+    if not raw:
+        per *= (e.vuln_mult if e.vulnerable else 1.0) * (e.weak_mult if e.weak else 1.0)
+        if e.slow > 0:
+            per *= 1.0 + e.slow / 100.0
+    per = int(per)
+    removed = 0
+    for _ in range(_hit_count(e, hits, double_if_vulnerable)):
+        if e.hp <= 0:
+            break
+        absorbed = min(e.block, per)
+        e.block -= absorbed
+        e.chipped += absorbed
+        if absorbed and e.block == 0 and e.keeps_block:
+            e.keeps_block = False
+            e.incoming = 0  # "Stunned if all Block is removed."
+        # Skittish (Phantasmal Gardener): the first hit of a turn lands, and the rest meet 6 Block.
+        # Four of them took 11 rounds and 38 of 51 HP from a bot that hit one twice a turn.
+        e.block, e.skittish = e.block + e.skittish, 0
+        through = per - absorbed
+        if through <= 0:
+            continue
+        if e.hit_cap:
+            through = min(through, e.hit_cap)
+        if e.slippery > 0:
+            e.slippery -= 1
+            e.stripped += 1
+            through = 1
+        lost = min(e.hp, through)
+        if e.shell >= 0:
+            # "Cannot lose more than 20 HP each turn", and the power counts down as it goes: at 0 two more
+            # attacks were played into it for nothing, with its hit still to come.
+            lost = min(lost, e.shell)
+            e.shell -= lost
+        e.hp -= lost
+        removed += lost
+        if e.stun_at and e.hp <= e.stun_at:
+            e.stun_at = 0
+            e.incoming = 0  # Stunned: its attack this turn never happens
+        if e.flutter and not raw:
+            # Flutter, the Thieving Hopper's ("Deal attack damage 5 times to Stun it"): the fifth hit takes away
+            # this turn's move, its 21 or its Escape with our card, and the 50% off our Attacks with it. Unread,
+            # three Defends went up against the 21 with a 27-damage attack in hand and the Hopper two turns
+            # from leaving on 18 HP; it left on 6, and the deck was a card short from then on.
+            e.flutter -= 1
+            if not e.flutter:
+                e.incoming = e.incoming_hits = 0
+                e.damage_mult, per = 1.0, per * 2
+    return removed
 
 
 def kill_reach(survivors: list, blow_is_all: bool) -> float:
@@ -465,12 +534,23 @@ def cards_left_this_turn(state: dict) -> int | None:
     if _has_power(player, "RINGING"):  # "You can only play 1 card this turn."
         limits.append(1)
     if _has_power(player, "SLOTH"):  # "You cannot play more than 3 cards each turn."
-        limits.append(3)
+        # (By the game's own count, the number on the power: a card that is played twice counts twice.)
+        limits.append(played + 3 - max(0, _shown(player, "SLOTH", 0) or 0))
     for c in [*(player.get("hand") or []), *(player.get("relics") or [])]:  # (a relic too: Velvet Choker, 6 a turn)
         m = re.search(r"cannot play more than (\d+) cards", str(c.get("description") or ""), re.I)
         if m:
             limits.append(int(m.group(1)))
     return max(0, min(limits) - played) if limits else None
+
+
+def free_plays(state: dict) -> int:
+    """Void Form ("The first 2 cards you play each turn are free to play"): how many of the next cards cost nothing.
+
+    The game shows every card in the hand as costing 0 until they are used up, so a cost on show means none is left."""
+    player = state.get("player") or {}
+    if any(str(c.get("cost") or "0").strip() not in ("0", "X") for c in player.get("hand") or []):
+        return 0
+    return max(0, _stacks(player, "VOID_FORM") - int(state.get("_plays_this_turn") or 0))
 
 
 def _poison_total(stack: int, turns: int) -> int:

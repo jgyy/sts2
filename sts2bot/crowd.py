@@ -164,3 +164,36 @@ RATING = _ratings()
 def rating(key: str) -> float | None:
     """What the crowd's numbers make a card worth, on the scale of cards._TIER (None: no numbers for it)."""
     return RATING.get(key.replace("_S_", "S_") if key not in RATING else key)
+
+
+# Which cards win together. The same site groups runs by how alike their final decks are and names each group
+# after the cards that set it apart (read 2026-11-21: 40 groups of 1,000 runs or more). Only the groups won more
+# often than a character's runs are on the whole are kept: the others are mostly decks that never came together
+# (Crescent Spear + Solar Strike 5%, Hotfix + Hailstorm 6%). Each entry: share of the group's runs won, its cards.
+_BUILDS = [
+    (59.5, "Maul, Tear Asunder, Not Yet"), (56.8, "Feel No Pain, Dark Embrace, Stoke"), (47.4, "Mad Science, Juggernaut, Body Slam"),
+    (67.6, "Maul, Ultimate Strike, Mad Science"), (63.6, "Phantom Blades, Blade of Ink, Accuracy"),
+    (51.9, "Nightmare, Grand Finale, Corrosive Wave"), (47.4, "Knife Trap, Fan of Knives, Blade Dance"),
+    (45.6, "Accelerant, Bubble Bubble, Mirage"), (45.1, "Ricochet, Reflex, Speedster"),
+    (74.7, "Monarch's Gaze, Big Bang, Decisions Decisions"), (60.8, "The Sealed Throne, Black Hole, Mad Science"),
+    (53.7, "Ultimate Strike, Mad Science, Tyranny"), (46.0, "Maul, Mad Science, Big Bang"),
+    (63.8, "Forbidden Grimoire, Oblivion, Time's Up"), (57.9, "Ultimate Strike, Mad Science, Banshee's Cry"),
+    (55.0, "Shroud, Death's Door, Sleight of Flesh"), (50.1, "Squeeze, Rattle, Calcify"),
+    (73.7, "Meteor Strike, Helix Drill, Trash to Treasure"), (54.1, "Rocket Punch, Smokestack, Flak Cannon"),
+    (52.4, "Mad Science, Storm, Thunder"), (51.1, "Maul, Ultimate Strike, Mad Science"),
+]
+BUILDS = [(won, frozenset(_key(n) for n in names.split(", "))) for won, names in _BUILDS]
+PARTNER_MOST = 1.5
+
+
+def partner(key: str, held: set) -> float:
+    """What a card is worth on top of its own rating for going with cards the deck already holds.
+
+    The ratings above judge a card alone; this is the one place that says Dark Embrace belongs
+    with Feel No Pain. From 0.3 for a group won 45% of the time to 1.5 at 63% and beyond.
+    """
+    best = 0.0
+    for won, cards in BUILDS:
+        if key in cards and (cards - {key}) & held:
+            best = max(best, min(PARTNER_MOST, (won - 40.0) / 15.0))
+    return best

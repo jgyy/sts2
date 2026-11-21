@@ -52,7 +52,12 @@ Slay the Spire 2  <-- STS2_MCP mod (HTTP on localhost:15526) -->  sts2bot (Pytho
   - `supervisor.py` starts Steam if it is not running, launches the game,
     restarts it when it stops answering or
     nothing changes for 5 minutes, abandons a run that hangs twice in the same
-    place, and rebuilds the bridge mod after a game update (see below).
+    place, and rebuilds the bridge mod after a game update (see below). When
+    the game crashes, the bot comes back to the room the save was made in and
+    does something else there than what it had last asked for (another card,
+    another option, another room, nothing bought); from the second crash in
+    one room it also plays that room slowly. The run is only abandoned at the
+    third crash with nothing left to do differently, or the fifth in any case.
 
 The bot is heuristic, not an LLM: it costs nothing to run nonstop. It plays
 simple, sensible Spire (kill when it can, block when it must) and will lose
@@ -186,8 +191,12 @@ fights, by act), `reads` (what the planner read on each card against what
 playing it did) and `unplayed` (cards left in the hand on turns that could
 have paid for them) and `rooms SETTING` (what ordinary fights cost under each
 value of one setting). For finding what the planner gets wrong: `surprises`
-(turns that cost more HP than the plan expected, by enemy) and `idle` (turns
-ended with energy and a card it could pay for while HP was about to be lost).
+(turns that cost more HP than the plan expected, by enemy), `idle` (turns
+ended with energy and a card it could pay for while HP was about to be lost)
+and `powers` (powers seen on enemies or on us that no module of the bot names,
+with their rules text). `events` lists every event met with how often each
+option was taken, and `wiki` saves the game's text for every discovered card
+and relic to `wiki.json` next to the logs.
 
 ## Options
 

@@ -69,8 +69,16 @@ class Bot:
         self.quiet_settle = 0.3
         self.choose_settle = 0.5
         # Set by the supervisor after the game crashed twice in the same place:
-        # until this time, act slowly and ask for the state rarely.
+        # until this time, act slowly and ask for the state rarely. Only in that place (`careful_at`,
+        # a value of `progress()`): two minutes of it used to run on into the next rooms, and into the
+        # next run when this one was given up, at a quarter of the usual pace.
         self.careful_until = 0.0
+        self.careful_at: tuple | None = None
+        # What the bot had last asked of the game when it crashed, by place: (act, floor, action, params).
+        # The game saves at the door of each room, so after a crash the bot is back there and would do the
+        # same again. It does something else instead, where there is something else to do.
+        self._crashed: set = set()
+        self._last_sent: tuple | None = None  # the last such request since the game was (re)started
         # The game clock's speed-up, set by the supervisor (0: leave the clock
         # alone). The game sets its own time scale in boss fights (slow motion
         # at 0.11, then back to 1), so a speed-up set once at the start was
@@ -110,6 +118,8 @@ class Bot:
         self._turn_key: tuple = ()
         self._turn_plays = 0
         self._turn_cards = 0  # ... and how many of those were cards (a potion is not one of the "3 cards each turn")
+        self._turn_energy = 0  # energy we had when we last looked at this turn
+        self._turns: list = []  # (cards played, energy left over) for each turn of this fight that has ended
         self._last_where: tuple = ()
         self._seen_powers: set = set()
         self._wins_seen: int | None = None  # the game's win counter when we last looked
@@ -130,6 +140,19 @@ class Bot:
     def progress(self) -> tuple:
         """Changes whenever the bot gets somewhere new (used to spot repeat hangs)."""
         return (self.runs_finished, *self._last_where)
+
+    def _careful(self) -> bool:
+        return self.clock() < self.careful_until and self.careful_at in (None, self.progress())
+
+    def note_crash(self) -> bool:
+        """The game has just died. Remember what was asked of it last, so that it is not asked again in that
+        room. True if that is something new (there is another way to try), False if there is nothing to vary."""
+        sent, self._last_sent = self._last_sent, None
+        if sent is None or sent in self._crashed:
+            return False
+        self._crashed.add(sent)
+        log.warning("the game died after %s %s at act %s floor %s: that will not be tried there again", sent[2], sent[3], sent[0], sent[1])
+        return True
 
     def candidates(self, state: dict) -> list[tuple[str, dict]]:
         kind = state.get("state_type")
@@ -155,6 +178,8 @@ class Bot:
             return strategy.shop(state, mem, key="fake_merchant")
         if kind == "hand_select":
             state = {**state, "_fight": self._fight_kind}  # the screen does not say what kind of fight it is in
+        if kind == "card_select" and self._turn_key[:2] == strategy._where(state):
+            state = {**state, "_turns": [*self._turns, (self._turn_cards, self._turn_energy)]}  # ... nor how the fight has gone
         handler = getattr(strategy, "map_screen" if kind == "map" else str(kind), None) if kind in SCREENS else None
         return handler(state, mem) if handler else []
 
@@ -213,6 +238,8 @@ class Bot:
         self._note_deck(state)
         key = (*strategy._where(state), battle.get("round"))
         if key != self._turn_key:
+            # (What each turn of the fight came to: the Knowledge Demon's offers are judged by it, see afflictions.py.)
+            self._turns = [*self._turns, (self._turn_cards, self._turn_energy)] if key[:2] == self._turn_key[:2] else []
             self._turn_key, self._turn_plays, self._turn_cards = key, 0, 0
             # What each enemy has shown of itself so far: one intent says little (half of them
             # attack every other turn), the average over the fight says who is doing the damage.
@@ -222,6 +249,7 @@ class Bot:
                 seen = self._threat.setdefault(str(e.get("entity_id")), [0, 0])
                 seen[0] += sum(combat.intent_damage(i) for i in e.get("intents") or [])
                 seen[1] += 1
+        self._turn_energy = int(player.get("energy") or 0)
         if key[:2] != self._facing_fight:
             self._facing_fight, self._facing = key[:2], None  # a new fight
         if self._turn_plays >= MAX_PLAYS_PER_TURN:
@@ -238,7 +266,8 @@ class Bot:
             self._revive_fight = key[:2] if any(combat.power_amount(e, "ADAPTABLE") for e in standing) else ()
         revive = not standing and self._revive_fight == key[:2]
         threat = {k: total / rounds for k, (total, rounds) in self._threat.items()}
-        wanted = combat.actions({**state, "_plays_this_turn": self._turn_cards, "_facing": self._facing, "_revive_pending": revive, "_threat": threat})
+        costs = {str(c.get("name")): cards._cost(c.get("cost")) for c in self.mem.deck}  # (as the fight began: Void Form hides them)
+        wanted = combat.actions({**state, "_plays_this_turn": self._turn_cards, "_facing": self._facing, "_revive_pending": revive, "_threat": threat, "_costs": costs})
         # Cards that draw (or reshuffle the hand, like Reboot) show up a moment
         # after the card that brought them: straight after Reboot the hand read
         # as empty, and the bot ended a turn with 4 energy and a kill in reach.
@@ -306,6 +335,9 @@ class Bot:
         elif action == "skip_card_reward":
             where = strategy._where(state)
             self.mem.card_skips[where] = self.mem.card_skips.get(where, 0) + 1
+        elif action == "discard_potion":
+            where = strategy._where(state)
+            self.mem.potion_swaps[where] = self.mem.potion_swaps.get(where, 0) + 1
         elif action in ("play_card", "use_potion"):
             self._turn_plays += 1
             if action == "play_card":
@@ -321,6 +353,8 @@ class Bot:
                 self.mem.character_selected = True
             elif option == "abandon_run":
                 log.warning("abandoning the current run")
+                self.careful_until = 0.0
+                self._crashed.clear()
             elif option in ("yes", "confirm") and self.abandon_next and state.get("menu_screen") == "popup":
                 self.abandon_next = False
                 self.mem.reset_run()
@@ -371,6 +405,9 @@ class Bot:
         ended = self._boss_watch.update(state, kind)
         if ended:
             log.info(ended)
+        if self._boss_watch.brought:
+            log.info(self._boss_watch.brought)
+            self._boss_watch.brought = None
         if kind in COMBAT_STATES:
             self._note_powers(state)
         if state.get("run"):
@@ -393,6 +430,7 @@ class Bot:
         elif self._over_logged:
             self._over_logged = False
             self.mem.reset_run()
+            self._crashed.clear()
             if self.tune:
                 log.info("settings for the next run: %s", self.knobs.draw())
                 self._knobs_whole_run = True
@@ -513,7 +551,7 @@ class Bot:
         # often then (a state request walks that scene, and the game once
         # crashed mid-travel under rapid polling).
         pause = min(0.15 if leave or slow else 0.03, self.poll)
-        if self.clock() < self.careful_until:
+        if self._careful():
             pause = max(pause, 0.5)
         while self.clock() < deadline:
             self.sleep(pause)
@@ -546,14 +584,20 @@ class Bot:
         self._note_state(state)
         if self._done():
             return False
-        for action, params in self.candidates(state):
+        todo = self.candidates(state)
+        run = state.get("run") or {}
+        suspect = lambda a, p: (run.get("act"), run.get("floor"), a, json.dumps(p, sort_keys=True)) in self._crashed
+        if self._crashed and any(not suspect(a, p) for a, p in todo):
+            todo = [(a, p) for a, p in todo if not suspect(a, p)]  # (when it is all there is to do, it is done again)
+        for action, params in todo:
             key = (action, json.dumps(params, sort_keys=True))
             if self._strikes[key] >= MAX_STRIKES:
                 continue
-            run = state.get("run") or {}
             buy = (run.get("act"), run.get("floor"), key[1]) if action == "shop_purchase" else None
             if buy and self._dead_buys[buy] >= MAX_STRIKES:
                 continue
+            if action != "menu_select" and state.get("state_type") not in COMBAT_STATES:
+                self._last_sent = (run.get("act"), run.get("floor"), *key)
             result = self.client.act(action, **params)
             if result.get("status") == "error" or "error" in result:
                 self._strikes[key] += 1
@@ -576,7 +620,7 @@ class Bot:
             embarking = action == "menu_select" and state.get("menu_screen") == "character_select" and str(params.get("option")) in ("confirm", "embark")
             if fragile or embarking:
                 self.sleep(0.4)
-            if self.clock() < self.careful_until:
+            if self._careful():
                 self.sleep(1.0)
             changed = self._wait_for_change(
                 fp,

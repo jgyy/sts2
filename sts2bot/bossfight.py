@@ -26,6 +26,7 @@ def _base_name(entity_id: str) -> str:
 class BossWatch:
     def __init__(self) -> None:
         self.fight: dict | None = None
+        self.brought: str | None = None  # a log line for the fight that has just begun: what the bot holds going in
 
     def update(self, state: dict, kind: str | None) -> str | None:
         """Feed every state the bot reads. Returns a log line when a boss fight has just ended."""
@@ -58,6 +59,14 @@ class BossWatch:
                 "potions": len(player.get("potions") or []),
                 "deck": sum(len(player.get(pile) or []) for pile in ("hand", "draw_pile", "discard_pile")),
             }
+            # ... and by name, since a run that wins leaves no record of its deck at this boss: the run history
+            # only has the deck a run ended with, so decks that beat a boss could never be set against ones that lost.
+            names = lambda key, field: [str(x.get(field) or x.get("name") or "?") for x in player.get(key) or []]
+            cards = sorted(n for pile in ("hand", "draw_pile", "discard_pile") for n in names(pile, "name"))
+            self.brought = (
+                f"boss fight begins: act {run.get('act')} floor {run.get('floor')} {'+'.join(self.fight['names']) or '?'}; "
+                f"relics {' '.join(names('relics', 'id'))}; potions {', '.join(names('potions', 'name'))}; cards {', '.join(cards)}"
+            )
         f = self.fight
         f["boss_hp"] = boss_hp
         f["hp"] = int(player.get("hp") or 0)

@@ -12,10 +12,11 @@ Action = tuple[str, dict]
 log = logging.getLogger("sts2bot.strategy")
 
 _GOOD = [
-    (r"\brelics?\b", 6.0), (r"\bremove\b", 4.0), (r"\bupgrade\b", 4.0), (r"\bmax hp\b", 3.0), (r"\bheal\b", 2.5), (r"\bgold\b", 2.0),
+    (r"\brelics?\b", 6.0), (r"\bremove\b", 4.0), (r"\bupgrade\b", 4.0),
     (r"\btransform\b", 2.0), (r"\bpotions?\b", 1.5), (r"\bcards?\b", 1.0), (r"\benchant\b", 3.0),
     (r"draw \d+ additional cards?", 5.0),  # every turn, for the rest of the run
     (r"energy_icon", 5.0),
+    (r"\bgreater rewards\b", 6.0),  # Punch Off: two 50 HP constructs that hit for 5x2, for a relic, a card and a potion
 ]
 # The Lantern Key's fight (a Mysterious Knight) cost 27 HP on average over 17
 # tries in the middle of act 2 and leaves an unplayable card in the deck; what
@@ -30,11 +31,25 @@ _BAD = [(r"\bfoul potions?\b", 1.0), (r"\bfight to obtain the key\b", 6.0), (r"\
 # the bot walked into it nine times.
 # Duplicating the whole deck doubles every draw pile and dilutes the good cards.
 _DUPLICATE_DECK = re.compile(r"duplicate (?:your|the) (?:whole )?deck")
-# Something bad we would receive or be given: it is not a relic, whatever the
-# "Receive ..." wording suggests.
+# Something bad we would receive or be given: it is not a relic, whatever the "Receive ..." wording
+# suggests. What each costs, where a relic is worth 6: until 2026-11-21 every one cost 6 (10 as a card
+# "added to your Deck"), so "Add Clumsy to your Deck. Obtain a random Relic." was refused 45 times in 45
+# for "Lose 6 HP. Gain 52 Gold". Clumsy is "Unplayable. Ethereal": one draw a fight, then it is gone.
+# Guilty leaves after 5 combats, Poor Sleep ("Retain") is drawn once a fight, Injury is a dead draw every
+# time round the deck, Greed and the Bell's curse can never be removed; Decay, Doubt, Shame and Regret
+# hurt each time they are held; Normality stops the turn at three cards and Bad Luck takes 13 HP.
+# Two relics belong here too. Royal Poison ("At the start of each combat, lose 4 HP") came with "Heal to
+# full HP" and was taken 6 times in 6, at 90% HP or more. The Sword of Stone ("Transforms into a powerful
+# Relic after defeating 5 Elites") was taken 27 times in 27 over 115 Gold for 7 HP: 2 runs in 147 fought
+# five elites (it is worth the half point over; the rest are costs).
+_CURSES = {
+    "clumsy": 1.5, "guilty": 1.5, "poor sleep": 2.0, "folly": 2.5, "spore mind": 2.5, "injury": 3.0, "debt": 4.0,
+    "decay": 4.5, "doubt": 4.5, "shame": 4.5, "greed": 5.0, "curse of the bell": 5.0, "regret": 5.0, "writhe": 5.0,
+    "normality": 8.0, "enthralled": 8.0, "bad luck": 10.0, "royal poison": 9.0, "sword of stone": -0.5,
+}
 _CURSE_GAIN = re.compile(
-    r"\b(?:receive|obtain|add|gain)\b[^.]*\b(?:bad luck|regret|doubt|shame|decay|injury|wound|burn|dazed|hex|parasite|"
-    r"writhe|normality|pain|debt|greed|spite|void|mind rot|sloth|waste away|disintegration|clumsy|curse)\b"
+    r"\b(?:receive|obtain|add|gain)\b[^.]*?\b(" + "|".join(_CURSES) + r"|wound|burn|dazed|hex|parasite|"
+    r"pain|spite|void|mind rot|sloth|waste away|disintegration|curse)\b"
 )
 _RUINOUS = re.compile(r"\blose (all|everything)\b|\bset your max hp\b|\bmax hp (to|becomes) \d\b", re.I)
 
@@ -98,7 +113,10 @@ _ANCIENT = {
 }
 
 
-def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0) -> float:
+ACT3_HP = 1.6  # how much more a point of HP given up in an event costs in act 3 (the last boss is won from full HP: 6 in 16, none in 12 below 90%)
+
+
+def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int | None = None) -> float:
     text = f"{opt.get('title') or ''}. {opt.get('description') or ''}".lower()
     known = _ANCIENT.get(re.sub(r"[^A-Z0-9]+", "_", re.sub(r"['\u2019]", "", str(opt.get("title") or "")).upper()).strip("_"))
     if known is not None:
@@ -109,8 +127,22 @@ def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0) -> float
     for pat, w in _GOOD:
         if re.search(pat, text) and not re.search(r"(?:lose|pay|give)[^.]*" + pat, text):
             score += w
-    if _CURSE_GAIN.search(text):
-        score -= 6.0
+    # Gold is worth what it buys (a removal is 100 to 200, a relic 150 and up), a heal what is missing and
+    # Max HP its amount: all three used to be flat, so 311 Gold was worth what 35 was, "Heal to full HP"
+    # the same at 9 HP in 10, and 2 Max HP for 3 damage more than 10 HP back at two thirds health.
+    if m := re.search(r"\bgain (\d+) max hp", text):
+        score += min(6.0, 0.35 * int(m.group(1)))
+    elif re.search(r"\bmax hp\b", text) and not re.search(r"(?:lose|pay|give)[^.]*\bmax hp\b", text):
+        score += 3.0
+    if m := re.search(r"\bgain (\d+) gold", text):
+        score += min(6.0, int(m.group(1)) / 50.0)
+    elif re.search(r"\bgold\b", text) and not re.search(r"(?:lose|pay|give)[^.]*\bgold\b", text):
+        score += 2.0
+    if m := re.search(r"\bheal(?: (\d+)(%?))?", text):
+        amount = max_hp if not m.group(1) else int(m.group(1)) * max_hp // 100 if m.group(2) else int(m.group(1))
+        score += 12.0 * min(amount, max(0, max_hp - hp)) / max(1, max_hp)
+    cursed = {m.group(1) for m in _CURSE_GAIN.finditer(text)}
+    score -= sum(_CURSES.get(name, 6.0) for name in cursed)
     # "Obtain the Sword of Stone", "Receive the Spoils Map": a relic by name.
     # Each "obtain/receive" is judged on its own, so "Receive Bad Luck" is not one.
     if not opt.get("relic_name") and "relic" not in text:
@@ -138,7 +170,7 @@ def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0) -> float
     if m:
         gained = {"name": m.group(1).strip().title()}
         if re.sub(r"\W", "", gained["name"]).upper() in _JUNK_NAMES:
-            score -= 4.0
+            score -= 0.0 if cursed else 4.0  # (a curse has been charged for by name)
         else:
             score += 0.5 * (deck_value(gained) - 3.0) if _known_card(gained) else 0.0
     m = re.search(r"lose\s+(\d+)(%?)\s+max\s+hp", text)
@@ -150,13 +182,11 @@ def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0) -> float
     m = re.search(r"(?:lose|take)\s+(\d+)\s+(?:hp|damage)", text)
     if m:
         loss = int(m.group(1))
-        score -= 1000.0 if loss >= hp else 12.0 * loss / max(1, hp)
+        score -= 1000.0 if loss >= hp else 12.0 * loss / max(1, hp) * (ACT3_HP if act is not None and act >= 3 else 1.0)
         if bled >= 5:
             # This event has already taken HP from us: each further bite costs more,
             # so a chain of small losses is stopped before it adds up.
             score -= 2.0 + 0.5 * bled
-    if re.search(r"heal", text) and hp >= 0.9 * max_hp:
-        score -= 2.0
     return score
 
 
@@ -174,7 +204,8 @@ def event(state: dict, mem) -> list[Action]:
     if eid != mem.event_id:
         mem.event_id, mem.event_hp0 = eid, hp
     bled = max(0, mem.event_hp0 - hp)
-    worth = lambda o: _event_option_value(o, hp, max_hp, bled)
+    act = (state.get("run") or {}).get("act")
+    worth = lambda o: _event_option_value(o, hp, max_hp, bled, act if isinstance(act, int) else None)
     rest = sorted((o for o in opts if not o.get("is_proceed")), key=worth, reverse=True)
     if log.isEnabledFor(logging.DEBUG) and rest:
         log.debug("event %s: %s", ev.get("event_id"), " | ".join(f"[{worth(o):.1f}] {o.get('title')}: {o.get('description')}" for o in rest))

@@ -24,6 +24,14 @@ class BossWatchTest(unittest.TestCase):
             "boss fight over: act 1 floor 17 VANTOM won; boss hp 170 -> 60; player hp 70 -> 50/80; rounds 2; brought relics 0, potions 0, deck 0",
         )
 
+    def test_what_the_bot_brings_is_written_down_as_the_fight_begins(self):
+        watch = BossWatch()
+        state = boss_state([("VANTOM", 170)], 1)
+        state["player"].update(relics=[{"id": "BURNING_BLOOD", "name": "Burning Blood"}], potions=[{"name": "Fire Potion"}],
+                               hand=[{"name": "Strike"}], draw_pile=[{"name": "Bash+"}], discard_pile=[])
+        watch.update(state, "boss")
+        self.assertEqual(watch.brought, "boss fight begins: act 1 floor 17 VANTOM; relics BURNING_BLOOD; potions Fire Potion; cards Bash+, Strike")
+
     def test_lost_fight_is_reported_once(self):
         watch = BossWatch()
         watch.update(boss_state([("SOUL_FYSH", 200)], 1, player_hp=60), "boss")
