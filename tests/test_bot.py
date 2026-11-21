@@ -173,7 +173,7 @@ class FullLoop(unittest.TestCase):
     def test_skipped_card_reward_does_not_loop(self):
         game = FakeGame(seed=2, floors=3)
         bot = make_bot(game)
-        import sts2bot.strategy as st
+        import sts2bot.decks as st  # (where the bar for a card reward lives)
 
         old = st.SKIP_THRESHOLD
         st.SKIP_THRESHOLD = 99.0  # skip everything

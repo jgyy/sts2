@@ -16,11 +16,11 @@ from itertools import combinations, permutations
 from .battle import (  # noqa: F401  (also the names other modules and the tests reach through here)
     BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, REATTACH_REACH, SANDPIT_DEATH, SLIP_WORTH, WIN_BONUS, Enemy,
     _has_power, _is_attack, constrict, end_of_turn_block, end_of_turn_loss, expected_loss, hand_burns,
-    intent_damage, intent_hits, kill_reach, osty_hp, power_amount, read_enemies, _bare_block, _draw_worth, _escape_odds, _next_wither, _sandpit,
+    intent_damage, intent_hits, kill_reach, osty_hp, power_amount, read_enemies, _bare_block, _draw_worth, _escape_odds, _next_wither, _sandpit, _wither_bill,
     deck_count, junk_cost, cards_left_this_turn, free_plays, _hit, _hit_count, _poison_total, _power_worth, _set_up, _rage_blocks, _respawns, loss_cap,
 )
 from .cards import CardInfo, order_key, parse
-from .potions import describe, potion_actions  # noqa: F401
+from .potions import fortifier, describe, potion_actions  # noqa: F401
 from . import triggers
 from .learn import knob
 
@@ -101,9 +101,19 @@ def _pick_target(enemies: list[Enemy], dmg_per_hit: int, hits: int, double_if_vu
     # Slumbering Beetle (86 HP, 16 a turn and 2 more every turn once awake) until both Bowlbugs
     # were dead: 5 runs in 24 died in that room, two of them from over 50 HP. Enemies that have
     # shown under 6 a turn count as 6, so equals are still taken lowest first.
+    # Doom is health already gone (it dies at the end of its turn once Doom covers its HP), and one
+    # that Doom has finished needs nothing more. Read as plain HP, the Necrobinder put Scourge on one
+    # Nibbit and its attacks on the other, then went on hitting the one already done for: seven rounds
+    # and 34 of 49 HP for two 42-HP enemies. (15 of its 44 act 1 bosses were met on under 75% HP,
+    # 7 of those won; of the 29 met on more, 24.)
     soaks = lambda e: e.block >= dmg_per_hit * hits and not e.keeps_block
-    left = lambda e: (e.hp + e.block) / (1.5 if e.vulnerable else 1.0)
-    return min(alive, key=lambda e: (-e.worth, soaks(e), left(e) / max(e.threat, THREAT_FLOOR), -e.incoming))
+    left = lambda e: (max(1, e.hp - e.doom) + e.block) / (1.5 if e.vulnerable else 1.0)
+    return min(alive, key=lambda e: (_fated(e), -e.worth, soaks(e), left(e) / max(e.threat, THREAT_FLOOR), -e.incoming))
+
+
+def _fated(e: Enemy) -> bool:
+    """Doom covers its HP: it dies when its turn ends, whatever else we do to it (a boss with another form to come does not)."""
+    return e.doom >= e.hp > 0 and not e.adapts
 
 
 def _resists(e: Enemy) -> bool:
@@ -210,6 +220,7 @@ def simulate(
     escape_odds: tuple = (0.3, 0.3),  # chance of no Frantic Escape in the next hand, and in a hand later on
     wither_in: int = 0,  # Withering Presence: cards we can still play before a Wither lands in our hand
     wither_hp: int = 5,  # ... and what that Wither will cost (each one is a point worse than the last)
+    wither_bill: float = 7.0,  # ... and what each card played costs in Withers to come (battle._wither_bill)
     trig: triggers.Triggers | None = None,  # powers that act on every card played
     pet: int = -1,  # Osty's HP (already part of `block`); -1: no pet in the state
     hail: int = 0,  # Hailstorm: damage to ALL enemies when the turn ends with a Frost orb held
@@ -220,6 +231,7 @@ def simulate(
     friends: int = 0,  # Friendships already in play (each is an energy a turn, and the next one is worth less)
     free: int = 0,  # Void Form: this many of the next cards cost no energy
     doubled: bool = False,  # Duplication (the Duplicator potion): the next card is played an extra time, whatever it is
+    fortify: int = 1,  # a Fortifier waits on the belt for this turn's Block ("Triple your Block": 3)
 ) -> Outcome | None:
     """Score playing `line` in order. None if it cannot be afforded."""
     if card_limit is not None and len(line) > card_limit:
@@ -399,7 +411,9 @@ def simulate(
                     n_hits = hits // waves
                     self_loss += e.thorns * _hit_count(e, n_hits, c.double_if_vulnerable)
                     dazed += e.hive * _hit_count(e, n_hits, c.double_if_vulnerable) * (c.type == "Attack")
-                    score += _progress(e, _hit(e, per, n_hits, c.double_if_vulnerable), chip_rate) * dmg_value * e.worth
+                    done = _fated(e)  # damage that does not kill it now changes nothing
+                    gain = _progress(e, _hit(e, per, n_hits, c.double_if_vulnerable), chip_rate) * dmg_value * e.worth
+                    score += gain * (0.2 if done and e.alive else 1.0)
                 if waves > 1:
                     _rage_blocks(foes, known_dead)
             for e in struck:
@@ -413,6 +427,8 @@ def simulate(
             elif c.weak and not c.vulnerable:
                 # Weaken the hardest hitter that is not Weak yet.
                 t = max(alive, key=lambda e: (not e.weak, e.incoming), default=None)
+            elif c.doom and not c.vulnerable:
+                t = _pick_target(foes, 0, 0)  # Doom goes where the attacks go: together they end one enemy sooner
             else:
                 # Vulnerable goes on the enemy we will be hitting the longest.
                 fresh = [e for e in alive if not e.vulnerable] or alive
@@ -441,8 +457,9 @@ def simulate(
                 if c.poison and not _resists(e):
                     e.poison += c.poison * x
                 if c.doom and not _resists(e):
+                    # (Doom beyond its HP is worth nothing, unless another form follows.)
+                    score += (c.doom * x if e.adapts else min(c.doom * x, max(0, e.hp - e.doom))) * 0.8 * dmg_value * e.worth
                     e.doom += c.doom * x
-                    score += c.doom * x * 0.8 * dmg_value * e.worth
                 if c.enemy_hp_loss:
                     lost_hp = min(e.hp, c.enemy_hp_loss)
                     e.hp -= lost_hp
@@ -675,7 +692,7 @@ def simulate(
     # (Osty stops attacks and nothing else: with him on 20 two Toxics still took 10, with him on 27 a
     # Wither+1 took 6, and each time the plan had counted on losing nothing.)
     guard = min(max(pet, 0), max(block, 0))
-    own = max(0, block - guard)  # Block that is ours
+    own = max(0, block - guard) * fortify  # Block that is ours
     burnt += max(0, scorch - own)
     through = max(0, incoming - max(0, own - scorch) - guard)
     if through and buffer >= sum(e.incoming_hits for e in survivors if e.incoming):
@@ -692,7 +709,7 @@ def simulate(
         # and takes a card's place in the hand (by round 7 one fight had five
         # of them in an eight-card hand, 25 HP a turn). The count carries over
         # between turns, so every card played is a sixth of that bill.
-        score -= len(line) * (4.0 * wither_hp + 20.0) / 6.0
+        score -= len(line) * wither_bill
     lost = through + self_loss + end_loss + burnt
     lost = max(0, lost - min(regen, max(0, max_hp - hp + self_loss)))  # Regen mends what was missing first
     lost = min(lost, loss_cap) if loss_cap else lost
@@ -742,6 +759,12 @@ def simulate(
     # until 2026-11-19: 32 runs, no win, against 5 wins in 54; no further either. Removed.)
     price = lost * worth * (4.0 if doomed else 1.0) * knob("caution")
     score -= price
+    if len(line) < wither_in:
+        # The count carries over, so a line that stops short of the next Wither has only put it off: it
+        # lands with the first card of the next turn. Charged to the card that crosses and to nothing
+        # else, the bot stopped one card short turn after turn (three energy, a Block card and a Power
+        # left in hand under a 25, then the Wither on the next turn's first card all the same).
+        score -= wither_hp * (1.5 + 2.5 * (1.0 - ratio)) * knob("caution")
     if lost >= hp:
         # Dead on paper, and that is dead: of 115 turns ended this way none was lived
         # through (the loss expected is exact: 3 under-estimates of 3 HP or more in 7,880
@@ -776,6 +799,7 @@ def _context(state: dict) -> dict:
         hp=max(1, int(player.get("hp") or 1) - max(0, power_amount(player, "DOOM")) - max(0, power_amount(player, "NEUROSURGE"))),
         max_hp=int(player.get("max_hp") or 1),
         block=int(player.get("block") or 0) + end_of_turn_block(player) + osty_hp(player),
+        fortify=int(state.get("_fortify") or 1),
         fight=str(state.get("state_type") or "monster"),
         round_no=int(battle.get("round") or 1),
         card_limit=cards_left_this_turn(state),
@@ -790,6 +814,7 @@ def _context(state: dict) -> dict:
         hand_size=len(player.get("hand") or []),
         wither_in=max((power_amount(e, "WITHERING_PRESENCE") for e in battle.get("enemies") or []), default=0),
         wither_hp=_next_wither(player, int(battle.get("round") or 1)),
+        wither_bill=_wither_bill(player, int(battle.get("round") or 1), _next_wither(player, int(battle.get("round") or 1))),
         draw_worth=_draw_worth(player),
         orbs=tuple(
             (str(o.get("id") or o.get("name") or "").upper().replace("_ORB", ""), int(o.get("passive_val") or 0), int(o.get("evoke_val") or 0))
@@ -946,6 +971,16 @@ def actions(state: dict) -> list[Action]:
         log.debug("sandpit %s, no Escape next hand %.2f, later %.2f", _sandpit(state), *_escape_odds(state.get("player") or {}))
     plan: dict = {}
     card = choose_card(state, plan)
+    if plan.get("lost", 0) >= int((state.get("player") or {}).get("hp") or 1) and fortifier(state.get("player") or {}):
+        # Dead on paper with a Fortifier on the belt. It is drunk after the last card (potions._ill_timed), so
+        # the cards have to be chosen for the Block it will triple: a Regent on 4 HP in front of 36, a Beckon
+        # in hand (6 HP if it stays there), played three Block cards for 66 once tripled and died of the
+        # Beckon, where the Beckon and two of them were 45 and the Soul Fysh had 6 HP left.
+        braced: dict = {}
+        with_it = choose_card({**state, "_fortify": 3}, braced)
+        if braced.get("lost", plan["lost"]) < plan["lost"]:
+            # (The loss the potions go by stays the one without it: that is the danger the Fortifier is drunk for.)
+            card, plan = with_it, {**plan, "line": braced.get("line", [])}
     out = potion_actions(state, plan["lost"] if "lost" in plan else expected_end_loss(state), plan.get("line", []))  # (nothing playable: no plan)
     if card is not None:
         out.append(card)

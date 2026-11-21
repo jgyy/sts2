@@ -133,6 +133,72 @@ class LearnedRatings(unittest.TestCase):
         with mock.patch.dict(learn.KNOB, {"punch": 0.9}):
             self.assertLessEqual(strategy.deck_fit(attack, soft, 2), 2.0)
 
+    def test_the_first_two_sources_of_weak_are_wanted_under_the_setting(self):
+        from unittest import mock
+
+        from sts2bot import learn
+
+        skill = lambda name, text: {"id": name.upper(), "name": name, "type": "Skill", "cost": 1, "description": text}
+        weak, other = skill("Sap", "Apply 2 Weak."), skill("Guard", "Gain 8 Block.")
+        deck = [{"id": "STRIKE_IRONCLAD", "name": "Strike", "type": "Attack", "cost": 1, "description": "Deal 6 damage."}] * 9
+        plain, plain_other = strategy.deck_fit(weak, deck, 2), strategy.deck_fit(other, deck, 2)
+        with mock.patch.dict(learn.KNOB, {"weak_want": 1.0}):
+            self.assertAlmostEqual(strategy.deck_fit(weak, deck, 2), plain + 1.0)
+            self.assertAlmostEqual(strategy.deck_fit(other, deck, 2), plain_other)
+            held = deck + [skill("Hex", "Apply 1 Weak."), skill("Curse Word", "Apply 1 Weak.")]
+            self.assertAlmostEqual(strategy.deck_fit(weak, held, 2), strategy.deck_fit(other, held, 2))  # two held: no more than any card
+
+    def test_the_first_block_cards_beyond_the_defends_are_wanted_under_the_setting(self):
+        from unittest import mock
+
+        from sts2bot import learn
+
+        strike = {"id": "STRIKE_IRONCLAD", "name": "Strike", "type": "Attack", "cost": 1, "description": "Deal 6 damage."}
+        defend = {"id": "DEFEND_IRONCLAD", "name": "Defend", "type": "Skill", "cost": 1, "description": "Gain 5 Block."}
+        guard = lambda i: {"name": f"Guard {i}", "cost": 1, "description": "Gain 8 Block."}  # (as the draw pile lists a card)
+        offer = {"id": "SHRUG_IT_OFF", "name": "Shrug It Off", "type": "Skill", "cost": 1, "description": "Gain 8 Block. Draw 1 card."}
+        other = {"id": "SAP", "name": "Sap", "type": "Skill", "cost": 1, "description": "Draw 2 cards."}
+        # The Defends are not Block cards the deck took, upgraded or not.
+        base = [strike] * 5 + [defend] * 4 + [{"name": "Defend+", "cost": 1, "description": "Gain 8 Block."}]
+        self.assertFalse(any(map(strategy._blocks, base)))
+        plain = strategy.deck_fit(offer, base, 1)
+        with mock.patch.dict(learn.KNOB, {"block_want": 1.5}):
+            held = [strategy.deck_fit(offer, base + [guard(i) for i in range(n)], 1) for n in (0, 1, 2, 3)]
+            self.assertAlmostEqual(strategy.deck_fit(other, base, 1), strategy.deck_fit(other, base + [guard(0)], 1))  # (no other card moves)
+            # A deck of 24 has room for one more.
+            big = base + [strike] * 12 + [guard(0), guard(1)]
+            self.assertAlmostEqual(strategy.deck_fit(offer, big, 2) - strategy.deck_fit(other, big, 2), 1.5)
+            # One that costs more than a turn's energy is not wanted for it.
+            dear = {"id": "BULWARK", "name": "Bulwark", "type": "Skill", "cost": 4, "description": "Gain 30 Block."}
+            self.assertLess(strategy.deck_fit(dear, base, 1), 0.0)
+        self.assertAlmostEqual(held[0], plain + 1.5)
+        self.assertAlmostEqual(held[1], held[0])  # the second as much as the first
+        self.assertAlmostEqual(held[2], plain + 0.75)  # half for the third
+        self.assertAlmostEqual(held[3], plain)  # and then a Block card is worth what it is rated
+
+    def test_the_lean_to_attacks_lets_go_once_the_deck_has_its_share_under_the_setting(self):
+        from unittest import mock
+
+        from sts2bot import learn
+
+        strike = {"id": "STRIKE_IRONCLAD", "name": "Strike", "type": "Attack", "cost": 1, "description": "Deal 6 damage."}
+        defend = {"id": "DEFEND_IRONCLAD", "name": "Defend", "type": "Skill", "cost": 1, "description": "Gain 5 Block."}
+        hit = lambda i: {"name": f"Hit {i}", "cost": 1, "description": "Deal 9 damage."}  # (as the draw pile lists a card: no id, no type)
+        offer = {"id": "NEW_HIT", "name": "New Hit", "type": "Attack", "cost": 1, "description": "Deal 10 damage."}
+        # Upgraded Strikes are not cards the deck took: they leave the room as it was.
+        base = [strike] * 3 + [{"name": "Strike+", "cost": 1, "description": "Deal 9 damage."}] * 2 + [defend] * 9
+        self.assertEqual(strategy._hitters(base + [hit(0), hit(1)]), 2)
+        with mock.patch.dict(learn.KNOB, {"punch": 1.8}):
+            always = [strategy.deck_fit(offer, base + [hit(i) for i in range(n)], 2) for n in (3, 6)]
+            with mock.patch.dict(learn.KNOB, {"attack_room": 3.0}):
+                capped = [strategy.deck_fit(offer, base + [hit(i) for i in range(n)], 2) for n in (3, 4, 5, 6)]
+        self.assertGreater(always[1], 1.5)  # (without the setting a deck of six such attacks still leans to a seventh)
+        self.assertAlmostEqual(capped[0], always[0])  # three held: the lean in full
+        self.assertGreater(capped[0], capped[1])
+        self.assertGreater(capped[1], capped[2])
+        self.assertGreater(capped[2], capped[3])
+        self.assertAlmostEqual(capped[3], 0.0)  # six held: an attack is worth what it is rated, no more
+
     def test_a_card_is_worth_more_beside_the_cards_other_players_win_with_it(self):
         def card(name):
             return {"id": name.upper().replace(" ", "_"), "name": name, "type": "Power", "cost": 1, "description": "Whenever a card is Exhausted, draw 1 card."}
@@ -423,11 +489,47 @@ class Strategy(unittest.TestCase):
             ],
             "can_proceed": True,
         }
-        acts = strategy.shop(self.base("shop", gold=250, shop=shop), Memory())
+        mem = Memory()
+        with self.assertLogs("sts2bot.strategy", level="DEBUG") as seen:
+            acts = strategy.shop(self.base("shop", gold=250, shop=shop), mem)
+            strategy.shop(self.base("shop", gold=250, shop=shop), mem)  # (looked at again: the shelf is written down once)
         self.assertEqual(acts, [("shop_purchase", {"index": 2}), ("shop_purchase", {"index": 1}), ("proceed", {})])
+        # The log has the whole shelf: what each thing cost, what we made of it, and what we could not pay for.
+        (line,) = [m for m in seen.output if "shop (gold 250, potions 0 of 3)" in m]
+        self.assertIn("card_removal 75 [9.0]", line)
+        self.assertIn("relic 300! [6.5]", line)
+        self.assertRegex(line, r"card \S* ?50 \[-?\d")
         # Ascension 6: the second removal costs 150, and the relic at the same price comes first.
         shop["items"][2]["price"] = 150
         self.assertEqual(strategy.shop(self.base("shop", gold=250, shop=shop), Memory())[0], ("shop_purchase", {"index": 1}))
+
+    def test_early_in_a_run_good_cards_come_before_the_removal_under_the_setting(self):
+        from sts2bot import learn
+
+        good = {"index": 0, "category": "card", "price": 24, "is_stocked": True, "can_afford": True, "card_id": "SHRUG_IT_OFF", "card_name": "Shrug It Off",
+                "card_type": "Skill", "card_cost": "1", "card_rarity": "Common", "card_description": "Gain 8 Block. Draw 1 card."}
+        removal = {"index": 1, "category": "card_removal", "price": 100, "is_stocked": True, "can_afford": True}
+        state = self.base("shop", gold=113, shop={"items": [good, removal], "can_proceed": True})
+        with mock.patch.object(strategy, "deck_value", lambda c: 7.7):  # (a card the ratings think well of, as on the shelf seen)
+            self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 1}))  # as it was: the removal first
+            with mock.patch.dict(learn.KNOB, {"cards_first": 1.0}):
+                self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 0}))
+                state["run"]["act"] = 3  # by act 3 a deck is thinned before it is fed
+                self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 1}))
+        with mock.patch.dict(learn.KNOB, {"cards_first": 1.0}):
+            state["run"]["act"] = 1
+            with mock.patch.object(strategy, "deck_value", lambda c: 5.0):  # a middling card still waits for the removal
+                self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 1}))
+
+    def test_the_fake_merchants_snecko_eye_is_left_on_the_shelf(self):
+        fake = lambda i, rid, price: {"index": i, "category": "relic", "price": price, "is_stocked": True, "can_afford": True, "relic_id": rid, "relic_name": rid}
+        shelf = {"items": [fake(0, "FAKE_STRIKE_DUMMY", 43), fake(1, "FAKE_SNECKO_EYE", 57), fake(2, "FAKE_ANCHOR", 57)], "can_proceed": True}
+        state = self.base("fake_merchant", gold=319, fake_merchant={"shop": shelf})
+        # "Start each combat Confused" with nothing for it is never bought; the others go by what they do, not by price.
+        self.assertEqual(strategy.shop(state, Memory(), key="fake_merchant"), [("shop_purchase", {"index": 2}), ("shop_purchase", {"index": 0}), ("proceed", {})])
+        # The gold is the same gold a real Merchant takes: short of plenty, only the ones that do something are bought.
+        state["player"]["gold"] = 180
+        self.assertEqual(strategy.shop(state, Memory(), key="fake_merchant"), [("shop_purchase", {"index": 2}), ("proceed", {})])
 
     def test_with_lords_parasol_the_shelf_empties_itself_and_nothing_is_bought(self):
         # The relic buys everything in turn; a purchase of ours in the middle crashed the game three times.
@@ -455,6 +557,13 @@ class Strategy(unittest.TestCase):
         self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 1}))
         state["run"]["floor"] = 31
         self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 0}))
+        # ... before a card removal too, until the belt holds two.
+        removal = {"index": 2, "category": "card_removal", "price": 100, "is_stocked": True, "can_afford": True}
+        state["shop"]["items"].append(removal)
+        self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 0}))
+        state["player"]["potions"] = [{}, {}]
+        self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 2}))
+        state["shop"]["items"].remove(removal)
         state["player"]["potions"] = [{}, {}, {}]
         self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 1}))
 

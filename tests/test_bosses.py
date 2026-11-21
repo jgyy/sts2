@@ -49,6 +49,31 @@ class BossMechanics(unittest.TestCase):
         self.assertEqual(combat.hand_burns(state["player"]), ((0, 6, False),))
         self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 0}))  # 6 saved beats 4 blocked
 
+    def test_a_turn_only_the_fortifier_saves_is_played_for_the_fortifier(self):
+        # Seen 2026-11-21 18:07, round 17 of the Soul Fysh (6 HP left): 4 HP, 36 coming, a Beckon in hand and a
+        # Fortifier on the belt. Three Block cards (22, tripled 66) left the Beckon's 6 to kill; the Beckon and
+        # two of them are 15, tripled 45.
+        beckon = card(2, "BECKON", "Beckon", "Status", 1, "At the end of your turn, if this is in your Hand,  lose 6 HP.", "Self")
+        guard = lambda i, n: card(i, f"GUARD_{i}", f"Guard {n}", "Skill", 1, f"Gain {n} Block.", "Self")
+        fortifier = {"slot": 0, "id": "FORTIFIER", "name": "Fortifier", "description": "Triple your Block.", "target_type": "Self", "can_use_in_combat": True}
+
+        def turn(potions, kind="boss"):
+            state = combat_state([guard(0, 7), guard(1, 7), beckon, guard(3, 8)], [enemy("SOUL_FYSH", 6, attack=36)], energy=3, hp=4, max_hp=82, kind=kind, potions=potions)
+            played = []
+            while (act := combat.actions(state)[0])[0] == "play_card":
+                done = next(c for c in state["player"]["hand"] if c["index"] == act[1]["card_index"])
+                played.append(done["name"])
+                state["player"]["hand"] = [c for c in state["player"]["hand"] if c is not done]
+                state["player"]["energy"] -= 1
+                state["player"]["block"] += int(done["name"].split()[-1]) if done["name"] != "Beckon" else 0
+            return sorted(played), act
+
+        # The Beckon and two Block cards (14 or 15: either holds once tripled), then the potion on the Block that is up.
+        played, then = turn([fortifier])
+        self.assertEqual((played[0], len(played), then), ("Beckon", 3, ("use_potion", {"slot": 0})))
+        self.assertEqual(turn([fortifier], "monster"), (played, then))  # (in an ordinary fight too: it is the danger that counts)
+        self.assertEqual(turn([])[1], ("end_turn", {}))  # (without it nothing saves the turn, whatever is played)
+
     def test_block_stops_cards_that_deal_damage_but_not_ones_that_take_hp(self):
         wither = card(0, "WITHER", "Wither+2", "Status", 0, "Unplayable. At the end of your turn, if this is in your Hand, take 9 damage.")
         beckon = card(0, "BECKON", "Beckon", "Status", 1, "At the end of your turn, if this is in your Hand,  lose 6 HP.")
@@ -65,6 +90,28 @@ class BossMechanics(unittest.TestCase):
         self.assertEqual(combat.hand_burns(named("Wither+2"))[0][1], 9)
         self.assertEqual(combat._next_wither({"discard_pile": [{"name": "Wither+1"}]}), 6)
         self.assertEqual(combat._next_wither({}, round_no=8), 9)  # two of Aeonglass's upgrades have gone by
+
+    def test_the_card_that_brings_the_next_wither_is_not_held_back(self):
+        # Seen 2026-11-21 15:27: Aeonglass's count on 1 and 25 coming, and the turn ended with three energy
+        # and a Block card in hand: the Wither it would bring (6, and our Block takes it first) cost more
+        # this turn than the Block saved. But the count carries over, and the Wither came with the first
+        # card of the next turn all the same.
+        count = lambda n: [{"id": "WITHERING_PRESENCE_POWER", "amount": n}]
+        state = combat_state([DEFEND(0)], [enemy("AEONGLASS", 410, attack=25, status=count(1))], energy=3, hp=62, max_hp=109, block=4, kind="boss")
+        state["battle"]["round"] = 4
+        state["player"].update(draw_pile_count=20, discard_pile_count=9)  # a deck of thirty
+        self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 0}))
+        # A card worth less than the Withers it brings nearer still stays in the hand, on any count.
+        poke = card(0, "POKE", "Poke", "Attack", 0, "Deal 3 damage.", "AnyEnemy")
+        for n in (1, 4):
+            self.assertIsNone(combat.choose_card(combat_state([poke], [enemy("AEONGLASS", 400, status=count(n))], kind="boss")))
+
+    def test_a_wither_made_late_in_the_fight_has_less_time_to_come_round(self):
+        deck = {"hand": [{}] * 5, "draw_pile_count": 15, "discard_pile_count": 10}  # thirty cards: six turns to come round
+        early, late = combat._wither_bill(deck, 2, 3), combat._wither_bill(deck, 9, 9)
+        self.assertAlmostEqual(early, 5.25)  # (what a card cost on rounds 1-3 before: a 3-damage Poke is still not worth it)
+        self.assertLess(late, early / 2)  # two rounds left of eleven: it will hardly be drawn again
+        self.assertGreater(combat._wither_bill(deck, 14, 12), 0.0)  # a fight that runs long still pays something
 
     def test_dead_on_paper_it_plays_the_block_it_has(self):
         # 29 coming, 22 HP, one Defend+: nothing saves it for sure, but the Block comes closest.
@@ -879,3 +926,43 @@ class PlayedAgain(unittest.TestCase):
         twice = plan["score"]
         combat.choose_card({**state, "_plays_this_turn": 1}, plan)
         self.assertGreater(twice, plan["score"] + 14)  # (the second card of the turn is played once)
+
+
+class DoomAndAttacksTogether(unittest.TestCase):
+    """Doom is health already gone: it and the attacks go on the same enemy, and not on one it has finished."""
+
+    SCOURGE = staticmethod(lambda i: card(i, "SCOURGE", "Scourge", "Skill", 1, "Apply 13 Doom. Draw 1 card.", "AnyEnemy"))
+    DOOM = staticmethod(lambda n: [{"id": "DOOM_POWER", "amount": n}])
+
+    def plays(self, hand, foes, energy=3):
+        """(card index, target) of every card of the turn, the hand shrinking as the game's would."""
+        state, out = combat_state(hand, foes, energy=energy, hp=49, max_hp=66), []
+        while (act := combat.choose_card(state)) is not None:
+            played = next(c for c in state["player"]["hand"] if c["index"] == act[1]["card_index"])
+            out.append((played["name"], act[1].get("target")))
+            state["player"]["hand"] = [c for c in state["player"]["hand"] if c is not played]
+            state["player"]["energy"] -= 1
+            for e in foes:  # (what the card did, near enough for the next choice)
+                if e["entity_id"] == act[1].get("target") and played["name"] == "Scourge":
+                    e["status"] = self.DOOM(13 + sum(p["amount"] for p in e["status"]))
+                elif e["entity_id"] == act[1].get("target"):
+                    e["hp"] -= 6
+        return out
+
+    def test_scourge_and_the_strikes_go_on_one_nibbit(self):
+        # Seen 2026-11-21 16:24: Doom on the Nibbit with 43 HP, the attacks on the one with 42.
+        foes = [enemy("NIBBIT_0", 42, attack=6), enemy("NIBBIT_1", 43)]
+        targets = {t for _name, t in self.plays([self.SCOURGE(0), STRIKE(1), STRIKE(2)], foes)}
+        self.assertEqual(len(targets), 1)
+
+    def test_an_enemy_doom_has_finished_is_left_alone(self):
+        # 21 HP under 26 Doom dies when its turn ends; two Strikes do not kill it sooner, and the other one is still to do.
+        foes = [enemy("NIBBIT_0", 21, attack=10, status=self.DOOM(26)), enemy("NIBBIT_1", 28, attack=10)]
+        self.assertEqual({t for _name, t in self.plays([STRIKE(0), STRIKE(1)], foes, energy=2)}, {"NIBBIT_1"})
+        # ... but an attack that kills it now stops its hit.
+        foes = [enemy("NIBBIT_0", 6, attack=10, status=self.DOOM(26)), enemy("NIBBIT_1", 28, attack=10)]
+        self.assertEqual(self.plays([STRIKE(0)], foes, energy=1), [("Strike", "NIBBIT_0")])
+
+    def test_more_doom_goes_on_the_one_that_still_needs_it(self):
+        foes = [enemy("NIBBIT_0", 21, attack=10, status=self.DOOM(26)), enemy("NIBBIT_1", 40, attack=10)]
+        self.assertEqual(self.plays([self.SCOURGE(0)], foes, energy=1), [("Scourge", "NIBBIT_1")])

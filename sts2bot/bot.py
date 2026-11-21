@@ -11,6 +11,7 @@ from pathlib import Path
 
 from . import cards, combat, learn, strategy
 from .bossfight import BossWatch
+from .fightrecord import FightWatch
 from .client import Client
 from .strategy import Memory
 
@@ -115,6 +116,7 @@ class Bot:
         self._last_retry = clock()
         self._over_logged = False
         self._boss_watch = BossWatch()
+        self._fight_watch = FightWatch(log_dir / "fights.jsonl" if log_dir else None)  # every fight, kept past the logs
         self._turn_key: tuple = ()
         self._turn_plays = 0
         self._turn_cards = 0  # ... and how many of those were cards (a potion is not one of the "3 cards each turn")
@@ -408,6 +410,7 @@ class Bot:
         if self._boss_watch.brought:
             log.info(self._boss_watch.brought)
             self._boss_watch.brought = None
+        self._fight_watch.update(state, kind)
         if kind in COMBAT_STATES:
             self._note_powers(state)
         if state.get("run"):

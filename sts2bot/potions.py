@@ -54,6 +54,11 @@ def boss_worth(potion: dict) -> float:
     return 22.0 if re.search(r"\b(strength|dexterity|focus|ritual|plating)\b", text, re.I) and "at the end of your turn" not in text.lower() else 12.0
 
 
+def fortifier(player: dict) -> bool:
+    """A potion that triples our Block is on the belt (the planner then counts on it when nothing else saves the turn)."""
+    return any(p.get("can_use_in_combat", True) and re.search(r"triple your block", str(p.get("description") or ""), re.I) for p in player.get("potions") or [])
+
+
 def _ill_timed(text: str, player: dict, line: list | None, block: int, incoming: int, danger: bool, losing: int = 0) -> bool:
     """A potion that does nothing, or next to nothing, drunk at this moment.
 
