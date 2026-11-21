@@ -199,8 +199,10 @@ value of one setting). For finding what the planner gets wrong: `surprises`
 ended with energy and a card it could pay for while HP was about to be lost)
 and `powers` (powers seen on enemies or on us that no module of the bot names,
 with their rules text). `events` lists every event met with how often each
-option was taken, and `wiki` saves the game's text for every discovered card
-and relic to `wiki.json` next to the logs.
+option was taken, `pit` every fight against the Insatiable (won, lost on HP
+or eaten by the Sandpit, with the Sandpit round by round), and `wiki` saves
+the game's text for every discovered card and relic to `wiki.json` next to
+the logs.
 
 `scripts/decklog.py` reads `fights.jsonl`: what an ordinary fight costs against
 how many cards of each sort the deck held (Block cards, cards taken for

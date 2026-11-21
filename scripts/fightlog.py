@@ -31,6 +31,13 @@
     python3 scripts/fightlog.py idle ['YYYY-MM-DD']     turns ended with energy and a card it could pay for
                                                         while 8 HP or more was about to be lost: a penalty
                                                         that stops the planner playing at all
+    python3 scripts/fightlog.py pit ['YYYY-MM-DD HH:MM']
+                                                        the Insatiable's fights: won, lost on HP or eaten by the
+                                                        Sandpit, the boss's HP at the end, and the Sandpit round
+                                                        by round (E: a Frantic Escape was in that hand)
+    python3 scripts/fightlog.py artifact ['YYYY-MM-DD HH:MM'] [boss,elite,monster]
+                                                        fights against Artifact: the charges on the enemies as each
+                                                        round began, and the round the last one was gone by
     python3 scripts/fightlog.py powers                  powers seen on enemies (and on us) that no module of the
                                                         bot names, with their rules text: mechanics nobody modelled
     python3 scripts/fightlog.py events                  every event met: how often each option was taken, with
@@ -356,6 +363,46 @@ def idle(since: str = "") -> None:
         print(f"{t[5:]} {kind} energy {last.group(6)} expects to lose {expected} | hp {last.group(3)}{last.group(7)} | {last.group(8)[:150]} | {last.group(9)[:170]}")
 
 
+def pit(since: str = "") -> None:
+    fight, tally = [], collections.Counter()
+    for line in lines():
+        if " combat r" in line and "THE_INSATIABLE_0" in line or (fight and " ending r" in line):
+            fight.append(line)
+        elif "boss fight over" in line and "INSATIABLE" in line and fight:
+            states = [x for x in fight if " combat r" in x]
+            last, end, shown = states[-1], [x for x in fight if " ending r" in x][-1:], {}
+            for x in states:  # the first state of each round: the Sandpit as the turn began
+                rnd, sand = re.search(r"combat r(\d+) ", x).group(1), re.search(r"SANDPIT:(\d+)", x)
+                shown.setdefault(rnd, (sand.group(1) if sand else "-") + ("E" if "Frantic Escape" in x.rsplit("| hand", 1)[-1] else ""))
+            sand, hp = re.search(r"SANDPIT:(\d+)", last), int(re.search(r" hp (\d+)/", last).group(1))
+            expect = int(re.search(r"expecting to lose (\d+)", end[0]).group(1)) if end else 0
+            how = "won" if " won;" in line else "eaten" if sand and int(sand.group(1)) <= 1 and hp > expect else "lost"
+            fight = []
+            if line[:16] < since:
+                continue
+            tally[how] += 1
+            boss = re.search(r"boss hp \d+ -> (\d+)", line).group(1)
+            print(f"{line[5:16]} {how:5} rounds {len(shown):2}  boss left {boss:>3}  hp {hp:2}  Sandpit at the end {sand.group(1) if sand else '-'}  | {' '.join(shown.values())}")
+    print(dict(tally))
+
+
+def artifact(since: str = "", kinds: tuple = ("boss", "elite")) -> None:
+    gone = collections.defaultdict(list)
+    for f in load()[0]:
+        rounds = {}
+        for t in f["turns"]:
+            rounds.setdefault(t[0], sum(map(int, re.findall(r"ARTIFACT:(\d+)", t[5]))))
+        left = [rounds[r] for r in sorted(rounds)]
+        if "died" not in f or not left or not left[0] or f["t"] < since:
+            continue
+        by = next((n + 1 for n, a in enumerate(left) if not a), None)
+        gone[f["kind"]].append(((by or len(left) + 1) - 1, len(left)))
+        if f["kind"] in kinds:
+            print(f"{f['t'][5:16]} {f['kind']:7} {f['enemies'][:24]:24} {str(f['char']):11} {'lost' if f['died'] else 'won ':4} rounds {len(left):2}  gone by {by or '-':>2}  | {' '.join(map(str, left))}")
+    for kind, rows in sorted(gone.items()):
+        print(f"{kind:7} {len(rows):3} fights: Artifact stood for {sum(r[0] for r in rows) / len(rows):.1f} of {sum(r[1] for r in rows) / len(rows):.1f} rounds")
+
+
 def powers() -> None:
     root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sts2bot")
     code = "".join(open(os.path.join(root, n)).read() for n in sorted(os.listdir(root)) if n.endswith(".py"))
@@ -429,6 +476,10 @@ if __name__ == "__main__":
         surprises(args[1] if len(args) > 1 else "")
     elif args[:1] == ["idle"]:
         idle(args[1] if len(args) > 1 else "")
+    elif args[:1] == ["pit"]:
+        pit(args[1] if len(args) > 1 else "")
+    elif args[:1] == ["artifact"]:
+        artifact(args[1] if len(args) > 1 else "", tuple(args[2].split(",")) if len(args) > 2 else ("boss", "elite"))
     elif args[:1] in (["powers"], ["events"], ["wiki"]):
         {"powers": powers, "events": events, "wiki": wiki}[args[0]]()
     elif args[:1] == ["show"] and len(args) > 1:
