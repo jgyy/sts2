@@ -14,7 +14,7 @@ from dataclasses import dataclass, replace
 from itertools import combinations, permutations
 
 from .battle import (  # noqa: F401  (also the names other modules and the tests reach through here)
-    BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, REATTACH_REACH, SLIP_WORTH, WIN_BONUS, Enemy,
+    BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, RAGE_COST, REATTACH_REACH, SLIP_WORTH, WIN_BONUS, Enemy,
     _has_power, _is_attack, constrict, end_of_turn_block, end_of_turn_loss, expected_loss, hand_burns,
     intent_damage, intent_hits, kill_reach, osty_hp, power_amount, read_enemies, _bare_block, _draw_worth, _escape_odds, _next_wither, _sandpit, _wither_bill,
     deck_count, junk_cost, cards_left_this_turn, free_plays, _hit, _hit_count, _poison_total, _power_worth, _set_up, _rage_blocks, _respawns, loss_cap,
@@ -242,6 +242,9 @@ def simulate(
         return None  # "End your turn": nothing is played after it
     foes = [replace(e, chipped=0, stripped=0, vuln_added=0, weak_added=0) for e in enemies]
     score = 0.0
+    # (A pair: every card where the planner would put it, and the last aimed one at this enemy, so that the turn ends facing it.)
+    turn_to, focus = (focus[1], None) if isinstance(focus, tuple) else (None, focus)
+    last_aimed = max((n for n, c in enumerate(line) if c.needs_target), default=-1)
     first_target: str | None = None
     self_loss = 0
     # Long fights are races: bosses and elites grow stronger every turn, so a
@@ -374,7 +377,7 @@ def simulate(
 
         xs = x if c.is_x else 1
         alive = [e for e in foes if e.alive]
-        t = focused = next((e for e in alive if e.entity_id == focus), None)  # the enemy this card is aimed at, if any
+        t = focused = next((e for e in alive if e.entity_id == (turn_to if turn_to and n == last_aimed else focus)), None)  # the enemy this card is aimed at, if any
         if c.key in ("TIMES_UP", "TIME_S_UP") and alive:  # "Deal damage equal to the enemy's Doom": no number in its text (played 16 times, left 37)
             t = focused = focused or max(alive, key=lambda e: e.doom)
             c = replace(c, damage=t.doom, hits=1)
@@ -645,15 +648,15 @@ def simulate(
         survivors = []
 
     if kills and survivors:
-        # Crab Rage: the one left standing gets 99 Block (its attacks this turn
-        # are wasted, see _rage_blocks) and 6 Strength for good. Killing the
-        # first crab with the second on 126 HP lost that fight, so the cost
-        # grows with the HP left on the survivor. It has no flat base: two
-        # crabs at 6 HP must still be killed one after the other, or the bot
-        # ends every turn and is hit to death.
+        # Crab Rage: the one left standing gets 99 Block (its attacks this turn are wasted, see _rage_blocks)
+        # and 6 Strength for good: about 0.3 points for each HP it still has (6 more on some two hits in
+        # three rounds, 35 HP a round). At 2.0 no crab was killed until both were nearly dead: in 12 of 16
+        # lost fights neither had died, one Crusher stood on 5 HP for six rounds while the Rocket came down
+        # from 168, and all 11 fights in which the Rocket died first were won. (Played out with this planner
+        # on a model of the fight: 10 fights in 100 won at 2.0, 18 at 0.3 with the last card turning us.)
         for e in survivors:
             if e.rage:
-                score -= len(kills) * 2.0 * e.hp
+                score -= len(kills) * RAGE_COST * e.hp
                 e.incoming += 6 * e.incoming_hits * len(kills)
 
     if sandpit is not None and survivors:
@@ -917,7 +920,7 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
     # The same goes for any small group: the default target rule looks at one
     # card at a time, so it never saw that two cards together kill the enemy
     # about to hit us (it died at 18 HP next to a 21 HP Parafright it ignored).
-    aims: list[str | None] = [None] + [e.entity_id for e in enemies if e.flanker or (1 < len(enemies) <= 3 and e.incoming > 0)]
+    aims: list = [None] + [("last", e.entity_id) for e in enemies if e.flanker] + [e.entity_id for e in enemies if e.flanker or (1 < len(enemies) <= 3 and e.incoming > 0)]
     # The order within a line matters too (which attack gets the Slow bonus,
     # what is played before an X card takes the rest of the energy): once the
     # bot left an elite on 1 HP because the bigger attack went second. Short

@@ -140,7 +140,11 @@ def shunned(c, state: dict) -> bool:
     pace = max(15.0, dealt / rounds) if rounds >= 2 else 25.0
     turns = -(-left // pace) + 1  # (and one to spare: fights run over)
     doom = max(0, power_amount(player, "DOOM")) + (3 + max(0, power_amount(player, "NEUROSURGE"))) * turns
-    return doom > 0.4 * int(player.get("hp") or 0)
+    # Against the HP we will have by then, not the HP now: a boss takes some 8% of Max HP a round. Played on 67 of
+    # 76 in round 5 of the Insatiable (six turns to go, 18 Doom, "under 40% of 67"), it killed a Necrobinder on
+    # 13 HP in round 10 with the boss on 16. (Its ten other plays in the logs were ordinary and elite fights, all won.)
+    then = int(player.get("hp") or 0) - 0.08 * int(player.get("max_hp") or 0) * turns
+    return doom > 0.4 * max(0.0, then)
 
 
 # Cards that make the next card of one type free ("The next Attack you play costs 0").

@@ -38,6 +38,9 @@
     python3 scripts/fightlog.py artifact ['YYYY-MM-DD HH:MM'] [boss,elite,monster]
                                                         fights against Artifact: the charges on the enemies as each
                                                         round began, and the round the last one was gone by
+    python3 scripts/fightlog.py crabs ['YYYY-MM-DD HH:MM']
+                                                        Crusher and Rocket: which crab died first, in which round and
+                                                        with the other on how much, then both crabs' HP round by round
     python3 scripts/fightlog.py powers                  powers seen on enemies (and on us) that no module of the
                                                         bot names, with their rules text: mechanics nobody modelled
     python3 scripts/fightlog.py events                  every event met: how often each option was taken, with
@@ -403,6 +406,24 @@ def artifact(since: str = "", kinds: tuple = ("boss", "elite")) -> None:
         print(f"{kind:7} {len(rows):3} fights: Artifact stood for {sum(r[0] for r in rows) / len(rows):.1f} of {sum(r[1] for r in rows) / len(rows):.1f} rounds")
 
 
+def crabs(since: str = "") -> None:
+    tally = collections.Counter()
+    for f in load()[0]:
+        if f["enemies"] != "CRUSHER+ROCKET" or "died" not in f or f["t"] < since:
+            continue
+        rounds = {}
+        for t in f["turns"]:
+            hp = {m.group(1): int(m.group(2)) for m in re.finditer(r"(CRUSHER|ROCKET)_\d+ (\d+)hp", t[5])}
+            rounds.setdefault(t[0], (hp.get("CRUSHER", 0), hp.get("ROCKET", 0)))
+        path = [rounds[r] for r in sorted(rounds)]
+        at = next((n for n, (c, r) in enumerate(path) if not c or not r), None)
+        first = "neither" if at is None else "Crusher" if not path[at][0] else "Rocket"
+        tally[(first, "lost" if f["died"] else "won")] += 1
+        when = f"by round {at + 1:2}, the other on {max(path[at]):3}" if at is not None else " " * 31
+        print(f"{f['t'][5:16]} {str(f['char']):11} {'lost' if f['died'] else 'won ':4} rounds {len(path):2}  first to die: {first:7} {when} | {' '.join(f'{c}/{r}' for c, r in path)}")
+    print({" ".join(k): v for k, v in sorted(tally.items())})
+
+
 def powers() -> None:
     root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sts2bot")
     code = "".join(open(os.path.join(root, n)).read() for n in sorted(os.listdir(root)) if n.endswith(".py"))
@@ -478,6 +499,8 @@ if __name__ == "__main__":
         idle(args[1] if len(args) > 1 else "")
     elif args[:1] == ["pit"]:
         pit(args[1] if len(args) > 1 else "")
+    elif args[:1] == ["crabs"]:
+        crabs(args[1] if len(args) > 1 else "")
     elif args[:1] == ["artifact"]:
         artifact(args[1] if len(args) > 1 else "", tuple(args[2].split(",")) if len(args) > 2 else ("boss", "elite"))
     elif args[:1] in (["powers"], ["events"], ["wiki"]):

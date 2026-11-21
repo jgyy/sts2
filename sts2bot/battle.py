@@ -16,6 +16,7 @@ WIN_BONUS = 10_000.0
 BEYOND_REACH = 100_000  # HP no enemy really has: the game's way of saying it cannot be hurt any more
 REATTACH_REACH = 40  # Decimillipede: HP the other segments may have left for a kill to be the start of the end (they have two turns)
 RAGE_BLOCK = 99  # Crab Rage: Block a crab gains for each ally that dies (gone again when its next turn starts)
+RAGE_COST = 0.3  # ... and what the 6 Strength it keeps costs, in points for each HP it still has (2.0 until 2026-11-21: see combat.simulate)
 SLIP_WORTH = 7.0  # what taking one Slippery stack off is worth, in damage: the hit it lets through later
 
 
