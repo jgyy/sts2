@@ -27,7 +27,13 @@ HISTORY = 300  # runs per character the "usual" result is taken from
 # one character end 12 floors apart on average, so a card's record after 15 picks is 3 floors either way
 # by chance alone, and the spread of all the records was no wider than that chance: at 6 a card moved 0.7
 # points on nothing. What cards truly differ by came out at about a floor a pick; 150 is what that asks for.)
-PRIOR_PICKS = 150.0
+# (400 since 2026-11-21 23:20. That floor a pick was the boss rewards: every one of them is a rare, and a pick
+# was measured against runs that had not yet met the boss it came after (see record below). Measured against
+# runs that left the floor alive, the records of the 208 cards taken 15 times or more are spread no wider than
+# chance spreads them (2.22 against 2.20 floors squared; what cards truly differ by is somewhere between
+# nothing and half a floor), so a card's own record has to be long before it says anything. What a card's
+# kind has done is the surer part: see KIND_PRIOR.)
+PRIOR_PICKS = 400.0
 # Floors gained per pick (beyond the character's average pick) that are worth one point of card rating.
 # (3.0 until 2026-11-21. A point of other players' rating went with 0.4 floors a pick in our own record,
 # and that measure is blurred downwards.)
@@ -42,6 +48,14 @@ MAX_SHIFT = 2.5  # a rating never moves further than this
 # (0.4 since 2026-11-21: with the record counting for so little a card, a first try teaches next to nothing,
 # and 0.8 for being new was as much as 137 bad picks took off Sow.)
 CURIOSITY = 0.4
+# Picks of a kind of card (cards.kind) before the kind's own record counts for half of where its cards start.
+# (Added 2026-11-21. Over 1,075 runs, against runs that left the same floor alive: cards that cost nothing
+# ended 1.0 floors a pick over their character's par (943 picks, the same in each half of the runs), cards
+# that give energy 0.8 over (519), cards that cost energy and mostly bring cards 1.3 under (358; nine of the
+# ten most taken, 2.3 under in the last 300 runs), and nothing else a card says, rarity included, showed.
+# One story: the turns run out of energy, not cards. One card's record needs 150 picks to say so.)
+KIND_PRIOR = 300.0
+MAX_KIND = 1.5  # ... and a kind never moves its cards further than this
 
 
 def _load(path: Path | None, what: str) -> dict:
@@ -77,10 +91,13 @@ class CardStats:
         self.path = path
         self.finals: dict[str, list[int]] = {}  # character -> results of its latest runs
         self.cards: dict[str, dict[str, list[float]]] = {}  # character -> card -> [picks, floors gained in total]
+        self.kinds: dict[str, str] = {}  # card -> its kind (cards.kind), as the card last looked when offered
+        self._pool: dict | None = None  # kind -> card -> [picks, floors gained beyond its character's par]
         data = _load(path, "card statistics")
         try:
             self.finals = {k: list(v) for k, v in (data.get("finals") or {}).items()}
             self.cards = {k: {c: list(x) for c, x in v.items()} for k, v in (data.get("cards") or {}).items()}
+            self.kinds = {str(k): str(v) for k, v in (data.get("kinds") or {}).items()}
         except (AttributeError, TypeError, ValueError) as e:
             log.warning("could not use %s (%s); starting the card statistics afresh", path, e)
 
@@ -89,18 +106,49 @@ class CardStats:
         reached = [f for f in self.finals.get(character, []) if f >= floor]
         return sum(reached) / len(reached) if len(reached) >= 5 else None
 
-    def shift(self, character: str, name: str) -> float:
-        """How far the record moves this card's rating (0 for a character we know nothing about)."""
+    def _par(self, character: str) -> float:
+        """Floors a pick of this character gains on average: what a card's record is measured against."""
+        table = self.cards.get(character) or {}
+        picks = sum(x[0] for x in table.values())
+        return sum(x[1] for x in table.values()) / picks if picks >= 50 else 0.0
+
+    def kind_shift(self, kind: str, but: str = "") -> float:
+        """Where a card of this kind starts: what the kind's cards have gained a pick, every character's
+        together, each against its own character's par (`but`: the card asked about, left out of it)."""
+        if not kind:
+            return 0.0
+        if self._pool is None:
+            self._pool = {}
+            for who, table in self.cards.items():
+                par = self._par(who)
+                for key, (picks, gained) in table.items():
+                    if self.kinds.get(key):
+                        row = self._pool.setdefault(self.kinds[key], {}).setdefault(key, [0.0, 0.0])
+                        row[0] += picks
+                        row[1] += gained - picks * par
+        rows = [x for key, x in (self._pool.get(kind) or {}).items() if key != but]
+        learned = sum(x[1] for x in rows) / (sum(x[0] for x in rows) + KIND_PRIOR) / FLOORS_PER_POINT
+        return max(-MAX_KIND, min(MAX_KIND, learned))
+
+    def shift(self, character: str, name: str, kind: str | None = None) -> float:
+        """How far the record moves this card's rating (0 for a character we know nothing about).
+
+        `kind` is cards.kind of the card as it is offered (None: not known here, use what was last seen).
+        """
+        key = card_key(name)
+        if kind is not None and self.kinds.get(key) != kind:
+            self.kinds[key] = kind
+            self._pool = None
         table = self.cards.get(character)
         if table is None and not self.finals.get(character):
             return 0.0
-        picks, gained = (table or {}).get(card_key(name), (0.0, 0.0))
+        picks, gained = (table or {}).get(key, (0.0, 0.0))
         # Measured against the character's other picks, not against zero: the bot
         # has got better over time, so every card "beat the usual" (by 4 to 6
         # floors a pick) and a card far below the rest still drifted up.
-        all_picks = sum(x[0] for x in (table or {}).values())
-        par = sum(x[1] for x in (table or {}).values()) / all_picks if all_picks >= 50 else 0.0
-        learned = (gained - picks * par) / (picks + PRIOR_PICKS) / FLOORS_PER_POINT
+        # A card with no record of its own stands where its kind does, not at nothing.
+        start = self.kind_shift(self.kinds.get(key, ""), key) * FLOORS_PER_POINT
+        learned = (gained - picks * self._par(character) + PRIOR_PICKS * start) / (picks + PRIOR_PICKS) / FLOORS_PER_POINT
         return max(-MAX_SHIFT, min(MAX_SHIFT, learned)) + CURIOSITY / (1.0 + picks) ** 0.5
 
     def record(self, character: str, floor: int, won: bool, picks: list) -> None:
@@ -110,7 +158,12 @@ class CardStats:
         final = floor + (WIN_BONUS if won else 0)
         table = self.cards.setdefault(character, {})
         for at, name in picks or []:
-            usual = self.usual(character, int(at or 0))
+            # Against the runs that left that floor alive, as this one did to be offered the card. (Against all
+            # that reached it until 2026-11-21: a card from a boss's reward was then credited with beating the
+            # boss, 2 floors after act 1 and 6 after act 2, where half the runs end. Every boss reward is a
+            # rare, so the rares stood 3 floors a pick over the rest, End of Days 4 and Reanimate 5; measured
+            # this way a rare is worth what a common is, and such a record no longer wins an ordinary reward.)
+            usual = self.usual(character, int(at or 0) + 1)
             if usual is None:
                 continue  # too few runs yet to say what is usual
             entry = table.setdefault(card_key(name), [0.0, 0.0])
@@ -118,10 +171,11 @@ class CardStats:
             entry[1] += final - usual
         self.finals.setdefault(character, []).append(final)
         del self.finals[character][:-HISTORY]
+        self._pool = None
         self.save()
 
     def save(self) -> None:
-        _save(self.path, {"finals": self.finals, "cards": self.cards}, "card statistics")
+        _save(self.path, {"finals": self.finals, "cards": self.cards, "kinds": self.kinds}, "card statistics")
 
 
 def seed_from_history(stats: CardStats, runs_file: Path) -> None:
@@ -200,7 +254,13 @@ CHOICES = {
     # (1.0 dropped on 2026-11-21 21:30: 73 runs on Ascension 6 and up, 1.0 floors a run under the usual
     # against 0.5 over for 161 at 0.6, 1 win against 7, and at the act 2 boss 3.5 a round under the
     # character's usual damage against 1.2 over (19 and 65 fights, 2.6 standard errors).)
-    "crowd": [0.6],
+    # (0.3 added on 2026-11-21 23:20, to ask again what 0.0 was dropped for. The r = +0.28 above was the boss
+    # rewards: they are all rares, the crowd rates rares highest, and a card taken from one was measured against
+    # runs that had not yet met that boss. Against runs that left the floor alive the same 279 cards give
+    # r = 0.00 for the crowd's rating and +0.08 for ours, and with the boss rewards left out -0.06 and +0.06.
+    # What is left is the arms: 1.0 was worse than 0.6 at the act 2 boss by 4.7 a round, 0.0 had 46 runs.
+    # Judge by `fightlog.py bosspace` after 25 act 2 bosses an arm, with what an ordinary act 2 fight costs.)
+    "crowd": [0.3, 0.6],
     # How hard a deck short of damage leans to attacks at a card reward: rating points for each point its
     # average damage an energy is under decks.PUNCH_FLOOR (up to 2.2 times this). Added on 2026-11-21:
     # final decks since the 20th averaged 5.7-5.9 damage an energy with `crowd` 0.0, 4.5-4.8 at 0.6 and

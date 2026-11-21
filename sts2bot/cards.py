@@ -68,7 +68,7 @@ class CardInfo:
     debris: int = 0  # Debris (1 energy: Exhaust) it adds to our hand; -1: as many as the hand has room for (Crash Landing)
     heal: int = 0  # HP it gives back when played (Not Yet)
     ethereal: bool = False  # gone for the fight if it is still in the hand when the turn ends
-    ends_turn: bool = False  # "End your turn." (Void Form): nothing can be played after it
+    ends_turn: bool = False  # "End your turn." (Void Form), "Exhaust your Hand." (Fiend Fire, Stoke): nothing in the hand can be played after it
     replay: int = 0  # times it is played again by itself ("Replay 1": Sword Sage's Sovereign Blade, Hidden Gem, Transfigure)
 
     @property
@@ -132,6 +132,29 @@ def is_basic(card: dict) -> bool:
 
 def is_junk(card: dict) -> bool:
     return str(card.get("type")) in ("Status", "Curse")
+
+
+def kind(card: dict) -> str:
+    """What sort of card this is to a deck whose turns run out of energy before they run out of cards.
+
+    "energy": it gives some, now or next turn. "free": an attack that costs none. "draw": it costs some
+    and brings cards and little else. "" for every other card. The bot's boss turns end with about three
+    cards it could not pay for and no energy, so the first two should be worth more to it than to the
+    players crowd.py listens to, and the third less: learn.py keeps a record for each kind, and a card
+    starts from its kind's record instead of from nothing. (Free Skills are no kind: the 140 picks of
+    them ended under par, and Shared Fate is one the planner leaves in the hand.)
+    """
+    if str(card.get("type")) not in ("Attack", "Skill"):
+        return ""
+    info = parse(card)
+    if info.energy_gain or info.next_energy:
+        return "energy"
+    if info.cost == 0 and not info.star_cost:
+        return "free" if str(card.get("type")) == "Attack" and info.total_damage else ""
+    m = re.search(r"put (?:up to )?(a|\d+) cards? from your discard pile into your hand", str(card.get("description") or ""), re.I)
+    draws = info.draw + 2 * info.souls + (0 if not m else 1 if m.group(1).lower() == "a" else int(m.group(1)))
+    does = info.total_damage + info.doom + 3 * info.poison + 4 * info.shivs >= 8 or info.block >= 5
+    return "draw" if draws >= 2 and not does else ""
 
 
 # Sentences that describe something that happens later or only sometimes
@@ -271,7 +294,7 @@ def parse(card: dict) -> CardInfo:
         block_lock=bool(re.search(r"(cannot|can't|can not)\s+gain\s+(any\s+)?block", full_text, re.I)),
         osty_attack=bool(re.search(r"\bOsty\b[^.]*\bdeals\b|if\s+Osty\s+is\s+alive", full_text, re.I)),
         ethereal=bool(re.search(r"\bEthereal\b", full_text)),
-        ends_turn=bool(re.search(r"(?:^|\.\s*)end\s+your\s+turn\.", full_text, re.I)),
+        ends_turn=bool(re.search(r"(?:^|\.\s*)(?:end\s+your\s+turn|exhaust\s+your\s+hand)\.", full_text, re.I)),
         replay=_replay(card, full_text),
         osty_dies=bool(re.search(r"\b(?:Osty|he)\s+dies", full_text, re.I)),  # (Sacrifice: "If Osty is alive, he dies and ...")
         doom_kills=bool(re.search(r"kill\s+enemies\s+with\s+at\s+least\s+as\s+much\s+Doom", full_text, re.I)),

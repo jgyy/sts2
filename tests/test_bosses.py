@@ -385,6 +385,17 @@ class Necrobinder(unittest.TestCase):
         self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)
         self.assertGreater(combat.simulate([parse(pulse), parse(times)], foes, **ctx).score, combat.simulate([parse(times), parse(pulse)], foes, **ctx).score + 6.0)
 
+    def test_no_escape_grows_with_the_doom_already_there(self):
+        escape = card(0, "NO_ESCAPE", "No Escape", "Skill", 1, "Apply 10 Doom, plus an additional 5 Doom for every 10 Doom already on this enemy.", "AnyEnemy")
+        scourge = card(1, "SCOURGE", "Scourge", "Skill", 1, "Apply 13 Doom. Draw 1 card.", "AnyEnemy")
+        s = self.state([escape, scourge], osty=1, foe_hp=300, attack=0, doom=67)
+        foes, ctx = combat.read_enemies(s), combat._context(s)
+        worth = lambda line: combat.simulate([parse(c) for c in line], foes, **ctx).score - combat.simulate([], foes, **ctx).score
+        self.assertEqual(worth([escape]), 0.8 * (10 + 5 * 6))  # 67 Doom: six tens
+        # ... so it goes after the turn's other Doom: 80 Doom is eight tens.
+        self.assertEqual(worth([scourge, escape]) - worth([escape, scourge]), 0.8 * 10)
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)
+
     def test_deaths_door_blocks_three_times_after_doom(self):
         door = card(0, "DEATHS_DOOR", "Death's Door", "Skill", 1, "Gain 6 Block. If you applied Doom this turn, gain Block 2 additional times.", "Self")
         pulse = card(1, "NEGATIVE_PULSE", "Negative Pulse", "Skill", 1, "Gain 5 Block. Apply 7 Doom to ALL enemies.", "AllEnemies")

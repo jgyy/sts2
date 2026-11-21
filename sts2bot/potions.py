@@ -10,7 +10,15 @@ from .cards import parse
 Action = tuple[str, dict]
 
 BOSS_FLOORS = (17, 33, 48)
-SAVE_FLOORS = 6  # floors before a boss from which a full belt is no longer a reason to drink
+# Floors before each act's boss from which a full belt is no longer a reason to drink.
+# (Six in every act until 2026-11-22. A belt holds two from Ascension 4, so "full" spent one of them on
+# round 1 of the next ordinary fight: in act 3 93 potions went on ordinary fights and 40 reached the last
+# boss, which was met with one or none 14 times in 31 and never beaten so (5 in 17 with two; on 90% HP or
+# more 5 in 14 against 0 in 4). The slot does not fill again in time there: a fight left holding one potion
+# ten floors or more from the last boss met it with two 30 times in 52, left holding two 5 in 5. Act 2 the
+# same way, less: holding one 78% from any distance, holding two 90%, and bosses met on 75% HP or more were
+# beaten 37 times in 59 with two potions and 3 in 12 with fewer.)
+SAVE_FLOORS = {1: 6, 2: 9, 3: 15}
 SPARE_BEYOND = 3  # potions a boss fight is kept: more than that on the belt are drunk on the way
 
 # (Dexterity for the whole fight, the Dexterity Potion's 2, is not one of these: it goes early, like Strength.)
@@ -53,6 +61,11 @@ def boss_worth(potion: dict) -> float:
     if m:
         return float(m.group(1))
     return 22.0 if re.search(r"\b(strength|dexterity|focus|ritual|plating)\b", text, re.I) and "at the end of your turn" not in text.lower() else 12.0
+
+
+def saving(floor) -> bool:
+    """The next boss is near enough that what is on the belt is kept for it (see SAVE_FLOORS)."""
+    return isinstance(floor, int) and any(0 < boss - floor <= SAVE_FLOORS[act] for act, boss in enumerate(BOSS_FLOORS, 1))
 
 
 def fortifier(player: dict) -> bool:
@@ -126,7 +139,7 @@ def potion_actions(state: dict, planned_loss: int | None = None, line: list | No
     spare = 1 if len(potions) >= int(player.get("max_potion_slots") or 3) else 0
     kind = state.get("state_type")
     floor = (state.get("run") or {}).get("floor")
-    if kind in ("monster", "elite") and isinstance(floor, int) and any(0 < boss - floor <= SAVE_FLOORS for boss in BOSS_FLOORS):
+    if kind in ("monster", "elite") and saving(floor):
         # The boss is a few rooms away: what is on the belt goes there. Act 3
         # bosses were met with one potion on average, a third of them with none.
         # (Three floors until 2026-11-21. A slot emptied six floors or less before a boss was filled again

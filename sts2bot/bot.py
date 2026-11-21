@@ -9,7 +9,7 @@ import time
 from collections import defaultdict
 from pathlib import Path
 
-from . import cards, combat, learn, strategy
+from . import cards, combat, events, learn, relics, strategy
 from .bossfight import BossWatch
 from .fightrecord import FightWatch
 from .client import Client
@@ -96,6 +96,7 @@ class Bot:
         if log_dir:
             learn.seed_from_history(self.card_stats, log_dir / "runs.jsonl")
         self.mem.card_stats = self.card_stats
+        relics.load(log_dir / "runs.jsonl" if log_dir else None, events._ANCIENT)  # what the Ancients' relics did in our runs
         self._upgrades: dict = {}  # card id -> what its upgrade adds (None: the game could not say)
         self.mem.upgrade_gain = self._upgrade_gain
         self.knobs = learn.Knobs(log_dir / "tuning.json" if log_dir else None)
@@ -503,6 +504,7 @@ class Bot:
             self.knobs.record(entry["floor"] + (learn.WIN_BONUS if won else 0) - usual)
         entry["knobs"] = dict(learn.KNOB) if self._knobs_whole_run else None
         self.card_stats.record(who, entry["floor"], bool(won), self.mem.picks)
+        relics.note(entry)
         log.info("run %d over: %s on act %s floor %s (%d wins so far)", self.runs_finished, entry["result"], entry["act"], entry["floor"], self.wins)
         if self.log_dir:
             self.log_dir.mkdir(parents=True, exist_ok=True)

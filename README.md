@@ -32,17 +32,21 @@ Slay the Spire 2  <-- STS2_MCP mod (HTTP on localhost:15526) -->  sts2bot (Pytho
     judged from their text.
   - `crowd.py` rates the same cards from other players' runs: how often runs
     were won with each card and how often it was taken (tierspire.com, about
-    half a million runs a character). Measured against the bot's own results
-    card by card, these numbers say which cards its runs go further with and
-    the hand-made ones do not, so they count for most of a rating; how much
-    (0.6 or all of it) is one of the settings `learn.py` tunes. Refresh the
-    tables after a game patch.
+    half a million runs a character). A rating is a mix of the two tables; how
+    much of it comes from this one (0.3 or 0.6) is one of the settings
+    `learn.py` tunes, since the bot's own results card by card favour
+    neither. Refresh the tables after a game patch.
   - `learn.py` corrects those ratings from the bot's own results: for every
     card taken from a card reward it records how much further that run got
-    than the character usually gets from that floor, and shifts the card's
-    rating up or down accordingly (kept in `card_stats.json`). One run says
-    little, so a card's record only starts to count after a hundred picks
-    or so.
+    than runs of that character that left the same floor alive, and shifts
+    the card's rating up or down accordingly (kept in `card_stats.json`). One
+    run says little, and cards differ by less than it seems, so a card's own
+    record only counts after some hundreds of picks. Until then a card stands
+    where its kind does: the record is also kept for three kinds of card
+    (`cards.kind`: attacks that cost nothing, cards that give energy, cards
+    that cost energy and mostly draw), all characters together, because the
+    bot's turns run out of energy long before they run out of cards.
+    `scripts/relearn.py` works the whole record out again from `runs.jsonl`.
     It also tunes a few of the bot's own settings the same way (how much HP
     is worth against damage, how eagerly to fight elites, when to upgrade
     instead of rest, how picky to be with card rewards, how much other
@@ -50,6 +54,11 @@ Slay the Spire 2  <-- STS2_MCP mod (HTTP on localhost:15526) -->  sts2bot (Pytho
     damage leans to attacks): every run plays with
     one value of each, chosen more and more often from the values whose runs
     went furthest (kept in `tuning.json`; `--no-tuning` turns this off).
+  - `relics.py` does the same for the relics the Ancients offer at the start
+    of each act: `events.py` holds a rating for each, and every run that held
+    one moves it by how much further than usual that run got from the floor
+    the relic is taken on (up to 3 points, half of it after 25 runs). Nothing
+    is kept for this: it is worked out from `runs.jsonl` when the bot starts.
   - `supervisor.py` starts Steam if it is not running, launches the game,
     restarts it when it stops answering or
     nothing changes for 5 minutes, abandons a run that hangs twice in the same
@@ -202,7 +211,9 @@ ended with energy and a card it could pay for while HP was about to be lost)
 and `powers` (powers seen on enemies or on us that no module of the bot names,
 with their rules text). `events` lists every event met with how often each
 option was taken, `pit` every fight against the Insatiable (won, lost on HP
-or eaten by the Sandpit, with the Sandpit round by round), and `wiki` saves
+or eaten by the Sandpit, with the Sandpit round by round), `ancients` the
+relics the Ancients offer (each one's rating, how the runs that held it went
+and where that moves the rating), and `wiki` saves
 the game's text for every discovered card and relic to `wiki.json` next to
 the logs.
 
@@ -217,6 +228,9 @@ change to it can be tried on a few thousand fights in a minute:
 Knowledge Demon). The second also works out the best play there is for its
 decks, so it shows how many fights the planner gives away and on which turns
 (`demonfight.py regret`), and takes `NAME=VALUE` to try a planner constant.
+`scripts/roomfight.py` does the same for an ordinary act 2 fight, where what
+counts is the HP left at the end: the planner's HP lost a fight next to the
+least any play could lose.
 
 ## Options
 

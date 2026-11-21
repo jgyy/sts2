@@ -50,6 +50,8 @@
                                                         bot names, with their rules text: mechanics nobody modelled
     python3 scripts/fightlog.py events                  every event met: how often each option was taken, with
                                                         the scores of the last time (to spot a choice never made)
+    python3 scripts/fightlog.py ancients                the Ancients' relics: each one's rating, how the runs that
+                                                        held it went against the usual, and where that moves it
     python3 scripts/fightlog.py wiki                    save the game's text for every discovered card and relic
                                                         to wiki.json next to the logs (one request at a time: a
                                                         pool of them stalls the game while the bot is playing)
@@ -480,6 +482,23 @@ def wiki() -> None:
     print(len(out["cards"]), "cards and", len(out["relics"]), "relics in", os.path.join(LOGS, "wiki.json"))
 
 
+def ancients() -> None:
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+    from pathlib import Path
+
+    from sts2bot import events as ev, relics
+
+    relics.load(Path(LOGS) / "runs.jsonl", ev._ANCIENT)
+    rec = relics.record()
+    later = relics.ACT2 | relics.ACT3 | relics.DARV
+    for title, pool in (("Neow (floor 1)", None), ("act 2: Orobas, Pael, Tezcatara", relics.ACT2), ("Darv (act 2 or 3)", relics.DARV), ("act 3: Nonupeipe, Tanx, Vakuu", relics.ACT3)):
+        print(title)
+        names = [k for k in ev._ANCIENT if (k in pool if pool is not None else k not in later)]
+        for k in sorted(names, key=lambda k: -(ev._ANCIENT[k] + relics.shift(k))):
+            n, gain = rec.get(k, (0, 0.0))
+            print(f"   {k:20} {ev._ANCIENT[k]:5.1f} {relics.shift(k):+5.1f} = {ev._ANCIENT[k] + relics.shift(k):5.1f}   held {n:3}" + (f"  {gain:+5.1f} floors a run" if n else ""))
+
+
 def boss_pace(f: dict) -> float:
     """HP the other side lost a round in this fight, from one round's first look to the next (a heal or a new form is not a loss)."""
     first = {}
@@ -547,8 +566,8 @@ if __name__ == "__main__":
         crabs(args[1] if len(args) > 1 else "")
     elif args[:1] == ["artifact"]:
         artifact(args[1] if len(args) > 1 else "", tuple(args[2].split(",")) if len(args) > 2 else ("boss", "elite"))
-    elif args[:1] in (["powers"], ["events"], ["wiki"]):
-        {"powers": powers, "events": events, "wiki": wiki}[args[0]]()
+    elif args[:1] in (["powers"], ["events"], ["wiki"], ["ancients"]):
+        {"powers": powers, "events": events, "wiki": wiki, "ancients": ancients}[args[0]]()
     elif args[:1] == ["show"] and len(args) > 1:
         show(args[1], tuple(args[2].split(",")) if len(args) > 2 else ("boss",))
     else:

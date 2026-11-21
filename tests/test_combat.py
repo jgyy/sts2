@@ -414,10 +414,10 @@ class Potions(unittest.TestCase):
         state["run"]["floor"] = 22
         state["player"]["max_potion_slots"] = 2
         self.assertEqual([a[1]["slot"] for a in combat.potion_actions(state)], [1])
-        # ... and none at all once the boss is six floors away or less: a slot emptied there stays empty 3 times in 10.
-        state["run"]["floor"] = 27
+        # ... and none at all once the boss is near (nine floors in act 2): a slot emptied there often stays empty.
+        state["run"]["floor"] = 24
         self.assertEqual(combat.potion_actions(state), [])
-        state["run"]["floor"] = 26
+        state["run"]["floor"] = 23
         self.assertEqual(len(combat.potion_actions(state)), 1)
         from sts2bot import potions
         self.assertGreater(potions.boss_worth(strength), potions.boss_worth(self.potion(0, "Fire Potion", "Deal 20 damage.")))
@@ -568,8 +568,8 @@ class Potions(unittest.TestCase):
 
     def test_an_elite_gets_the_spare_potion_and_the_rest_wait_for_the_boss(self):
         belt = [self.potion(i, "Fire Potion", "Deal 20 damage.", "AnyEnemy") for i in range(3)]
-        self.assertEqual(self.boss(belt, floor=24, kind="elite"), [0])  # a full belt: one is free
-        self.assertEqual(self.boss(belt[:2], floor=24, kind="elite"), [])
+        self.assertEqual(self.boss(belt, floor=22, kind="elite"), [0])  # a full belt: one is free
+        self.assertEqual(self.boss(belt[:2], floor=22, kind="elite"), [])
         self.assertEqual(self.boss(belt, floor=31, kind="elite"), [])  # the boss is two rooms on
         self.assertEqual(self.boss(belt[:2], floor=24, kind="elite", hp=35), [0, 1])  # the fight has gone wrong
         self.assertEqual(self.boss(belt[:2], floor=33), [0, 1])  # the boss gets all of them
