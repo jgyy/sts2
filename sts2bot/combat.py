@@ -17,7 +17,7 @@ from .battle import (  # noqa: F401  (also the names other modules and the tests
     BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, REATTACH_REACH, SANDPIT_DEATH, SLIP_WORTH, WIN_BONUS, Enemy,
     _has_power, _is_attack, constrict, end_of_turn_block, end_of_turn_loss, expected_loss, hand_burns,
     intent_damage, intent_hits, kill_reach, osty_hp, power_amount, read_enemies, _bare_block, _draw_worth, _escape_odds, _next_wither, _sandpit,
-    deck_count, junk_cost, cards_left_this_turn, _poison_total, _power_worth, _set_up, _rage_blocks, _respawns, loss_cap,
+    deck_count, junk_cost, cards_left_this_turn, free_plays, _hit, _hit_count, _poison_total, _power_worth, _set_up, _rage_blocks, _respawns, loss_cap,
 )
 from .cards import CardInfo, order_key, parse
 from .potions import describe, potion_actions  # noqa: F401
@@ -32,53 +32,6 @@ MAX_SEARCH_CARDS = 11
 THREAT_FLOOR = 6.0  # damage a turn every enemy is taken to do at least, when choosing whom to hit first
 HIVE_COST = 9.0  # Personal Hive: what a Dazed in our draw pile costs once the hand has no card to spare, in points
 HIVE_PACE = 22.0  # ... and the damage a round the Entomancer is taken to lose, for how long the fight still is
-
-
-def _hit_count(e: Enemy, hits: int, double_if_vulnerable: bool = False) -> int:
-    return hits * (2 if double_if_vulnerable and e.vulnerable else 1)
-
-
-def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False, raw: bool = False) -> int:
-    """Apply an attack hit by hit, return HP actually removed.
-
-    `raw` is damage that is not an Attack (an orb's): Vulnerable does nothing
-    for it (a Lightning evoked twice did 16 to a Vulnerable enemy, 18 times in 18).
-    """
-    per = dmg_per_hit * e.damage_mult
-    if not raw:
-        per *= (e.vuln_mult if e.vulnerable else 1.0) * (e.weak_mult if e.weak else 1.0)
-        if e.slow > 0:
-            per *= 1.0 + e.slow / 100.0
-    per = int(per)
-    removed = 0
-    for _ in range(_hit_count(e, hits, double_if_vulnerable)):
-        if e.hp <= 0:
-            break
-        absorbed = min(e.block, per)
-        e.block -= absorbed
-        e.chipped += absorbed
-        if absorbed and e.block == 0 and e.keeps_block:
-            e.keeps_block = False
-            e.incoming = 0  # "Stunned if all Block is removed."
-        # Skittish (Phantasmal Gardener): the first hit of a turn lands, and the rest meet 6 Block.
-        # Four of them took 11 rounds and 38 of 51 HP from a bot that hit one twice a turn.
-        e.block, e.skittish = e.block + e.skittish, 0
-        through = per - absorbed
-        if through <= 0:
-            continue
-        if e.hit_cap:
-            through = min(through, e.hit_cap)
-        if e.slippery > 0:
-            e.slippery -= 1
-            e.stripped += 1
-            through = 1
-        lost = min(e.hp, through)
-        e.hp -= lost
-        removed += lost
-        if e.stun_at and e.hp <= e.stun_at:
-            e.stun_at = 0
-            e.incoming = 0  # Stunned: its attack this turn never happens
-    return removed
 
 
 def _orb_damage(kind: str, amount: int, foes: list[Enemy], chip_rate: float, dmg_value: float) -> float:
@@ -265,10 +218,14 @@ def simulate(
     might0: int = 0,  # Strength that is on its way and not in the card texts yet (Toasty Mittens, once its Exhaust is chosen)
     holds: bool = False,  # Barricade: Block is not removed when our next turn starts
     friends: int = 0,  # Friendships already in play (each is an energy a turn, and the next one is worth less)
+    free: int = 0,  # Void Form: this many of the next cards cost no energy
+    doubled: bool = False,  # Duplication (the Duplicator potion): the next card is played an extra time, whatever it is
 ) -> Outcome | None:
     """Score playing `line` in order. None if it cannot be afforded."""
     if card_limit is not None and len(line) > card_limit:
         return None
+    if any(c.ends_turn for c in line[:-1]):
+        return None  # "End your turn": nothing is played after it
     foes = [replace(e, chipped=0, stripped=0, vuln_added=0, weak_added=0) for e in enemies]
     score = 0.0
     first_target: str | None = None
@@ -290,7 +247,7 @@ def simulate(
     osty_hits = 0  # Osty attacks played earlier in this line
     free_next: str | None = None  # the kind of card that costs nothing next, after one that says so
     surcharge = 0  # energy every further card costs on top of its own, after one that says so
-    echo: str | None = None  # the kind of card that is played an extra time next (Burst, One-Two Punch)
+    echo: str | None = "Any" if doubled else None  # the kind of card that is played an extra time next (Burst, One-Two Punch)
     dooming = False  # a card earlier in this line applied Doom
     free_all = False  # Bullet Time: everything left in the hand is free this turn
     healed = 0  # HP this line gives back
@@ -312,6 +269,7 @@ def simulate(
     future = 0.0  # everything in the score that only pays off after this turn
     might = might0  # Strength gained from cards earlier in this line
     attacks = 0  # Attacks played so far in this line
+    plays = 0  # times a card has been played in this line (one that is played again counts again)
     summoned = 0  # HP this line gives Osty
     pet0 = pet  # Osty's HP as the card texts in hand were written
     drawn = 0  # cards this line draws
@@ -351,14 +309,22 @@ def simulate(
         else:
             # Flatten "costs 0 if Osty has attacked this turn", Rattle "hits an additional
             # time for each other time he has attacked": after a Poke in the same line too.
-            cost = 0 if (c.key == "FLATTEN" and osty_hits) or c.type == free_next or free_all else c.cost + surcharge
+            cost = 0 if (c.key == "FLATTEN" and osty_hits) or c.type == free_next or free_all or n < free else c.cost + surcharge
             free_next = None if c.type == free_next else free_next
             if cost > energy:
                 return None
             energy -= cost
-        if echo and c.type == echo:  # played twice: everything it does, it does again
-            twice = dict(block=c.block * 2, draw=c.draw * 2, summon=c.summon * 2, doom=c.doom * 2, poison=c.poison * 2, shivs=c.shivs * 2, souls=c.souls * 2)
-            c, echo = replace(c, hits=c.hits * (2 if c.damage else 1), energy_gain=c.energy_gain * 2, **twice), None
+        # Played again (its own Replay, or the card before said so): everything it does, it does again, and each
+        # time is one of the cards a turn allows. (Sloth, three a turn: with Sword Sage up the Sovereign Blade took
+        # the count from 0 to 2, the plan's third card could not be played and 41 HP went on 42, the Demon on 88.)
+        echoed = bool(echo) and echo in ("Any", c.type)
+        k, echo = 1 + c.replay + echoed, None if echoed else echo
+        if card_limit is not None and plays >= card_limit:
+            return None
+        plays += k
+        if k > 1:
+            more = dict(block=c.block * k, draw=c.draw * k, summon=c.summon * k, doom=c.doom * k, poison=c.poison * k, shivs=c.shivs * k, souls=c.souls * k)
+            c = replace(c, hits=c.hits * (k if c.damage else 1), energy_gain=c.energy_gain * k, **more)
         echo = triggers.ECHO_NEXT.get(c.key, echo)
         energy *= 2 if c.key == "DOUBLE_ENERGY" else 1
         free_all = free_all or c.key == "BULLET_TIME"
@@ -576,6 +542,9 @@ def simulate(
         hp += healed
     # What the cards drawn are likely to be worth: the free ones as they
     # come, the rest as far as the energy left over stretches.
+    # (Only as many as may still be played: under Sloth, three cards a turn, the third went on a Soul,
+    # "Draw 2 cards", five energy in hand and nothing more allowed.)
+    drawn = drawn if card_limit is None else min(drawn, max(0, card_limit - plays))
     free, paid_share, per_energy = draw_worth
     score += drawn * max(1.0, free) + min(float(max(energy, 0)), drawn * paid_share) * per_energy
     # Breaking Block that an enemy was keeping Stuns it.
@@ -846,6 +815,9 @@ def _context(state: dict) -> dict:
         might0=int(state.get("_might") or 0),
         holds=_has_power(player, "BARRICADE"),
         friends=max(0, power_amount(player, "FRIENDSHIP")),
+        free=free_plays(state),
+        # (Echo Form: "The first card you play each turn is played an extra time", and a second one the second card.)
+        doubled=_has_power(player, "DUPLICATION") or max(0, power_amount(player, "ECHO_FORM")) > int(state.get("_plays_this_turn") or 0),
         taint=max((power_amount(e, "VITAL_SPARK") for e in [player, *(battle.get("enemies") or [])]), default=0),
     )
 
@@ -856,7 +828,13 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
     enemies = read_enemies(state)
     ctx = _context(state)
     hand = [parse(c) for c in player.get("hand") or []]
-    playable = [c for c in hand if c.playable and (c.is_x or c.cost <= ctx["energy"]) and c.star_cost <= ctx["stars"]]
+    free = ctx["free"]
+    if free:
+        # Void Form: with free plays left every card shows as costing 0. What each costs after them is what the
+        # deck said when the fight began, and the free plays are for the dearest. (Read as shown, two Strikes
+        # went first and a 3-cost Knockout Blow stayed in the hand.)
+        hand = [replace(c, cost=(state.get("_costs") or {}).get(c.name, c.cost)) for c in hand]
+    playable = [c for c in hand if c.playable and (c.is_x or free or c.cost <= ctx["energy"]) and c.star_cost <= ctx["stars"]]
     playable = [c for c in playable if not triggers.shunned(c, state)]
     if not enemies and state.get("_revive_pending"):
         return _set_up(playable, ctx["energy"])
@@ -897,6 +875,12 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
         # (Flatten and Rattle after Osty's other attacks: one is free then, the other hits again.)
         after = lambda c: (order_key(c)[0], 1e3, c.index) if c.key in ("FLATTEN", "RATTLE") else order_key(c)
         playable.sort(key=lambda c: ((1,) + order_key(c)[1:]) if pays(c) else after(c))
+    # (Void Form itself says "End your turn": played first, as a Power, it threw away two potions and
+    # 62 damage in hand on round 1 of the Queen, and the turn's Block with them. It goes last.)
+    dear = sorted((c for c in playable if c.cost > 0), key=lambda c: -c.cost)[:free]
+    if ctx["doubled"] and playable and not any(c.type == "Power" for c in playable):
+        dear.append(max(playable, key=lambda c: c.total_damage + c.block + 3 * c.draw))  # the card worth playing twice leads
+    playable.sort(key=lambda c: (c.ends_turn, c not in dear))  # (stable: the rest keep their order)
 
     # Bound cards: one per turn. Once one has been played the game marks the
     # rest unplayable, so any still playable means the allowance is unused.
@@ -943,7 +927,7 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
         if not found:
             break
     if plan is not None:
-        plan["lost"], plan["score"] = best_lost, best_score
+        plan["lost"], plan["score"], plan["line"] = best_lost, best_score, best_line
     if not best_line:
         return None
 
@@ -962,7 +946,7 @@ def actions(state: dict) -> list[Action]:
         log.debug("sandpit %s, no Escape next hand %.2f, later %.2f", _sandpit(state), *_escape_odds(state.get("player") or {}))
     plan: dict = {}
     card = choose_card(state, plan)
-    out = potion_actions(state, plan["lost"] if "lost" in plan else expected_end_loss(state))  # (nothing playable: no plan)
+    out = potion_actions(state, plan["lost"] if "lost" in plan else expected_end_loss(state), plan.get("line", []))  # (nothing playable: no plan)
     if card is not None:
         out.append(card)
     out.append(("end_turn", {}))

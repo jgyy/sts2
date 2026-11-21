@@ -68,6 +68,8 @@ class CardInfo:
     debris: int = 0  # Debris (1 energy: Exhaust) it adds to our hand; -1: as many as the hand has room for (Crash Landing)
     heal: int = 0  # HP it gives back when played (Not Yet)
     ethereal: bool = False  # gone for the fight if it is still in the hand when the turn ends
+    ends_turn: bool = False  # "End your turn." (Void Form): nothing can be played after it
+    replay: int = 0  # times it is played again by itself ("Replay 1": Sword Sage's Sovereign Blade, Hidden Gem, Transfigure)
 
     @property
     def is_x(self) -> bool:
@@ -108,6 +110,20 @@ def _cost(raw) -> int:
         return max(0, int(s))
     except ValueError:
         return 0
+
+
+def _replay(card: dict, text: str) -> int:
+    """Extra times the card plays itself: "Replay 2." in its own text, or the keyword alone. (Not a card that
+    hands Replay to another: "Sovereign Blade gains Replay 1.")"""
+    m = re.search(r"(?:^|[.\n]\s*)replay\s+(\d+)", text, re.I)
+    if m:
+        return int(m.group(1))
+    if re.search(r"replay", text, re.I):
+        return 0
+    for k in card.get("keywords") or []:
+        if isinstance(k, dict) and str(k.get("name")).lower() == "replay":
+            return _int(r"additional\s+(\d+)\s+times", str(k.get("description") or "")) or 1
+    return 0
 
 
 def is_basic(card: dict) -> bool:
@@ -255,6 +271,8 @@ def parse(card: dict) -> CardInfo:
         block_lock=bool(re.search(r"(cannot|can't|can not)\s+gain\s+(any\s+)?block", full_text, re.I)),
         osty_attack=bool(re.search(r"\bOsty\b[^.]*\bdeals\b|if\s+Osty\s+is\s+alive", full_text, re.I)),
         ethereal=bool(re.search(r"\bEthereal\b", full_text)),
+        ends_turn=bool(re.search(r"(?:^|\.\s*)end\s+your\s+turn\.", full_text, re.I)),
+        replay=_replay(card, full_text),
         osty_dies=bool(re.search(r"\b(?:Osty|he)\s+dies", full_text, re.I)),  # (Sacrifice: "If Osty is alive, he dies and ...")
         doom_kills=bool(re.search(r"kill\s+enemies\s+with\s+at\s+least\s+as\s+much\s+Doom", full_text, re.I)),
         debris=-1 if re.search(r"fill\s+your\s+hand\s+with\s+debris", text, re.I) else _int(r"add\s+(\d+)\s+debris", text) or int(bool(re.search(r"add\s+a\s+debris", text, re.I))),
@@ -505,7 +523,9 @@ def upgrade_gain(base: dict, upgraded: dict) -> float:
 
 
 def order_key(c: CardInfo) -> tuple:
-    if c.type == "Power" or c.key == "FRANTIC_ESCAPE":
+    if c.ends_turn:
+        rank = 9  # whatever else the turn can do comes before the card that ends it
+    elif c.type == "Power" or c.key == "FRANTIC_ESCAPE":
         rank = 0  # set-up first; an escape must not be left for energy that is gone
     elif c.draw or c.energy_gain or c.star_gain:
         rank = 1  # what later cards are paid with comes first

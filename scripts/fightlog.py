@@ -31,6 +31,13 @@
     python3 scripts/fightlog.py idle ['YYYY-MM-DD']     turns ended with energy and a card it could pay for
                                                         while 8 HP or more was about to be lost: a penalty
                                                         that stops the planner playing at all
+    python3 scripts/fightlog.py powers                  powers seen on enemies (and on us) that no module of the
+                                                        bot names, with their rules text: mechanics nobody modelled
+    python3 scripts/fightlog.py events                  every event met: how often each option was taken, with
+                                                        the scores of the last time (to spot a choice never made)
+    python3 scripts/fightlog.py wiki                    save the game's text for every discovered card and relic
+                                                        to wiki.json next to the logs (one request at a time: a
+                                                        pool of them stalls the game while the bot is playing)
 
 `load()` returns one record per fight (act, floor, kind, enemies, HP in and out, rounds, every
 logged combat state) joined to its run in runs.jsonl, for one-off questions from a Python prompt.
@@ -349,6 +356,57 @@ def idle(since: str = "") -> None:
         print(f"{t[5:]} {kind} energy {last.group(6)} expects to lose {expected} | hp {last.group(3)}{last.group(7)} | {last.group(8)[:150]} | {last.group(9)[:170]}")
 
 
+def powers() -> None:
+    root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sts2bot")
+    code = "".join(open(os.path.join(root, n)).read() for n in sorted(os.listdir(root)) if n.endswith(".py"))
+    seen: dict = {}
+    for line in lines():
+        m = re.search(r" INFO power (\w+?)(?:_POWER)? \(on (.+?)\): (.*)$", line)
+        if m and f'"{m.group(1)}"' not in code:
+            ours = m.group(2).startswith("The ") and m.group(2).split()[-1] in ("Ironclad", "Silent", "Regent", "Necrobinder", "Defect")
+            seen.setdefault((ours, m.group(1)), (m.group(2), m.group(3)))
+    for (ours, name), (who, text) in sorted(seen.items()):
+        print(f"{'on us    ' if ours else 'on enemy '} {name:28} {who[:22]:22} {text[:150]}")
+
+
+def events() -> None:
+    met: dict = {}
+    last = None
+    for line in lines():
+        m = re.search(r" DEBUG event (\w+): (.*)$", line)
+        if m:
+            last = m.groups()
+            continue
+        m = re.search(r"Choosing event option: (.*)$", line)
+        if m and last and m.group(1).strip() != "Proceed":
+            entry = met.setdefault(last[0], [collections.Counter(), ""])
+            entry[0][m.group(1).strip()[:40]] += 1
+            entry[1], last = last[1], None
+    for name, (taken, text) in sorted(met.items(), key=lambda kv: -sum(kv[1][0].values())):
+        print(f"{name:28} {dict(taken)}\n      {text[:400]}")
+
+
+def wiki() -> None:
+    import time
+    import urllib.parse
+    import urllib.request
+
+    def get(path: str) -> dict:
+        with urllib.request.urlopen("http://localhost:15526/api/v1" + path, timeout=20) as r:
+            return json.load(r)
+
+    profile, out = get("/profile"), {"cards": {}, "relics": {}}
+    for kind in ("card", "relic"):
+        for item in profile.get(f"discovered_{kind}s") or []:
+            key = item if isinstance(item, str) else item.get("id")
+            found = get(f"/wiki?q={urllib.parse.quote(str(key))}&type={kind}").get("results") or []
+            out[kind + "s"].update({key: hit for hit in found if hit.get("id") == key})
+            time.sleep(0.05)
+    with open(os.path.join(LOGS, "wiki.json"), "w") as f:
+        json.dump(out, f)
+    print(len(out["cards"]), "cards and", len(out["relics"]), "relics in", os.path.join(LOGS, "wiki.json"))
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
     if args[:1] == ["bosses"]:
@@ -371,6 +429,8 @@ if __name__ == "__main__":
         surprises(args[1] if len(args) > 1 else "")
     elif args[:1] == ["idle"]:
         idle(args[1] if len(args) > 1 else "")
+    elif args[:1] in (["powers"], ["events"], ["wiki"]):
+        {"powers": powers, "events": events, "wiki": wiki}[args[0]]()
     elif args[:1] == ["show"] and len(args) > 1:
         show(args[1], tuple(args[2].split(",")) if len(args) > 2 else ("boss",))
     else:

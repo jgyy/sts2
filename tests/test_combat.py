@@ -391,7 +391,54 @@ class Potions(unittest.TestCase):
         state["player"]["max_potion_slots"] = 3
         self.assertEqual(combat.potion_actions(state), [])  # an ordinary fight, nothing wrong
         state["player"]["relics"] = [{"id": "DELICATE_FROND", "description": "At the start of each combat, fill all empty potion slots with random Potions."}]
-        self.assertEqual([a[1]["slot"] for a in combat.potion_actions(state)], [0, 1])
+        self.assertEqual(sorted(a[1]["slot"] for a in combat.potion_actions(state)), [0, 1])
+
+    def test_the_potion_drunk_on_the_way_is_the_one_a_boss_needs_least(self):
+        # A full belt cannot take the next potion, so one goes in an ordinary fight: not the Strength Potion.
+        strength = self.potion(0, "Strength Potion", "Gain 2 Strength.")
+        swift = self.potion(1, "Swift Potion", "Draw 3 cards.")
+        state = combat_state([STRIKE(0)], [enemy("A", 60, attack=10)], hp=75, max_hp=75, potions=[strength, swift])
+        state["run"]["floor"] = 22
+        state["player"]["max_potion_slots"] = 2
+        self.assertEqual([a[1]["slot"] for a in combat.potion_actions(state)], [1])
+        # ... and none at all once the boss is six floors away or less: a slot emptied there stays empty 3 times in 10.
+        state["run"]["floor"] = 27
+        self.assertEqual(combat.potion_actions(state), [])
+        state["run"]["floor"] = 26
+        self.assertEqual(len(combat.potion_actions(state)), 1)
+        from sts2bot import potions
+        self.assertGreater(potions.boss_worth(strength), potions.boss_worth(self.potion(0, "Fire Potion", "Deal 20 damage.")))
+        self.assertEqual(potions.boss_worth({"potion_name": "Odd Vial", "potion_description": "Deal 31 damage."}), 31.0)  # (unlisted: from its text)
+        self.assertGreater(potions.boss_worth({"name": "Odd Tonic", "description": "Gain 3 Strength."}), 20.0)
+
+    def test_no_potion_is_poured_out_at_a_sleeping_boss(self):
+        energy = self.potion(0, "Energy Potion", "Gain [defect_energy_icon.png][defect_energy_icon.png].")
+        strength = self.potion(1, "Strength Potion", "Gain 2 Strength.")
+        hand = [STRIKE(0), STRIKE(1), STRIKE(2), STRIKE(3), STRIKE(4)]
+        state = combat_state(hand, [enemy("LAGAVULIN_MATRIARCH_0", 222, status=[{"id": "ASLEEP_POWER", "amount": 3}])], kind="boss", potions=[energy, strength])
+        self.assertEqual(combat.potion_actions(state), [])
+        state["battle"]["enemies"][0]["status"][0]["amount"] = 1  # the turn before she wakes: now they count
+        plan: dict = {}
+        combat.choose_card(state, plan)
+        self.assertEqual(sorted(a[1]["slot"] for a in combat.potion_actions(state, plan["lost"], plan["line"])), [0, 1])
+
+    def test_an_energy_potion_waits_for_a_hand_that_can_spend_it(self):
+        energy = self.potion(0, "Energy Potion", "Gain [ironclad_energy_icon.png][ironclad_energy_icon.png].")
+        big = card(3, "BLUDGEON", "Bludgeon", "Attack", 3, "Deal 32 damage.", "AnyEnemy")
+        idle = enemy("A", 300)  # (round 1 of a boss that only buffs: the Defends in hand are no use for energy)
+        state = combat_state([STRIKE(0), STRIKE(1), DEFEND(2), DEFEND(3), DEFEND(4)], [idle], kind="boss", potions=[energy])
+        self.assertEqual(combat.actions(state)[0][0], "play_card")
+        # ... with an attack the three energy cannot pay for, it is drunk.
+        state = combat_state([STRIKE(0), STRIKE(1), DEFEND(2), big], [idle], kind="boss", potions=[energy])
+        self.assertEqual(combat.actions(state)[0], ("use_potion", {"slot": 0}))
+        # ... and for Block when the plan still loses HP.
+        state = combat_state([DEFEND(0), DEFEND(1), DEFEND(2), DEFEND(3), DEFEND(4)], [enemy("A", 300, attack=30)], kind="boss", potions=[energy])
+        self.assertEqual(combat.actions(state)[0], ("use_potion", {"slot": 0}))
+
+    def test_entropic_brew_is_drunk_at_once(self):
+        brew = self.potion(0, "Entropic Brew", "Fill all your empty potion slots with random potions.")
+        strength = self.potion(1, "Strength Potion", "Gain 2 Strength.")
+        self.assertEqual(self.boss([brew, strength], floor=5, kind="monster"), [0])
 
     def test_fruit_juice_is_drunk_in_the_first_fight(self):
         juice = self.potion(0, "Fruit Juice", "Gain 5 Max HP.")
@@ -455,6 +502,45 @@ class Potions(unittest.TestCase):
         state["run"]["floor"] = 24
         self.assertEqual([a for a in combat.actions(state) if a[0] == "use_potion"], [])
         self.assertTrue(used(60))  # 20 of 31 HP is coming and the hand cannot stop it
+
+    def test_a_potion_waits_for_the_moment_it_does_something(self):
+        def used(potion, hand, line=None, block=0, attack=30, discard=0, hp=75):
+            state = combat_state(hand, [enemy("A", 300, attack=attack)], hp=hp, max_hp=75, block=block, kind="boss", potions=[potion])
+            state["run"]["floor"] = 33
+            state["player"]["discard_pile_count"] = discard
+            return bool(combat.potion_actions(state, None, line))
+
+        # "Triple your Block": 11 of 14 tripled nothing. It goes once the turn's Block is up and is still short.
+        fortifier = self.potion(0, "Fortifier", "Triple your Block.")
+        self.assertFalse(used(fortifier, [DEFEND(0)], line=[parse(DEFEND(0))]))
+        self.assertFalse(used(fortifier, [], line=[], block=0))
+        self.assertTrue(used(fortifier, [], line=[], block=10))
+        self.assertFalse(used(fortifier, [], line=[], block=10, attack=8))
+        # "Put a card from your Discard Pile into your Hand": not on round 1, when there is none.
+        memories = self.potion(0, "Liquid Memories", "Put a card from your Discard Pile into your Hand. It's free to play this turn.")
+        self.assertFalse(used(memories, [STRIKE(0)]))
+        self.assertTrue(used(memories, [STRIKE(0)], discard=6))
+        # Strength for one turn is for a turn of attacks (it was kept for the turns we Block).
+        flex = self.potion(0, "Flex Potion", "Gain 5 Strength. At the end of your turn, lose 5 Strength.")
+        strikes = [parse(STRIKE(i)) for i in range(3)]
+        self.assertFalse(used(flex, [STRIKE(0), DEFEND(1), DEFEND(2)], line=[parse(DEFEND(1)), parse(DEFEND(2))]))
+        self.assertTrue(used(flex, [STRIKE(0), STRIKE(1), STRIKE(2)], line=strikes))
+        # "Exhaust your Hand. Draw 10 cards": for a hand of dead cards, not for the opening one.
+        glow = self.potion(0, "Glowwater Potion", "Exhaust your Hand. Draw 10 cards.")
+        wound = lambda i: card(i, "WOUND", "Wound", "Status", 0, "Unplayable.")
+        self.assertFalse(used(glow, [STRIKE(0), DEFEND(1), STRIKE(2)]))
+        self.assertTrue(used(glow, [STRIKE(0), wound(1), wound(2)]))
+        # Snecko Oil is drunk like any other (the costs it rolls are in the state).
+        self.assertTrue(used(self.potion(0, "Snecko Oil", "Draw 7 cards. Randomize the cost of cards in your Hand this turn."), [STRIKE(0)]))
+        # "Your next card is played an extra time": kept for a card worth playing twice ...
+        twice = self.potion(0, "Duplicator", "This turn, your next card is played an extra time.")
+        heavy = card(1, "BLUDGEON", "Bludgeon", "Attack", 2, "Deal 14 damage.", "AnyEnemy")
+        self.assertFalse(used(twice, [STRIKE(0)], line=[parse(STRIKE(0))]))
+        self.assertTrue(used(twice, [STRIKE(0), heavy], line=[parse(STRIKE(0)), parse(heavy)]))
+        # ... and that card is the one played next.
+        state = combat_state([STRIKE(0), heavy], [enemy("A", 300)], energy=3, kind="boss")
+        state["player"]["status"] = [{"id": "DUPLICATION_POWER", "amount": 1}]
+        self.assertEqual(combat.choose_card(state)[1]["card_index"], 1)
 
     def test_healing_waits_until_it_is_needed(self):
         blood = self.potion(0, "Blood Potion", "Heal for 20% of your Max HP.")

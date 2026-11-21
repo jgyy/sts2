@@ -12,16 +12,17 @@ import re
 from dataclasses import dataclass, field
 
 from .learn import knob
-from .potions import BOSS_FLOORS
+from .potions import BOSS_FLOORS, boss_worth
 from .events import _event_option_value, event  # noqa: F401  (events live in their own module)
 from .cards import _card_key, deck_value, is_basic, is_junk, parse as _parse
-from . import handpick
+from . import afflictions, crowd, handpick
 
 Action = tuple[str, dict]
 
 log = logging.getLogger("sts2bot.strategy")
 
 SKIP_THRESHOLD = 3.0  # card rewards scoring below this are skipped
+POTION_SWAP = 6.0  # how much more a potion on offer must be worth at a boss than the least of a full belt to take its place
 BIG_DECK = 24
 
 
@@ -52,6 +53,8 @@ class Memory:
     epochs: dict = field(default_factory=dict)  # epoch id -> state, from the game's profile
     timeline_done: bool = False  # the Timeline has nothing more to reveal this visit
     timeline_stuck: set = field(default_factory=set)  # epochs it could not reveal (not retried)
+    parasol: tuple = ()  # the shop Lord's Parasol is emptying, and how often we have looked at it: (act, floor, looks)
+    potion_swaps: dict = field(default_factory=dict)  # (act, floor) -> potions poured away there for a better one
 
     def reset_run(self) -> None:
         self.deck_size = 10
@@ -62,6 +65,7 @@ class Memory:
         self.map_at = ()
         self.over_waits = 0
         self.card_skips.clear()
+        self.potion_swaps.clear()
         self.select_key = ""
         self.selected.clear()
         self.character_selected = False
@@ -232,7 +236,12 @@ def _room_value(kind: str, hp: float, gold: int, early: bool = False, act: int |
 # (Ascension 2, 2026-11-18 evening: act 1 elites cost 19.7 HP over 19 fights, act 2
 # elites 27.0 over 15 and 0.8 potions each; monsters 3.0, 7.8 and 10.6.)
 # (Ascension 4, 2026-11-19: act 3 monsters cost 13.9 HP over 104 fights; the rest of the table still held.)
-FIGHT_COST = {1: {"Monster": 5, "Elite": 20}, 2: {"Monster": 9, "Elite": 27}, 3: {"Monster": 14, "Elite": 40}}
+# (Ascension 5-6, 2026-11-21: act 2 monsters cost 12.2 HP over 527 fights, 10.1 in the first five rooms of
+# the act and 14.5 after them; act 2 elites 30.2 over 49; act 1 elites 21.6 over 80. At 9 a fight the routes
+# and rest sites of act 2 counted on a quarter more HP than they had: 20 of those 527 fights ended the run.)
+FIGHT_COST = {1: {"Monster": 5, "Elite": 21}, 2: {"Monster": 12, "Elite": 30}, 3: {"Monster": 14, "Elite": 38}}
+LATE_ROW = 5  # from this row of acts 2 and 3 an ordinary fight costs more than the act's average, before it less
+LATE_COST = {2: (0.85, 1.2), 3: (0.93, 1.08)}
 BAD_LUCK = 1.7  # how much more than average a fight costs when the draws go wrong
 BOSS_WORTH = 16.0  # what getting past the boss is worth, in the units of the room rewards below
 MAX_PATHS = 1500
@@ -294,12 +303,24 @@ def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, 
                 # half 5 in 5. Runs start on 80% HP now, so the top band is where most
                 # elites are met.)
                 score -= 2.5 if hp >= 0.65 * max_hp else 6.0 if hp >= 0.5 * max_hp else 14.0
-            if kind == "Monster" and act >= 2 and hp < 0.35 * max_hp:
-                # The same for an ordinary fight met badly hurt: below 35% HP they ended 6 runs
-                # in 11 in act 3 and 3 in 12 in act 2 (above 55%: 4 in about 500).
-                score -= 8.0 if act >= 3 else 4.0
-            elif kind == "Monster" and act >= 3 and hp < 0.55 * max_hp:
-                score -= 1.5  # (2 deaths in 23)
+            if kind == "Elite" and act >= 3:
+                # An act 3 elite ends the run one time in five whatever HP it is met on, and its relic has
+                # one boss left to be of use at. Of 16 met on Ascension 5-6 (2026-11-21, twelve of them on
+                # 85% HP or more) three killed the run there, two of those from over 90% HP, and two more
+                # left it on 2 and 9 HP to die in the next room; the rest cost 38 HP on average, and of
+                # the nine runs that went on to the boss the four that got back to full HP won twice, the
+                # five that did not never. (A run ended is priced at 30 here.)
+                score -= 6.0
+            if kind == "Monster" and act in LATE_COST and isinstance(row, int):
+                cost *= LATE_COST[act][row >= LATE_ROW]
+            if kind == "Monster" and act >= 2 and hp < 0.3 * max_hp:
+                # The same for an ordinary fight met badly hurt. On Ascension 5-6 below 30% HP they
+                # ended 13 runs in 32 in act 2 and 3 in 5 in act 3; at 30-60% 5 in 99 and 5 in 39;
+                # above that 2 in 396 and 1 in 109. (Until 2026-11-21: 4 points in act 2 below 35%,
+                # 8 in act 3, when the end of a run is priced at 30.)
+                score -= 14.0 if act >= 3 else 10.0
+            elif kind == "Monster" and act >= 2 and hp < 0.6 * max_hp:
+                score -= 3.0 if act >= 3 else 1.5
             hp -= cost * harsh
             score += knob("elite_worth") if kind == "Elite" else 1.0
             gold += 30 if kind == "Elite" else 15
@@ -410,6 +431,14 @@ def rewards(state: dict, mem: Memory) -> list[Action]:
     for item in sorted(r.get("items") or [], key=lambda i: -int(i.get("index", 0))):
         kind = str(item.get("type"))
         if kind == "potion" and belt_full:
+            # A better potion than the least of the belt: that one is poured away, and on the next look
+            # there is room. (Once or twice a room: a discard the game did not carry out must not loop.)
+            held = player.get("potions") or []
+            worst = min(held, key=boss_worth, default=None)
+            full = len(held) >= int(player.get("max_potion_slots") or 3)  # (and not Sozu, which lets none be taken)
+            if full and worst is not None and boss_worth(item) >= boss_worth(worst) + POTION_SWAP and mem.potion_swaps.get(_where(state), 0) < 2:
+                log.debug("potion: %s poured away for %s", worst.get("name"), item.get("potion_name"))
+                out.append(("discard_potion", {"slot": int(worst.get("slot", 0))}))
             continue
         if kind == "card" and skips_left > 0:
             skips_left -= 1
@@ -490,7 +519,7 @@ def deck_fit(card: dict, deck: list, act: int | None = None, energy: int = 3) ->
         # (How hard is a setting under test since 2026-11-21, see learn.CHOICES["punch"]: at 0.9 a point of
         # shortfall the decks built on other players' ratings stayed a point under the floor.)
         lean = knob("punch")
-        fit += min(2.0 * lean / 0.9, max(0.0, lean * (floor - sum(map(_punch, deck)) / len(deck))))
+        fit += min(4.0, 2.0 * lean / 0.9, max(0.0, lean * (floor - sum(map(_punch, deck)) / len(deck))))
         # ... and the first one of a run comes before whatever pays off later. Other players' ratings put
         # the Powers first, and a Regent that took Pillar of Creation, Pale Blue Dot twice and Void Form
         # from its first four rewards died on floor 7. (The 13 runs whose first four picks held no attack
@@ -515,6 +544,8 @@ def deck_fit(card: dict, deck: list, act: int | None = None, energy: int = 3) ->
     key = _card_key(card)
     copies = sum(1 for c in deck if _card_key(c) == key)
     fit -= 0.6 * copies
+    if not copies and not dear:
+        fit += crowd.partner(key, {_card_key(c) for c in deck})  # cards other players win with together
     if key == "FRIENDSHIP" and copies:
         fit -= 2.5  # the planner leaves a second one in the hand (2 more Strength for energy it has no cards for)
     return fit
@@ -627,6 +658,16 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
     player = state.get("player") or {}
     gold = int(player.get("gold") or 0)
     belt_full = _belt_full(player)
+    if any("everything he sells" in str(r.get("description") or "").lower() for r in player.get("relics") or []):
+        # Lord's Parasol ("When you encounter the Merchant, immediately obtain EVERYTHING he sells") empties
+        # the shelf by itself, one item after another, asking which card to remove on the way. A purchase of
+        # our own in the middle of that left its loop at an item that was gone, and the game does not survive
+        # it (FailureOutOfStock out of LordsParasol.PurchaseEverything: the same shop crashed the game three
+        # times and the run was given up). Nothing is bought here; we leave once the shelf is empty, or after
+        # a few looks if something on it cannot be taken (a potion with the belt full).
+        looks = mem.parasol[2] + 1 if mem.parasol[:2] == _where(state) else 1
+        mem.parasol = (*_where(state), looks)
+        return [("proceed", {})] if looks > 8 or not any(i.get("is_stocked", True) for i in s.get("items") or []) else []
 
     scored: list[tuple[float, dict]] = []
     for item in s.get("items") or []:
@@ -719,31 +760,6 @@ def _pick_order(cards: list[dict], prompt: str, screen_type: str = "", gain=None
     return sorted(cards, key=deck_value, reverse=True)
 
 
-def _affliction_order(ordered: list[dict], state: dict) -> list[dict]:
-    """The Knowledge Demon's last offer: one energy less every turn, or 8 damage every turn.
-
-    The damage is the cheaper price nearly always. An energy is about 8 Block
-    or 10 damage every turn, so going without it costs as much HP as the burn
-    does, and the fight takes half as long again on top. Of 22 fights where
-    the bot gave up the energy (never the HP, under an older and stricter
-    rule), it won 2; four more ended with the Demon on 17 to 42 HP after three
-    or four turns played on 2 energy.
-    """
-    keys = {_card_key(c): c for c in ordered}
-    burn, drain = keys.get("DISINTEGRATION"), keys.get("WASTE_AWAY")
-    if burn is None or drain is None:
-        return ordered
-    # (The choice screen comes without the enemies: a rule that asked for the
-    # Demon's HP never applied, and the energy went 38 times out of 38.)
-    player = state.get("player") or {}
-    m = re.search(r"take (\d+) damage", str(burn.get("description") or ""), re.I)
-    per_turn = int(m.group(1)) if m else 8
-    # (Not when the burn alone would finish us within two turns: then every turn counts.)
-    if int(player.get("hp") or 0) > 2 * per_turn:
-        return [burn] + [c for c in ordered if c is not burn]
-    return ordered
-
-
 def card_select(state: dict, mem: Memory) -> list[Action]:
     cs = state.get("card_select") or {}
     prompt = str(cs.get("prompt") or "")
@@ -754,7 +770,7 @@ def card_select(state: dict, mem: Memory) -> list[Action]:
         mem.select_key, mem.selected = key, set()
 
     ordered = _pick_order(cards, prompt, kind, mem.upgrade_gain)
-    ordered = _affliction_order(ordered, state)
+    ordered = afflictions.order(ordered, state)
     shown = key + "|" + ",".join(str(c.get("name")) for c in cards)
     if kind == "choose" and log.isEnabledFor(logging.DEBUG) and shown != mem.logged_select:
         mem.logged_select = shown
@@ -840,6 +856,10 @@ def hand_select(state: dict, mem: Memory) -> list[Action]:
     elif log.isEnabledFor(logging.DEBUG):
         log.debug("hand select (%s): %s", prompt, ", ".join(str(c.get("name")) for c in hs.get("cards") or []))
     ordered = _pick_order(hs.get("cards") or [], prompt, kind, mem.upgrade_gain)
+    if re.search(r"\bmake free\b", prompt, re.I):
+        # Touch of Insanity ("It is free to play this combat"): the dearest card, the best of those. (By rating
+        # alone a 0-cost Astral Pulse+ was made free next to a 2-cost Bulwark+.)
+        ordered = sorted(ordered, key=lambda c: (str(c.get("type")) in ("Status", "Curse"), -_parse(c).cost))
     discarding = bool(re.search(r"\bdiscard\b", prompt, re.I))
     # A Sly card "discarded from your Hand before the end of your turn" is played
     # for free: the best thing to throw away. (Flick-Flack was kept 9 times in 10

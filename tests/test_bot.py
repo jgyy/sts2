@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from sts2bot import combat, learn, strategy
@@ -42,17 +43,43 @@ class FullLoop(unittest.TestCase):
     def test_a_potion_is_not_one_of_the_cards_a_turn_allows(self):
         bot = make_bot(FakeGame())
         state = combat_state([STRIKE(0), DEFEND(1)], [enemy("KNOWLEDGE_DEMON_0", 200, attack=30)], hp=38)
-        state["player"]["status"] = [{"id": "SLOTH_POWER", "amount": 2}]
+        state["player"]["status"] = [{"id": "SLOTH_POWER", "amount": 0}]  # (the number is the game's count of cards so far)
         bot._combat(state)
         bot._after_success(state, "use_potion", {"slot": 0})
         bot._after_success(state, "play_card", {"card_index": 0})
         bot._after_success(state, "play_card", {"card_index": 0})
+        state["player"]["status"][0]["amount"] = 2
         bot._played_from = None  # (the hand as it was when the last card left it: not what this test is about)
         self.assertEqual(bot._combat(state)[0][0], "play_card")  # the third card of three, potion or no potion
         bot._after_success(state, "play_card", {"card_index": 0})
+        state["player"]["status"][0]["amount"] = 3
         bot._played_from = None
         self.assertEqual(bot._combat(state), [])  # (one more look before ending a turn with energy left)
         self.assertEqual(bot._combat(state)[0][0], "end_turn")
+
+    def test_a_choice_in_a_fight_is_told_how_its_turns_went(self):
+        # (The Knowledge Demon's offers: what Sloth or an energy less would cost shows in the turns played so far.)
+        bot = make_bot(FakeGame())
+        state = combat_state([STRIKE(0), DEFEND(1)], [enemy("KNOWLEDGE_DEMON_0", 300, attack=17)], kind="boss")
+        for rnd, (cards_played, left) in enumerate([(4, 0), (5, 2)], start=1):
+            state["battle"]["round"], state["player"]["energy"] = rnd, 3
+            bot._combat(state)
+            for _ in range(cards_played):
+                bot._after_success(state, "play_card", {"card_index": 0})
+            state["player"]["energy"], bot._played_from = left, None
+            bot._combat(state)
+        seen = {}
+        offer = {"state_type": "card_select", "run": state["run"], "player": state["player"], "card_select": {"screen_type": "choose", "cards": []}}
+        with mock.patch.object(strategy, "card_select", lambda s, mem: seen.update(s) or []):
+            bot.candidates(offer)
+            self.assertEqual(seen["_turns"], [(4, 0), (5, 2)])
+            seen.clear()
+            bot.candidates({**offer, "run": {"act": 1, "floor": 9}})  # some other room's screen: no fight to speak of
+            self.assertNotIn("_turns", seen)
+        state["run"] = {"act": 1, "floor": 4, "ascension": 0}  # the next fight starts from nothing
+        state["battle"]["round"] = 1
+        bot._combat(state)
+        self.assertEqual(bot._turns, [])
 
     def test_what_each_enemy_has_done_so_far_is_remembered_for_the_fight(self):
         bot = make_bot(FakeGame())
@@ -337,6 +364,29 @@ class LiveGameLessons(unittest.TestCase):
         self.assertGreater(mirror, shatter)
         self.assertGreater(value("Obtain the Spoils Map", "A relic."), 3)  # a real relic by name still counts
 
+    def test_a_curse_costs_what_it_does_and_a_relic_is_worth_what_it_gives(self):
+        value = lambda title, text, hp=60: strategy._event_option_value({"title": title, "description": text}, hp, 80)
+        # Clumsy is one dead draw a fight: a relic is worth it (refused 45 times in 45 for 6 HP and 52 Gold).
+        self.assertGreater(value("That", "Add Clumsy to your Deck. Obtain a random Relic."), value("This", "Lose 6 HP. Gain 52 Gold."))
+        self.assertLess(value("Resist", "Remove 2 cards from your Deck. Add Normality to your Deck."), 0)
+        # Royal Poison takes 4 HP at the start of every combat: not for a heal we hardly need, only for our life.
+        tea = lambda hp: value("Enjoy Your Tea", "Obtain Royal Poison. Heal to full HP.", hp)
+        fight = lambda hp: value("Pick a Fight", "Lose 11 HP. Obtain a random Relic.", hp)
+        self.assertLess(tea(70), fight(70))
+        self.assertGreater(tea(12), fight(12))
+        # The Sword of Stone needs five elites killed, and the bot meets about one a run.
+        self.assertLess(value("Grab the Sword", "Obtain the Sword of Stone.", 80), value("Dive into the Water", "Gain 115 Gold. Lose 7 HP.", 80))
+        # The Punch Off fight is two weak constructs for a relic, a card and a potion: still taken over a relic with an Injury.
+        self.assertGreater(value("I Can Take Them", "Fight them for Greater Rewards."), value("Nab", "Add Injury to your Deck. Obtain a random Relic."))
+
+    def test_a_heal_gold_and_max_hp_are_worth_their_amounts(self):
+        value = lambda text, hp=60: strategy._event_option_value({"title": "", "description": text}, hp, 80)
+        self.assertGreater(value("Heal 21 HP.", 50), value("Heal 21 HP.", 75))
+        self.assertAlmostEqual(value("Heal to full HP.", 80), value("Leave."))
+        self.assertGreater(value("Gain 311 Gold."), value("Gain 62 Gold.") + 2)
+        self.assertGreater(value("Heal 10 HP.", 53), value("Gain 2 Max HP. Take 3 damage.", 53))
+        self.assertGreater(value("Gain 10 Max HP."), value("Gain 2 Max HP."))
+
     def test_picks_the_mildest_boss_affliction(self):
         cards_ = [
             card(0, "DISINTEGRATION", "Disintegration", "Status", 0, "At the end of your turn, take 6 damage."),
@@ -557,6 +607,58 @@ class CrashLoop(unittest.TestCase):
         bot.progress.return_value = (3, 1, 7)
         sup._note_crash()
         self.assertFalse(bot.abandon_next)
+
+    def test_while_there_is_something_else_to_try_the_run_is_not_given_up(self):
+        from unittest import mock
+        from sts2bot import supervisor
+
+        bot = mock.Mock()
+        bot.progress.return_value = (3, 3, 46)
+        bot.clock.return_value = 100.0
+        bot.abandon_next = False
+        bot.note_crash.return_value = True  # each time the bot had asked for something it can now leave alone
+        sup = supervisor.Supervisor(bot, mock.Mock(), launch_cmd="game")
+        sup._note_crash()
+        for _ in range(3):
+            with self.assertLogs("sts2bot.supervisor", level="WARNING"):
+                sup._note_crash()
+            self.assertFalse(bot.abandon_next)
+        self.assertEqual(bot.careful_at, (3, 3, 46))  # slowly, and only there
+        with self.assertLogs("sts2bot.supervisor", level="WARNING"):
+            sup._note_crash()  # the fifth crash in one room: whatever was tried, it is not the bot
+        self.assertTrue(bot.abandon_next)
+
+    def test_what_was_asked_when_the_game_died_is_not_asked_again_in_that_room(self):
+        class Shop(FakeGame):
+            """A shop with two things to buy, where buying the first kills the game."""
+            def __init__(self):
+                super().__init__()
+                self.sent = []
+            def state(self):
+                items = [{"index": i, "category": "relic", "price": 50, "is_stocked": True, "can_afford": True} for i in (0, 1)]
+                return {"state_type": "shop", "run": {"act": 3, "floor": 46}, "player": {"hp": 50, "max_hp": 80, "gold": 300, "potions": []},
+                        "shop": {"items": items, "can_proceed": True}}
+            def act(self, action, **params):
+                self.sent.append((action, params))
+                return {"status": "ok", "message": "ok"}
+
+        game = Shop()
+        bot = make_bot(game)
+        bot.step()
+        first = game.sent[-1]
+        self.assertEqual(first[0], "shop_purchase")
+        with self.assertLogs("sts2bot", level="WARNING"):
+            self.assertTrue(bot.note_crash())  # the game died: that purchase is the suspect
+        self.assertFalse(bot.note_crash())  # (nothing more was asked since)
+        bot._strikes.clear()
+        bot.step()
+        self.assertNotEqual(game.sent[-1], first)  # back in the same shop, it buys the other thing
+        # Slow play is for the room that crashed, not for the ones after it.
+        bot.careful_until, bot.careful_at = bot.clock() + 120.0, (0, 3, 46)
+        bot._last_where = (3, 46)
+        self.assertTrue(bot._careful())
+        bot._last_where = (3, 47)
+        self.assertFalse(bot._careful())
 
 
 class SteamUpkeep(unittest.TestCase):

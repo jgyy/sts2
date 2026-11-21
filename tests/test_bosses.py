@@ -623,7 +623,9 @@ class Asleep(unittest.TestCase):
         flex = {"slot": 1, "id": "FLEX_POTION", "name": "Flex Potion", "description": "Gain 5 Strength this turn.", "target_type": "Self", "can_use_in_combat": True}
         state = self.state(3)
         state["player"]["potions"] = [fire, flex]
-        self.assertEqual([a[1]["slot"] for a in combat.potion_actions(state, 0)], [1])
+        # (Nor drunk ourselves: Strength for this turn, with nothing to hit until she wakes, is poured out.)
+        self.assertEqual(combat.potion_actions(state, 0), [])
+        self.assertEqual(sorted(a[1]["slot"] for a in combat.potion_actions(self.state(1, round_no=3) | {"player": state["player"]}, 0)), [0, 1])
 
 
 class SlipperyPotions(unittest.TestCase):
@@ -741,3 +743,139 @@ class BeatingRemnant(unittest.TestCase):
         plan: dict = {}
         self.assertEqual(combat.choose_card(state, plan)[1]["card_index"], 0)
         self.assertEqual(plan["lost"], 20)
+
+
+class VoidForm(unittest.TestCase):
+    FORM = lambda self, i: card(i, "VOID_FORM", "Void Form", "Power", 3, "Ethereal. End your turn. The first 2 cards you play each turn are free to play.")
+
+    def test_the_card_that_ends_the_turn_is_played_last(self):
+        # Played first, as Powers are, it ended round 1 of the Queen with two potions drunk and 62 damage in hand.
+        state = combat_state([self.FORM(0), STRIKE(1), DEFEND(2)], [enemy("QUEEN_0", 400, attack=10)], energy=5, kind="boss")
+        self.assertNotEqual(combat.choose_card(state)[1]["card_index"], 0)
+        state["player"]["hand"], state["player"]["energy"] = [self.FORM(0)], 3
+        self.assertEqual(combat.choose_card(state)[1]["card_index"], 0)
+
+    def test_its_free_plays_go_to_the_dearest_cards(self):
+        # With free plays left the hand shows every cost as 0: the two free ones are the 3 and the 2, not two Strikes.
+        free = lambda c: {**c, "cost": "0"}
+        blow = card(2, "KNOCKOUT_BLOW", "Knockout Blow", "Attack", 3, "Deal 30 damage.", "AnyEnemy")
+        blade = card(3, "SOVEREIGN_BLADE", "Sovereign Blade", "Attack", 2, "Deal 18 damage.", "AnyEnemy")
+        state = combat_state([free(STRIKE(0)), free(STRIKE(1)), free(blow), free(blade)], [enemy("A", 300)], energy=2, kind="boss")
+        state["player"]["status"] = [{"id": "VOID_FORM_POWER", "amount": 2}]
+        state["_costs"] = {"Strike": 1, "Knockout Blow": 3, "Sovereign Blade": 2}
+        self.assertEqual(combat.free_plays(state), 2)
+        self.assertIn(combat.choose_card(state)[1]["card_index"], (2, 3))
+        # Once they are used up the costs show again, and nothing is free.
+        state["_plays_this_turn"], state["player"]["hand"] = 2, [STRIKE(0), STRIKE(1), blow]
+        self.assertEqual(combat.free_plays(state), 0)
+        self.assertIn(combat.choose_card(state)[1]["card_index"], (0, 1))
+        # (A hand that shows a cost says the same, whatever the bot has counted: after a restart it counts from 0.)
+        self.assertEqual(combat.free_plays({**state, "_plays_this_turn": 0}), 0)
+
+
+class ThievingHopper(unittest.TestCase):
+    def hopper(self, flutter, attack=21):
+        status = [{"id": "ESCAPE_ARTIST_POWER", "amount": 3}, {"id": "SWIPE_POWER", "amount": 1}, {"id": "FLUTTER_POWER", "amount": flutter}]
+        return enemy("THIEVING_HOPPER_0", 40, attack=attack, status=status)
+
+    def test_the_last_flutter_hit_stuns_it(self):
+        # "Deal attack damage 5 times to Stun it": two hits from that, the Strikes are this turn's Block and more.
+        state = combat_state([DEFEND(0), DEFEND(1), DEFEND(2), STRIKE(3), STRIKE(4)], [self.hopper(2)], energy=3, hp=50)
+        plan: dict = {}
+        self.assertIn(combat.choose_card(state, plan)[1]["card_index"], (3, 4))
+        self.assertEqual(plan["lost"], 0)
+        # Five hits away with two attacks in hand, the 21 has to be blocked as before.
+        far = combat_state([DEFEND(0), DEFEND(1), DEFEND(2), STRIKE(3), STRIKE(4)], [self.hopper(5)], energy=3, hp=50)
+        combat.choose_card(far, plan)
+        self.assertGreater(plan["lost"], 0)
+
+    def test_attacks_do_half_until_then_and_what_is_not_an_attack_does_not(self):
+        foe = combat.read_enemies(combat_state([], [self.hopper(2)]))[0]
+        self.assertEqual(combat._hit(foe, 10, 1), 5)
+        self.assertEqual(combat._hit(foe, 10, 1, raw=True), 10)  # (an orb, a Power's damage: not an Attack, and it does not count)
+        self.assertEqual((foe.flutter, foe.incoming), (1, 21))
+        self.assertEqual(combat._hit(foe, 10, 2), 5 + 10)  # the hit that Stuns it is the last one halved
+        self.assertEqual((foe.flutter, foe.incoming, foe.damage_mult), (0, 0, 1.0))
+
+    def test_the_one_holding_our_card_is_worth_killing(self):
+        foe = combat.read_enemies(combat_state([], [self.hopper(5)]))[0]
+        self.assertTrue(foe.thief)
+        self.assertGreater(foe.worth, 1.0)
+
+    def test_curl_up_is_block_after_the_first_hit(self):
+        louse = enemy("LOUSE_PROGENITOR_0", 60, status=[{"id": "CURL_UP_POWER", "amount": 14}])
+        foe = combat.read_enemies(combat_state([], [louse]))[0]
+        self.assertEqual(combat._hit(foe, 6, 2), 6)  # the second Strike of the turn meets the 14 Block
+        self.assertEqual(foe.block, 8)
+
+
+class StunsAndShells(unittest.TestCase):
+    def test_the_terror_eel_is_stunned_as_its_hp_crosses_the_shriek(self):
+        # "The first time Terror Eel's HP reaches 70 or below, it becomes Stunned": the Strike is this turn's Block.
+        eel = enemy("TERROR_EEL_0", 75, attack=22, status=[{"id": "SHRIEK_POWER", "amount": 70}])
+        plan: dict = {}
+        state = combat_state([DEFEND(0), STRIKE(1)], [eel], energy=1, hp=40, kind="elite")
+        self.assertEqual(combat.choose_card(state, plan)[1]["card_index"], 1)
+        self.assertEqual(plan["lost"], 0)
+
+    def test_a_hardened_shell_lets_through_what_it_has_left_this_turn(self):
+        colony = lambda left: enemy("SKULKING_COLONY_0", 60, attack=14, status=[{"id": "HARDENED_SHELL_POWER", "amount": left}])
+        foe = combat.read_enemies(combat_state([], [colony(8)]))[0]
+        self.assertEqual(combat._hit(foe, 6, 2), 8)
+        self.assertEqual(combat._hit(foe, 6, 1), 0)
+        # With nothing left to take off it this turn, the energy goes to Block.
+        state = combat_state([STRIKE(0), DEFEND(1)], [colony(0)], energy=1, hp=40, kind="elite")
+        self.assertEqual(combat.choose_card(state)[1]["card_index"], 1)
+        self.assertEqual(combat.read_enemies(combat_state([], [enemy("A", 60)]))[0].shell, -1)
+
+
+class PlayedAgain(unittest.TestCase):
+    BLADE = lambda self, i: card(i, "SOVEREIGN_BLADE", "Sovereign Blade", "Attack", 1, "Retain. Deal 30 damage. Replay 1.", "AnyEnemy")
+
+    def test_replay_is_read_from_the_card_and_not_from_one_that_hands_it_out(self):
+        self.assertEqual(parse(self.BLADE(0)).replay, 1)
+        sage = card(0, "SWORD_SAGE", "Sword Sage", "Power", 2, "Sovereign Blade gains Replay 1.")
+        self.assertEqual(parse({**sage, "keywords": [{"name": "Replay", "description": "Plays this card an additional time."}]}).replay, 0)
+        gem = {**STRIKE(0), "keywords": [{"name": "Replay", "description": "Plays this card an additional 2 times."}]}
+        self.assertEqual(parse(gem).replay, 2)
+
+    def test_a_card_played_twice_is_two_of_the_three_sloth_allows(self):
+        # Seen against the Knowledge Demon: the Blade took Sloth from 0 to 2, the third card of the plan could
+        # not be played, and 41 HP went on 42.
+        foes = combat.read_enemies(combat_state([], [enemy("KNOWLEDGE_DEMON_0", 160, attack=36)]))
+        blade, strike, guard = parse(self.BLADE(0)), parse(STRIKE(1)), parse(DEFEND(2))
+        ctx = dict(energy=4, stars=0, hp=42, max_hp=108, block=0, fight="boss", card_limit=3)
+        self.assertIsNone(combat.simulate([blade, strike, guard], foes, **ctx))
+        self.assertIsNotNone(combat.simulate([blade, guard], foes, **ctx))
+        self.assertIsNotNone(combat.simulate([strike, guard, blade], foes, **ctx))  # (as the third it still goes)
+        self.assertEqual(combat.simulate([blade], foes, **ctx).score - combat.simulate([], foes, **ctx).score > 60 * 1.5 - 1, True)
+        # The count is the game's own, the number on the power.
+        state = combat_state([self.BLADE(0), STRIKE(1), DEFEND(2)], [enemy("KNOWLEDGE_DEMON_0", 160, attack=36)], energy=4, hp=42, kind="boss")
+        state["player"]["status"] = [{"id": "SLOTH_POWER", "amount": 2}]
+        self.assertEqual(combat.cards_left_this_turn(state), 1)
+        self.assertEqual(combat.cards_left_this_turn({**state, "_plays_this_turn": 1}), 1)
+
+    def test_the_last_card_sloth_allows_is_not_one_that_only_draws(self):
+        # Seen: Sweeping Gaze, Soul, Soul+ with five energy in hand, 10 damage dealt and 13 coming.
+        soul = lambda i: card(i, "SOUL", "Soul", "Skill", 0, "Draw 2 cards. Exhaust.", "Self")
+        state = combat_state([soul(0), soul(1), STRIKE(2)], [enemy("KNOWLEDGE_DEMON_0", 190, attack=13)], energy=5, hp=32, kind="boss")
+        state["player"]["status"] = [{"id": "SLOTH_POWER", "amount": 2}]
+        self.assertEqual(combat.choose_card(state)[1]["card_index"], 2)  # one play left: the Strike
+        state["player"]["status"] = [{"id": "SLOTH_POWER", "amount": 3}]
+        self.assertIsNone(combat.choose_card(state))
+        foes = combat.read_enemies(state)
+        ctx = dict(energy=5, stars=0, hp=32, max_hp=80, block=0, fight="boss")
+        one, two = parse(soul(0)), parse(soul(1))
+        free = combat.simulate([one, two], foes, **ctx).score - combat.simulate([one], foes, **ctx).score
+        last = combat.simulate([one, two], foes, **ctx, card_limit=2).score - combat.simulate([one], foes, **ctx, card_limit=2).score
+        self.assertGreater(free, last + 1.5)  # the second Soul's cards can no longer be played
+
+    def test_under_echo_form_the_first_card_of_a_turn_is_the_one_worth_two(self):
+        heavy = card(1, "BLUDGEON", "Bludgeon", "Attack", 2, "Deal 14 damage.", "AnyEnemy")
+        state = combat_state([STRIKE(0), heavy], [enemy("A", 300)], energy=3, kind="boss")
+        state["player"]["status"] = [{"id": "ECHO_FORM_POWER", "amount": 1}]
+        plan: dict = {}
+        self.assertEqual(combat.choose_card(state, plan)[1]["card_index"], 1)
+        twice = plan["score"]
+        combat.choose_card({**state, "_plays_this_turn": 1}, plan)
+        self.assertGreater(twice, plan["score"] + 14)  # (the second card of the turn is played once)

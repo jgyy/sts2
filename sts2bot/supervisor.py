@@ -428,19 +428,23 @@ class Supervisor:
 
         The game saves at the start of each room, so after a crash the bot
         comes back to the same room and does the same things. If that is what
-        crashed the game, it crashes again, for ever. The second time, play
-        that stretch slowly; if it still crashes, give the run up.
+        crashed the game, it crashes again, for ever. So the bot is told what it
+        had asked for last, and does something else there (another card, another
+        option, another room, nothing bought). The second time it also plays that
+        room slowly. The run is given up at the third crash only when there was
+        nothing left to do differently, and at the fifth whatever was tried.
         """
         where = self.bot.progress()
         self._crash_repeats = self._crash_repeats + 1 if where == self._crash_at else 0
         self._crash_at = where
-        if self._crash_repeats >= 2:  # the third crash in the same place: a loop, not chance
+        another_way = self.bot.note_crash() is True
+        if self._crash_repeats >= 4 or (self._crash_repeats >= 2 and not another_way):
             log.warning("the game keeps crashing at %s; the run will be abandoned", where)
             self.bot.abandon_next = True
             self._crash_repeats = 0
         elif self._crash_repeats >= 1:
-            log.warning("the game crashed again at %s; playing slowly for a while", where)
-            self.bot.careful_until = self.bot.clock() + 120.0
+            log.warning("the game crashed again at %s; playing that room slowly", where)
+            self.bot.careful_until, self.bot.careful_at = self.bot.clock() + 120.0, where
 
     def restart_game(self, why: str) -> None:
         self.restarts += 1

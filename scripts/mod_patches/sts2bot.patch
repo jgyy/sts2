@@ -173,10 +173,10 @@ index 2553f3f..fe291f7 100644
              {
 diff --git a/McpMod.CrashGuards.cs b/McpMod.CrashGuards.cs
 new file mode 100644
-index 0000000..bb72441
+index 0000000..02cf6e5
 --- /dev/null
 +++ b/McpMod.CrashGuards.cs
-@@ -0,0 +1,42 @@
+@@ -0,0 +1,77 @@
 +using System;
 +using System.Threading.Tasks;
 +using Godot;
@@ -194,6 +194,7 @@ index 0000000..bb72441
 +    // leaves the event itself as it is.
 +    private static void TryApplyCrashGuards()
 +    {
++        var harmony = new Harmony("com.sts2mcp.crashguards");
 +        try
 +        {
 +            var type = AccessTools.TypeByName("MegaCrit.Sts2.Core.Models.Events.PunchOff");
@@ -201,16 +202,50 @@ index 0000000..bb72441
 +            if (method == null)
 +            {
 +                GD.Print("[STS2 MCP] Crash guard skipped: PunchOff.PunchEachOther not found");
-+                return;
 +            }
-+            new Harmony("com.sts2mcp.crashguards").Patch(
-+                method, prefix: new HarmonyMethod(typeof(McpMod), nameof(SkipPunchOffAnimation)));
-+            GD.Print("[STS2 MCP] Crash guard on: Punch Off animation is skipped");
++            else
++            {
++                harmony.Patch(method, prefix: new HarmonyMethod(typeof(McpMod), nameof(SkipPunchOffAnimation)));
++                GD.Print("[STS2 MCP] Crash guard on: Punch Off animation is skipped");
++            }
 +        }
 +        catch (Exception ex)
 +        {
 +            GD.Print($"[STS2 MCP] Crash guard skipped: {ex.GetType().Name}: {ex.Message}");
 +        }
++
++        // The merchant's dialogue for a purchase that failed throws for a status it has no
++        // lines for (ArgumentOutOfRangeException in MerchantDialogueSet.GetPurchaseSuccessLines,
++        // "Actual value was FailureOutOfStock"). The relic Lord's Parasol buys the whole shelf in
++        // a loop of its own; when one item on it is already gone, that exception comes out of
++        // LordsParasol.PurchaseEverything and the game dies, at the shop door of the save, on
++        // every resume. A line of dialogue is not worth that: the exception is dropped.
++        foreach (var name in new[] { "ShowForPurchaseAttempt" })
++        {
++            try
++            {
++                var type = AccessTools.TypeByName("MegaCrit.Sts2.Core.Nodes.Screens.Shops.NMerchantDialogue");
++                var method = type == null ? null : AccessTools.Method(type, name);
++                if (method == null)
++                {
++                    GD.Print($"[STS2 MCP] Crash guard skipped: NMerchantDialogue.{name} not found");
++                    continue;
++                }
++                harmony.Patch(method, finalizer: new HarmonyMethod(typeof(McpMod), nameof(DropException)));
++                GD.Print($"[STS2 MCP] Crash guard on: merchant dialogue ({name}) cannot throw");
++            }
++            catch (Exception ex)
++            {
++                GD.Print($"[STS2 MCP] Crash guard skipped: {ex.GetType().Name}: {ex.Message}");
++            }
++        }
++    }
++
++    private static Exception? DropException(Exception? __exception)
++    {
++        if (__exception != null)
++            GD.Print($"[STS2 MCP] Crash guard: dropped {__exception.GetType().Name}: {__exception.Message}");
++        return null;
 +    }
 +
 +    private static bool SkipPunchOffAnimation(ref Task __result)

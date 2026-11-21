@@ -189,7 +189,12 @@ CHOICES = {
     # of Max HP (4.0, 4.3 and 5.4 rounds; the Necrobinder 14.8% and 16.7%), while the act 2 boss went the
     # other way (7 in 24 against 12 in 29). Judge by both: `fightlog.py knobs`, and rounds and cost of
     # ordinary act 2 fights by arm.
-    "punch": [0.9, 1.8],
+    # (0.9 dropped the same day, 2.7 added: of 7 runs at 0.9 four died in act 1 (two decks with two attacks
+    # at the act 1 boss, mean floor 21.3), of 20 at 1.8 one (34.7). Final decks at 1.8 still average 4.5 to
+    # 5.0 against the floor of 5.5, and an ordinary act 2 fight still costs 17.6% of Max HP at 26 enemy HP
+    # a round (the aim is 30). 2.7 gives the same at most, 4 points, and gets there from a smaller shortfall,
+    # so it only differs in acts 2 and 3. DEFAULTS keeps 0.9: the tests of strategy.deck_fit are written around it.)
+    "punch": [1.8, 2.7],
 }
 MIN_RUNS = 20  # runs a setting gets before the record alone decides how often it is drawn
 SPREAD = 12.0  # how far apart two runs of the same character usually end, in floors
