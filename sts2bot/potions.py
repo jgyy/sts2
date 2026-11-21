@@ -12,6 +12,7 @@ Action = tuple[str, dict]
 BOSS_FLOORS = (17, 33, 48)
 
 _DEFENSIVE_POTION = re.compile(r"gain \d+ (block|dexterity)|apply \d+ weak|loses? \d+ strength", re.I)
+_ENEMY_DEBUFF = re.compile(r"apply \d+ (weak|vulnerable|poison|doom)|enem(y|ies) loses? \d+ (strength|hp at the end)|enemy's attacks deal \d+% less", re.I)
 
 
 def potion_actions(state: dict, planned_loss: int | None = None) -> list[Action]:
@@ -79,6 +80,7 @@ def potion_actions(state: dict, planned_loss: int | None = None) -> list[Action]
     # form, 200 HP that hit 30, 40, 50 a turn: every turn off it counts most.
     # (The same while an enemy sleeps: what is thrown at it only wakes it early.)
     passing = any((e.adapts and e.enrage) or e.asleep >= 2 for e in enemies)
+    shielded = next(e.artifact > 0 for e in enemies if e.entity_id == focus)
     for p in potions:
         if not p.get("can_use_in_combat", True):
             continue
@@ -89,6 +91,10 @@ def potion_actions(state: dict, planned_loss: int | None = None) -> list[Action]
         if slippery and re.search(r"deals? \d+ damage|\bstrength\b|\bvigor\b|\bvulnerable\b|\bpoison\b|\bdoom\b", text, re.I):
             continue  # every hit on a Slippery enemy takes 1 HP: keep it for later
         if passing and not danger and (str(p.get("target_type")) in ("AnyEnemy", "AllEnemies") or re.search(r"enem(y|ies)", text, re.I)):
+            continue
+        # Artifact swallows what a potion would put on the enemy: a Weak Potion went into Aeonglass's
+        # Artifact 3 on round 1. It waits until the cards have worn that off.
+        if shielded and not danger and _ENEMY_DEBUFF.search(text):
             continue
         both = re.search(r"deals? (\d+) damage to all (?:players|characters)", text, re.I)
         if both:

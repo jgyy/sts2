@@ -31,6 +31,7 @@ class Memory:
 
     deck_size: int = 10
     deck: list = field(default_factory=list)  # our cards as last seen at the start of a fight, plus picks since
+    max_energy: int = 3  # energy a turn, as the last fight began with
     picks: list = field(default_factory=list)  # (floor, card name) for every card reward taken this run
     card_stats: object = None  # learn.CardStats: how cards have done in our own runs
     card_skips: dict = field(default_factory=dict)  # (act, floor) -> skipped card rewards
@@ -55,6 +56,7 @@ class Memory:
     def reset_run(self) -> None:
         self.deck_size = 10
         self.deck = []
+        self.max_energy = 3
         self.picks = []
         self.map_nodes = {}
         self.map_at = ()
@@ -459,7 +461,7 @@ def _punch(card: dict) -> float:
     return dealt / max(1, 2 if i.is_x else i.cost)
 
 
-def deck_fit(card: dict, deck: list, act: int | None = None) -> float:
+def deck_fit(card: dict, deck: list, act: int | None = None, energy: int = 3) -> float:
     """How much better or worse a card is in *this* deck than on its own.
 
     The ratings in cards.py judge a card alone. Three things they cannot see:
@@ -474,12 +476,27 @@ def deck_fit(card: dict, deck: list, act: int | None = None) -> float:
     if not deck:
         return 0.0
     fit = 0.0
+    # A card that costs more than a turn's energy is only ever played with help (Bury, 4 for 52 damage,
+    # on the Necrobinder's 3: taken 24 times as the best damage for its cost on offer, 2.1 floors a pick
+    # under par, and seen in the hand at "4!" all through a Knowledge Demon fight lost at 12 damage a round).
+    dear = _parse(card).cost > max(3, energy) and not re.search(r"reduce its cost|costs?\b[^.]*\bless", str(card.get("description") or ""), re.I)
+    if dear:
+        fit -= 3.0 if sum(1 for c in deck if _parse(c).energy_gain or _card_key(c) == "FRIENDSHIP") < 2 else 1.0
     floor = PUNCH_FLOOR.get(act) if len(deck) >= 8 else None
-    if floor and _punch(card) >= 8.0:
+    if floor and _punch(card) >= 8.0 and not dear:
         # Worth more for as long as the deck is short of damage: about the first three attacks
         # of a run (a flat 0.8 for every act 1 attack until 2026-11-20), and any later deck that
         # has filled up with other things.
-        fit += min(2.0, max(0.0, 0.9 * (floor - sum(map(_punch, deck)) / len(deck))))
+        # (How hard is a setting under test since 2026-11-21, see learn.CHOICES["punch"]: at 0.9 a point of
+        # shortfall the decks built on other players' ratings stayed a point under the floor.)
+        lean = knob("punch")
+        fit += min(2.0 * lean / 0.9, max(0.0, lean * (floor - sum(map(_punch, deck)) / len(deck))))
+        # ... and the first one of a run comes before whatever pays off later. Other players' ratings put
+        # the Powers first, and a Regent that took Pillar of Creation, Pale Blue Dot twice and Void Form
+        # from its first four rewards died on floor 7. (The 13 runs whose first four picks held no attack
+        # ended on floor 27 on average; with one, two or three of them, 32 to 35 alike.)
+        if act == 1 and not any(_punch(c) >= 8.0 and _card_key(c) != "FALLING_STAR" for c in deck):
+            fit += 1.5
     need, give = _stars(card)
     if need or give:
         pairs = [_stars(c) for c in deck]
@@ -498,6 +515,8 @@ def deck_fit(card: dict, deck: list, act: int | None = None) -> float:
     key = _card_key(card)
     copies = sum(1 for c in deck if _card_key(c) == key)
     fit -= 0.6 * copies
+    if key == "FRIENDSHIP" and copies:
+        fit -= 2.5  # the planner leaves a second one in the hand (2 more Strength for energy it has no cards for)
     return fit
 
 
@@ -522,7 +541,7 @@ def card_reward(state: dict, mem: Memory) -> list[Action]:
     who = str((state.get("player") or {}).get("character") or "")
 
     def worth(c: dict) -> float:
-        v = deck_value(c) + deck_fit(c, mem.deck, act if isinstance(act, int) else None)
+        v = deck_value(c) + deck_fit(c, mem.deck, act if isinstance(act, int) else None, mem.max_energy)
         if mem.card_stats is not None:
             v += mem.card_stats.shift(who, str(c.get("name")))
         # The starter deck cannot kill anything quickly; until that is fixed, an attack is worth
@@ -625,7 +644,7 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
             want = 8.0 - price / 200.0
         elif cat == "card":
             act = (state.get("run") or {}).get("act")
-            v = deck_value(_shop_card(item)) + deck_fit(_shop_card(item), mem.deck, act if isinstance(act, int) else None)
+            v = deck_value(_shop_card(item)) + deck_fit(_shop_card(item), mem.deck, act if isinstance(act, int) else None, mem.max_energy)
             # Only cards that make the deck better, and more freely when rich.
             bar = 4.0 if gold - price >= 200 else 4.5 if mem.deck_size < BIG_DECK else 5.5
             want = v if v >= bar else -1.0

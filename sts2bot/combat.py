@@ -30,6 +30,8 @@ log = logging.getLogger("sts2bot.combat")
 
 MAX_SEARCH_CARDS = 11
 THREAT_FLOOR = 6.0  # damage a turn every enemy is taken to do at least, when choosing whom to hit first
+HIVE_COST = 9.0  # Personal Hive: what a Dazed in our draw pile costs once the hand has no card to spare, in points
+HIVE_PACE = 22.0  # ... and the damage a round the Entomancer is taken to lose, for how long the fight still is
 
 
 def _hit_count(e: Enemy, hits: int, double_if_vulnerable: bool = False) -> int:
@@ -262,6 +264,7 @@ def simulate(
     mastery: int = 0,  # Necro Mastery: whenever Osty loses HP, ALL enemies lose that much HP as well (times its amount)
     might0: int = 0,  # Strength that is on its way and not in the card texts yet (Toasty Mittens, once its Exhaust is chosen)
     holds: bool = False,  # Barricade: Block is not removed when our next turn starts
+    friends: int = 0,  # Friendships already in play (each is an energy a turn, and the next one is worth less)
 ) -> Outcome | None:
     """Score playing `line` in order. None if it cannot be afforded."""
     if card_limit is not None and len(line) > card_limit:
@@ -547,13 +550,19 @@ def simulate(
         if c.strength:
             might += c.strength
             if c.strength_lasts:
-                # Pays off on every attack for the rest of the fight.
+                # Pays off on every attack for the rest of the fight (or costs on every one: Friendship, Shared Fate).
                 future += c.strength * 4.0 * span
+        if c.enemy_strength_lasts:
+            # ... and Strength taken off an enemy for good comes off every hit it still has in it: most from
+            # the ones that hit many times. (This turn's share is in `incoming` already.)
+            future += sum(c.enemy_strength_loss * max(1, e.incoming_hits) * 2.0 * e.worth for e in (alive if c.aoe or t is None else [t]) if e.alive) * span
         if c.type == "Power":
             # (An Ethereal Power not played now is never played: Echo Form was left to vanish 12 times
             # in the 15 boss and elite turns that could pay for it.)
             # (Not in an ordinary fight: three energy on round 1 of four for a card doubled on the other three.)
-            future += 0.0 if c.strength_lasts else _power_worth(c, fight != "monster") * span * (1.6 if c.ethereal and fight != "monster" else 1.0)
+            # (A second Friendship is energy the hand has no cards for, at the same 2 Strength: half, then a quarter.)
+            again, friends = (0.5**friends, friends + 1) if c.key == "FRIENDSHIP" else (1.0, friends)
+            future += 0.0 if c.strength_lasts and c.strength > 0 else again * _power_worth(c, fight != "monster") * span * (1.6 if c.ethereal and fight != "monster" else 1.0)
         elif c.type in ("Status", "Curse"):
             # Only worth clearing out with energy nothing else can use, unless playing it is what
             # gets it out of the deck (Debris, Slimed): then it is every later draw it would have been.
@@ -591,7 +600,15 @@ def simulate(
         # as the deck still has cards that are not dead: the Entomancer (1, then 2, then 3 a hit) is for few
         # big attacks and whatever is not an Attack. Hitting it four times a turn with small ones, a bot drew
         # five Dazed in a hand of six by round 7. (39% of Max HP, the dearest act 2 elite.)
-        score -= 8.0 * dmg_value * dazed * max(0.3, 1.0 - deck[1] / max(10, deck[0]))
+        # ... but not for no attacks at all. At a full card for every Dazed, a 10-damage attack was never
+        # worth two of them, and a Necrobinder that came in on 65/76 ended four turns with 4 to 7 energy
+        # and its attacks in hand while the Entomancer grew from 4x7 to 7x7: dead in round 11 with it on 18.
+        # The first two of a turn cost little (a hand of five has cards to spare for the energy there is),
+        # the ones after that a card each; and only as far as the fight will last long enough to draw them.
+        live = max(10, deck[0])
+        left = sum(e.hp + e.block for e in foes if e.alive and e.hive)
+        in_time = min(1.0, max(0.25, (left / HIVE_PACE) / (live / 5.0))) if left else 0.0
+        score -= HIVE_COST * (0.35 * min(dazed, 2) + max(0, dazed - 2)) * in_time * max(0.3, 1.0 - deck[1] / live)
     # Poison bites at the start of the enemy's turn, before it acts: one that
     # is poisoned through is as good as dead now. Otherwise it is damage on
     # its way, a little less each turn.
@@ -686,8 +703,12 @@ def simulate(
         # A Wither sits in the hand and burns when the turn ends, then comes
         # round again with the deck: the sixth card has to be worth that.
         scorch += wither_hp * (1 + (len(line) - wither_in) // 6)
-    burnt += max(0, scorch - block)
-    through = max(0, incoming - max(0, block - scorch))
+    # (Osty stops attacks and nothing else: with him on 20 two Toxics still took 10, with him on 27 a
+    # Wither+1 took 6, and each time the plan had counted on losing nothing.)
+    guard = min(max(pet, 0), max(block, 0))
+    own = max(0, block - guard)  # Block that is ours
+    burnt += max(0, scorch - own)
+    through = max(0, incoming - max(0, own - scorch) - guard)
     if through and buffer >= sum(e.incoming_hits for e in survivors if e.incoming):
         through = 0  # Buffer swallows each hit that would have hurt
     if through:
@@ -724,7 +745,7 @@ def simulate(
     # never above 9 on average; of 934 turns that ended with an Osty of 6 or more in the way of
     # an attack, 140 had a Block card and the energy for it left in hand.
     if pet > 0:
-        kept = min(pet, max(0, block - scorch - incoming))
+        kept = min(pet, max(0, max(0, own - scorch) + guard - incoming))
         # (Less than our own HP: the fight may end before he is needed, sooner in an ordinary one.)
         score += kept * (1.5 + 2.5 * (1.0 - ratio)) * knob("caution") * {"boss": 0.85, "elite": 0.7}.get(fight, 0.5)
         if mastery:  # ... and under Necro Mastery what he is hit for, every enemy is hit for as well
@@ -824,6 +845,7 @@ def _context(state: dict) -> dict:
         mastery=max(0, power_amount(player, "NECRO_MASTERY")),  # (two of them: "2 times that much HP")
         might0=int(state.get("_might") or 0),
         holds=_has_power(player, "BARRICADE"),
+        friends=max(0, power_amount(player, "FRIENDSHIP")),
         taint=max((power_amount(e, "VITAL_SPARK") for e in [player, *(battle.get("enemies") or [])]), default=0),
     )
 

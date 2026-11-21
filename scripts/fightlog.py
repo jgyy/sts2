@@ -20,6 +20,18 @@
                                                         per card: played against left in the hand at the end
                                                         of a turn that could have paid for it at its start
 
+    python3 scripts/fightlog.py rooms SETTING ['YYYY-MM-DD HH:MM']
+                                                        ordinary fights under each value of one setting, by
+                                                        character and act: rounds, enemy HP a round, HP cost
+                                                        (what a deck-building setting does long before the
+                                                        bosses say anything)
+    python3 scripts/fightlog.py surprises ['YYYY-MM-DD']
+                                                        turns that cost 3 HP or more beyond what the plan
+                                                        expected, by enemy: mechanics the planner does not model
+    python3 scripts/fightlog.py idle ['YYYY-MM-DD']     turns ended with energy and a card it could pay for
+                                                        while 8 HP or more was about to be lost: a penalty
+                                                        that stops the planner playing at all
+
 `load()` returns one record per fight (act, floor, kind, enemies, HP in and out, rounds, every
 logged combat state) joined to its run in runs.jsonl, for one-off questions from a Python prompt.
 """
@@ -270,6 +282,73 @@ def unplayed(kinds: tuple = ("boss", "elite")) -> None:
         print(f"{n:24} played {played[n]:4}  left {left[n]:4}  ({100 * share:.0f}% left)")
 
 
+def rooms(name: str, since: str = "") -> None:
+    table = collections.defaultdict(list)
+    for f in load()[0]:
+        value = ((f.get("run") or {}).get("knobs") or {}).get(name)
+        if f["kind"] != "monster" or not f["turns"] or "died" not in f or value is None or f["t"] < since:
+            continue
+        out = 0 if f["died"] else f["hp_out"]
+        if out is None:
+            continue
+        dealt = _enemy_hp(f["turns"][0][5]) - (_enemy_hp(f["turns"][-1][5]) if f["died"] else 0)
+        for who in (f["char"], "all"):
+            table[(who, f["act"], value)].append((f["rounds"], dealt / max(1, f["rounds"]), (f["hp_in"] - out) / f["max_hp"], f["died"]))
+    for (who, act, value), v in sorted(table.items(), key=lambda kv: (kv[0][0] == "all", str(kv[0][0]), kv[0][1], kv[0][2])):
+        if len(v) >= 8:
+            print(f"{who:12} act {act} {name} {value:4}: fights {len(v):3}  rounds {sum(x[0] for x in v) / len(v):.2f}  enemy HP a round {sum(x[1] for x in v) / len(v):5.1f}"
+                  f"  cost {100 * sum(x[2] for x in v) / len(v):4.1f}% of Max HP  deaths {sum(x[3] for x in v)}")
+
+
+ENDING = re.compile(r"^(\S+ \S+) DEBUG ending r(\d+) on (\d+) HP, expecting to lose (\d+)")
+
+
+def _endings():
+    """(time, kind of fight, enemy names, the last combat state of the turn, HP expected to be lost, HP the next round began on or None)."""
+    kind, last, pending = None, None, None
+    for line in lines():
+        m = ACT.match(line)
+        if m or OVER.match(line):
+            if pending:
+                yield (*pending, None)
+            kind, last, pending = (m.group(4) if m else kind), None, None
+            continue
+        m = COMBAT.match(line)
+        if m:
+            if pending and int(m.group(2)) == int(pending[3].group(2)) + 1:
+                yield (*pending, int(m.group(3)))
+                pending = None
+            last = m
+            continue
+        m = ENDING.match(line)
+        if m and last is not None:
+            names = "+".join(sorted({re.sub(r"_\d+$", "", e.split(" ")[0]) for e in last.group(8).split(" ; ")}))
+            pending = (m.group(1), kind, names, last, int(m.group(4)))
+
+
+def surprises(since: str = "") -> None:
+    rows = [(t, kind, names, last, expected, int(last.group(3)) - after) for t, kind, names, last, expected, after in _endings() if after is not None and t >= since]
+    under = [r for r in rows if r[5] - r[4] >= 3]
+    print(f"turns {len(rows)}; lost 3 HP or more beyond the plan: {len(under)}; 3 or more less: {sum(r[4] - r[5] >= 3 for r in rows)}")
+    turns = collections.Counter(r[2][:44] for r in rows)
+    for name, n in collections.Counter(r[2][:44] for r in under).most_common(15):
+        print(f"  {name:44} {n:3} of {turns[name]:4} turns")
+    for t, kind, _names, last, expected, lost in under[-12:]:
+        print(f"{t[5:]} {kind} expected {expected} lost {lost} | r{last.group(2)} hp {last.group(3)} blk {last.group(5)} en {last.group(6)}{last.group(7)} | {last.group(8)[:150]} | {last.group(9)[:160]}")
+
+
+def idle(since: str = "") -> None:
+    rows = []
+    for t, kind, names, last, expected, _after in _endings():
+        energy = int(last.group(6))
+        spare = [c.group(2).strip() for c in IN_HAND.finditer(last.group(9)) if not c.group(4) and c.group(3).isdigit() and int(c.group(3)) <= energy and c.group(5).strip()]
+        if t >= since and energy >= 1 and spare and expected >= 8:
+            rows.append((t, kind, names, last, expected))
+    print(collections.Counter(r[2][:40] for r in rows).most_common(15))
+    for t, kind, _names, last, expected in rows[-25:]:
+        print(f"{t[5:]} {kind} energy {last.group(6)} expects to lose {expected} | hp {last.group(3)}{last.group(7)} | {last.group(8)[:150]} | {last.group(9)[:170]}")
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
     if args[:1] == ["bosses"]:
@@ -286,6 +365,12 @@ if __name__ == "__main__":
         reads()
     elif args[:1] == ["unplayed"]:
         unplayed(tuple(args[1].split(",")) if len(args) > 1 else ("boss", "elite"))
+    elif args[:1] == ["rooms"] and len(args) > 1:
+        rooms(args[1], args[2] if len(args) > 2 else "")
+    elif args[:1] == ["surprises"]:
+        surprises(args[1] if len(args) > 1 else "")
+    elif args[:1] == ["idle"]:
+        idle(args[1] if len(args) > 1 else "")
     elif args[:1] == ["show"] and len(args) > 1:
         show(args[1], tuple(args[2].split(",")) if len(args) > 2 else ("boss",))
     else:

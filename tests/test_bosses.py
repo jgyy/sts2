@@ -216,12 +216,42 @@ class PersonalHive(unittest.TestCase):
         doom = card(2, "NO_ESCAPE", "No Escape", "Skill", 1, "Apply 15 Doom.", "AnyEnemy")
         solid = card(0, "DRAIN_POWER", "Drain Power", "Attack", 1, "Deal 12 damage.", "AnyEnemy")
         self.assertEqual(self.first(1, [solid]), 0)  # one Dazed for 12 damage: worth it
-        self.assertIsNone(self.first(1, [STRIKE(0)]))  # ... for 6 it is a card thrown away later for less than a card now
-        self.assertIsNone(self.first(3, [solid]))  # three of them: not for 12 either
-        self.assertEqual(self.first(3, [STRIKE(0), big]), 1)  # a big one is
+        self.assertEqual(self.first(1, [STRIKE(0)]), 0)  # ... and for 6: the hand has a card to spare for one Dazed
+        self.assertIsNone(self.first(3, [STRIKE(0)]))  # three of them for 6 is a bad trade
+        self.assertEqual(self.first(3, [STRIKE(0), big]), 1)  # a big one is not
         self.assertEqual(self.first(3, [STRIKE(0), doom]), 2)  # and what is not an Attack costs nothing
-        self.assertEqual(self.first(3, [solid], junk=8), 0)  # (in a deck already full of them a draw is worth little)
+        self.assertEqual(self.first(3, [STRIKE(0)], junk=8), 0)  # (in a deck already full of them a draw is worth little)
         self.assertEqual(combat.read_enemies(combat_state([], [enemy("E", 9, status=[{"id": "PERSONAL_HIVE_POWER", "amount": 2}])]))[0].hive, 2)
+
+    def test_the_hive_never_stops_every_attack(self):
+        """Seen 2026-11-21: 4 energy, three attacks in hand, 4x7 coming, and nothing played (hive 2)."""
+        unleash = card(0, "UNLEASH", "Unleash", "Attack", 1, "Deal 10 damage.", "AnyEnemy")
+        storm = card(1, "SOUL_STORM", "Soul Storm", "Attack", 1, "Deal 9 damage.", "AnyEnemy")
+        foe = enemy("ENTOMANCER_0", 88, attack="4x7", status=[{"id": "PERSONAL_HIVE_POWER", "amount": 2}])
+        s = combat_state([unleash, storm, STRIKE(2)], [foe], energy=4, hp=65, max_hp=76, kind="elite")
+        s["player"]["draw_pile"], s["player"]["discard_pile"] = [STRIKE(9)] * 20, []
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 0)  # the biggest one goes
+        s["player"]["hand"] = [STRIKE(2)]
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 2)  # ... a Strike too, when it is the only one
+        # After it, each further attack is two whole cards later on: only one that is worth them.
+        foes = combat.read_enemies(s)
+        ctx = dict(energy=4, stars=0, hp=65, max_hp=76, block=0, fight="elite", deck=(21, 0))
+        one = combat.simulate([parse(unleash)], foes, **ctx).score
+        two = combat.simulate([parse(unleash), parse(storm)], foes, **ctx).score
+        self.assertLess(two, one)
+        # With the kill in the hand nothing is drawn afterwards: everything goes.
+        foe = enemy("ENTOMANCER_0", 24, attack="4x7", status=[{"id": "PERSONAL_HIVE_POWER", "amount": 3}])
+        s = combat_state([unleash, storm, STRIKE(2)], [foe], energy=4, hp=65, max_hp=76, kind="elite")
+        played = []
+        while (act := combat.choose_card(s)) is not None and len(played) < 4:
+            c = next(h for h in s["player"]["hand"] if h["index"] == act[1]["card_index"])
+            played.append(c["name"])
+            s["player"]["hand"].remove(c)
+            s["player"]["energy"] -= 1
+            foe["hp"] -= {"Unleash": 10, "Soul Storm": 9, "Strike": 6}[c["name"]]
+            if foe["hp"] <= 0:
+                break
+        self.assertEqual(len(played), 3)
 
 
 class Disintegration(unittest.TestCase):
