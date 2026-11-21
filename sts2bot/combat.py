@@ -22,7 +22,7 @@ from .battle import (  # noqa: F401  (also the names other modules and the tests
 from .cards import CardInfo, order_key, parse
 from .potions import fortifier, describe, potion_actions  # noqa: F401
 from . import sandpit as pit
-from . import artifact, triggers
+from . import artifact, closing, triggers
 from .learn import knob
 
 Action = tuple[str, dict]
@@ -30,6 +30,8 @@ Action = tuple[str, dict]
 log = logging.getLogger("sts2bot.combat")
 
 MAX_SEARCH_CARDS = 11
+# What a point of our HP costs a line, in points of damage: at full health, more by the time none is left, more for a turn that takes it all.
+HP_BASE, HP_SLOPE, HP_BITE = 1.5, 2.5, 3.0
 THREAT_FLOOR = 6.0  # damage a turn every enemy is taken to do at least, when choosing whom to hit first
 HIVE_COST = 9.0  # Personal Hive: what a Dazed in our draw pile costs once the hand has no card to spare, in points
 HIVE_PACE = 22.0  # ... and the damage a round the Entomancer is taken to lose, for how long the fight still is
@@ -234,6 +236,7 @@ def simulate(
     free: int = 0,  # Void Form: this many of the next cards cost no energy
     doubled: bool = False,  # Duplication (the Duplicator potion): the next card is played an extra time, whatever it is
     fortify: int = 1,  # a Fortifier waits on the belt for this turn's Block ("Triple your Block": 3)
+    pace: float = 0.0,  # HP the enemies have lost a round so far in this fight (0: too early to say)
 ) -> Outcome | None:
     """Score playing `line` in order. None if it cannot be afforded."""
     if card_limit is not None and len(line) > card_limit:
@@ -751,13 +754,14 @@ def simulate(
     # of what is left: at 37 HP facing 27 the bot attacked with two Defends
     # in hand and was dead a turn later.
     bite = min(1.0, lost / max(1, hp))
-    worth = 1.5 + 2.5 * (1.0 - ratio) + 3.0 * bite
+    worth = HP_BASE + HP_SLOPE * (1.0 - ratio) + HP_BITE * bite
     # (Pricing HP in boss fights as a race, cheap whatever is left of it, was
     # tried as a setting on 2026-11-18: 0 of 13 act 3 bosses against 5 of 20,
     # no better in acts 1 and 2. Removed.)
     # (Pricing HP 1.4 times higher in the last five rooms before a boss was tried as a setting
     # until 2026-11-19: 32 runs, no win, against 5 wins in 54; no further either. Removed.)
     price = lost * worth * (4.0 if doomed else 1.0) * knob("caution")
+    price *= closing.discount(pace, lost, hp, survivors)  # (a boss about to die: the HP we keep past its death buys nothing)
     score -= price
     if len(line) < wither_in:
         # The count carries over, so a line that stops short of the next Wither has only put it off: it
@@ -845,6 +849,7 @@ def _context(state: dict) -> dict:
         # (Echo Form: "The first card you play each turn is played an extra time", and a second one the second card.)
         doubled=_has_power(player, "DUPLICATION") or max(0, power_amount(player, "ECHO_FORM")) > int(state.get("_plays_this_turn") or 0),
         taint=max((power_amount(e, "VITAL_SPARK") for e in [player, *(battle.get("enemies") or [])]), default=0),
+        pace=closing.pace(state),
     )
 
 

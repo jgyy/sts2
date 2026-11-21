@@ -211,6 +211,13 @@ how many cards of each sort the deck held (Block cards, cards taken for
 damage, Powers, ...), with the character taken out, then the cards and relics
 themselves; `decklog.py bosses` does the same for boss fights won and lost.
 
+Two scripts play a model of a boss fight with the bot's real planner, so a
+change to it can be tried on a few thousand fights in a minute:
+`scripts/crabfight.py` (Crusher and Rocket) and `scripts/demonfight.py` (the
+Knowledge Demon). The second also works out the best play there is for its
+decks, so it shows how many fights the planner gives away and on which turns
+(`demonfight.py regret`), and takes `NAME=VALUE` to try a planner constant.
+
 ## Options
 
 | Option | Default | Meaning |
