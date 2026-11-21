@@ -451,6 +451,10 @@ class Necrobinder(unittest.TestCase):
         late = combat_state([surge, STRIKE(1)], [{**enemy("A", 90, attack=10), "max_hp": 300}], hp=60, kind="boss")
         late["battle"]["round"] = 8
         self.assertEqual(combat.choose_card(late)[1]["card_index"], 0)
+        # Round 5 of the Insatiable on 67 of 76: six turns to go is 18 Doom, and the boss will have taken half our HP by then.
+        mid = combat_state([surge, STRIKE(1)], [{**enemy("A", 175, attack=20), "max_hp": 321}], hp=67, max_hp=76, kind="boss")
+        mid["battle"]["round"] = 5
+        self.assertEqual(combat.choose_card(mid)[1]["card_index"], 1)
         late["player"]["hp"] = 25  # ... which is too much of 25
         self.assertEqual(combat.choose_card(late)[1]["card_index"], 1)
         late["player"]["hp"] = 60
