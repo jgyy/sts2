@@ -236,7 +236,7 @@ BOSS_WORTH = 16.0  # what getting past the boss is worth, in the units of the ro
 MAX_PATHS = 1500
 
 
-def boss_odds(hp_ratio: float) -> float:
+def boss_odds(hp_ratio: float, act: int = 1) -> float:
     """Chance of beating the boss given how healthy we arrive, next to arriving at full HP.
 
     Below 60% HP a boss is hardly ever beaten (1 in 12); from 80% up it makes
@@ -247,7 +247,18 @@ def boss_odds(hp_ratio: float) -> float:
     when half the bosses were still met below 60% HP: it put 80% HP at 0.58
     and 90% at 0.78, so 20 HP at the boss weighed more than three relics and
     an elite on offer was taken 5 times in 78 at 85% HP or more.)
+
+    The last boss is another matter: of 37 met on Ascension 4 (to 2026-11-20) all six beaten were
+    entered on 95% HP or more (6 in 23; none in 14 below), and on Ascension 5 none in 8 below 80%.
+    So in act 3 the curve is steep right up to full health, and a route there is worth what HP it
+    keeps (elites are not taken in act 3 anyway, so this costs no relics).
     """
+    if act >= 3:
+        if hp_ratio >= 0.95:
+            return 1.0
+        if hp_ratio >= 0.8:
+            return 0.3 + 0.7 * (hp_ratio - 0.8) / 0.15
+        return max(0.0, 0.3 * (hp_ratio - 0.5) / 0.3)
     if hp_ratio >= 0.85:
         return 1.0
     if hp_ratio >= 0.6:
@@ -317,7 +328,7 @@ def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, 
         elif kind == "Ancient":
             score += 3.0
         elif kind == "Boss":
-            score += BOSS_WORTH * boss_odds(hp / max(1, max_hp))
+            score += BOSS_WORTH * boss_odds(hp / max(1, max_hp), act)
     return score
 
 
@@ -411,7 +422,11 @@ def rewards(state: dict, mem: Memory) -> list[Action]:
 # 8 Stars a cycle and made 2 passed for supplied (Falling Star, Gamma Blast and Astral Pulse sat
 # unplayable through most of a lost Vantom fight, next to one Venerate). Star-locked cards were
 # left in the hand on 34% of the turns of lost boss fights, 23% of won ones.
-STARS_AT_START = 1.5
+# (1.5 until 2026-11-21, with the supply counted a fifth over: decks still came out short. By what
+# the cards themselves need and give, a Regent deck 3 Stars or more short ended 53% of the turns of
+# its last boss fight with a Star card locked in the hand, one 1-2 short 40%, one in surplus 22%
+# (39 fights), and all nine Regent deaths at an act 1 boss were decks 2 or more short.)
+STARS_AT_START = 1.0
 
 
 def _stars(card: dict) -> tuple[int, int]:
@@ -422,7 +437,10 @@ def _stars(card: dict) -> tuple[int, int]:
     later = sum(len(re.findall(r"star_icon", m)) for m in re.findall(r"next turn, gain ((?:\[star_icon\.png\]\s*)+)", text, re.I))
     # Genesis ("At the start of your turn, gain 2 Stars"): about three turns to a cycle of the deck.
     later += 3 * sum(len(re.findall(r"star_icon", m)) for m in re.findall(r"start of (?:your|each) turn, gain ((?:\[star_icon\.png\]\s*)+)", text, re.I))
-    return need, info.star_gain + later
+    give = info.star_gain
+    if give and re.search(r"if this kills[^.]*gain", text, re.I):
+        give = 1  # Knockout Blow's 5 Stars come with a kill: counted in full they paid for a Seven Stars on paper
+    return need, give + later
 
 
 # What the cards of a deck should do for an energy, on average, before damage stops being what it is
@@ -468,11 +486,11 @@ def deck_fit(card: dict, deck: list, act: int | None = None) -> float:
         demand = sum(n for n, _ in pairs)
         supply = STARS_AT_START + sum(g for _, g in pairs)
         if need:
-            short = demand + need - 1.2 * supply
+            short = demand + need - supply
             if short > 0:
-                fit -= min(4.0, 0.7 * short)
+                fit -= min(4.0, 0.8 * short)
         if give and demand > supply:
-            fit += min(2.0, 0.4 * (demand - supply))
+            fit += min(2.5, 0.5 * (demand - supply))
         elif give and supply - STARS_AT_START >= demand + 3:
             # Stars nothing in the deck spends: a Regent with Venerate, Hidden Cache,
             # Gather Light and Genesis ended a fight holding 15 of them.
@@ -598,7 +616,9 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
             continue
         cat = str(item.get("category"))
         if cat == "card_removal":
-            want = 9.0
+            # (From Ascension 6 the price is 100 and 50 more each time: at 150 and up a removal has to
+            # beat the relics on the shelf instead of going before them.)
+            want = 9.0 if price <= 125 else 7.6 - (price - 100) / 100.0
         elif cat == "relic":
             # (Snecko Eye was refused here until 2026-11-20, as costs the planner could not count on. It reads
             # the cost of every card in hand as drawn, and 3 of the 5 runs that held one were won.)

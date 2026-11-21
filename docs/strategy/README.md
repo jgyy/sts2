@@ -40,6 +40,9 @@ into the code yet: these are candidates to try, one at a time, against the bot's
 | Focus the enemy that does the most for its health | `combat._pick_target` in ordinary fights (`Bot._threat` remembers what each enemy has done) |
 | Race an enemy that gains Strength every turn (Devoted Sculptor, cultists) | `Enemy.grows` raises what damage is worth in `combat.simulate` |
 | Entomancer: few big attacks, since every Attack that hits it adds Dazed | `Enemy.hive`, priced per hit in `combat.simulate` |
+| Decimillipede: bring the segments down together (a dead one is back in two turns while another lives) | `Enemy.reattach`, `combat._pick_target`: the healthiest segment is hit and none finished until the rest have 40 HP or less |
+| The Regent's Star cards need Stars | `strategy.deck_fit`: Star cards lose and makers gain by what the deck is short (tightened 2026-11-21) |
+| Arrive at the last boss on full HP | `strategy.boss_odds`: in act 3 a route is worth full marks only from 95% HP |
 | Powers and Ethereal cards played while they can be, in long fights | `battle._power_worth` (not below what other players' results say), 1.6 times for Ethereal Powers |
 
 ## Candidates to try
@@ -85,7 +88,8 @@ are second-hand.
      check it also stops spending energy on them.
    - Infested Prism: guides say the first Attack each turn gives *us* an energy; the bot measured Vital Spark as
      harder hits per Skill. The bot's reading is from live fights; the guide may describe an older patch.
-8. **Higher ascensions, when the bot gets there.** A6: removal costs 100 and 50 more each time, so the second
+8. **Higher ascensions.** (A6, done 2026-11-21: `strategy.shop` no longer puts a removal above 125 gold before
+   every relic.) A6: removal costs 100 and 50 more each time, so the second
    one is usually worse than a relic. A7: rares and upgraded cards half as common, so upgrades at rest sites are
    worth more (`upgrade_worth`). A8/A9: about a tenth more enemy HP and damage, so `FIGHT_COST` needs measuring
    again. A10: two act 3 bosses in a row, so arrive with a full belt and a deck that lasts.

@@ -61,6 +61,17 @@ class LearnedRatings(unittest.TestCase):
         self.assertLess(strategy.deck_fit(cache, deck), -0.4)
         self.assertEqual(strategy.deck_fit(cache, [STRIKE(0)]), 0.0)  # an empty star bank still wants makers
 
+    def test_a_deck_short_of_stars_wants_makers_not_one_more_card_that_spends_them(self):
+        star = lambda i, name, need, text: {**card(i, name.upper().replace(" ", "_"), name, "Attack", 0, text, "AnyEnemy"), "star_cost": need}
+        venerate = card(0, "VENERATE", "Venerate", "Skill", 1, "Gain [star_icon.png][star_icon.png].", "Self")
+        blow = card(1, "KNOCKOUT_BLOW", "Knockout Blow", "Attack", 3, "Deal 30 damage. If this kills an enemy, gain " + "[star_icon.png]" * 5 + ".", "AnyEnemy")
+        deck = [venerate, blow, star(2, "Falling Star", 2, "Deal 8 damage."), star(3, "Astral Pulse", 3, "Deal 6 damage to ALL enemies twice."), STRIKE(4)]
+        # Needs 5 Stars a cycle and makes 3 (the Blow's five come with a kill: one), plus the one the fight starts with.
+        seven = star(9, "Seven Stars", 7, "Deal 7 damage to ALL enemies 7 times.")
+        self.assertLess(strategy.deck_fit(seven, deck), -3.5)
+        glow = card(8, "GLOW", "Glow", "Skill", 1, "Gain [star_icon.png]. Draw 1 card. Next turn, draw 1 card.", "Self")
+        self.assertGreater(strategy.deck_fit(glow, deck), 0.4)
+
     def test_a_strike_is_removed_before_a_defend(self):
         cards_ = [DEFEND(0), STRIKE(1), card(2, "POMMEL_STRIKE", "Pommel Strike", "Attack", 1, "Deal 9 damage. Draw 1 card.", "AnyEnemy")]
         order = strategy._pick_order(cards_, "Choose a card to Remove.")
@@ -137,9 +148,9 @@ class Tuning(unittest.TestCase):
             knobs = learn.Knobs(Path(d) / "tuning.json", rng=random.Random(1))
             for _ in range(300):
                 knobs.draw()
-                knobs.record(8.0 if learn.KNOB["caution"] == 1.35 else -4.0)  # careful runs get further
+                knobs.record(8.0 if learn.KNOB["caution"] == 0.75 else -4.0)  # bold runs get further
             used = [learn.Knobs(Path(d) / "tuning.json", rng=random.Random(n)).draw()["caution"] for n in range(40)]
-            self.assertGreater(used.count(1.35), 30)
+            self.assertGreater(used.count(0.75), 30)
         self.assertEqual(learn.knob("caution"), 1.0)  # the defaults are back
 
 
@@ -199,6 +210,12 @@ class Strategy(unittest.TestCase):
         self.assertEqual(strategy.boss_odds(0.9), strategy.boss_odds(1.0))
         self.assertGreater(strategy.boss_odds(0.8), 2 * strategy.boss_odds(0.6) - 0.1)
         self.assertGreater(strategy.boss_odds(0.6), strategy.boss_odds(0.5))
+        # The last boss has only been beaten from 95% HP up: there, 85% is a third of the way to nothing.
+        self.assertEqual(strategy.boss_odds(0.96, 3), 1.0)
+        self.assertLess(strategy.boss_odds(0.85, 3), 0.6)
+        self.assertLess(strategy.boss_odds(0.7, 3), 0.25)
+        fight_or_rest = [("Monster", 12), ("RestSite", 13), ("Boss", 14)], [("RestSite", 12), ("RestSite", 13), ("Boss", 14)]
+        self.assertGreater(strategy.path_value(fight_or_rest[1], 50, 80, 0, 3), strategy.path_value(fight_or_rest[0], 50, 80, 0, 3) + 3.0)
 
     def test_rests_before_the_boss_unless_nearly_full(self):
         opts = [{"index": 0, "id": "REST", "is_enabled": True}, {"index": 1, "id": "SMITH", "is_enabled": True}]
@@ -336,6 +353,9 @@ class Strategy(unittest.TestCase):
         }
         acts = strategy.shop(self.base("shop", gold=250, shop=shop), Memory())
         self.assertEqual(acts, [("shop_purchase", {"index": 2}), ("shop_purchase", {"index": 1}), ("proceed", {})])
+        # Ascension 6: the second removal costs 150, and the relic at the same price comes first.
+        shop["items"][2]["price"] = 150
+        self.assertEqual(strategy.shop(self.base("shop", gold=250, shop=shop), Memory())[0], ("shop_purchase", {"index": 1}))
 
     def test_a_shop_before_the_boss_fills_the_potion_belt(self):
         items = [
