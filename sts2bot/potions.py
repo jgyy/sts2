@@ -11,6 +11,7 @@ Action = tuple[str, dict]
 
 BOSS_FLOORS = (17, 33, 48)
 SAVE_FLOORS = 6  # floors before a boss from which a full belt is no longer a reason to drink
+SPARE_BEYOND = 3  # potions a boss fight is kept: more than that on the belt are drunk on the way
 
 # (Dexterity for the whole fight, the Dexterity Potion's 2, is not one of these: it goes early, like Strength.)
 _DEFENSIVE_POTION = re.compile(r"gain \d+ block|gain \d+ dexterity\. at the end of your turn|apply \d+ weak|enem(y|ies) loses? \d+ strength", re.I)
@@ -131,6 +132,11 @@ def potion_actions(state: dict, planned_loss: int | None = None, line: list | No
         # (Three floors until 2026-11-21. A slot emptied six floors or less before a boss was filled again
         # in time 7 times in 10, one emptied ten floors before it 19 times in 20.)
         spare = 0
+    elif kind in ("monster", "elite"):
+        # A belt that holds more than three (Potion Belt, Phial Holster) is never "full", so nothing on it
+        # counted as spare: a Regent went from 53 HP to 31 to 16 in two ordinary fights holding five, and
+        # drank them all in the fight it died in. What is beyond three is for the way there.
+        spare = max(spare, len(potions) - SPARE_BEYOND)
     # Elites used to get the whole belt on round 1, and they are not where
     # runs end: 125 of 149 deaths were at a boss. Bosses met with two or three
     # potions were beaten far more often (act 2: 65% against 34% with one or

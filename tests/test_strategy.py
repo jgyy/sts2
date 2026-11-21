@@ -272,7 +272,8 @@ class Tuning(unittest.TestCase):
         from unittest import mock
         from sts2bot import learn
 
-        with tempfile.TemporaryDirectory() as d, mock.patch.dict(learn.KNOB):
+        # (Whatever is on trial just now: the sampler is what is tested, on a setting with two values.)
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(learn.KNOB), mock.patch.dict(learn.CHOICES, {"caution": [0.75, 1.0]}):
             knobs = learn.Knobs(Path(d) / "tuning.json", rng=random.Random(1))
             for _ in range(300):
                 knobs.draw()
@@ -311,6 +312,22 @@ class Strategy(unittest.TestCase):
         }
         self.assertEqual(strategy.map_screen(self.base("map", map=m), Memory())[0][1], {"index": 1})
 
+    def test_badly_hurt_an_elite_is_never_the_way_on_while_there_is_another(self):
+        # 14 of 76 HP in act 2: both roads are dead on paper (-67.1 and -72.2), and the elite's relic and the
+        # rest site behind it tipped it. The Unknown room is a fight one time in five; the elite always is.
+        nodes = [{"col": 2, "row": 10, "type": "Elite", "children": [[2, 11]]}, {"col": 3, "row": 10, "type": "Unknown", "children": [[3, 11]]},
+                 {"col": 2, "row": 11, "type": "RestSite", "children": [[2, 12]]}, {"col": 3, "row": 11, "type": "Monster", "children": [[2, 12]]},
+                 {"col": 2, "row": 12, "type": "Monster", "children": [[2, 13]]}, {"col": 2, "row": 13, "type": "Boss", "children": []}]
+        opts = [{"index": 0, "col": 2, "row": 10, "type": "Elite"}, {"index": 1, "col": 3, "row": 10, "type": "Unknown"}]
+        state = self.base("map", hp=14, map={"next_options": opts, "nodes": nodes})
+        state["player"]["max_hp"], state["run"]["act"] = 76, 2
+        with mock.patch.dict(learn.KNOB, {"elite_worth": 6.0}):
+            self.assertEqual(strategy.map_screen(state, Memory())[0][1], {"index": 1})
+            with mock.patch.object(strategy, "ELITE_FLOOR", 0.0):
+                self.assertEqual(strategy.map_screen(state, Memory())[0][1], {"index": 0})  # (what the values alone said)
+            state["map"]["next_options"] = opts[:1]  # no other way: the elite it is
+            self.assertEqual(strategy.map_screen(state, Memory())[0][1], {"index": 0})
+
     def test_route_keeps_enough_health_for_the_boss(self):
         # An elite right before the boss costs more than its relic is worth, even from
         # full health. With a rest site in between an act 1 elite (20 HP) is paid for:
@@ -330,7 +347,8 @@ class Strategy(unittest.TestCase):
             return strategy.map_screen(state, Memory())[0][1]["index"]
 
         self.assertEqual(pick(80, "Unknown"), 1)
-        self.assertEqual(pick(80, "RestSite"), 0)
+        with mock.patch.dict(learn.KNOB, {"elite_worth": 6.0}):  # (the worth in force; at 2.5 the monster and an upgrade win in act 1)
+            self.assertEqual(pick(80, "RestSite"), 0)
         self.assertEqual(pick(60, "RestSite"), 1)
         self.assertEqual(pick(80, "RestSite", act=2), 1)
         self.assertEqual(pick(80, "RestSite+RestSite", act=2), 0)
@@ -388,6 +406,18 @@ class Strategy(unittest.TestCase):
             self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 0)
         finally:
             learn.KNOB["upgrade_worth"] = saved
+
+    def test_an_upgrade_counts_the_same_in_act_one_whatever_the_setting(self):
+        # Act 1 lost 20 runs in 86 with the upgrade at 2.5 and 16 in 143 at 4.0; from act 2 on the lower
+        # worth got past the boss oftener. So the setting only speaks from act 2.
+        rooms = [("RestSite", 9), ("Monster", 10), ("Boss", 16)]
+        values = {}
+        for act in (1, 2):
+            for worth in (2.5, 4.0):
+                with mock.patch.dict(learn.KNOB, {"upgrade_worth": worth}):
+                    values[act, worth] = strategy.path_value(rooms, 76.0, 80, 100, act)  # too healthy to rest: the upgrade is taken
+        self.assertEqual(values[1, 2.5], values[1, 4.0])
+        self.assertAlmostEqual(values[2, 4.0] - values[2, 2.5], 1.5)
 
     def test_heals_before_a_boss_when_below_ninety_percent(self):
         # Act 2 at 61 of 75 HP, the boss next: a flat upgrade bonus used to beat the heal
