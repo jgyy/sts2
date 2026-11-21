@@ -148,7 +148,9 @@ class CardStats:
         # floors a pick) and a card far below the rest still drifted up.
         # A card with no record of its own stands where its kind does, not at nothing.
         start = self.kind_shift(self.kinds.get(key, ""), key) * FLOORS_PER_POINT
-        learned = (gained - picks * self._par(character) + PRIOR_PICKS * start) / (picks + PRIOR_PICKS) / FLOORS_PER_POINT
+        if self.kinds.get(key) == "free":
+            start *= knob("free_lean")  # a setting under test (see CHOICES)
+        learned =(gained - picks * self._par(character) + PRIOR_PICKS * start) / (picks + PRIOR_PICKS) / FLOORS_PER_POINT
         return max(-MAX_SHIFT, min(MAX_SHIFT, learned)) + CURIOSITY / (1.0 + picks) ** 0.5
 
     def record(self, character: str, floor: int, won: bool, picks: list) -> None:
@@ -207,7 +209,7 @@ def seed_from_history(stats: CardStats, runs_file: Path) -> None:
 # more and more often from the settings whose runs have gone furthest
 # (Thompson sampling). Good settings end up being used nearly always.
 
-DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "crowd": 0.6, "punch": 0.9, "weak_want": 0.0, "attack_room": 99.0, "block_want": 0.0, "cards_first": 0.0, "debuff_worth": 1.0}
+DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "crowd": 0.6, "punch": 0.9, "weak_want": 0.0, "attack_room": 99.0, "block_want": 0.0, "cards_first": 0.0, "debuff_worth": 1.0, "free_lean": 1.0}
 CHOICES = {
     # Weight of HP lost in the combat planner. (1.35 and 1.8 were dropped on 2026-11-21. Runs since
     # 2026-11-19 20:06 that reached the act 2 boss got past it 44 times in 74 at 1.0 and 19 in 54 at 1.35,
@@ -282,6 +284,16 @@ CHOICES = {
     # won brought 1.8 such cards, the lost 1.1); the act 2 bosses show nothing either way. Weak is a quarter off
     # attacks of 25 to 45, and other players' ratings do not see what the deck already holds.
     "weak_want": [0.0, 1.0],
+    # How much of the start a free attack gets from its kind (cards.kind "free"; at 1.0 that is the +1.0 floors
+    # a pick of 2026-11-21 23:02, learn.CardStats.shift). Added on 2026-11-22 as a test. The Knowledge Demon model
+    # (scripts/demonfight.py, 2,400-3,600 fights an arm, same hands) rates two more free 7-damage attacks at
+    # -5 to -8 points of win chance from a base of 24-28% with perfect play: under Sloth a hand is played three
+    # cards at most, so a card that costs nothing takes one of the three places, and the bot takes Sloth on every
+    # Demon run. The logs do not settle it: act 2 boss fights since 17:54 with two or more free attacks in the deck
+    # won 28 of 53 at 80%+ HP against 21 of 32 with at most one, and 10 of 36 against 3 of 14 below 80%. 0.0 starts
+    # free attacks at par; their own record still counts. Judge by `fightlog.py bosspace` after 25 act 2 bosses an
+    # arm (boss pace a round and wins), with what an ordinary act 2 fight costs.
+    "free_lean": [0.0, 1.0],
     # How many cards taken for their damage a deck holds before the lean above lets go (decks.deck_fit:
     # in full up to this many, gone three cards later; 99 is "never", what the bot did until 2026-11-21).
     # Why: of 81 act 2 bosses met with the deck on record, decks holding ten or more attacks other than
