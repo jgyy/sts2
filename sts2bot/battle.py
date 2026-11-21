@@ -526,6 +526,23 @@ def _next_wither(player: dict, round_no: int = 1) -> int:
     return 3 * (level + 1)
 
 
+WITHER_FIGHT = 11  # the round an Aeonglass fight is over by when it is won (10 and 11; the lost ones end on 7)
+
+
+def _wither_bill(player: dict, round_no: int, wither_hp: int) -> float:
+    """What each card played costs in Withers still to come, in points: a sixth of what one does after its first turn.
+
+    A Wither goes round with the deck, so it burns again (a level worse by then, and Block may stop it)
+    and takes a card's place for as often as it is drawn before the fight ends: once or twice for one
+    made on round 2, hardly at all for one made on round 8. Until 2026-11-21 this was (4 x its damage
+    + 20) / 6 whatever the round, which grows as the fight runs out: 5.3 a card on rounds 1-3, 7.3 on
+    4-6 and 9.3 from round 7, when a Strike is worth 9 and six of nine lost fights ended.
+    """
+    deck = len(player.get("hand") or []) + sum(int(player.get(p + "_count") or len(player.get(p) or [])) for p in ("draw_pile", "discard_pile"))
+    again = min(1.5, max(1, WITHER_FIGHT - round_no) / max(3.0, deck / 5.0))  # times it comes round again
+    return again * (2.5 * (wither_hp + 3) + 6.0) / 6.0
+
+
 def cards_left_this_turn(state: dict) -> int | None:
     """How many more cards we may play this turn, when something limits it."""
     player = state.get("player") or {}

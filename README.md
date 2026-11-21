@@ -20,7 +20,8 @@ Slay the Spire 2  <-- STS2_MCP mod (HTTP on localhost:15526) -->  sts2bot (Pytho
     simulation (damage, kills, block against enemy intents, lethal checks),
     plays the first card of the best line, then plans again.
   - `strategy.py` handles the map, rewards, shops, rest sites and card
-    selections; `events.py` rates event options. The map is planned a whole route at a time: every way to the
+    selections (`decks.py`: what a card is worth in the deck that would take
+    it); `events.py` rates event options. The map is planned a whole route at a time: every way to the
     boss is scored by what it gives (relics, cards, upgrades) against the
     health the bot would arrive with, because the run history shows the boss
     is rarely beaten from below 75% HP. Rest sites use the same sums to
@@ -180,6 +181,9 @@ In `~/.local/state/sts2bot/` (change with `--log-dir`):
   HP, relics, the deck and the card rewards taken (with the floor of each).
 - `card_stats.json`: what the bot has learned about each card (see `learn.py`).
 - `tuning.json`: how runs went with each value of the settings it tunes.
+- `fights.jsonl`: one line per fight with the deck, relics and potions it began
+  with, the enemies, the rounds it took and the HP before and after (the log
+  only reaches back about four hours; this is kept, and set aside at 64 MB).
 
 `scripts/fightlog.py` reads them fight by fight (the bot has to run with `-v`):
 `bosses` prints the record against each boss, `costs` what each ordinary
@@ -197,6 +201,11 @@ and `powers` (powers seen on enemies or on us that no module of the bot names,
 with their rules text). `events` lists every event met with how often each
 option was taken, and `wiki` saves the game's text for every discovered card
 and relic to `wiki.json` next to the logs.
+
+`scripts/decklog.py` reads `fights.jsonl`: what an ordinary fight costs against
+how many cards of each sort the deck held (Block cards, cards taken for
+damage, Powers, ...), with the character taken out, then the cards and relics
+themselves; `decklog.py bosses` does the same for boss fights won and lost.
 
 ## Options
 

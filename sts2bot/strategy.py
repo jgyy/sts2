@@ -15,15 +15,14 @@ from .learn import knob
 from .potions import BOSS_FLOORS, boss_worth
 from .events import _event_option_value, event  # noqa: F401  (events live in their own module)
 from .cards import _card_key, deck_value, is_basic, is_junk, parse as _parse
-from . import afflictions, crowd, handpick
+from .decks import BIG_DECK, SKIP_THRESHOLD, _blocks, _hitters, _punch, _stars, deck_fit, reward_bar  # noqa: F401  (what a card is worth in this deck: its own module)
+from . import afflictions, handpick
 
 Action = tuple[str, dict]
 
 log = logging.getLogger("sts2bot.strategy")
 
-SKIP_THRESHOLD = 3.0  # card rewards scoring below this are skipped
 POTION_SWAP = 6.0  # how much more a potion on offer must be worth at a boss than the least of a full belt to take its place
-BIG_DECK = 24
 
 
 @dataclass
@@ -38,6 +37,7 @@ class Memory:
     card_skips: dict = field(default_factory=dict)  # (act, floor) -> skipped card rewards
     select_key: str = ""
     logged_select: str = ""  # the "choose a card" screen last written to the log
+    logged_shop: str = ""  # the shop shelf last written to the log
     selected: set = field(default_factory=set)
     runs_finished: int = 0
     character_selected: bool = False
@@ -448,122 +448,6 @@ def rewards(state: dict, mem: Memory) -> list[Action]:
     return out
 
 
-# The Regent's starting relic gives 3 Stars a fight, once. A boss fight goes through the deck two or
-# three times, so they pay for half as much each time round: counted in full, a deck that needed
-# 8 Stars a cycle and made 2 passed for supplied (Falling Star, Gamma Blast and Astral Pulse sat
-# unplayable through most of a lost Vantom fight, next to one Venerate). Star-locked cards were
-# left in the hand on 34% of the turns of lost boss fights, 23% of won ones.
-# (1.5 until 2026-11-21, with the supply counted a fifth over: decks still came out short. By what
-# the cards themselves need and give, a Regent deck 3 Stars or more short ended 53% of the turns of
-# its last boss fight with a Star card locked in the hand, one 1-2 short 40%, one in surplus 22%
-# (39 fights), and all nine Regent deaths at an act 1 boss were decks 2 or more short.)
-STARS_AT_START = 1.0
-
-
-def _stars(card: dict) -> tuple[int, int]:
-    """(Stars the card needs, Stars it gives) each time it is played."""
-    info = _parse(card)
-    need = 2 if info.star_cost < 0 else info.star_cost
-    text = str(card.get("description") or "")
-    later = sum(len(re.findall(r"star_icon", m)) for m in re.findall(r"next turn, gain ((?:\[star_icon\.png\]\s*)+)", text, re.I))
-    # Genesis ("At the start of your turn, gain 2 Stars"): about three turns to a cycle of the deck.
-    later += 3 * sum(len(re.findall(r"star_icon", m)) for m in re.findall(r"start of (?:your|each) turn, gain ((?:\[star_icon\.png\]\s*)+)", text, re.I))
-    give = info.star_gain
-    if give and re.search(r"if this kills[^.]*gain", text, re.I):
-        give = 1  # Knockout Blow's 5 Stars come with a kill: counted in full they paid for a Seven Stars on paper
-    return need, give + later
-
-
-# What the cards of a deck should do for an energy, on average, before damage stops being what it is
-# short of (act -> damage). The starter decks do about 3; final decks 5.0, 6.5 and 8.2 by third.
-# (Act 1 was 5.0 with a nudge of at most 1.5 for the first two hours: under the `crowd` setting 39% of
-# act 1 picks were attacks, against 58% before and 54% without it, and its act 1 fights took 4.1
-# rounds against 3.5. Now the first four or five picks of a run lean to attacks under either setting.)
-PUNCH_FLOOR = {1: 5.5, 2: 5.5, 3: 6.0}
-
-
-def _punch(card: dict) -> float:
-    """Damage a card does for an energy, counting what stands in for damage (Doom, Poison, Shivs, orbs)."""
-    i = _parse(card)
-    x = 2 if i.is_x else 1
-    dealt = i.total_damage * (1.4 if i.aoe else 1.0) * x + 0.8 * i.doom + 3.0 * i.poison + 4.0 * i.shivs + i.enemy_hp_loss + 6.0 * len(i.channel)
-    return dealt / max(1, 2 if i.is_x else i.cost)
-
-
-def deck_fit(card: dict, deck: list, act: int | None = None, energy: int = 3) -> float:
-    """How much better or worse a card is in *this* deck than on its own.
-
-    The ratings in cards.py judge a card alone. Three things they cannot see:
-    the Regent's Stars (a 5-Star Comet is dead weight in a deck that makes
-    two Stars a cycle; one run reached its boss holding five such cards it
-    could never play), copies (the third Astral Pulse is worth less than
-    the first), and a deck that cannot kill: one Necrobinder reached floor 25
-    with 21 cards of Block, Souls and Powers around five small attacks, dealt
-    76 damage in eight rounds of an ordinary fight and died there from 55 HP
-    (and other players' runs rate the plain attacks lowest of all, see crowd.py).
-    """
-    if not deck:
-        return 0.0
-    fit = 0.0
-    # A card that costs more than a turn's energy is only ever played with help (Bury, 4 for 52 damage,
-    # on the Necrobinder's 3: taken 24 times as the best damage for its cost on offer, 2.1 floors a pick
-    # under par, and seen in the hand at "4!" all through a Knowledge Demon fight lost at 12 damage a round).
-    dear = _parse(card).cost > max(3, energy) and not re.search(r"reduce its cost|costs?\b[^.]*\bless", str(card.get("description") or ""), re.I)
-    if dear:
-        fit -= 3.0 if sum(1 for c in deck if _parse(c).energy_gain or _card_key(c) == "FRIENDSHIP") < 2 else 1.0
-    floor = PUNCH_FLOOR.get(act) if len(deck) >= 8 else None
-    if floor and _punch(card) >= 8.0 and not dear:
-        # Worth more for as long as the deck is short of damage: about the first three attacks
-        # of a run (a flat 0.8 for every act 1 attack until 2026-11-20), and any later deck that
-        # has filled up with other things.
-        # (How hard is a setting under test since 2026-11-21, see learn.CHOICES["punch"]: at 0.9 a point of
-        # shortfall the decks built on other players' ratings stayed a point under the floor.)
-        lean = knob("punch")
-        fit += min(4.0, 2.0 * lean / 0.9, max(0.0, lean * (floor - sum(map(_punch, deck)) / len(deck))))
-        # ... and the first one of a run comes before whatever pays off later. Other players' ratings put
-        # the Powers first, and a Regent that took Pillar of Creation, Pale Blue Dot twice and Void Form
-        # from its first four rewards died on floor 7. (The 13 runs whose first four picks held no attack
-        # ended on floor 27 on average; with one, two or three of them, 32 to 35 alike.)
-        if act == 1 and not any(_punch(c) >= 8.0 and _card_key(c) != "FALLING_STAR" for c in deck):
-            fit += 1.5
-    need, give = _stars(card)
-    if need or give:
-        pairs = [_stars(c) for c in deck]
-        demand = sum(n for n, _ in pairs)
-        supply = STARS_AT_START + sum(g for _, g in pairs)
-        if need:
-            short = demand + need - supply
-            if short > 0:
-                fit -= min(4.0, 0.8 * short)
-        if give and demand > supply:
-            fit += min(2.5, 0.5 * (demand - supply))
-        elif give and supply - STARS_AT_START >= demand + 3:
-            # Stars nothing in the deck spends: a Regent with Venerate, Hidden Cache,
-            # Gather Light and Genesis ended a fight holding 15 of them.
-            fit -= min(2.0, 0.5 * give)
-    key = _card_key(card)
-    copies = sum(1 for c in deck if _card_key(c) == key)
-    fit -= 0.6 * copies
-    if not copies and not dear:
-        fit += crowd.partner(key, {_card_key(c) for c in deck})  # cards other players win with together
-    if key == "FRIENDSHIP" and copies:
-        fit -= 2.5  # the planner leaves a second one in the hand (2 more Strength for energy it has no cards for)
-    return fit
-
-
-def reward_bar(deck_size: int, act: int | None) -> float:
-    """What a card reward has to be worth to be taken."""
-    # Be pickier as the deck grows: every mediocre card makes the good ones
-    # show up less often. But acts 2 and 3 are where the deck has to do the
-    # damage: the bot skipped 37% of act 2 rewards and 56% of act 3 ones, most
-    # of them 3-4 point attacks, and most act 3 bosses were still above half
-    # their HP when the run ended. So there the growth is halved.
-    growth = 0.0 if deck_size < 16 else 1.0 if deck_size < 20 else 2.0 if deck_size < BIG_DECK else 3.0
-    if isinstance(act, int) and act >= 2:
-        growth *= 0.5
-    return SKIP_THRESHOLD + knob("pickiness") + growth
-
-
 def card_reward(state: dict, mem: Memory) -> list[Action]:
     cr = state.get("card_reward") or {}
     cards = cr.get("cards") or []
@@ -645,6 +529,22 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
 # --------------------------------------------------------------------- shop
 
 
+REMOVAL_EARLY = {1: 3.5, 2: 1.5}  # what a card removal is worth less in acts 1 and 2 under the `cards_first` setting
+
+# What the Fake Merchant's relics are worth next to a real one at 7 (by what their text does over a run).
+_FAKES = {
+    "FAKE_ANCHOR": 5.0,  # 4 Block as each combat starts
+    "FAKE_ORICHALCUM": 4.0,  # 3 Block on a turn ended without any
+    "FAKE_HAPPY_FLOWER": 3.5,  # an energy every 5 turns
+    "FAKE_VENERABLE_TEA_SET": 3.0,  # an energy in the combat after a rest site
+    "FAKE_BLOOD_VIAL": 3.0,  # 1 HP as each combat starts
+    "FAKE_LEES_WAFFLE": 3.0,  # a tenth of our HP back, once
+    "FAKE_MANGO": 2.5,  # 3 Max HP
+    "FAKE_STRIKE_DUMMY": 1.5,  # 1 damage on each Strike
+    "FAKE_SNECKO_EYE": -1.0,  # every card's cost at random, and nothing for it
+}
+
+
 def _shop_card(item: dict) -> dict:
     return {k: item.get("card_" + k) for k in ("id", "name", "type", "cost", "star_cost", "rarity", "description")}
 
@@ -670,25 +570,40 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
         return [("proceed", {})] if looks > 8 or not any(i.get("is_stocked", True) for i in s.get("items") or []) else []
 
     scored: list[tuple[float, dict]] = []
+    shelf: list[str] = []  # (for the log: what was on offer, what it cost and what we made of it)
     for item in s.get("items") or []:
         price = int(item.get("price", item.get("cost", 0)) or 0)
-        if not item.get("is_stocked", True) or not item.get("can_afford", price <= gold):
+        if not item.get("is_stocked", True):
             continue
         cat = str(item.get("category"))
+        rated = None  # (a card's rating, for the log, when it is under the bar and so not wanted)
         if cat == "card_removal":
             # (From Ascension 6 the price is 100 and 50 more each time: at 150 and up a removal has to
             # beat the relics on the shelf instead of going before them.)
             want = 9.0 if price <= 125 else 7.6 - (price - 100) / 100.0
+            # ... and early in a run it has to beat the cards on the shelf too (a setting under test, see
+            # learn.CHOICES["cards_first"]): a Strike gone from sixteen cards is less than a good card added.
+            want -= knob("cards_first") * REMOVAL_EARLY.get((state.get("run") or {}).get("act"), 0.0)
         elif cat == "relic":
             # (Snecko Eye was refused here until 2026-11-20, as costs the planner could not count on. It reads
             # the cost of every card in hand as drawn, and 3 of the 5 runs that held one were won.)
             want = 8.0 - price / 200.0
+            if str(item.get("relic_id") or "").startswith("FAKE_"):
+                # The Fake Merchant's copies do a fraction of what their names promise, for about 55 gold each,
+                # and until 2026-11-21 all nine were bought like relics, cheapest first. One only costs:
+                # "Snecko Eye???" is "Start each combat Confused" without the two cards the real one draws
+                # (held by 14 of the 84 runs that met him).
+                # ... and the gold is the same gold a real Merchant takes: one run paid 319 for six of them and
+                # reached a shelf with a removal and three relics two floors on with 15. The ones worth a third
+                # of a removal are bought, the rest only out of plenty.
+                want = _FAKES.get(str(item.get("relic_id")), 2.0)
+                want = want if want >= 3.5 or gold - price >= 200 else -1.0
         elif cat == "card":
             act = (state.get("run") or {}).get("act")
             v = deck_value(_shop_card(item)) + deck_fit(_shop_card(item), mem.deck, act if isinstance(act, int) else None, mem.max_energy)
             # Only cards that make the deck better, and more freely when rich.
             bar = 4.0 if gold - price >= 200 else 4.5 if mem.deck_size < BIG_DECK else 5.5
-            want = v if v >= bar else -1.0
+            want, rated = (v if v >= bar else -1.0), v
         elif cat == "potion":
             # With the boss a room or two away a potion is the best thing gold
             # buys: act 2 bosses met with two or three potions were beaten 19
@@ -699,13 +614,26 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
             if belt_full:
                 want = -1.0
             elif boss_next:
-                want = 7.0
+                # ... and before a removal while the belt holds fewer than two: a shelf three floors from the
+                # act 2 boss gave up a card for 100 with 137 in hand and two potions at 49 and 52 beside it.
+                # (Bosses met with one potion or none: act 2 12 beaten in 36, the last 0 in 12; with two or
+                # more 38 in 61 and 7 in 18. What a deck gains by one Strike fewer does not show in what its
+                # fights cost.)
+                want = 9.5 if len(player.get("potions") or []) < 2 else 7.0
             else:
                 want = 2.0 if gold - price >= 60 else -1.0
         else:
             want = -1.0
-        if want > 0:
+        afford = bool(item.get("can_afford", price <= gold))
+        shelf.append(f"{cat} {item.get('card_name') or item.get('relic_name') or item.get('potion_name') or ''} {price}{'' if afford else '!'} [{want if rated is None else rated:.1f}]".replace("  ", " "))
+        if want > 0 and afford:
             scored.append((want, item))
+    shown = f"{_where(state)} {gold}: " + ", ".join(shelf)
+    if log.isEnabledFor(logging.DEBUG) and shown != mem.logged_shop:
+        # (Until 2026-11-21 the log had the purchases as shelf numbers and prices only: what the bot passed over,
+        # and whether a relic or a card was what the gold went on, could not be read back.)
+        mem.logged_shop = shown
+        log.debug("shop (gold %d, potions %d of %d): %s", gold, len(player.get("potions") or []), int(player.get("max_potion_slots") or 3), ", ".join(shelf))
     scored.sort(key=lambda t: -t[0])
     out: list[Action] = [("shop_purchase", {"index": int(i.get("index", 0))}) for _, i in scored]
     out.append(("proceed", {}))
