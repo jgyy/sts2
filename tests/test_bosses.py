@@ -545,6 +545,23 @@ class SmallReads(unittest.TestCase):
         first = combat.choose_card(state)
         self.assertEqual((first[1]["card_index"], first[1].get("target")), (1, "ROCKET_0"))
 
+    def test_hits_on_all_enemies_stop_counting_once_one_crab_dies_of_them(self):
+        rage = [{"id": "CRAB_RAGE_POWER", "amount": 1}]
+        crusher, rocket = enemy("CRUSHER_0", 39, attack=24, status=rage), enemy("ROCKET_0", 22, status=rage)
+        hand = [
+            card(0, "EXTERMINATE", "Exterminate+", "Attack", 1, "Deal 10 damage to ALL enemies 4 times.", "AllEnemies"),
+            card(1, "BEAT_INTO_SHAPE", "Beat into Shape", "Attack", 1, "Deal 11 damage.", "AnyEnemy"),
+            card(2, "SOLAR_STRIKE", "Solar Strike", "Attack", 1, "Deal 15 damage.", "AnyEnemy"),
+            card(3, "CRUSH_UNDER", "Crush Under", "Attack", 1, "Deal 14 damage.", "AnyEnemy"),
+        ]
+        # 15 on the Rocket and four rounds of 10 looks like both dead; the Rocket dies of the first round and
+        # the Crusher keeps 29 HP behind 99 Block. 15 + 14 + 11 on the Crusher kills what is about to hit us.
+        plan: dict = {}
+        first = combat.choose_card(combat_state(hand, [crusher, rocket], energy=3, hp=4, max_hp=91, kind="boss"), plan)
+        self.assertEqual(first[1].get("target"), "CRUSHER_0")
+        self.assertNotEqual(first[1]["card_index"], 0)
+        self.assertEqual(plan["lost"], 0)
+
 
 class Asleep(unittest.TestCase):
     """The Lagavulin Matriarch sleeps for three turns unless she loses HP: those turns are for setting up."""
@@ -664,3 +681,33 @@ class Skittish(unittest.TestCase):
         foes[int(first["target"][-1])].update(hp=23, block=6)  # hit once: 6 HP gone, 6 Block up
         state["player"]["hand"], state["player"]["energy"] = [STRIKE(1)], 1
         self.assertNotEqual(combat.choose_card(state)[1]["target"], first["target"])
+
+
+class Reattach(unittest.TestCase):
+    def segments(self, front, middle, back):
+        again = [{"id": "REATTACH_POWER", "amount": 25}]
+        names = ("DECIMILLIPEDE_SEGMENT_FRONT_0", "DECIMILLIPEDE_SEGMENT_MIDDLE_0", "DECIMILLIPEDE_SEGMENT_BACK_0")
+        return [enemy(n, hp, attack=6, status=again) for n, hp in zip(names, (front, middle, back)) if hp]
+
+    def test_a_segment_is_not_killed_while_the_others_are_far_from_dead(self):
+        # "If other segments are still alive, revives in 2 turns with 25 HP": the Strike that would kill the
+        # middle one (7 HP) goes into the healthiest instead, until all three can die within two turns.
+        state = combat_state([STRIKE(0)], self.segments(46, 7, 44), energy=1, kind="elite")
+        self.assertEqual(combat.choose_card(state)[1]["target"], "DECIMILLIPEDE_SEGMENT_FRONT_0")
+
+    def test_the_segments_are_finished_once_the_rest_is_within_reach(self):
+        state = combat_state([STRIKE(0)], self.segments(20, 5, 18), energy=1, kind="elite")
+        self.assertEqual(combat.choose_card(state)[1]["target"], "DECIMILLIPEDE_SEGMENT_MIDDLE_0")
+        alone = combat_state([STRIKE(0)], self.segments(0, 5, 0), energy=1, kind="elite")  # the last one standing: the fight
+        self.assertEqual(combat.choose_card(alone)[1]["target"], "DECIMILLIPEDE_SEGMENT_MIDDLE_0")
+
+
+class BeatingRemnant(unittest.TestCase):
+    def test_a_turn_costs_no_more_than_the_relic_allows(self):
+        # "You cannot lose more than 20 HP in a single turn": 5 Block in front of 40 saves nothing, the Strike counts.
+        state = combat_state([STRIKE(0), DEFEND(1)], [enemy("A", 60, attack=40)], energy=1, hp=70)
+        self.assertEqual(combat.choose_card(state)[1]["card_index"], 1)
+        state["player"]["relics"] = [{"id": "BEATING_REMNANT", "description": "You cannot lose more than 20 HP in a single turn."}]
+        plan: dict = {}
+        self.assertEqual(combat.choose_card(state, plan)[1]["card_index"], 0)
+        self.assertEqual(plan["lost"], 20)

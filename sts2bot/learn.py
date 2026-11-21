@@ -146,14 +146,20 @@ def seed_from_history(stats: CardStats, runs_file: Path) -> None:
 
 DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "crowd": 0.6}
 CHOICES = {
-    "caution": [0.75, 1.0, 1.35, 1.8],  # weight of HP lost in the combat planner
+    # Weight of HP lost in the combat planner. (1.35 and 1.8 were dropped on 2026-11-21. Runs since
+    # 2026-11-19 20:06 that reached the act 2 boss got past it 44 times in 74 at 1.0 and 19 in 54 at 1.35,
+    # and so for each character and ascension on its own (Necrobinder 19/33 against 3/22, Ascension 5 11/24
+    # against 2/11); 1.8: 6 runs, mean floor 28. The sampler judges by floors, where the two were three
+    # apart, and still drew 1.35 for more than a quarter of the runs.)
+    "caution": [0.75, 1.0],
     # What an elite's rewards count for when planning a route. (Since the boss-odds curve was refitted on
     # 2026-11-20 this decides something: 0.8 never takes an elite, 2.5 takes one from full HP with a rest
     # site after it, 4.0 from 85% HP, 6.0 from 75%. 1.5 did the same as 0.8 and was dropped; 6.0 is new.)
     "elite_worth": [0.8, 2.5, 4.0, 6.0],
     # What an upgrade counts for against resting. (6.0 added on 2026-11-20: the record rose with every
     # step, +1.8 floors a run at 1.3, +2.7 at 2.5, +3.1 at 4.0, and the bot upgrades twice a run by the act 2 boss.)
-    "upgrade_worth": [1.3, 2.5, 4.0, 6.0],
+    # (1.3 dropped on 2026-11-21: 24 runs since the 19th, mean floor 30.0 against 33.8, 33.4 and 31.8.)
+    "upgrade_worth": [2.5, 4.0, 6.0],
     "pickiness": [-1.0, 0.0, 1.0],  # added to the rating a card reward needs to be taken
     # (`early_setup`, 1.7 times every lasting effect in rounds 1-3 of boss and elite fights, was dropped on
     # 2026-11-19: 21 runs, no better than the 100 without it.)

@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from sts2bot import combat, learn, strategy
+from sts2bot import battle, combat, learn, strategy
 from sts2bot.bot import Bot, Stuck
 from sts2bot.cards import deck_value, parse
 from sts2bot.strategy import Memory
@@ -737,11 +737,11 @@ class CrabRage(unittest.TestCase):
         line = [parse(STRIKE(0)), parse(STRIKE(1))]  # kill the Crusher, then hit the Rocket
         kw = dict(energy=2, stars=0, hp=80, max_hp=80, block=0, fight="boss")
         with_rage = combat.simulate(line, self.crabs(), **kw).score
-        saved, combat.RAGE_BLOCK = combat.RAGE_BLOCK, 0
+        saved, battle.RAGE_BLOCK = battle.RAGE_BLOCK, 0
         try:
             without = combat.simulate(line, self.crabs(), **kw).score
         finally:
-            combat.RAGE_BLOCK = saved
+            battle.RAGE_BLOCK = saved
         self.assertLess(with_rage, without)
 
 
@@ -764,6 +764,19 @@ class StockRespawn(unittest.TestCase):
         with_stock = combat.simulate(line, [self.axebot(respawns=2)], **kw).score
         without = combat.simulate(line, [self.axebot(respawns=0)], **kw).score
         self.assertLess(with_stock, without - combat.WIN_BONUS / 2)
+
+    def test_killing_a_stock_enemy_takes_its_attack_away_for_the_turn(self):
+        # Axebot on 32 about to hit for 17: the Hammer and the Crush Under kill it, and the new one only
+        # Defends and Buffs this turn. That beats 10 damage and 8 Block in front of the 17.
+        stock = [{"id": "STOCK_POWER", "amount": 1}]
+        hammer = card(0, "HEIRLOOM_HAMMER", "Heirloom Hammer+", "Attack", 2, "Deal 22 damage.", "AnyEnemy")
+        crush = card(1, "CRUSH_UNDER", "Crush Under+", "Attack", 1, "Deal 10 damage.", "AnyEnemy")
+        wall = card(2, "GLITTERSTREAM", "Glitterstream", "Skill", 2, "Gain 8 Block.", "Self")
+        bot = {**enemy("AXEBOT_0", 32, attack=17, status=stock), "max_hp": 87}
+        plan: dict = {}
+        first = combat.choose_card(combat_state([hammer, crush, wall], [bot], energy=3, hp=82, max_hp=139), plan)
+        self.assertIn(first[1]["card_index"], (0, 1))
+        self.assertEqual(plan["lost"], 0)
 
     def test_stock_is_read_from_the_state(self):
         state = {"battle": {"enemies": [{"entity_id": "AXEBOT_0", "hp": 5, "max_hp": 85, "block": 0,

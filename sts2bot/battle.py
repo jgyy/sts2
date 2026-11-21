@@ -15,6 +15,7 @@ LETHAL_PENALTY = 1_000_000.0
 WIN_BONUS = 10_000.0
 SANDPIT_DEATH = 600.0  # what being eaten by the Sandpit costs, in points (the run ends there)
 BEYOND_REACH = 100_000  # HP no enemy really has: the game's way of saying it cannot be hurt any more
+REATTACH_REACH = 40  # Decimillipede: HP the other segments may have left for a kill to be the start of the end (they have two turns)
 RAGE_BLOCK = 99  # Crab Rage: Block a crab gains for each ally that dies (gone again when its next turn starts)
 SLIP_WORTH = 7.0  # what taking one Slippery stack off is worth, in damage: the hit it lets through later
 
@@ -101,6 +102,7 @@ class Enemy:
     hang: int = 0  # Hang: what the Hang cards' damage on it is multiplied by (2, 4, 8 ...; 0: none played yet)
     threat: float = 0.0  # damage a turn it has been doing in this fight (ordinary fights only; 0: not known)
     grows: float = 0.0  # Strength it gains a turn (Ritual, Territorial, or what its Strength so far comes to)
+    reattach: int = 0  # Reattach (a Decimillipede segment): killed while another segment lives, it is back two turns later on this much HP
     hive: int = 0  # Personal Hive (the Entomancer): Dazed put into our draw pile for every Attack that hits it
 
     @property
@@ -278,6 +280,7 @@ def read_enemies(state: dict) -> list[Enemy]:
                 hang=_stacks(e, "HANG"),
                 threat=threat,
                 hive=_stacks(e, "PERSONAL_HIVE"),
+                reattach=_stacks(e, "REATTACH"),
                 grows=max(float(_stacks(e, "RITUAL") + _stacks(e, "TERRITORIAL")), _stacks(e, "STRENGTH") / rounds),
                 skittish=0 if int(e.get("block") or 0) else _stacks(e, "SKITTISH"),  # (Block on it: it has been hit already)
                 max_hp=int(e.get("max_hp") or 0),
@@ -516,3 +519,56 @@ def _set_up(playable: list[CardInfo], energy: int) -> tuple | None:
         if worth > best_worth:
             best, best_worth = c, worth
     return ("play_card", {"card_index": best.index}) if best is not None else None
+
+
+def _respawns(foes: list[Enemy]) -> None:
+    """Stock: an enemy that dies while it has Stock is summoned again in its place at full HP.
+
+    The death is not a kill: no win, no kill bonus, and the damage it took
+    goes for nothing once it is back. Axebot came back at 85 HP after the
+    bot had counted its death at 5 HP as the fight nearly won.
+    """
+    for e in foes:
+        if not e.alive and e.respawns > 0 and e.max_hp > 0:
+            e.hp, e.block = e.max_hp, 0
+            e.respawns -= 1
+            # The new one spends this turn on Defend+Buff: the attack of the one we killed is gone.
+            # (Seen 2026-11-21: Axebot on 22 about to hit for 13x2, killed, and 3 Block lost nothing.
+            # Counted as still coming, a kill for the whole hand lost to 10 damage and a Block card.)
+            e.incoming = e.incoming_hits = 0
+        elif not e.alive and e.adapts:
+            # The Test Subject's first two forms: beating one is not the fight
+            # won. It leaves for the rest of the turn (nothing more can be
+            # aimed at it, and its attack does not happen) and comes back next
+            # turn with 100 HP more. Counted as a win, the kill used to come
+            # before the Powers that the next 500 HP were going to need.
+            e.hp, e.block, e.spent, e.damage_mult = BEYOND_REACH, 0, True, 0.0
+            e.incoming = e.incoming_hits = 0
+            e.poison = e.doom = 0
+            e.adapts, e.adapted = False, True
+
+
+def _rage_blocks(foes: list[Enemy], known_dead: set) -> None:
+    """Crab Rage, as the line plays out: each ally that dies gives the crabs still standing 99 Block.
+
+    The Block is only there until their next turn, so the damage we aim at
+    them for the rest of this turn is absorbed. In one lost fight the bot hit
+    a Rocket four times with 93 Block on it: its Block fell to 76 and its HP
+    stayed at 113.
+    """
+    newly = [e for e in foes if not e.alive and e.entity_id not in known_dead]
+    if not newly:
+        return
+    known_dead.update(e.entity_id for e in newly)
+    for e in foes:
+        if e.alive and e.rage:
+            e.block += RAGE_BLOCK * len(newly)
+
+
+def loss_cap(player: dict) -> int:
+    """Beating Remnant: "You cannot lose more than 20 HP in a single turn." (0: no such relic)"""
+    for r in player.get("relics") or []:
+        m = re.search(r"cannot lose more than (\d+) HP in a single turn", str(r.get("description") or ""), re.I)
+        if m:
+            return int(m.group(1))
+    return 0

@@ -14,10 +14,10 @@ from dataclasses import dataclass, replace
 from itertools import combinations, permutations
 
 from .battle import (  # noqa: F401  (also the names other modules and the tests reach through here)
-    BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, SANDPIT_DEATH, SLIP_WORTH, WIN_BONUS, Enemy,
+    BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, REATTACH_REACH, SANDPIT_DEATH, SLIP_WORTH, WIN_BONUS, Enemy,
     _has_power, _is_attack, constrict, end_of_turn_block, end_of_turn_loss, expected_loss, hand_burns,
     intent_damage, intent_hits, kill_reach, osty_hp, power_amount, read_enemies, _bare_block, _draw_worth, _escape_odds, _next_wither, _sandpit,
-    deck_count, junk_cost, cards_left_this_turn, _poison_total, _power_worth, _set_up,
+    deck_count, junk_cost, cards_left_this_turn, _poison_total, _power_worth, _set_up, _rage_blocks, _respawns, loss_cap,
 )
 from .cards import CardInfo, order_key, parse
 from .potions import describe, potion_actions  # noqa: F401
@@ -79,46 +79,6 @@ def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = Fal
     return removed
 
 
-def _respawns(foes: list[Enemy]) -> None:
-    """Stock: an enemy that dies while it has Stock is summoned again in its place at full HP.
-
-    The death is not a kill: no win, no kill bonus, and the damage it took
-    goes for nothing once it is back. Axebot came back at 85 HP after the
-    bot had counted its death at 5 HP as the fight nearly won.
-    """
-    for e in foes:
-        if not e.alive and e.respawns > 0 and e.max_hp > 0:
-            e.hp, e.block = e.max_hp, 0
-            e.respawns -= 1
-        elif not e.alive and e.adapts:
-            # The Test Subject's first two forms: beating one is not the fight
-            # won. It leaves for the rest of the turn (nothing more can be
-            # aimed at it, and its attack does not happen) and comes back next
-            # turn with 100 HP more. Counted as a win, the kill used to come
-            # before the Powers that the next 500 HP were going to need.
-            e.hp, e.block, e.spent, e.damage_mult = BEYOND_REACH, 0, True, 0.0
-            e.incoming = e.incoming_hits = 0
-            e.poison = e.doom = 0
-            e.adapts, e.adapted = False, True
-
-
-def _rage_blocks(foes: list[Enemy], known_dead: set) -> None:
-    """Crab Rage, as the line plays out: each ally that dies gives the crabs still standing 99 Block.
-
-    The Block is only there until their next turn, so the damage we aim at
-    them for the rest of this turn is absorbed. In one lost fight the bot hit
-    a Rocket four times with 93 Block on it: its Block fell to 76 and its HP
-    stayed at 113.
-    """
-    newly = [e for e in foes if not e.alive and e.entity_id not in known_dead]
-    if not newly:
-        return
-    known_dead.update(e.entity_id for e in newly)
-    for e in foes:
-        if e.alive and e.rage:
-            e.block += RAGE_BLOCK * len(newly)
-
-
 def _orb_damage(kind: str, amount: int, foes: list[Enemy], chip_rate: float, dmg_value: float) -> float:
     """What an orb's damage is worth, taken off the enemies it lands on.
 
@@ -156,7 +116,17 @@ def _pick_target(enemies: list[Enemy], dmg_per_hit: int, hits: int, double_if_vu
     if not alive:
         return None
 
-    killable = [e for e in alive if _would_kill(e, dmg_per_hit, hits, double_if_vulnerable)]
+    # Reattach (the Decimillipede, 130 HP in three segments): one killed while another lives is back two
+    # turns later on 25 HP, so killing them one by one never ends. A Regent went in on 85/85, killed a
+    # segment seven times in twelve rounds and died with two of them on 25. Until the others are within
+    # reach the healthiest one is hit and none is finished: they come down together and die together.
+    segs = [e for e in alive if e.reattach]
+    stay = {e.entity_id for e in segs if sum(o.hp + o.block for o in segs if o is not e) > REATTACH_REACH} if len(segs) > 1 else set()
+    if stay:
+        spare = [e for e in segs if not (e.entity_id in stay and _would_kill(e, dmg_per_hit, hits, double_if_vulnerable))]
+        if len(segs) == len(alive):
+            return max(spare or segs, key=lambda e: e.hp + e.block)
+    killable = [e for e in alive if e.entity_id not in stay and _would_kill(e, dmg_per_hit, hits, double_if_vulnerable)]
     if killable:
         # Remove the biggest threat first; waste the least damage on ties.
         # Killing something that revives only pays off if it is about to hit us.
@@ -276,6 +246,7 @@ def simulate(
     vigor: int = 0,  # extra damage on the next Attack only (the card text shows it on all of them)
     giant: bool = False,  # the next Attack deals triple damage (same)
     buffer: int = 0,  # times we lose no HP when we otherwise would
+    loss_cap: int = 0,  # Beating Remnant: the most HP a turn can cost us (0: no limit)
     taint: int = 0,  # Vital Spark: each Skill played makes every hit on us this turn this much harder
     draw_worth: tuple = (2.0, 0.0, 0.0),  # of a drawn card: (points if free, share that cost energy, points per energy)
     bare_block: int = 0,  # Orichalcum: Block gained if the turn ends with none
@@ -447,10 +418,22 @@ def simulate(
                     # the card's text goes on saying 10. (The third one did 40 of the 57 a lost fight's last turn dealt.)
                     per, t.hang = per * max(1, t.hang), 2 * max(1, t.hang)
                 struck = [t] if t is not None else []
+            # Several hits on ALL enemies land one round at a time: a crab that dies of the first hands the other
+            # its 99 Block for the rest. (Exterminate+, 10 x 4, with the Rocket on 7 and the Crusher on 39 about
+            # to hit for 24 on our 4 HP: counted as 40 on each it was the win, and it did 10. The three other
+            # cards in the hand added up to the Crusher's 39.)
+            waves = hits if c.aoe and hits > 1 and any(e.rage for e in struck) else 1
+            for _ in range(waves):
+                for e in struck:
+                    if not e.alive:
+                        continue
+                    n_hits = hits // waves
+                    self_loss += e.thorns * _hit_count(e, n_hits, c.double_if_vulnerable)
+                    dazed += e.hive * _hit_count(e, n_hits, c.double_if_vulnerable) * (c.type == "Attack")
+                    score += _progress(e, _hit(e, per, n_hits, c.double_if_vulnerable), chip_rate) * dmg_value * e.worth
+                if waves > 1:
+                    _rage_blocks(foes, known_dead)
             for e in struck:
-                self_loss += e.thorns * _hit_count(e, hits, c.double_if_vulnerable)
-                dazed += e.hive * _hit_count(e, hits, c.double_if_vulnerable) * (c.type == "Attack")
-                score += _progress(e, _hit(e, per, hits, c.double_if_vulnerable), chip_rate) * dmg_value * e.worth
                 if e.alive:
                     _debuff(e, c, xs)
         elif c.needs_target:
@@ -722,6 +705,7 @@ def simulate(
         score -= len(line) * (4.0 * wither_hp + 20.0) / 6.0
     lost = through + self_loss + end_loss + burnt
     lost = max(0, lost - min(regen, max(0, max_hp - hp + self_loss)))  # Regen mends what was missing first
+    lost = min(lost, loss_cap) if loss_cap else lost
     ratio = hp / max(1, max_hp)
     # Imbalanced (Bowlbug Rock): an attack of his that our Block stops whole leaves him Stunned for
     # his next turn. He moves first; with 15 Block or more up he was Stunned 58 times in 67, with
@@ -832,6 +816,7 @@ def _context(state: dict) -> dict:
         vigor=max(0, power_amount(player, "VIGOR")),
         giant=_has_power(player, "GIGANTIFICATION"),
         buffer=max(0, power_amount(player, "BUFFER")),
+        loss_cap=loss_cap(player),
         # (The amount grows as the Infested Prism buffs itself: at Vital Spark 4, four Skills
         # turned a 5x3 attack into 13x3 while the bot counted 2 a Skill, and it died behind 17 Block.)
         trig=triggers.read(state),
