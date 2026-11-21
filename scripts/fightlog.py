@@ -41,6 +41,11 @@
     python3 scripts/fightlog.py crabs ['YYYY-MM-DD HH:MM']
                                                         Crusher and Rocket: which crab died first, in which round and
                                                         with the other on how much, then both crabs' HP round by round
+    python3 scripts/fightlog.py bosspace ['YYYY-MM-DD HH:MM']
+                                                        boss fights by how much HP the boss lost a round (what
+                                                        separates won from lost), then that under each value of
+                                                        each setting, next to what the character usually deals
+                                                        to that boss: says in 30 fights what `knobs` needs 300 runs for
     python3 scripts/fightlog.py powers                  powers seen on enemies (and on us) that no module of the
                                                         bot names, with their rules text: mechanics nobody modelled
     python3 scripts/fightlog.py events                  every event met: how often each option was taken, with
@@ -475,6 +480,43 @@ def wiki() -> None:
     print(len(out["cards"]), "cards and", len(out["relics"]), "relics in", os.path.join(LOGS, "wiki.json"))
 
 
+def boss_pace(f: dict) -> float:
+    """HP the other side lost a round in this fight, from one round's first look to the next (a heal or a new form is not a loss)."""
+    first = {}
+    for turn in f["turns"]:
+        first.setdefault(turn[0], _enemy_hp(turn[5]))
+    hp = [first[r] for r in sorted(first)]
+    return sum(max(0, a - b) for a, b in zip(hp, hp[1:])) / max(1, len(hp) - 1)
+
+
+def bosspace(since: str = "") -> None:
+    rows = [(f, boss_pace(f)) for f in load()[0] if f["kind"] == "boss" and "died" in f and f["rounds"] >= 3 and f["char"] and f["t"] >= since]
+    for act in sorted({f["act"] for f, _ in rows}):
+        sub = [(f, p) for f, p in rows if f["act"] == act]
+        bands = [(0, 20), (20, 25), (25, 30), (30, 35), (35, 45), (45, 999)]
+        won = lambda v: f"{sum(not f['died'] for f, _ in v)}/{len(v)}"
+        print(f"act {act}: {len(sub)} boss fights, {sum(p for _, p in sub) / len(sub):.1f} a round; won by HP a round: " + "  ".join(f"{lo}-{hi if hi < 999 else ''}: {won([x for x in sub if lo <= x[1] < hi])}" for lo, hi in bands))
+        usual = collections.defaultdict(list)
+        for f, p in sub:
+            usual[f["char"], f["enemies"]].append(p)
+        usual = {k: sum(v) / len(v) for k, v in usual.items()}
+        names = sorted({k for f, _ in sub for k in ((f["run"] or {}).get("knobs") or {})})
+        for name in names:
+            arms = collections.defaultdict(list)
+            for f, p in sub:
+                value = ((f["run"] or {}).get("knobs") or {}).get(name)
+                if value is not None:
+                    arms[value].append((p - usual[f["char"], f["enemies"]], not f["died"]))
+            if len(arms) < 2:
+                continue
+            cells = []
+            for value, v in sorted(arms.items()):
+                mean = sum(d for d, _ in v) / len(v)
+                se = (sum((d - mean) ** 2 for d, _ in v) / max(1, len(v) - 1) / len(v)) ** 0.5
+                cells.append(f"{value}: {mean:+5.1f} a round (se {se:.1f}), won {sum(w for _, w in v)}/{len(v)}")
+            print(f"    {name:14} " + "   ".join(cells))
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
     if args[:1] == ["bosses"]:
@@ -499,6 +541,8 @@ if __name__ == "__main__":
         idle(args[1] if len(args) > 1 else "")
     elif args[:1] == ["pit"]:
         pit(args[1] if len(args) > 1 else "")
+    elif args[:1] == ["bosspace"]:
+        bosspace(args[1] if len(args) > 1 else "")
     elif args[:1] == ["crabs"]:
         crabs(args[1] if len(args) > 1 else "")
     elif args[:1] == ["artifact"]:

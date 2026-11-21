@@ -193,8 +193,10 @@ with the cards that were in hand and what was played. For judging a change:
 fight every run ended in), `pace` (rounds and damage a round in ordinary
 fights, by act), `reads` (what the planner read on each card against what
 playing it did) and `unplayed` (cards left in the hand on turns that could
-have paid for them) and `rooms SETTING` (what ordinary fights cost under each
-value of one setting). For finding what the planner gets wrong: `surprises`
+have paid for them), `rooms SETTING` (what ordinary fights cost under each
+value of one setting) and `bosspace` (HP a boss lost a round, which separates
+fights won from fights lost, under each value of each setting and next to
+what that character usually deals to that boss). For finding what the planner gets wrong: `surprises`
 (turns that cost more HP than the plan expected, by enemy), `idle` (turns
 ended with energy and a card it could pay for while HP was about to be lost)
 and `powers` (powers seen on enemies or on us that no module of the bot names,

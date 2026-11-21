@@ -393,6 +393,19 @@ class Potions(unittest.TestCase):
         state["player"]["relics"] = [{"id": "DELICATE_FROND", "description": "At the start of each combat, fill all empty potion slots with random Potions."}]
         self.assertEqual(sorted(a[1]["slot"] for a in combat.potion_actions(state)), [0, 1])
 
+    def test_a_big_belt_keeps_three_for_the_boss_and_drinks_the_rest_on_the_way(self):
+        # Six slots, five held: never "full", so nothing was spare, and a Regent went from 53 HP to 16 in
+        # two ordinary fights holding all five. The two a boss needs least go on the way; near the boss none.
+        belt = [self.potion(0, "Strength Potion", "Gain 2 Strength."), self.potion(1, "Swift Potion", "Draw 3 cards."),
+                self.potion(2, "Fire Potion", "Deal 20 damage.", "AnyEnemy"), self.potion(3, "Attack Potion", "Add 1 of 3 random Attack cards into your Hand."),
+                self.potion(4, "Focus Potion", "Gain 2 Focus.")]
+        state = combat_state([STRIKE(0)], [enemy("A", 60, attack=10)], hp=60, max_hp=75, potions=belt)
+        state["run"]["floor"] = 21
+        state["player"]["max_potion_slots"] = 6
+        self.assertEqual(sorted(a[1]["slot"] for a in combat.potion_actions(state)), [1, 3])
+        state["run"]["floor"] = 30  # three floors before the boss: all five are for it
+        self.assertEqual(combat.potion_actions(state), [])
+
     def test_the_potion_drunk_on_the_way_is_the_one_a_boss_needs_least(self):
         # A full belt cannot take the next potion, so one goes in an ordinary fight: not the Strength Potion.
         strength = self.potion(0, "Strength Potion", "Gain 2 Strength.")

@@ -245,6 +245,7 @@ LATE_COST = {2: (0.85, 1.2), 3: (0.93, 1.08)}
 BAD_LUCK = 1.7  # how much more than average a fight costs when the draws go wrong
 BOSS_WORTH = 16.0  # what getting past the boss is worth, in the units of the room rewards below
 MAX_PATHS = 1500
+ELITE_FLOOR = 0.35  # share of Max HP under which an elite is never chosen while there is another way on
 
 
 def boss_odds(hp_ratio: float, act: int = 1) -> float:
@@ -278,6 +279,11 @@ def boss_odds(hp_ratio: float, act: int = 1) -> float:
 
 
 REST_HEAL = 0.3  # of Max HP
+UPGRADE_EARLY = 4.0  # what an upgrade counts for against resting in act 1 (later acts: the `upgrade_worth` setting, see learn.CHOICES)
+
+
+def _upgrade_worth(act) -> float:
+    return UPGRADE_EARLY if act == 1 else knob("upgrade_worth")
 
 
 def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, act: int, harsh: float = 1.0) -> float:
@@ -334,7 +340,7 @@ def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, 
             hp = min(hp, max_hp)
         elif kind == "RestSite":
             onward = rooms[n + 1 :]
-            smith = knob("upgrade_worth") + path_value(onward, hp, max_hp, gold, act, harsh)
+            smith = _upgrade_worth(act) + path_value(onward, hp, max_hp, gold, act, harsh)
             if hp >= 0.95 * max_hp:
                 return score + smith
             rest = path_value(onward, min(float(max_hp), hp + REST_HEAL * max_hp), max_hp, gold, act, harsh)
@@ -393,6 +399,11 @@ def map_screen(state: dict, mem: Memory) -> list[Action]:
         return _room_value(str(opt.get("type")), hp, gold, is_early(opt.get("row")), act) + 0.9 * ahead
 
     scored = [(value(o), o) for o in options]
+    if hp < ELITE_FLOOR and any(str(o.get("type")) != "Elite" for _, o in scored):
+        # Badly hurt, every road "dies" on paper and the values no longer tell them apart: an elite was
+        # taken on 14 of 76 HP at -67.1 over an Unknown room at -72.2. Of 9 elites met under half HP on
+        # Ascension 7, 6 ended the run; an Unknown room is a fight one time in five.
+        scored = [(v - (1000.0 if str(o.get("type")) == "Elite" else 0.0), o) for v, o in scored]
     ranked = [o for _, o in sorted(scored, key=lambda t: t[0], reverse=True)]
     if log.isEnabledFor(logging.DEBUG) and len(scored) > 1:
         log.debug("map: %s", ", ".join(f"{o.get('type')}@{o.get('col')} {v:.1f}" for v, o in scored))
@@ -499,7 +510,7 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
     node = mem.map_nodes.get(mem.map_at) if mem.map_nodes else None
     if node is not None and str(node.get("type")) == "RestSite" and (node.get("children") or []):
         args = (max_hp, int(player.get("gold") or 0), act if isinstance(act, int) else 1)
-        smith = knob("upgrade_worth") + best_onward(mem.map_nodes, mem.map_at, [], hp_now, *args, [MAX_PATHS])
+        smith = _upgrade_worth(args[2]) + best_onward(mem.map_nodes, mem.map_at, [], hp_now, *args, [MAX_PATHS])
         healed = min(float(max_hp), hp_now + REST_HEAL * max_hp)
         rest = best_onward(mem.map_nodes, mem.map_at, [], healed, *args, [MAX_PATHS])
         # Below half HP the path values hardly see the difference between

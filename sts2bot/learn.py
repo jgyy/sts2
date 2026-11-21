@@ -160,18 +160,28 @@ CHOICES = {
     # and so for each character and ascension on its own (Necrobinder 19/33 against 3/22, Ascension 5 11/24
     # against 2/11); 1.8: 6 runs, mean floor 28. The sampler judges by floors, where the two were three
     # apart, and still drew 1.35 for more than a quarter of the runs.)
+    # (0.75 on 2026-11-21 21:30: 70 runs in all, 0.8 floors a run under the usual where the 398 at 1.0 are 0.9
+    # over. It deals 4 a round more at the act 1 and act 2 bosses, as it must, and has won 3 act 2 bosses in 9
+    # against 33 in 75: left in, the sampler already draws it one run in six.)
     "caution": [0.75, 1.0],
     # What an elite's rewards count for when planning a route. (Since the boss-odds curve was refitted on
     # 2026-11-20 this decides something: 0.8 never takes an elite, 2.5 takes one from full HP with a rest
     # site after it, 4.0 from 85% HP, 6.0 from 75%. 1.5 did the same as 0.8 and was dropped; 6.0 is new.)
     # (0.8 dropped on 2026-11-21: over the 234 runs on Ascension 5 and up, 63 at 0.8 ended 0.9 floors under
     # their character's usual and got past the act 2 boss 12 times in 38, the 85 at 6.0 1.6 over and 30 in 60.)
-    "elite_worth": [2.5, 4.0, 6.0],
+    # (4.0 dropped on 2026-11-21 21:30. On Ascension 6 and up its 50 runs ended 1.8 floors under their
+    # character's usual and got past the act 2 boss 12 times in 32; 6.0: 122 runs, 0.9 over, 45 in 85, and 7 of
+    # the 8 wins; 2.5: 37 runs, 1.5 over, 11 in 28, no win.)
+    "elite_worth": [2.5, 6.0],
     # What an upgrade counts for against resting. (6.0 added on 2026-11-20: the record rose with every
     # step, +1.8 floors a run at 1.3, +2.7 at 2.5, +3.1 at 4.0, and the bot upgrades twice a run by the act 2 boss.)
     # (1.3 dropped on 2026-11-21: 24 runs since the 19th, mean floor 30.0 against 33.8, 33.4 and 31.8.)
     # (6.0 dropped the same day: 42 runs in all, 1.5 floors a run under the usual, and on Ascension 5 and up
     # 16 runs 5 floors under, 9 of them past act 1; at 2.5 and 4.0 nothing separates 85 runs from 123.)
+    # (From 2026-11-21 21:30 this is the worth in acts 2 and 3 only; act 1 is strategy.UPGRADE_EARLY. On
+    # Ascension 6 and up 2.5 lost 20 runs in 86 in act 1 where 4.0 lost 16 in 143, and then got past the act 2
+    # boss 29 times in 54 against 42 in 104, dealing 3.6 a round more there than its character's usual against
+    # 1.8 less (31 and 53 fights): upgrades while the deck is small, HP when the fights cost a sixth of it each.)
     "upgrade_worth": [2.5, 4.0],
     # Added to the rating a card reward needs to be taken. (1.0 dropped on 2026-11-21: 24 runs, 3.6 floors
     # a run under the usual; -1.0 and 0.0 are 1.7 and 1.4 over, 211 and 355 runs.)
@@ -187,7 +197,10 @@ CHOICES = {
     # crowd's rating (r = +0.28, 0.4 floors a pick for each point; so for every character on its own) and not
     # with ours (r = +0.06): mixed at 0.6 r = +0.26, at 0.8 +0.28. Sow: ours 5.0, theirs 1.9, 137 picks, 1.7
     # floors a pick under par; Big Bang: theirs 8.0, 5.7 over.)
-    "crowd": [0.6, 1.0],
+    # (1.0 dropped on 2026-11-21 21:30: 73 runs on Ascension 6 and up, 1.0 floors a run under the usual
+    # against 0.5 over for 161 at 0.6, 1 win against 7, and at the act 2 boss 3.5 a round under the
+    # character's usual damage against 1.2 over (19 and 65 fights, 2.6 standard errors).)
+    "crowd": [0.6],
     # How hard a deck short of damage leans to attacks at a card reward: rating points for each point its
     # average damage an energy is under decks.PUNCH_FLOOR (up to 2.2 times this). Added on 2026-11-21:
     # final decks since the 20th averaged 5.7-5.9 damage an energy with `crowd` 0.0, 4.5-4.8 at 0.6 and
@@ -200,7 +213,9 @@ CHOICES = {
     # 5.0 against the floor of 5.5, and an ordinary act 2 fight still costs 17.6% of Max HP at 26 enemy HP
     # a round (the aim is 30). 2.7 gives the same at most, 4 points, and gets there from a smaller shortfall,
     # so it only differs in acts 2 and 3. DEFAULTS keeps 0.9: the tests of decks.deck_fit are written around it.)
-    "punch": [1.8, 2.7],
+    # (1.8 dropped on 2026-11-21 21:30: 56 runs on Ascension 6 and up, 1.9 floors a run under the usual and
+    # past the act 2 boss 11 times in 37; 2.7: 173 runs, 1.1 over, 61 in 124.)
+    "punch": [2.7],
     # Rating points for a card that applies Weak while the deck holds fewer than two that do (decks.deck_fit).
     # Added on 2026-11-21: of 87 final decks that met the last boss on Ascension 3+, those with none won 0 times
     # in 13, with one 3 in 31, with two or more 14 in 43 (and of the 26 last bosses in that day's logs the five
@@ -237,7 +252,12 @@ CHOICES = {
     # after the first (3 in 8 with none, 40 in 69 with one to three, 9 in 21 with four or more).
     # Judge by `fightlog.py rooms block_want` (what an ordinary act 2 fight costs under each value) and by
     # the act 1 boss, long before `knobs` can say anything about floors.
-    "block_want": [0.0, 1.5],
+    # (1.5 dropped on 2026-11-21 21:30. It won 21 act 1 bosses in 28 where the runs without it won 62 in 64,
+    # dealing 1.9 a round less there than the character's usual against 1.5 more; and with every fight on
+    # record (fights.jsonl, 350 ordinary act 2 fights, the encounter taken out) a Block card more makes a
+    # fight no cheaper (-0.3% of Max HP, 0.5 standard errors) and counts against the deck at the act 2 boss
+    # (one or two: 15 won in 23; three or more: 17 in 46). The effect it was added for was one window's.)
+    "block_want": [0.0],
     # Whether a card removal has to beat the cards on a Merchant's shelf early in a run (strategy.shop: at 1.0
     # it is worth 5.5 in act 1 and 7.5 in act 2 where a relic is about 7 and a card its rating; at 0.0 it is
     # 9.0 in every act, before everything, as it was until 2026-11-21). Added that day, when the shelf first
@@ -257,7 +277,14 @@ CHOICES = {
     # Both say the old numbers are about half. What it changes is which card goes first when energy is short
     # (a Weak or Vulnerable card before a Strike or a Defend), so judge it by boss records and by what a boss
     # fight costs (`fightlog.py rooms debuff_worth` for the ordinary fights), then `knobs`.
-    "debuff_worth": [1.0, 2.0],
+    # (1.0 dropped on 2026-11-21 21:30, 3.0 added. At act 2 bosses 2.0 dealt 4.6 a round more than its
+    # character usually does against that boss and 1.0 2.3 less (22 and 12 fights, 2 standard errors; the
+    # same way in each of the five pairs of character and boss met under both, and in acts 1 and 3), won 9
+    # in 22 against 3 in 12, its ordinary fights cost 5.6% and 13.7% of Max HP in acts 1 and 2 against 7.0%
+    # and 16.3%, and its 31 runs ended 0.9 floors over the usual against 2.8 under for 20. The measurement
+    # above said 2.3 times the old numbers; 3.0 is there to find where it stops paying
+    # (`fightlog.py bosspace`). DEFAULTS keeps 1.0: the tests are written around it.)
+    "debuff_worth": [2.0, 3.0],
 }
 MIN_RUNS = 20  # runs a setting gets before the record alone decides how often it is drawn
 SPREAD = 12.0  # how far apart two runs of the same character usually end, in floors
