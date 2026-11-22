@@ -3,6 +3,7 @@
     python3 scripts/crabfight.py [FIGHTS] [ARM,ARM,...]   ARM: a RAGE_COST, NAME=VALUE of a learn.py knob
                                                           (caution=1.5: the HP price; 2026-11-22 sweep below), or
                                                           threat=ROCKET/20/CRUSHER/12 (battle.KNOWN_THREAT: kill order)
+    python3 scripts/crabfight.py FIGHTS ARMS debuff       the decks with a Bash and a Clothesline (Vulnerable, Weak)
     python3 scripts/crabfight.py trace [SEED]
 
 The game side is a few rules taken from the logs: the two cycles of intents
@@ -19,6 +20,7 @@ on attacking and said that killing one early lost fights. Trace a fight and
 read it before believing a table.
 """
 
+import contextlib
 import logging
 import multiprocessing
 import os
@@ -39,12 +41,13 @@ KIND_R = ["Attack", "Attack", "Buff", "Attack", "Sleep"]
 
 
 def fight(deck_spec, energy, maxhp, rng, chp=206, rhp=196, trace=False):
-    da, db, natk, nblk, nfill, big = deck_spec
-    deck = ['A'] * natk + ['B'] * nblk + ['F'] * nfill + ['H'] * big
+    da, db, natk, nblk, nfill, big, *debuffs = deck_spec
+    nvul, nweak = (list(debuffs) + [0, 0])[:2]
+    deck = ['A'] * natk + ['B'] * nblk + ['F'] * nfill + ['H'] * big + ['V'] * nvul + ['W'] * nweak
     rng.shuffle(deck)
     draw, disc = deck[:], []
     hp = maxhp
-    E = {'CRUSHER_0': dict(hp=chp, mx=chp, block=0, st=0), 'ROCKET_0': dict(hp=rhp, mx=rhp, block=0, st=0)}
+    E = {'CRUSHER_0': dict(hp=chp, mx=chp, block=0, st=0, vul=0, wk=0), 'ROCKET_0': dict(hp=rhp, mx=rhp, block=0, st=0, vul=0, wk=0)}
     raged = set()
     facing = None
     weak = frail = 0
@@ -68,11 +71,13 @@ def fight(deck_spec, energy, maxhp, rng, chp=206, rhp=196, trace=False):
             if ch and E['CRUSHER_0']['hp'] > 0:
                 x = ch + E['CRUSHER_0']['st']
                 if both and face != 'CRUSHER_0': x = int(x * 1.5)
+                if E['CRUSHER_0']['wk']: x = int(x * 0.75)
                 out['CRUSHER_0'] = (x, chits)
             rh, rhits = R_CYCLE[k]
             if rh and E['ROCKET_0']['hp'] > 0:
                 x = rh + E['ROCKET_0']['st']
                 if both and face != 'ROCKET_0': x = int(x * 1.5)
+                if E['ROCKET_0']['wk']: x = int(x * 0.75)
                 out['ROCKET_0'] = (x, rhits)
             return out
 
@@ -85,6 +90,8 @@ def fight(deck_spec, energy, maxhp, rng, chp=206, rhp=196, trace=False):
                 st = [{"id": f"BACK_ATTACK_{side}_POWER", "amount": 1}]
                 if eid not in raged: st.append({"id": "CRAB_RAGE_POWER", "amount": 1})
                 if e['st']: st.append({"id": "STRENGTH_POWER", "amount": e['st']})
+                if e['vul']: st.append({"id": "VULNERABLE_POWER", "amount": e['vul']})
+                if e['wk']: st.append({"id": "WEAK_POWER", "amount": e['wk']})
                 if eid in lab:
                     x, h = lab[eid]
                     intents = [{"type": "Attack", "label": f"{x}x{h}" if h > 1 else str(x)}]
@@ -95,14 +102,17 @@ def fight(deck_spec, energy, maxhp, rng, chp=206, rhp=196, trace=False):
             for i, c in enumerate(hand):
                 if c == 'A': cards.append(card(i, "STRIKE_R", "Strike", "Attack", 1, f"Deal {int(da * (0.75 if weak else 1))} damage.", "AnyEnemy"))
                 elif c == 'H': cards.append(card(i, "HEAVY", "Heavy Blow", "Attack", 2, f"Deal {int(2.2 * da * (0.75 if weak else 1))} damage.", "AnyEnemy"))
+                elif c == 'V': cards.append(card(i, "BASH_R", "Bash", "Attack", 1, f"Deal {int(da // 2 * (0.75 if weak else 1))} damage. Apply 2 Vulnerable.", "AnyEnemy"))
+                elif c == 'W': cards.append(card(i, "CLOTHESLINE_R", "Clothesline", "Attack", 1, f"Deal {int(da // 2 * (0.75 if weak else 1))} damage. Apply 2 Weak.", "AnyEnemy"))
                 elif c == 'B': cards.append(card(i, "DEFEND_R", "Defend", "Skill", 1, f"Gain {int(db * (0.75 if frail else 1))} Block.", "Self"))
                 else: cards.append(card(i, "CLUMSY", "Clumsy", "Curse", -1, "Unplayable.", "None", can_play=False, unplayable_reason="HasUnplayableKeyword"))
             pst = [{"id": "SURROUNDED_POWER", "amount": 1}]
             if weak: pst.append({"id": "WEAK_POWER", "amount": weak})
             if frail: pst.append({"id": "FRAIL_POWER", "amount": frail})
-            name = {'A': "Strike", 'B': "Defend", 'F': "Clumsy", 'H': "Heavy Blow"}
-            text = {'A': f"Deal {da} damage.", 'B': f"Gain {db} Block.", 'F': "Unplayable.", 'H': f"Deal {int(2.2 * da)} damage."}
-            pile = lambda cs: [{"name": name[c], "cost": "2" if c == 'H' else "1", "description": text[c]} for c in cs]
+            name = {'A': "Strike", 'B': "Defend", 'F': "Clumsy", 'H': "Heavy Blow", 'V': "Bash", 'W': "Clothesline"}
+            text = {'A': f"Deal {da} damage.", 'B': f"Gain {db} Block.", 'F': "Unplayable.", 'H': f"Deal {int(2.2 * da)} damage.",
+                    'V': f"Deal {da // 2} damage. Apply 2 Vulnerable.", 'W': f"Deal {da // 2} damage. Apply 2 Weak."}
+            pile = lambda cs: [{"name": name[c], "cost": "2" if c == 'H' else "1", "description": text[c]} for c in cs]  # noqa: E731
             return {
                 "state_type": "boss", "run": {"act": 2, "floor": 33, "ascension": 7},
                 "battle": {"round": r, "turn": "player", "is_play_phase": True, "enemies": enemies},
@@ -116,11 +126,12 @@ def fight(deck_spec, energy, maxhp, rng, chp=206, rhp=196, trace=False):
             act = combat.choose_card(state())
             if act is None: break
             i = act[1]["card_index"]; c = hand[i]
-            if c in 'AH':
+            if c in 'AHVW':
                 t = act[1].get("target")
                 if t is None or E[t]['hp'] <= 0: t = next(x for x in E if E[x]['hp'] > 0)
-                d = int((da if c == 'A' else 2.2 * da) * (0.75 if weak else 1))
+                d = int({'A': da, 'H': 2.2 * da}.get(c, da // 2) * (0.75 if weak else 1))
                 e = E[t]
+                if e['vul']: d = int(d * 1.5)
                 soak = min(e['block'], d); e['block'] -= soak; e['hp'] = max(0, e['hp'] - (d - soak))
                 facing = t
                 if e['hp'] == 0:
@@ -129,7 +140,9 @@ def fight(deck_spec, energy, maxhp, rng, chp=206, rhp=196, trace=False):
                     if other['hp'] > 0:
                         o = 'ROCKET_0' if t == 'CRUSHER_0' else 'CRUSHER_0'
                         other['st'] += 6; other['block'] += 99; raged.add(o)
-                en -= 1 if c == 'A' else 2
+                if c == 'V' and e['hp'] > 0: e['vul'] += 2
+                if c == 'W' and e['hp'] > 0: e['wk'] += 2
+                en -= 2 if c == 'H' else 1
             elif c == 'B':
                 block += int(db * (0.75 if frail else 1)); en -= 1
             disc.append(hand.pop(i))
@@ -151,29 +164,39 @@ def fight(deck_spec, energy, maxhp, rng, chp=206, rhp=196, trace=False):
             if KIND_C[k] == "Buff": E['CRUSHER_0']['st'] += 2
         if E['ROCKET_0']['hp'] > 0 and KIND_R[k] == "Buff": E['ROCKET_0']['st'] += 2
         weak, frail = max(0, weak - 1), max(0, frail - 1)
+        for e in E.values():
+            e['vul'], e['wk'] = max(0, e['vul'] - 1), max(0, e['wk'] - 1)
         if E['CRUSHER_0']['hp'] > 0 and cdeb: weak = frail = 2
     return False, 0, 30, first_dead
 
 
 def arm_patch(arm: str):
-    """An arm is a number (combat.RAGE_COST) or NAME=VALUE with a knob of learn.py (caution=1.5: the HP price)."""
+    """An arm is a number (combat.RAGE_COST) or NAME=VALUE with a knob of learn.py (caution=1.5: the HP price) or a
+    constant of battle.py or combat.py; several joined by '+' (threat=ROCKET/20/CRUSHER/13+VULN_BY_FOCUS=0)."""
+    if "+" in arm:
+        stack = contextlib.ExitStack()
+        for part in arm.split("+"):
+            stack.enter_context(arm_patch(part))
+        return stack
     if arm.startswith("threat="):  # threat=ROCKET/20/CRUSHER/12: battle.KNOWN_THREAT for the fight (kill order, see battle._set_focus)
         parts = arm[len("threat="):].split("/")
         return mock.patch.dict(battle.KNOWN_THREAT, {parts[i]: float(parts[i + 1]) for i in range(0, len(parts), 2)})
     if "=" in arm:
         name, value = arm.split("=")
+        for module in (battle, combat):
+            if hasattr(module, name):
+                return mock.patch.object(module, name, type(getattr(module, name))(float(value)))
         return mock.patch.dict(learn.KNOB, {name: float(value)})
     return mock.patch.object(combat, "RAGE_COST", float(arm))
 
 
 def run(args):
     arm, dk, energy, n, seed = args
-    rng = random.Random(seed)
     wins = hpl = rounds = 0
     firsts = {'CRUSHER_0': 0, 'ROCKET_0': 0, None: 0}
     with arm_patch(arm):
-        for _ in range(n):
-            ok, hp, r, fd = fight(dk, energy, 80, rng)
+        for j in range(n):
+            ok, hp, r, fd = fight(dk, energy, 80, random.Random(seed * 10007 + j))  # a seed per fight: every arm plays the same shuffles
             wins += ok
             hpl += hp
             rounds += r
@@ -182,6 +205,9 @@ def run(args):
 
 
 DECKS = [(13, 9, 8, 7, 2, 2), (16, 9, 8, 7, 2, 2), (13, 12, 8, 7, 2, 2), (16, 12, 7, 8, 2, 2), (19, 9, 8, 7, 2, 2), (22, 12, 8, 7, 2, 2)]  # damage, Block, Strikes, Defends, dead, heavy
+# The same with two Strikes made a Bash (half a Strike and 2 Vulnerable) and a Clothesline (half a Strike and 2 Weak):
+# `debuff` as the third argument. Live decks carry such cards, and where they go decides which crab is hit first.
+DEBUFF_DECKS = [(d, b, s - 2, k, f, h, 1, 1) for d, b, s, k, f, h in DECKS]
 
 if __name__ == '__main__':
     logging.disable(logging.CRITICAL)
@@ -190,6 +216,8 @@ if __name__ == '__main__':
         sys.exit()
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 100
     arms = sys.argv[2].split(',') if len(sys.argv) > 2 else [str(combat.RAGE_COST)]
+    if sys.argv[3:4] == ["debuff"]:
+        DECKS[:] = DEBUFF_DECKS
     jobs = [(a, dk, 4, n, 500 + i) for a in arms for i, dk in enumerate(DECKS)]
     with multiprocessing.Pool(min(8, os.cpu_count() or 2)) as pool:
         out = pool.map(run, jobs)

@@ -3,6 +3,7 @@
 import unittest
 
 from sts2bot.fight import combat
+from tests.fake_game import card
 
 from ..helpers import DEFEND, STRIKE, combat_state, enemy
 
@@ -43,6 +44,14 @@ class OneCrabFirst(unittest.TestCase):
         # ... and with one card left it is the one that turns.
         state = crabs(48, 150, rocket_hit=49, hand=[STRIKE(0)], energy=1, hp=60, max_hp=84)
         self.assertEqual(combat.choose_card(state)[1]["target"], "ROCKET_0")
+
+    def test_round_one_s_big_hit_goes_on_the_rocket_whatever_its_first_intent(self):
+        # 17:37 on 2026-11-22: Comet+ (44, Weak and Vulnerable 6) went on the Crusher, showing 22 against the Rocket's 5;
+        # the Crusher was then the one to kill and the Rocket hit 31, 58 and 36 from 190 (battle.KNOWN_THREAT).
+        comet = card(0, "COMET", "Comet", "Attack", 1, "Deal 30 damage. Apply 3 Weak. Apply 3 Vulnerable.", "AnyEnemy")
+        state = crabs(219, 209, crusher_hit=21, rocket_hit=4, facing="ROCKET_0", hand=[comet, STRIKE(1), DEFEND(2), DEFEND(3)], energy=4, hp=70, max_hp=80)
+        self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 0, "target": "ROCKET_0"}))
+        self.assertEqual([e.threat for e in combat.read_enemies(state)], [13.0, 20.0])
 
 
 if __name__ == "__main__":
