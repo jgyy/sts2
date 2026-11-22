@@ -100,6 +100,44 @@ def turn_energy(card: dict) -> float:
     return 0.0
 
 
+# A Power whose damage comes every turn of a long fight, in rating points for as much damage again as a deck deals a turn
+# (2026-11-22). The Knowledge Demon solved exactly (demonfight.py's model with the Power slot made to deal damage every
+# turn, six decks holding no Power, perfect play from full HP): one more attack +0 to 10 points of the chance of winning,
+# an energy-every-turn Power +18 on average (ENERGY_POWER's 4.0), Countdown's 6 Doom a turn +12, Lethality's half a hit
+# more a turn +17, Reaper Form (each attack's damage again as Doom) +53 on its 3 energy, +30 on the strongest deck and
+# +52 on the weakest. Until then a reward saw only their face: Reaper Form stood at 3.7-4.9 and was taken 2 times in 9
+# offers, Countdown at 2.7-3.6 and 0 times in 27. (Doom counts as damage: the Demon's heal does not take it off.)
+SCALE_POWER = 12.0
+SCALE_CAP = 8.0
+TURN_DAMAGE = 30.0  # what a deck deals a round at the act 2 boss (fightlog.py bosspace: under 30 a round 25% won, 35+ 70%)
+PLAYS_A_TURN = 4.0  # cards played a turn, for what a Power adds to every play of a kind
+
+
+def turn_damage(card: dict, deck: list) -> float:
+    """Damage (Doom counted) a Power adds every turn against one enemy once it is in play (0 for anything else)."""
+    if str(card.get("type")) != "Power":
+        return 0.0
+    text = str(card.get("description") or "")
+    m = re.search(r"at the start of your turn, apply (\d+) doom to (?:a random enemy|all enemies)", text, re.I)  # Countdown (Neurosurge's is on us)
+    if m:
+        return float(m.group(1))
+    infos = [_parse(c) for c in deck]
+    share = PLAYS_A_TURN / max(1, len(deck))  # of each card in the deck, played a turn
+    hits = [i.total_damage for i in infos if i.total_damage > 0]
+    m = re.search(r"first attack each turn deals (\d+)% additional damage", text, re.I)  # Lethality
+    if m:
+        return int(m.group(1)) / 100.0 * (sum(hits) / len(hits) if hits else 6.0)
+    if re.search(r"whenever attacks deal damage, apply that much doom", text, re.I):  # Reaper Form
+        return share * sum(hits)
+    m = re.search(r"osty's attacks deal (\d+) additional damage", text, re.I)  # Calcify
+    if m:
+        return int(m.group(1)) * share * sum(1 for i in infos if i.osty_attack)
+    m = re.search(r"whenever you play a soul, a random enemy loses (\d+) hp", text, re.I)  # Haunt
+    if m:
+        return int(m.group(1)) * share * sum(i.souls for i in infos)
+    return 0.0
+
+
 def _blocks(card: dict) -> bool:
     """A card taken for its Block: 5 or more when played, the Defends (upgraded or not) left out."""
     return _parse(card).block >= 5 and not is_basic(card) and not is_basic({"name": str(card.get("name") or "").rstrip("+")})
@@ -156,6 +194,9 @@ def deck_fit(card: dict, deck: list, act: int | None = None, energy: int = 3) ->
             hitters = [c for c in deck if _parse(c).total_damage > 0]
             gain *= 1.0 - STRENGTH_TOLL * (sum(1 for c in hitters if not _parse(c).osty_attack) / max(1, len(hitters)))
         fit += gain
+    added = turn_damage(card, deck)
+    if added:
+        fit += min(SCALE_CAP, SCALE_POWER * added / TURN_DAMAGE)
     if _parse(card).weak and sum(1 for c in deck if _parse(c).weak) < 2:
         fit += knob("weak_want")  # the first two sources of Weak (a setting under test, see learn.CHOICES)
     if knob("block_want") and _blocks(card) and not dear:

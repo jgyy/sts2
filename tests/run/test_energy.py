@@ -1,4 +1,5 @@
-"""Powers that give energy every turn, at a card reward (decks.ENERGY_POWER; scripts/demonfight.py cards)."""
+"""Powers that pay every turn of a long fight, at a card reward: energy (decks.ENERGY_POWER; scripts/demonfight.py cards)
+and damage or Doom (decks.SCALE_POWER)."""
 
 import unittest
 from unittest import mock
@@ -32,6 +33,15 @@ AUTOMATION = c("AUTOMATION", "Automation", "Power", 1, f"Every 10 cards you draw
 NEUROSURGE = c("NEUROSURGE", "Neurosurge", "Power", 0, f"Gain {E}{E}{E}. Draw 2 cards. At the start of your turn, apply 3 Doom to yourself.", "Rare")
 WISP = c("WISP", "Wisp", "Skill", 0, f"Gain {E}. Exhaust.")
 INFLAME = c("INFLAME", "Inflame", "Power", 1, "Gain 2 Strength.", "Uncommon")
+COUNTDOWN = c("COUNTDOWN", "Countdown", "Power", 1, "At the start of your turn, apply 6 Doom to a random enemy.", "Uncommon")
+LETHALITY = c("LETHALITY", "Lethality", "Power", 1, "Ethereal. The first Attack each turn deals 50% additional damage.", "Uncommon")
+REAPER_FORM = c("REAPER_FORM", "Reaper Form", "Power", 3, "Whenever Attacks deal damage, apply that much Doom.", "Rare")
+CALCIFY = c("CALCIFY", "Calcify", "Power", 1, "Osty's attacks deal 4 additional damage.", "Uncommon")
+HAUNT = c("HAUNT", "Haunt", "Power", 1, "Whenever you play a Soul, a random enemy loses 7 HP.", "Uncommon")
+SHARED_FATE = c("SHARED_FATE", "Shared Fate", "Skill", 0, "Lose 2 Strength. Enemy loses 2 Strength. Exhaust.", "Rare")
+SOUL_STORM = c("SOUL_STORM", "Soul Storm", "Attack", 1, "Deal 9 damage. Deals 4 additional damage for each Soul in your Exhaust Pile.", "Rare")
+DEATHS_DOOR = c("DEATHS_DOOR", "Death's Door", "Skill", 1, "Gain 6 Block. If you applied Doom this turn, gain Block 2 additional times.", "Uncommon")
+PARSE = c("PARSE", "Parse", "Skill", 1, "Ethereal. Draw 3 cards.", "Uncommon")
 
 STARTER = [STRIKE] * 4 + [DEFEND] * 4 + [BODYGUARD, UNLEASH]
 
@@ -84,6 +94,39 @@ class EnergyAtAReward(unittest.TestCase):
         with mock.patch.object(decks, "_hitters", return_value=99):  # (the lean to attacks is not what is tested)
             self.assertGreater(decks.deck_fit(FRIENDSHIP, osty, 2), decks.deck_fit(FRIENDSHIP, hitters, 2) + 1.0)
         self.assertLess(decks.deck_fit(FRIENDSHIP, hitters + [FRIENDSHIP], 2), 0.0)  # a second one: less Strength still
+
+
+class TurnDamage(unittest.TestCase):
+    def test_what_a_power_adds_every_turn(self):
+        deck = STARTER + [REAVE, POKE, GRAVE_WARDEN]  # 13 cards; hits Strike 6 x4, Unleash 6, Reave 10, Poke 6
+        self.assertEqual(decks.turn_damage(COUNTDOWN, deck), 6.0)
+        self.assertEqual(decks.turn_damage(dict(COUNTDOWN, description=COUNTDOWN["description"].replace("6", "9")), deck), 9.0)
+        self.assertAlmostEqual(decks.turn_damage(LETHALITY, deck), 0.5 * 46 / 7)  # half the deck's average hit
+        self.assertAlmostEqual(decks.turn_damage(REAPER_FORM, deck), 4 * 46 / 13)  # four plays a turn of what the deck hits for
+        self.assertAlmostEqual(decks.turn_damage(CALCIFY, deck), 4 * 4 * 2 / 13)  # Unleash and Poke
+        self.assertAlmostEqual(decks.turn_damage(HAUNT, deck), 7 * 4 * 2 / 13)  # Reave and Grave Warden make a Soul each
+
+    def test_nothing_for_what_does_not_deal_damage_every_turn(self):
+        for card in (NEUROSURGE, INFLAME, FRIENDSHIP, DEMESNE, SCOURGE, REAVE):  # (Neurosurge's Doom every turn is on us)
+            self.assertEqual(decks.turn_damage(card, STARTER), 0.0, card["name"])
+
+    def test_capped(self):
+        heavy = [c("BIG", "Big", "Attack", 1, "Deal 40 damage.")] * 10
+        self.assertAlmostEqual(decks.deck_fit(REAPER_FORM, heavy, 2) - decks.deck_fit(dict(REAPER_FORM, description="Nothing."), heavy, 2), decks.SCALE_CAP)
+
+
+@mock.patch.dict(learn.KNOB, {"crowd": 0.3})
+class DamageAtAReward(unittest.TestCase):
+    DECK = STARTER + [REAVE, SCULPTING_STRIKE, POKE, GRAVE_WARDEN, NEGATIVE_PULSE, SCOURGE, REAVE, SCULPTING_STRIKE]
+
+    def test_reaper_form_over_the_cards_that_beat_it(self):
+        # 2026-11-22 13:53 and 16:12: "Shared Fate 4.3, Soul Storm 3.9, Reaper Form 3.7", "Soul Storm 7.1, Undeath 5.1, Reaper Form 4.9".
+        self.assertEqual(chosen([SHARED_FATE, SOUL_STORM, REAPER_FORM], self.DECK, act=2), "Reaper Form")
+
+    def test_countdown_is_no_longer_skipped(self):
+        # 2026-11-22 14:07: "deck 24, need 4.5: Death's Door 4.4, Parse 3.7, Countdown 3.6" and nothing taken.
+        deck = self.DECK + [DEFEND, STRIKE] * 4 + [REAVE] * 2
+        self.assertEqual(chosen([DEATHS_DOOR, PARSE, COUNTDOWN], deck, act=2), "Countdown")
 
 
 if __name__ == "__main__":
