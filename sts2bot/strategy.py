@@ -247,6 +247,28 @@ BAD_LUCK = 1.7  # how much more than average a fight costs when the draws go wro
 BOSS_WORTH = 16.0  # what getting past the boss is worth, in the units of the room rewards below
 MAX_PATHS = 1500
 ELITE_FLOOR = 0.35  # share of Max HP under which an elite is never chosen while there is another way on
+# The act 2 boss by the HP it is met on, as a share of the chance from full HP. Until 2026-11-22 acts 1 and 2 shared
+# the curve below (1.0 from 85% up, 0.89 at 80%, 0.67 at 70%, 0.45 at 60%), which counted HP above 85% as worth
+# nothing at the act 2 boss. Two measures say otherwise, and agree with each other:
+# - live, Ascension 5+ (fights.jsonl, 225 act 2 bosses): from 97% up 38 won of 59 (64%); as a share of that,
+#   85-97% 0.88 (35/62), 75-85% 0.72 (12/26), 65-75% 0.43 (8/29), 55-65% 0.20 (4/31), under half 0.17 (2/18);
+# - the Knowledge Demon solved exactly (scripts/demonfight.py: perfect play, so no deck-strength confound), mean of
+#   the decks that win 15%+ from full: 95% 0.91, 90% 0.82, 85% 0.66, 80% 0.58, 75% 0.48, 70% 0.36, 60% 0.22, 50% 0.12.
+# Act 1 bosses really are flat above 85% (A5+: 97%+ 109/117, 85-97% 111/120), so act 1 keeps the old curve.
+ACT2_ODDS = ((0.0, 0.0), (0.3, 0.05), (0.5, 0.15), (0.6, 0.23), (0.7, 0.42), (0.8, 0.68), (0.9, 0.86), (1.0, 1.0))
+# What an Unknown room costs on average, as a share of Max HP (logs of 2026-11-22, 375 act 2 Unknown rooms: an
+# event 65% of the time at +0.2%, a fight 20% at 17%; acts 1 and 3 under 1%). Until then the routes counted it as free.
+UNKNOWN_COST = {2: 0.03}
+
+
+def _between(points, x: float) -> float:
+    """Straight lines between (x, y) points, flat beyond the ends."""
+    if x <= points[0][0]:
+        return points[0][1]
+    for (x0, y0), (x1, y1) in zip(points, points[1:]):
+        if x <= x1:
+            return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+    return points[-1][1]
 
 
 def boss_odds(hp_ratio: float, act: int = 1) -> float:
@@ -265,7 +287,11 @@ def boss_odds(hp_ratio: float, act: int = 1) -> float:
     entered on 95% HP or more (6 in 23; none in 14 below), and on Ascension 5 none in 8 below 80%.
     So in act 3 the curve is steep right up to full health, and a route there is worth what HP it
     keeps (elites are not taken in act 3 anyway, so this costs no relics).
+
+    Act 2 has its own curve since 2026-11-22 (`ACT2_ODDS`); act 1 keeps the one below.
     """
+    if act == 2:
+        return _between(ACT2_ODDS, hp_ratio)
     if act >= 3:
         if hp_ratio >= 0.95:
             return 1.0
@@ -280,6 +306,10 @@ def boss_odds(hp_ratio: float, act: int = 1) -> float:
 
 
 REST_HEAL = 0.3  # of Max HP
+# The rest site just before a boss heals below this share of Max HP. Act 2 was 0.85 until 2026-11-22: live, A5+,
+# act 2 bosses met on 85-97% HP were won 35 of 62 against 38 of 59 from 97% up, and the Knowledge Demon solved
+# exactly gives 90% HP 0.82 of the chance from full (ACT2_ODDS); act 1 bosses show no such drop.
+HEAL_BELOW = {1: 0.85, 2: 0.95}
 LIFT_HITTERS = 5  # cards that deal damage a deck needs before Girya's Strength beats an upgrade
 UPGRADE_EARLY = 4.0  # what an upgrade counts for against resting in act 1 (later acts: the `upgrade_worth` setting, see learn.CHOICES)
 
@@ -356,6 +386,7 @@ def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, 
             gold = gold % 75
         elif kind == "Unknown":
             score += 0.9
+            hp = max(1.0, hp - UNKNOWN_COST.get(act, 0.0) * max_hp * harsh)
         elif kind == "Ancient":
             score += 3.0
         elif kind == "Boss":
@@ -507,7 +538,8 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
     # met on 80-97% HP were beaten as often as from full (41 of 60 against 94 of 117), so from
     # 85% up the rest site is an upgrade. The last boss is a longer fight, and its few results
     # do not say the same (0 of 6 on 80-97%, 6 of 23 from full).
-    full = 0.95 if not isinstance(act, int) or act >= 3 else 0.85
+    # (Act 2 since 2026-11-22: see HEAL_BELOW.)
+    full = HEAL_BELOW.get(act, 0.95) if isinstance(act, int) else 0.95
     heal_first = hp < (full if mem.boss_next else 0.6)
     node = mem.map_nodes.get(mem.map_at) if mem.map_nodes else None
     if node is not None and str(node.get("type")) == "RestSite" and (node.get("children") or []):

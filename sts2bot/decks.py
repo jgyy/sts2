@@ -70,6 +70,36 @@ def _hitters(deck: list) -> int:
 BLOCK_ROOM = 2  # Block cards a deck of up to 23 takes at the full lean (learn.CHOICES["block_want"]); half for the next, none after
 
 
+# A Power that gives energy every turn, in rating points for the first energy a turn (2026-11-22). The Knowledge Demon
+# solved exactly (`scripts/demonfight.py cards`): one such Power added to a deck without one took perfect play's chance
+# of winning from 0.2% to 21.5%, 46% to 69% and 2.8% to 22.8% on three decks, where one more attack gave 0 to 10 points
+# and one more Block card nothing; a second one 6 to 15 points more; the planner gets most of it (19%, 66%, 18%). Until
+# then nothing at a reward saw it: Friendship stood at 5.0-5.6 and lost to Grave Warden, Scourge and the plain attacks
+# (taken 6 times in 24 offers in a day's logs), and Demesne at 4.1 was skipped under the bar. (The bot's own record of
+# Friendship, 99 picks, is 0.7 floors a pick under par: within what chance does to a card's record at that count.)
+ENERGY_POWER = 4.0
+STRENGTH_TOLL = 0.65  # of that lost to "Lose 2 Strength" in a deck whose every hit takes Strength (Friendship: +6-8 points there)
+_ICONS = r"((?:\[[a-z_]*energy_icon\.png\]\s*)+)"
+_TURN_ENERGY = (
+    (re.compile(r"at the start of (?:your|each) turn, gain " + _ICONS, re.I), lambda m: 1.0),  # Demesne
+    (re.compile(r"gain " + _ICONS + r"at the start of (?:your|each) turn", re.I), lambda m: 1.0),  # Pyre, Friendship
+    (re.compile(r"every (\d+)\s*\[[a-z_]*energy_icon\.png\] you spend, gain " + _ICONS, re.I), lambda m: 3.0 / int(m.group(1))),  # Orbit, on 3 a turn
+    (re.compile(r"every (\d+) cards you draw, gain " + _ICONS, re.I), lambda m: 5.5 / int(m.group(1))),  # Automation
+)
+
+
+def turn_energy(card: dict) -> float:
+    """Energy a turn that a Power gives once it is in play (0 for anything else)."""
+    if str(card.get("type")) != "Power":
+        return 0.0
+    text = str(card.get("description") or "")
+    for pattern, rate in _TURN_ENERGY:
+        m = pattern.search(text)
+        if m:
+            return rate(m) * len(re.findall(r"energy_icon", m.group(m.lastindex)))
+    return 0.0
+
+
 def _blocks(card: dict) -> bool:
     """A card taken for its Block: 5 or more when played, the Defends (upgraded or not) left out."""
     return _parse(card).block >= 5 and not is_basic(card) and not is_basic({"name": str(card.get("name") or "").rstrip("+")})
@@ -115,6 +145,17 @@ def deck_fit(card: dict, deck: list, act: int | None = None, energy: int = 3) ->
         # ended on floor 27 on average; with one, two or three of them, 32 to 35 alike.)
         if act == 1 and not any(_punch(c) >= 8.0 and _card_key(c) != "FALLING_STAR" for c in deck):
             fit += 1.5
+    rate = turn_energy(card)
+    if rate:
+        # Each energy a turn already there (from such Powers, or a relic's that the last fight began with) halves the
+        # next: on the Demon a deck went 0.2% -> 61% -> 82% on 3, 4 and 5 energy a turn.
+        held = sum(map(turn_energy, deck)) + max(0, energy - 3)
+        gain = ENERGY_POWER * min(rate, 1.0) * 0.5**held
+        if _parse(card).strength < 0 and _parse(card).strength_lasts:
+            # Friendship's 2 Strength comes off every hit that takes Strength: not Osty's, not Doom, not Poison.
+            hitters = [c for c in deck if _parse(c).total_damage > 0]
+            gain *= 1.0 - STRENGTH_TOLL * (sum(1 for c in hitters if not _parse(c).osty_attack) / max(1, len(hitters)))
+        fit += gain
     if _parse(card).weak and sum(1 for c in deck if _parse(c).weak) < 2:
         fit += knob("weak_want")  # the first two sources of Weak (a setting under test, see learn.CHOICES)
     if knob("block_want") and _blocks(card) and not dear:

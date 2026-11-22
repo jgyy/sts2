@@ -4,6 +4,7 @@
     python3 scripts/demonfight.py regret [FIGHTS]      the turns where the planner gave most away, by kind
     python3 scripts/demonfight.py trace [SEED] [DECK]  one fight, turn by turn, with the best play beside ours
     python3 scripts/demonfight.py energy [FIGHTS]      the same decks on 3 and on 4 energy a turn (what an energy relic is worth here)
+    python3 scripts/demonfight.py cards [FIGHTS]       one more card of each sort, an energy-a-turn Power among them (decks.ENERGY_POWER)
     ... NAME=VALUE                                     with a constant of combat.py or closing.py set to that (CLOSE_REACH=0)
 
 The game side is the Demon as the logs show it on Ascension 7: 379 HP; Debuff, 17, 8x3, 11 and
@@ -39,11 +40,18 @@ GAIN = 3  # Strength a Power gives: that much more on every attack card
 
 
 class Deck:
-    def __init__(self, counts, da=9, db=8, dz=7, maxhp=75, energy=3):
+    def __init__(self, counts, da=9, db=8, dz=7, maxhp=75, energy=3, pe=0, ps=GAIN):
         self.counts = dict(zip(KINDS, counts))
         self.da, self.db, self.dz, self.dh = da, db, dz, int(2.2 * da)
         self.maxhp, self.energy = maxhp, energy
         self.powers = self.counts["P"]
+        # What a Power in play gives: `ps` Strength on every attack card (Inflame: 3) and `pe` energy at the start
+        # of each turn (Friendship: 1 energy and -2 Strength; Demesne, Pyre: 1 energy and nothing off).
+        self.pe, self.ps = pe, ps
+
+    def turn_energy(self, s, drain=0):
+        """Energy a turn starts with, `s` Powers in play."""
+        return self.energy - drain + self.pe * s
 
     def weights(self, s):
         """The chance of each kind in a draw, with `s` Powers already in play (they have left the deck)."""
@@ -51,10 +59,11 @@ class Deck:
         return [n / sum(left) for n in left]
 
     def hit(self, kind, s):
-        return {"A": self.da, "H": self.dh, "Z": self.dz}[kind] + GAIN * s
+        return max(0, {"A": self.da, "H": self.dh, "Z": self.dz}[kind] + self.ps * s)
 
     def __repr__(self):
-        return f"{''.join(f'{k}{n}' for k, n in self.counts.items())} hit {self.da} block {self.db} hp {self.maxhp} energy {self.energy}"
+        power = f" P=+{self.pe}E{self.ps:+d}S" if self.pe else ""
+        return f"{''.join(f'{k}{n}' for k, n in self.counts.items())} hit {self.da} block {self.db} hp {self.maxhp} energy {self.energy}{power}"
 
 
 def rules(r, burns):
@@ -128,7 +137,7 @@ def solve(deck, burns):
             total = np.zeros_like(V[r + 1][0])
             for hand, p in hands(deck, rl["draw"], s):
                 best = None
-                for dmg, blk, n in plays(deck, hand, deck.energy - rl["drain"], rl["limit"], s):
+                for dmg, blk, n in plays(deck, hand, deck.turn_energy(s, rl["drain"]), rl["limit"], s):
                     lost = max(0, rl["inc"] + rl["burn"] - blk)
                     key = (dmg, lost, s + n)
                     if key not in cache:
@@ -153,7 +162,8 @@ def value(V, r, rl, hp, boss, dmg, blk, s=0):
 def state(deck, r, rl, hp, boss, hand, energy, block, played, s=0):
     text = {"A": ("STRIKE_R", "Strike", "Attack", 1, f"Deal {deck.hit('A', s)} damage.", "AnyEnemy"), "H": ("HEAVY", "Heavy Blow", "Attack", 2, f"Deal {deck.hit('H', s)} damage.", "AnyEnemy"),
             "Z": ("FLICK", "Flick", "Attack", 0, f"Deal {deck.hit('Z', s)} damage.", "AnyEnemy"), "B": ("DEFEND_R", "Defend", "Skill", 1, f"Gain {deck.db} Block.", "Self"),
-            "P": ("INFLAME", "Inflame", "Power", 1, f"Gain {GAIN} Strength.", "Self")}
+            "P": ("INFLAME", "Inflame", "Power", 1, f"Gain {deck.ps} Strength.", "Self") if not deck.pe else
+                 ("FRIENDSHIP", "Friendship", "Power", 1, (f"Lose {-deck.ps} Strength. " if deck.ps < 0 else "") + "Gain [necrobinder_energy_icon.png] at the start of each turn.", "Self")}
     cards = []
     for i, c in enumerate(hand):
         if c == "F":
@@ -164,7 +174,9 @@ def state(deck, r, rl, hp, boss, hand, energy, block, played, s=0):
     if rl["heal"]:
         intents += [{"type": "Heal", "label": ""}, {"type": "Buff", "label": ""}]
     est = [{"id": "STRENGTH_POWER", "amount": rl["strength"]}] if rl["strength"] else []
-    pst = [{"id": "STRENGTH_POWER", "amount": GAIN * s}] if s else []
+    pst = [{"id": "STRENGTH_POWER", "amount": deck.ps * s}] if s and deck.ps else []
+    if s and deck.pe:
+        pst.append({"id": "FRIENDSHIP_POWER", "amount": s})
     if rl["burn"]:
         pst.append({"id": "DISINTEGRATION_POWER", "amount": rl["burn"]})
     if rl["limit"] < 99:
@@ -190,7 +202,7 @@ def fight(deck, burns, V, rng, trace=False):
         while hand.count("P") > deck.powers - s:
             hand[hand.index("P")] = "F"
         counts = tuple(hand.count(k) for k in KINDS)
-        energy, block, dealt, played, s0 = deck.energy - rl["drain"], 0, 0, 0, s
+        energy, block, dealt, played, s0 = deck.turn_energy(s, rl["drain"]), 0, 0, 0, s
         shown = "".join(sorted(hand))
         for _ in range(12):
             if boss - dealt <= 0:
@@ -211,7 +223,7 @@ def fight(deck, burns, V, rng, trace=False):
                 energy -= {"A": 1, "H": 2, "Z": 0}[c]
         ours = value(V, r, rl, hp, boss, dealt, block, s)
         # (The planner may play its Power before its attacks and so do a little better than any play listed: no chance given away then.)
-        options = [(value(V, r, rl, hp, boss, d, b, s0 + n), d, b, n) for d, b, n in plays(deck, counts, deck.energy - rl["drain"], rl["limit"], s0)]
+        options = [(value(V, r, rl, hp, boss, d, b, s0 + n), d, b, n) for d, b, n in plays(deck, counts, deck.turn_energy(s0, rl["drain"]), rl["limit"], s0)]
         best = max(options)
         turns.append((r, rl["kind"], hp / deck.maxhp, boss, max(0.0, best[0] - ours), dealt - best[1], block - best[2], rl["inc"] + rl["burn"], (s - s0) - best[3], counts[5]))
         if trace:
@@ -300,6 +312,27 @@ def energy_table(n):
     print("  4 energy, perfect play by HP at the Demon's door:", {h: round(float(V[1][0][h, BOSS]), 3) for h in (50, 60, 75)})
 
 
+def card_worth(n):
+    """What one more card of each sort is worth at the Demon, by perfect play (and the planner beside it on `n` fights).
+
+    The question behind decks.ENERGY_POWER: a Power that gives an energy every turn against one more attack, Block
+    card or Strength Power, in decks that hold no Power yet."""
+    offers = OFFERS[0]
+    bases = [((6, 4, 2, 6, 2, 0), dict(da=15, db=11)), ((6, 3, 3, 6, 2, 0), dict(da=19, db=12)), ((7, 3, 2, 7, 3, 0), dict(da=17, db=12, maxhp=66))]
+    extra = [("nothing", (0, 0, 0, 0, 0, 0), {}), ("Strike-like attack", (1, 0, 0, 0, 0, 0), {}), ("two-cost attack", (0, 1, 0, 0, 0, 0), {}),
+             ("free attack", (0, 0, 1, 0, 0, 0), {}), ("Defend-like", (0, 0, 0, 1, 0, 0), {}), ("Inflame (+3 Strength)", (0, 0, 0, 0, 0, 1), {}),
+             ("energy Power (Demesne, Pyre)", (0, 0, 0, 0, 0, 1), dict(pe=1, ps=0)), ("Friendship (+1 energy, -2 Strength)", (0, 0, 0, 0, 0, 1), dict(pe=1, ps=-2))]
+    print("perfect play's chance of beating the Demon from full HP, the deck as it is and with one card more (planner beside it)")
+    for counts, kw in bases:
+        print(f"  {Deck(counts, **kw)}")
+        for name, add, pw in extra:
+            deck = Deck(tuple(a + b for a, b in zip(counts, add)), **kw, **pw)
+            V = solve(deck, offers)
+            rng = random.Random(11)
+            won = sum(fight(deck, offers, V, rng)[0] for _ in range(n)) / n if n else float("nan")
+            print(f"    + {name:38} perfect {float(V[1][0][deck.maxhp, BOSS]):.3f}  planner {won:.3f}")
+
+
 if __name__ == "__main__":
     logging.disable(logging.CRITICAL)
     for arg in [a for a in sys.argv[1:] if "=" in a]:
@@ -314,6 +347,8 @@ if __name__ == "__main__":
         print(fight(deck, burns, V, random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 1), trace=True)[:2])
     elif sys.argv[1:2] == ["regret"]:
         regret(run(int(sys.argv[2]) if len(sys.argv) > 2 else 100))
+    elif sys.argv[1:2] == ["cards"]:
+        card_worth(int(sys.argv[2]) if len(sys.argv) > 2 else 0)
     elif sys.argv[1:2] == ["energy"]:
         energy_table(int(sys.argv[2]) if len(sys.argv) > 2 else 400)
     else:
