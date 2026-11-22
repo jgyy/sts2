@@ -373,7 +373,9 @@ def idle(since: str = "") -> None:
     for t, kind, names, last, expected, _after in _endings():
         energy = int(last.group(6))
         spare = [c.group(2).strip() for c in IN_HAND.finditer(last.group(9)) if not c.group(4) and c.group(3).isdigit() and int(c.group(3)) <= energy and c.group(5).strip()]
-        if t >= since and energy >= 1 and spare and expected >= 8:
+        # Under Vital Spark (Infested Prism) every Skill played makes each hit on us harder by the power's amount
+        # (combat.py's taint): a Defend's 5 Block can cost more than it saves, so holding it is no idle turn.
+        if t >= since and energy >= 1 and spare and expected >= 8 and "VITAL_SPARK" not in last.group(8):
             rows.append((t, kind, names, last, expected))
     print(collections.Counter(r[2][:40] for r in rows).most_common(15))
     for t, kind, _names, last, expected in rows[-25:]:
