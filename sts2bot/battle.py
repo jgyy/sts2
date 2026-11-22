@@ -123,6 +123,15 @@ class Enemy:
         return self.hp > 0
 
 
+def clone(e: Enemy, **changes) -> Enemy:
+    """`dataclasses.replace` for an Enemy at a third of the cost: a plan copies the enemies ten thousand times
+    (the plan per card of a discard on ten cards was two seconds, a third of it in `replace`)."""
+    new = object.__new__(Enemy)
+    new.__dict__.update(e.__dict__)
+    new.__dict__.update(changes)
+    return new
+
+
 def _is_attack(intent: dict) -> bool:
     """Intents that hit us. The Waterfall Giant's last move is a "DeathBlow":
     read as no attack at all, the bot spent that turn hitting a boss that was
@@ -239,6 +248,15 @@ def osty_hp(player: dict) -> int:
 KNOWN_THREAT = {"MAGI_KNIGHT": 22.0, "FLAIL_KNIGHT": 16.0, "SPECTRAL_KNIGHT": 12.0}
 FOCUS_FLOOR = 6.0  # damage a turn every enemy is taken to do at least, in that order (as combat.THREAT_FLOOR)
 
+# Minions to kill before their leader although his death takes them along. The Kin (act 1 boss, Ascension
+# 8): the Priest 199 HP, 8, 8, 3x3, Buff; each Follower 63 HP, Buff (2 Strength), 5, 2x2, so from round 5
+# the two do 60% of what comes in, more every third turn, in hits too small for the per-turn rule below.
+# The bot hit the Priest first in 17 of 19 fights (2026-11-21/22) and won 9 of 15 on Ascension 8; the one
+# fight that took the Followers first (AoE) won on 35/70. scripts/kinfight.py, the real planner on the
+# logged intents: Followers first won 92% against 31% on six act 1 decks, and was never worse on any deck
+# tried (the strongest finish level, on 31 HP against 30), since the Priest alone is two Defends a turn.
+MAIN_MINIONS = {"KIN_FOLLOWER"}
+
 
 def _set_focus(enemies: list) -> None:
     """In a fight with a KNOWN_THREAT enemy, what damage on each is worth: the kill order is by threat over
@@ -351,6 +369,8 @@ def read_enemies(state: dict) -> list[Enemy]:
         for e in out:
             if e.minion and e.incoming >= 15 and e.incoming > 2 * leader_hits and e.hp + e.block <= 0.6 * leader_hp:
                 e.main_threat = True
+            elif e.minion and re.sub(r"_\d+$", "", e.entity_id) in MAIN_MINIONS:
+                e.main_threat = True  # (worth what the leader is: the health order then takes it first while he is far from dead)
     return out
 
 
