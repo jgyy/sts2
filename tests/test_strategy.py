@@ -351,7 +351,8 @@ class Strategy(unittest.TestCase):
             self.assertEqual(pick(80, "RestSite"), 0)
         self.assertEqual(pick(60, "RestSite"), 1)
         self.assertEqual(pick(80, "RestSite", act=2), 1)
-        self.assertEqual(pick(80, "RestSite+RestSite", act=2), 0)
+        with mock.patch.dict(learn.KNOB, {"elite_worth": 4.0}):  # (since 2026-11-22's act 2 curve, 18.2 against 18.3 at 2.5)
+            self.assertEqual(pick(80, "RestSite+RestSite", act=2), 0)
         self.assertEqual(pick(40, "RestSite+RestSite"), 1)
         self.assertEqual(strategy.boss_odds(0.9), strategy.boss_odds(1.0))
         self.assertGreater(strategy.boss_odds(0.8), 2 * strategy.boss_odds(0.6) - 0.1)
@@ -433,11 +434,15 @@ class Strategy(unittest.TestCase):
         saved, learn.KNOB["upgrade_worth"] = learn.KNOB["upgrade_worth"], 2.5
         try:
             self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 0)
-            # From 85% HP up the act 1 and 2 bosses are beaten as often as from full: upgrade then.
-            s["player"]["hp"] = 66
+            # From 85% HP up the act 1 boss is beaten as often as from full: upgrade then.
+            s["player"]["hp"], s["run"]["act"] = 66, 1
             self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 1)
-            s["run"]["act"] = 3  # ... but not before the last boss
-            self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 0)
+            # ... but not before the act 2 boss (since 2026-11-22: 85-97% HP won 0.88 as often as 97%+) or the last.
+            for act in (2, 3):
+                s["run"]["act"] = act
+                self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 0, act)
+            s["player"]["hp"], s["run"]["act"] = 72, 2  # 96%: upgrade
+            self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 1)
         finally:
             learn.KNOB["upgrade_worth"] = saved
 
