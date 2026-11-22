@@ -54,7 +54,7 @@ def _punch(card: dict) -> float:
     """Damage a card does for an energy, counting what stands in for damage (Doom, Poison, Shivs, orbs)."""
     i = _parse(card)
     x = 2 if i.is_x else 1
-    dealt = i.total_damage * (1.4 if i.aoe else 1.0) * x + 0.8 * i.doom + 3.0 * i.poison + 4.0 * i.shivs + i.enemy_hp_loss + 6.0 * len(i.channel)
+    dealt = i.total_damage * (1.4 if i.aoe else 1.0) * x + 0.8 * i.doom + (1.5 if i.poison_needs else 3.0) * i.poison + 4.0 * i.shivs + i.enemy_hp_loss + 6.0 * len(i.channel)
     return dealt / max(1, 2 if i.is_x else i.cost)
 
 

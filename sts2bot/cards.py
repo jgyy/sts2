@@ -46,6 +46,7 @@ class CardInfo:
     bound: bool = False  # afflicted with Bound: only one such card can be played per turn
     # --- other characters' mechanics
     poison: int = 0  # Poison applied (per application)
+    poison_needs: bool = False  # ... only to an enemy that already has Poison (Bubble Bubble: nothing otherwise)
     doom: int = 0  # Doom applied
     shivs: int = 0  # Shivs (0-cost 4 damage cards) added to the hand
     star_gain: int = 0  # Stars gained (the Regent's second resource)
@@ -246,6 +247,7 @@ def parse(card: dict) -> CardInfo:
     poison = _int(r"apply\s+(\d+)\s+poison", text)
     if poison:
         poison *= _int(r"poison\s+to\s+a\s+random\s+enemy\s+(\d+)\s+times", text) or 1
+    poison_needs = bool(poison and re.search(r"if\s+the\s+enemy\s+has\s+poison", text, re.I))
     doom = _int(r"apply\s+(\d+)\s+doom", text)
     if not doom and re.search(r"apply\s+doom\s+equal\s+to\s+damage\s+dealt", text, re.I):
         doom = _int(r"deals?\s+(\d+)\s+damage", text)  # Blight Strike: as much Doom as it hits for
@@ -286,7 +288,7 @@ def parse(card: dict) -> CardInfo:
         star_cost=_cost(card.get("star_cost")) if card.get("star_cost") not in (None, "") else 0, key=_card_key(card),
         damage=damage, hits=hits, double_if_vulnerable=double_if_vulnerable, aoe=aoe, random_target=random_target, block=block,
         vulnerable=vulnerable, weak=weak, draw=draw, energy_gain=energy_gain, hp_loss=hp_loss, known=known, strength=strength,
-        strength_lasts=strength_lasts, enemy_strength_loss=enemy_strength_loss, enemy_strength_lasts=enemy_strength_lasts, poison=poison, doom=doom, shivs=shivs, star_gain=star_gain,
+        strength_lasts=strength_lasts, enemy_strength_loss=enemy_strength_loss, enemy_strength_lasts=enemy_strength_lasts, poison=poison, poison_needs=poison_needs, doom=doom, shivs=shivs, star_gain=star_gain,
         forge=forge, summon=summon, dexterity=dexterity, dexterity_lasts=dexterity_lasts, channel=channel, evoke=evoke, evoke_all=evoke_all,
         next_energy=next_energy, next_draw=next_draw, next_block=next_block, enemy_hp_loss=enemy_hp_loss, souls=souls, heal=heal,
         needs_target=target == "AnyEnemy", playable=can_play,
@@ -494,7 +496,7 @@ def deck_value(card: dict) -> float:
     score += max(0.0, info.block / cost - 5.0) * 0.45
     score += min(info.strength, 4) * (1.0 if info.strength_lasts else 0.4)
     score += info.draw * 0.8 + info.energy_gain * 1.2
-    score += info.poison * 0.3 + info.doom * 0.12 + info.shivs * 0.7 + info.star_gain * 0.6 + info.forge * 0.12
+    score += info.poison * (0.15 if info.poison_needs else 0.3) + info.doom * 0.12 + info.shivs * 0.7 + info.star_gain * 0.6 + info.forge * 0.12
     score += info.summon * 0.15 + len(info.channel) * 1.3 + info.evoke * 0.8 + info.souls * 0.6
     score += info.dexterity * (1.5 if info.dexterity_lasts else 0.4)
     score += info.next_energy * 0.8 + info.next_draw * 0.5 + info.next_block * 0.08 + info.enemy_hp_loss * 0.15
@@ -533,7 +535,7 @@ def upgrade_gain(base: dict, upgraded: dict) -> float:
             i.total_damage * (1.6 if i.aoe else 1.0) + i.block + i.draw * 3.0 + i.energy_gain * 5.0
             + min(i.vulnerable, 4) * 2.5 + min(i.weak, 4) * 2.0
             + i.strength * (4.0 if i.strength_lasts else 1.5) + i.dexterity * (4.0 if i.dexterity_lasts else 1.5)
-            + i.poison * 2.0 + i.doom * 0.6 + i.shivs * 4.0 + i.star_gain * 2.5 + i.forge * 0.6 + i.summon
+            + i.poison * (1.0 if i.poison_needs else 2.0) + i.doom * 0.6 + i.shivs * 4.0 + i.star_gain * 2.5 + i.forge * 0.6 + i.summon
             + channels * 4.0 + i.evoke * 3.0 + i.enemy_strength_loss * 1.5
             + i.next_energy * 4.0 + i.next_draw * 1.5 + i.next_block * 0.7 + i.enemy_hp_loss + i.souls * 3.0
         )

@@ -632,6 +632,15 @@ def free_plays(state: dict) -> int:
     return max(0, _stacks(player, "VOID_FORM") - int(state.get("_plays_this_turn") or 0))
 
 
+def _resists(e: Enemy) -> bool:
+    """Artifact swallows a debuff. Mangle on an enemy with Artifact took none
+    of its Strength away, and the bot walked into the full attack."""
+    if e.artifact > 0:
+        e.artifact -= 1
+        return True
+    return False
+
+
 def _poison_total(stack: int, turns: int) -> int:
     """HP a Poison stack takes over the next `turns` turns (it loses 1 a turn)."""
     stack = max(0, stack)
