@@ -129,5 +129,36 @@ class DamageAtAReward(unittest.TestCase):
         self.assertEqual(chosen([DEATHS_DOOR, PARSE, COUNTDOWN], deck, act=2), "Countdown")
 
 
+TIMES_UP = c("TIMES_UP", "Time's Up", "Attack", 2, "Deal damage equal to the enemy's Doom.", "Uncommon")
+BLIGHT_STRIKE = c("BLIGHT_STRIKE", "Blight Strike", "Attack", 2, "Deal 8 damage. Apply Doom equal to damage dealt.")
+OBLIVION = c("OBLIVION", "Oblivion", "Skill", 0, "Whenever you play a card this turn, apply 3 Doom to the enemy.", "Rare")
+
+
+@mock.patch.dict(learn.KNOB, {"crowd": 0.3})
+class TimesUpNeedsDoom(unittest.TestCase):
+    # 2026-11-22: Time's Up is only ever held by the Necrobinder, and in 20 of 63 fights holding it the deck had none of the
+    # Doom cards the logs name (fights.jsonl); it deals the Doom an enemy already has, so there it does nothing.
+
+    def test_what_puts_doom_on_an_enemy(self):
+        for card in (SCOURGE, COUNTDOWN, REAPER_FORM, BLIGHT_STRIKE, NEGATIVE_PULSE, OBLIVION):
+            self.assertTrue(decks.makes_doom(card), card["name"])
+        for card in (NEUROSURGE, STRIKE, REAVE, TIMES_UP):  # (Neurosurge's 3 Doom is on the Necrobinder)
+            self.assertFalse(decks.makes_doom(card), card["name"])
+
+    def test_oblivion_is_a_doom_source(self):
+        plain = STARTER + [REAVE, POKE, GRAVE_WARDEN]
+        self.assertGreater(decks.deck_value(TIMES_UP) + decks.deck_fit(TIMES_UP, plain + [OBLIVION], 2), 1.0)
+
+    def test_no_doom_in_the_deck_means_no_value(self):
+        deck = STARTER + [REAVE, POKE, GRAVE_WARDEN]
+        for card in (TIMES_UP, dict(TIMES_UP, id="TIME_S_UP")):
+            self.assertAlmostEqual(decks.deck_value(card) + decks.deck_fit(card, deck, 2), 0.0, msg=card["id"])
+
+    def test_with_a_doom_source_it_keeps_its_rating(self):
+        plain = STARTER + [REAVE, POKE, GRAVE_WARDEN]
+        doomed = plain + [SCOURGE]
+        self.assertGreater(decks.deck_value(TIMES_UP) + decks.deck_fit(TIMES_UP, doomed, 2), 1.0)
+
+
 if __name__ == "__main__":
     unittest.main()

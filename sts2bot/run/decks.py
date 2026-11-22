@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 from . import crowd
-from ..cards import _card_key, is_basic, parse as _parse
+from ..cards import _card_key, deck_value, is_basic, parse as _parse
 from ..learn import knob
 
 SKIP_THRESHOLD = 3.0  # card rewards scoring below this are skipped
@@ -138,6 +138,19 @@ def turn_damage(card: dict, deck: list) -> float:
     return 0.0
 
 
+TIMES_UP_KEYS = ("TIMES_UP", "TIME_S_UP")  # "Deal damage equal to the enemy's Doom" (the key is spelt both ways)
+
+
+def makes_doom(card: dict) -> bool:
+    """Whether a card puts Doom on an enemy (Neurosurge's 3 on the Necrobinder herself does not count)."""
+    text = str(card.get("description") or "")
+    if re.search(r"apply \d+ doom to yourself", text, re.I):
+        return False
+    # (The parser leaves out Doom in a delayed clause: a Power's at the start of each turn, Countdown's; Oblivion's "whenever you
+    # play a card this turn"; and Reaper Form's is "that much".)
+    return _parse(card).doom > 0 or bool(re.search(r"apply that much doom|apply \d+ doom to (?:the enemy|a random enemy|all enemies)", text, re.I))
+
+
 def _blocks(card: dict) -> bool:
     """A card taken for its Block: 5 or more when played, the Defends (upgraded or not) left out."""
     return _parse(card).block >= 5 and not is_basic(card) and not is_basic({"name": str(card.get("name") or "").rstrip("+")})
@@ -157,6 +170,11 @@ def deck_fit(card: dict, deck: list, act: int | None = None, energy: int = 3) ->
     """
     if not deck:
         return 0.0
+    if _card_key(card) in TIMES_UP_KEYS and not any(makes_doom(c) for c in deck):
+        # Time's Up deals the Doom the enemy already has. A deck that puts none on one has nothing for it to hit: 20 of the
+        # 63 fights a Necrobinder held it in (2026-11-22 logs) had none of the Doom cards the logs name (Scourge, No Escape,
+        # Countdown, Reaper Form, Blight Strike), while cards.py rated it a flat 3.0 (4-5 at the offers).
+        return -deck_value(card)
     fit = 0.0
     # A card that costs more than a turn's energy is only ever played with help (Bury, 4 for 52 damage,
     # on the Necrobinder's 3: taken 24 times as the best damage for its cost on offer, 2.1 floors a pick

@@ -245,7 +245,13 @@ def osty_hp(player: dict) -> int:
 # the logs on round 5 with it alive, and a Necrobinder spread 154 damage evenly over the three in four
 # rounds. On the logged intents, at the 25 to 35 damage a round these decks do, Magi Knight first loses
 # 20 to 45 HP less than the other orders (at 45 and up the order hardly matters).
-KNOWN_THREAT = {"MAGI_KNIGHT": 22.0, "FLAIL_KNIGHT": 16.0, "SPECTRAL_KNIGHT": 12.0}
+# Crusher and Rocket (act 2 boss), rounds 1-7 on Ascension 9: Rocket 4, 30, Buff, 57, Sleep, 10, 34 (19 a round),
+# Crusher 21, 5, 10x2, Buff, 25, 17, 6 (13 a round); round 1 says the opposite. Without them, Vulnerable went on
+# the crab with more HP (the Crusher, 219 to 209), and health first then followed it: in 12 of 13 lost fights in
+# the logs (2026-11-22 14:24-17:58) neither crab had died, and a Regent took the Crusher to 59 while the Rocket hit
+# 31, 58 and 36 from 190. scripts/crabfight.py with a Bash and a Clothesline in its decks: 62.8% -> 77.0% won over
+# 600 fights (never worse on a deck, "neither died" 112 -> 3); without them 43.0% -> 53.2%. Crusher 8 or 17: the same.
+KNOWN_THREAT = {"MAGI_KNIGHT": 22.0, "FLAIL_KNIGHT": 16.0, "SPECTRAL_KNIGHT": 12.0, "ROCKET": 20.0, "CRUSHER": 13.0}
 FOCUS_FLOOR = 6.0  # damage a turn every enemy is taken to do at least, in that order (as combat.THREAT_FLOOR)
 
 # Minions to kill before their leader although his death takes them along. The Kin (act 1 boss, Ascension
