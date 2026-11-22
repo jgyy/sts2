@@ -19,11 +19,11 @@ from .battle import (  # noqa: F401  (also the names other modules and the tests
     intent_damage, intent_hits, kill_reach, osty_hp, power_amount, read_enemies, _bare_block, _draw_worth, _escape_odds, _next_wither, _sandpit, _wither_bill,
     deck_count, junk_cost, cards_left_this_turn, free_plays, _hit, _hit_count, _poison_total, _power_worth, _set_up, _rage_blocks, _respawns, loss_cap,
 )
-from .cards import CardInfo, order_key, parse
-from .potions import fortifier, describe, potion_actions  # noqa: F401
+from ..cards import CardInfo, order_key, parse
+from ..run.potions import fortifier, describe, potion_actions  # noqa: F401
 from . import sandpit as pit
 from . import artifact, closing, triggers
-from .learn import knob
+from ..learn import knob
 
 Action = tuple[str, dict]
 

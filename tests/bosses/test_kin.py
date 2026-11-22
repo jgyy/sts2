@@ -3,9 +3,9 @@
 import unittest
 from unittest import mock
 
-from sts2bot import battle, combat
+from sts2bot.fight import battle, combat
 
-from .helpers import STRIKE, combat_state, enemy
+from ..helpers import STRIKE, combat_state, enemy
 
 MINION = [{"id": "MINION_POWER", "amount": 1}]
 

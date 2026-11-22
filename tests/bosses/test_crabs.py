@@ -2,9 +2,9 @@
 
 import unittest
 
-from sts2bot import combat
+from sts2bot.fight import combat
 
-from .helpers import DEFEND, STRIKE, combat_state, enemy
+from ..helpers import DEFEND, STRIKE, combat_state, enemy
 
 
 def crabs(crusher_hp, rocket_hp, crusher_hit=None, rocket_hit=None, facing="CRUSHER_0", hand=(), **kw):

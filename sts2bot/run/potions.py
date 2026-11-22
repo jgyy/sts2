@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 
-from .battle import end_of_turn_block, expected_loss, osty_hp, read_enemies
-from .cards import parse
+from ..fight.battle import end_of_turn_block, expected_loss, osty_hp, read_enemies
+from ..cards import parse
 
 Action = tuple[str, dict]
 

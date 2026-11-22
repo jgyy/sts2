@@ -9,8 +9,8 @@ from __future__ import annotations
 import re
 
 from . import crowd
-from .cards import _card_key, is_basic, parse as _parse
-from .learn import knob
+from ..cards import _card_key, is_basic, parse as _parse
+from ..learn import knob
 
 SKIP_THRESHOLD = 3.0  # card rewards scoring below this are skipped
 BIG_DECK = 24

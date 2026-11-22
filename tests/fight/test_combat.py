@@ -3,13 +3,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from sts2bot import battle, combat, learn, strategy
+from sts2bot.fight import battle, combat
+from sts2bot import learn
+from sts2bot.run import strategy
 from sts2bot.bot import Bot, Stuck
 from sts2bot.cards import deck_value, parse
-from sts2bot.strategy import Memory
+from sts2bot.run.strategy import Memory
 
-from .fake_game import FakeGame, card
-from .helpers import DEFEND, STRIKE, FakeClock, combat_state, enemy, make_bot  # noqa: F401
+from ..fake_game import FakeGame, card
+from ..helpers import DEFEND, STRIKE, FakeClock, combat_state, enemy, make_bot  # noqa: F401
 
 
 class CardParsing(unittest.TestCase):
@@ -290,7 +292,7 @@ class CombatPlanning(unittest.TestCase):
         self.assertEqual(value([bullet, big, strike, strike]), 42.0)
 
     def test_a_power_other_players_win_with_is_worth_playing(self):
-        from sts2bot import battle
+        from sts2bot.fight import battle
 
         barricade = card(0, "BARRICADE", "Barricade", "Power", 3, "Block is not removed at the start of your turn.", "Self")
         self.assertGreater(battle._power_worth(parse(barricade)), 12.0)  # (our own table says 4)
@@ -419,7 +421,7 @@ class Potions(unittest.TestCase):
         self.assertEqual(combat.potion_actions(state), [])
         state["run"]["floor"] = 23
         self.assertEqual(len(combat.potion_actions(state)), 1)
-        from sts2bot import potions
+        from sts2bot.run import potions
         self.assertGreater(potions.boss_worth(strength), potions.boss_worth(self.potion(0, "Fire Potion", "Deal 20 damage.")))
         self.assertEqual(potions.boss_worth({"potion_name": "Odd Vial", "potion_description": "Deal 31 damage."}), 31.0)  # (unlisted: from its text)
         self.assertGreater(potions.boss_worth({"name": "Odd Tonic", "description": "Gain 3 Strength."}), 20.0)
@@ -960,7 +962,7 @@ if __name__ == "__main__":
 
 class FreeNextCard(unittest.TestCase):
     def test_the_attack_after_unrelenting_costs_nothing(self):
-        from sts2bot.battle import read_enemies
+        from sts2bot.fight.battle import read_enemies
 
         unrelenting = card(0, "UNRELENTING", "Unrelenting", "Attack", 2, "Deal 14 damage. The next Attack you play costs 0 [ironclad_energy_icon.png].", "AnyEnemy")
         bludgeon = card(1, "BLUDGEON", "Bludgeon", "Attack", 3, "Deal 32 damage.", "AnyEnemy")
@@ -977,7 +979,7 @@ class FreeNextCard(unittest.TestCase):
 
 class StarsInTheBank(unittest.TestCase):
     def test_more_stars_are_worth_little_once_plenty_are_held(self):
-        from sts2bot.battle import read_enemies
+        from sts2bot.fight.battle import read_enemies
 
         venerate = card(0, "VENERATE", "Venerate", "Skill", 1, "Gain [star_icon.png][star_icon.png].", "Self")
 

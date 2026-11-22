@@ -2,9 +2,10 @@
 
 import unittest
 
-from sts2bot import combat, learn
+from sts2bot.fight import combat
+from sts2bot import learn
 
-from .helpers import STRIKE, card, combat_state, enemy
+from ..helpers import STRIKE, card, combat_state, enemy
 
 
 class DebuffWorth(unittest.TestCase):

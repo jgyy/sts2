@@ -1,9 +1,9 @@
 import unittest
 
-from sts2bot import combat
+from sts2bot.fight import combat
 
-from .fake_game import card
-from .helpers import combat_state, enemy
+from ..fake_game import card
+from ..helpers import combat_state, enemy
 
 
 class ClosingARace(unittest.TestCase):

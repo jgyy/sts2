@@ -4,13 +4,15 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from sts2bot import combat, learn, strategy
+from sts2bot.fight import combat
+from sts2bot import learn
+from sts2bot.run import strategy
 from sts2bot.bot import Bot, Stuck
 from sts2bot.cards import deck_value, parse
-from sts2bot.strategy import Memory
+from sts2bot.run.strategy import Memory
 
-from .fake_game import FakeGame, card
-from .helpers import DEFEND, STRIKE, FakeClock, combat_state, enemy, make_bot  # noqa: F401
+from ..fake_game import FakeGame, card
+from ..helpers import DEFEND, STRIKE, FakeClock, combat_state, enemy, make_bot  # noqa: F401
 
 
 class LearnedRatings(unittest.TestCase):
@@ -65,7 +67,7 @@ class LearnedRatings(unittest.TestCase):
             self.assertGreater(strategy.path_value(with_elite, 98, 100, 0, 2), strategy.path_value(without, 98, 100, 0, 2))
 
     def test_hp_given_up_in_an_act_3_event_costs_more(self):
-        from sts2bot import events
+        from sts2bot.run import events
         mushroom = {"title": "Fragrant Mushroom", "description": "Lose 15 HP. Upgrade 2 random cards."}
         early, late = events._event_option_value(mushroom, 60, 80, act=2), events._event_option_value(mushroom, 60, 80, act=3)
         self.assertAlmostEqual(early - late, 12.0 * 15 / 60 * (events.ACT3_HP - 1.0))
@@ -824,7 +826,7 @@ class HandSelections(unittest.TestCase):
         self.assertNotEqual(first(), 0)
 
     def test_out_of_a_fight_the_rating_decides_as_before(self):
-        from sts2bot import handpick
+        from sts2bot.fight import handpick
         state = self.insatiable("Choose a card to Discard.")
         state["battle"]["enemies"] = []
         self.assertIsNone(handpick.turn_costs(state, state["hand_select"]["cards"]))
@@ -869,7 +871,7 @@ class HandSelections(unittest.TestCase):
         self.assertIn("combat_select_card", [a[0] for a in acts])  # (the fall-back stays, by rating)
 
     def test_each_kind_of_card_is_planned_once(self):
-        from sts2bot import handpick
+        from sts2bot.fight import handpick
 
         state = self.big_hand()
         handpick._answers.clear()
@@ -881,7 +883,7 @@ class HandSelections(unittest.TestCase):
         self.assertEqual({costs[i] for i in (3, 4, 5, 6, 7)}, {costs[3]})
 
     def test_planning_stops_at_a_card_the_turn_does_not_miss(self):
-        from sts2bot import handpick
+        from sts2bot.fight import handpick
 
         state = self.big_hand()
         handpick._answers.clear()
@@ -893,7 +895,7 @@ class HandSelections(unittest.TestCase):
         self.assertEqual(costs[9], handpick.UNPLANNED)  # (the rest keep their order, after it)
 
     def test_a_card_that_weighs_on_the_hand_is_always_planned_for(self):
-        from sts2bot import handpick
+        from sts2bot.fight import handpick
 
         state = self.big_hand()
         burn = card(10, "BURN", "Burn", "Status", 0, "Unplayable. At the end of your turn, take 2 damage.")
@@ -903,7 +905,7 @@ class HandSelections(unittest.TestCase):
         self.assertNotEqual(costs[10], handpick.UNPLANNED)  # (a Status card may be a burn: it is never skipped over)
 
     def test_the_same_selection_is_not_planned_again(self):
-        from sts2bot import handpick
+        from sts2bot.fight import handpick
 
         state = self.big_hand()
         handpick._answers.clear()
@@ -940,7 +942,7 @@ class Crowd(unittest.TestCase):
     DEFY = card(1, "DEFY", "Defy", "Skill", 1, "Gain 6 Block. Apply 1 Weak.", "AnyEnemy")
 
     def test_every_card_in_the_tables_gets_a_rating(self):
-        from sts2bot import crowd
+        from sts2bot.run import crowd
 
         self.assertEqual(len(crowd.RATING), 5 * 80 + 33)
         self.assertTrue(all(1.5 <= v <= 8.0 for v in crowd.RATING.values()))

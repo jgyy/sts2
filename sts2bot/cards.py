@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .crowd import rating as crowd_rating
+from .run.crowd import rating as crowd_rating
 
 _WORD_NUM = {"twice": 2, "thrice": 3}
 _BASIC = re.compile(r"^(strike|defend)(_[a-z]+)?$", re.I)

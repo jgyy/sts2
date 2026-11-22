@@ -1,6 +1,6 @@
 import unittest
 
-from sts2bot.bossfight import BossWatch
+from sts2bot.fight.bossfight import BossWatch
 
 
 def boss_state(foes, round_no, player_hp=70, max_hp=80, act=1, floor=17):

@@ -8,8 +8,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .cards import CardInfo, parse
-from .crowd import rating as crowd_rating
+from ..cards import CardInfo, parse
+from ..run.crowd import rating as crowd_rating
 
 LETHAL_PENALTY = 1_000_000.0
 WIN_BONUS = 10_000.0

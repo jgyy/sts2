@@ -5,10 +5,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from sts2bot import combat, learn, strategy
+from sts2bot.fight import combat
+from sts2bot import learn
+from sts2bot.run import strategy
 from sts2bot.bot import Bot, Stuck
 from sts2bot.cards import deck_value, parse
-from sts2bot.strategy import Memory
+from sts2bot.run.strategy import Memory
 
 from .fake_game import FakeGame, card
 

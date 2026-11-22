@@ -270,7 +270,7 @@ real game.
 
 `docs/strategy/` holds community strategy collected for the bot to consider (general play, and each character),
 with a list of what the bot already does and what is worth trying next. The notes themselves are not wired into
-the code; the card and relic win rates in `sts2bot/crowd.py` and `sts2bot/events.py` are.
+the code; the card and relic win rates in `sts2bot/run/crowd.py` and `sts2bot/run/events.py` are.
 
 ## Uninstall
 

@@ -28,7 +28,8 @@ from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from sts2bot import battle, combat, learn  # noqa: E402
+from sts2bot.fight import battle, combat  # noqa: E402
+from sts2bot import learn  # noqa: E402
 from tests.fake_game import card  # noqa: E402
 
 C_CYCLE = [(12, 1, False, False), (4, 1, False, False), (6, 2, False, True), (0, 0, False, False), (12, 1, True, False)]

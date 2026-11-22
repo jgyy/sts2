@@ -1,10 +1,10 @@
-"""The Insatiable's Sandpit is priced by the rounds the fight still needs (sts2bot/sandpit.py)."""
+"""The Insatiable's Sandpit is priced by the rounds the fight still needs (sts2bot/fight/sandpit.py)."""
 
 import unittest
 
-from sts2bot import combat, sandpit
+from sts2bot.fight import combat, sandpit
 
-from .helpers import STRIKE, card, combat_state, enemy
+from ..helpers import STRIKE, card, combat_state, enemy
 
 ESCAPE = lambda i, cost=1: card(  # noqa: E731
     i, "FRANTIC_ESCAPE", "Frantic Escape", "Status", cost,

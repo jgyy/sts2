@@ -4,10 +4,12 @@ import unittest
 from unittest import mock
 from pathlib import Path
 
-from sts2bot import combat, learn, strategy
+from sts2bot.fight import combat
+from sts2bot import learn
+from sts2bot.run import strategy
 from sts2bot.bot import Bot, Stuck
 from sts2bot.cards import deck_value, parse
-from sts2bot.strategy import Memory
+from sts2bot.run.strategy import Memory
 
 from .fake_game import FakeGame, card
 from .helpers import DEFEND, STRIKE, FakeClock, combat_state, enemy, make_bot  # noqa: F401
@@ -173,7 +175,7 @@ class FullLoop(unittest.TestCase):
     def test_skipped_card_reward_does_not_loop(self):
         game = FakeGame(seed=2, floors=3)
         bot = make_bot(game)
-        import sts2bot.decks as st  # (where the bar for a card reward lives)
+        import sts2bot.run.decks as st  # (where the bar for a card reward lives)
 
         old = st.SKIP_THRESHOLD
         st.SKIP_THRESHOLD = 99.0  # skip everything

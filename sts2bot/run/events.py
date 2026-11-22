@@ -6,7 +6,7 @@ import logging
 import re
 
 from . import relics
-from .cards import deck_value, is_basic, is_known as _known_card
+from ..cards import deck_value, is_basic, is_known as _known_card
 from .potions import boss_worth
 from .relicworth import id_of as relic_id, worth as relic_worth
 

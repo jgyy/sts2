@@ -2,8 +2,8 @@
 
 import unittest
 
-from sts2bot import events, relicworth, strategy
-from sts2bot.strategy import Memory
+from sts2bot.run import events, relicworth, strategy
+from sts2bot.run.strategy import Memory
 
 
 def relic(i, rid, name, price):

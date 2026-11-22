@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import re
 
-from .cards import parse as _parse
+from ..cards import parse as _parse
 
 # relic id -> worth next to an ordinary shop relic (0). Anything not listed is taken as ordinary.
 WORTH = {
