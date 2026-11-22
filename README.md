@@ -230,7 +230,10 @@ decks, so it shows how many fights the planner gives away and on which turns
 (`demonfight.py regret`), and takes `NAME=VALUE` to try a planner constant.
 `scripts/roomfight.py` does the same for an ordinary act 2 fight, where what
 counts is the HP left at the end: the planner's HP lost a fight next to the
-least any play could lose.
+least any play could lose. `scripts/knightfight.py` plays the act 3 knights
+elite (three enemies, the Spectral Knight's Hex making every card Ethereal)
+with and without the kill order in `battle.KNOWN_THREAT`, or with any planner
+constant as `NAME=VALUE`; `flips` lists the fights two arms disagree on.
 
 ## Options
 

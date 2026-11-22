@@ -107,6 +107,7 @@ class Enemy:
     flutter: int = 0  # Flutter (the Thieving Hopper): Attack hits still to land before it is Stunned and takes full damage again
     thief: bool = False  # Swipe: it holds a card of ours, which comes back if it dies and is gone for good if it gets away
     shell: int = -1  # Hardened Shell (the Skulking Colony): HP it can still lose this turn (-1: no limit)
+    focus: float = 1.0  # what a point of damage on it is worth next to one on the enemy to kill first (KNOWN_THREAT fights only)
 
     @property
     def worth(self) -> float:
@@ -225,6 +226,38 @@ def osty_hp(player: dict) -> int:
     return sum(int(p.get("hp") or 0) for p in player.get("pets") or [] if p.get("alive", True))
 
 
+# Damage a turn some enemies do over a whole fight, where their first intents say much less, with what
+# their aura costs us counted in; it orders whom to hit first (`Enemy.threat`) in any fight. The act 3
+# knights (an elite, where nothing is counted as the fight goes): the Magi Knight opens 6 and Block,
+# Debuff ("ALL your cards are Downgraded" while it lives), 10, Block, and then hits 35 every third turn;
+# the Spectral Knight makes every card Ethereal while it lives and hits 15 or 3x3; the Flail Knight
+# 15, 9x2, Buff, 18. Round 5 brings 50 to 68 with all three up. Read by health alone the Magi Knight (the
+# fewest HP) waited: of 13 fights on Ascension 6+ (2026-11-21/22) 7 ended the run, both lost fights in
+# the logs on round 5 with it alive, and a Necrobinder spread 154 damage evenly over the three in four
+# rounds. On the logged intents, at the 25 to 35 damage a round these decks do, Magi Knight first loses
+# 20 to 45 HP less than the other orders (at 45 and up the order hardly matters).
+KNOWN_THREAT = {"MAGI_KNIGHT": 22.0, "FLAIL_KNIGHT": 16.0, "SPECTRAL_KNIGHT": 12.0}
+FOCUS_FLOOR = 6.0  # damage a turn every enemy is taken to do at least, in that order (as combat.THREAT_FLOOR)
+
+
+def _set_focus(enemies: list) -> None:
+    """In a fight with a KNOWN_THREAT enemy, what damage on each is worth: the kill order is by threat over
+    health left, and HP taken off one brings its death, and the deaths of all that come after it, that much
+    sooner. So a point on the first is worth the whole threat, one on the last only its own.
+
+    The order alone was not enough: a line is also tried aimed wholly at each enemy and scored by HP removed,
+    so a Vulnerable Flail Knight (9 for a Strike, against 6) drew the attacks off the Magi Knight; and Vulnerable
+    went on the enemy with the most HP, the one to be killed last."""
+    live = [e for e in enemies if e.alive and not e.minion and not e.spent]
+    if len(live) < 2 or not any(e.threat and re.sub(r"_\d+$", "", e.entity_id) in KNOWN_THREAT for e in live):
+        return
+    left = lambda e: (max(1, e.hp - e.doom) + e.block) / (1.5 if e.vulnerable else 1.0)
+    order = sorted(live, key=lambda e: -max(e.threat, FOCUS_FLOOR) / left(e))
+    total = sum(max(e.threat, FOCUS_FLOOR) for e in order)
+    for n, e in enumerate(order):
+        e.focus = sum(max(o.threat, FOCUS_FLOOR) for o in order[n:]) / total
+
+
 def read_enemies(state: dict) -> list[Enemy]:
     out = []
     player = state.get("player") or {}
@@ -243,6 +276,7 @@ def read_enemies(state: dict) -> list[Enemy]:
         threat = float(seen.get(str(e.get("entity_id")), 0.0))
         if grows and seen:
             threat = 1.5 * max(threat, float(sum(intent_damage(i) for i in e.get("intents") or [])))
+        threat = max(threat, KNOWN_THREAT.get(re.sub(r"_\d+$", "", str(e.get("entity_id"))), 0.0))
         # The Waterfall Giant, once killed, stands there on 999,999,999 HP for
         # the turn it takes to blow up. Nothing we do to it counts any more.
         spent = hp >= BEYOND_REACH
@@ -309,6 +343,7 @@ def read_enemies(state: dict) -> list[Enemy]:
     # target. Not when the leader only buffs and one minion with far less HP
     # deals all the damage: against the Queen the bot hit her 400 HP while her
     # 199 HP minion took 30 to 50 HP off it every turn.
+    _set_focus(out)
     leaders = [e for e in out if not e.minion]
     if leaders:
         leader_hp = sum(e.hp + e.block for e in leaders)

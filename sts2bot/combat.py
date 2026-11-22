@@ -422,7 +422,7 @@ def simulate(
                     self_loss += e.thorns * _hit_count(e, n_hits, c.double_if_vulnerable)
                     dazed += e.hive * _hit_count(e, n_hits, c.double_if_vulnerable) * (c.type == "Attack")
                     done = _fated(e)  # damage that does not kill it now changes nothing
-                    gain = _progress(e, _hit(e, per, n_hits, c.double_if_vulnerable), chip_rate) * dmg_value * e.worth
+                    gain = _progress(e, _hit(e, per, n_hits, c.double_if_vulnerable), chip_rate) * dmg_value * e.worth * e.focus
                     score += gain * (0.2 if done and e.alive else 1.0)
                 if waves > 1:
                     _rage_blocks(foes, known_dead)
@@ -440,9 +440,9 @@ def simulate(
             elif c.doom and not c.vulnerable:
                 t = _pick_target(foes, 0, 0)  # Doom goes where the attacks go: together they end one enemy sooner
             else:
-                # Vulnerable goes on the enemy we will be hitting the longest.
+                # Vulnerable goes on the enemy we will be hitting the longest (where a kill order is known, the next to die).
                 fresh = [e for e in alive if not e.vulnerable] or alive
-                t = max(fresh, key=lambda e: e.hp + e.block, default=None)
+                t = max(fresh, key=lambda e: (e.focus, e.hp + e.block), default=None)
             if t is not None:
                 _debuff(t, c, xs)
         else:
@@ -563,6 +563,7 @@ def simulate(
             score += 0.1 + (junk_cost(fight, round_no, (deck[0] - 1, max(0, deck[1] - 1))) * dmg_value if c.key in ("DEBRIS", "SLIMED") else 0.0)
         elif not c.known and c.key not in triggers.READ:
             score += 2.5 + max(c.cost, 0)
+        future += triggers.kept(c, dmg_value) * span  # (an Ethereal card not played now is Exhausted)
 
     if healed:  # HP given back is HP not lost, at the price HP has right now; and it is there for this turn's blow
         healed = min(healed, max(0, max_hp - hp))
