@@ -17,7 +17,7 @@ import logging
 import re
 
 from .battle import power_amount
-from .cards import _card_key
+from ..cards import _card_key
 
 log = logging.getLogger("sts2bot.afflictions")
 

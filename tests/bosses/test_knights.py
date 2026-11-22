@@ -2,10 +2,10 @@
 
 import unittest
 
-from sts2bot import combat
+from sts2bot.fight import combat
 from tests.fake_game import card
 
-from .helpers import STRIKE, combat_state, enemy
+from ..helpers import STRIKE, combat_state, enemy
 
 VULN = [{"id": "VULNERABLE_POWER", "amount": 2}]
 
@@ -65,9 +65,9 @@ class HexedCards(unittest.TestCase):
         # Exhausted; turns like it left the deck with nothing to finish the Flail Knight, and the fight was lost.
         from unittest import mock
 
-        from sts2bot import triggers
+        from sts2bot.fight import triggers
 
-        from .helpers import DEFEND
+        from ..helpers import DEFEND
 
         hex_kw = [{"name": "Hexed", "description": "Add Ethereal to this card."}]
         hand = [DEFEND(0), STRIKE(1), STRIKE(2), DEFEND(3), DEFEND(4)]

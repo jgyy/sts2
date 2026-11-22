@@ -106,7 +106,7 @@ class Record(unittest.TestCase):
 
 class AtTheMerchant(unittest.TestCase):
     def test_a_card_on_the_shelf_is_rated_with_its_record_too(self):
-        from sts2bot import strategy
+        from sts2bot.run import strategy
 
         poke = {"index": 0, "category": "card", "price": 40, "is_stocked": True, "can_afford": True, "card_id": "POKE", "card_name": "Poke",
                 "card_type": "Attack", "card_cost": "0", "card_rarity": "Common", "card_description": "Osty deals 6 damage."}

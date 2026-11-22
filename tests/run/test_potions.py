@@ -2,10 +2,11 @@
 
 import unittest
 
-from sts2bot import combat, events, strategy
-from sts2bot.strategy import Memory
+from sts2bot.fight import combat
+from sts2bot.run import events, strategy
+from sts2bot.run.strategy import Memory
 
-from .helpers import STRIKE, combat_state, enemy
+from ..helpers import STRIKE, combat_state, enemy
 
 
 def potion(slot, name, text, target="AnyPlayer"):

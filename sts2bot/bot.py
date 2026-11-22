@@ -9,11 +9,13 @@ import time
 from collections import defaultdict
 from pathlib import Path
 
-from . import cards, combat, events, learn, relics, strategy
-from .bossfight import BossWatch
+from . import cards, learn
+from .fight import combat
+from .run import events, relics, strategy
+from .fight.bossfight import BossWatch
 from .fightrecord import FightWatch
 from .client import Client
-from .strategy import Memory
+from .run.strategy import Memory
 
 log = logging.getLogger("sts2bot")
 

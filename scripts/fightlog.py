@@ -440,7 +440,7 @@ def crabs(since: str = "") -> None:
 
 def powers() -> None:
     root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sts2bot")
-    code = "".join(open(os.path.join(root, n)).read() for n in sorted(os.listdir(root)) if n.endswith(".py"))
+    code = "".join(open(os.path.join(d, n)).read() for d, _dirs, names in sorted(os.walk(root)) for n in sorted(names) if n.endswith(".py"))
     seen: dict = {}
     for line in lines():
         m = re.search(r" INFO power (\w+?)(?:_POWER)? \(on (.+?)\): (.*)$", line)
@@ -493,7 +493,7 @@ def ancients() -> None:
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
     from pathlib import Path
 
-    from sts2bot import events as ev, relics
+    from sts2bot.run import events as ev, relics
 
     relics.load(Path(LOGS) / "runs.jsonl", ev._ANCIENT)
     rec = relics.record()

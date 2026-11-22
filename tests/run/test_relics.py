@@ -3,8 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from sts2bot import events, relics, strategy
-from sts2bot.strategy import Memory
+from sts2bot.run import events, relics, strategy
+from sts2bot.run.strategy import Memory
 
 
 def run(floor, held, result="loss", who="The Regent", ascension=7):

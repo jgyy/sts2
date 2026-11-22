@@ -3,7 +3,7 @@
 import unittest
 from unittest import mock
 
-from sts2bot import strategy
+from sts2bot.run import strategy
 
 
 class Act2Boss(unittest.TestCase):

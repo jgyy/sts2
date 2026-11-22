@@ -2,11 +2,11 @@
 
 import unittest
 
-from sts2bot import combat
+from sts2bot.fight import combat
 from sts2bot.cards import parse
 
-from .fake_game import card
-from .helpers import DEFEND, STRIKE, combat_state, enemy
+from ..fake_game import card
+from ..helpers import DEFEND, STRIKE, combat_state, enemy
 
 FIRE = lambda i: card(i, "FIEND_FIRE", "Fiend Fire", "Attack", 2, "Exhaust your Hand. Deal 7 damage for each card Exhausted. Exhaust.", "AnyEnemy")
 LETTING = lambda i: card(i, "BLOODLETTING", "Bloodletting+", "Skill", 0, "Lose 3 HP. Gain [ironclad_energy_icon.png][ironclad_energy_icon.png][ironclad_energy_icon.png].", "Self")

@@ -1,10 +1,10 @@
-"""Artifact on an enemy: a debuff it swallows is worth the later one that lands in its place (sts2bot/artifact.py)."""
+"""Artifact on an enemy: a debuff it swallows is worth the later one that lands in its place (sts2bot/fight/artifact.py)."""
 
 import unittest
 
-from sts2bot import artifact, combat
+from sts2bot.fight import artifact, combat
 
-from .helpers import STRIKE, card, combat_state, enemy
+from ..helpers import STRIKE, card, combat_state, enemy
 
 SCOURGE = lambda i: card(i, "SCOURGE", "Scourge", "Skill", 1, "Apply 13 Doom.", "AnyEnemy")
 TRIP = lambda i: card(i, "TRIP", "Trip", "Skill", 1, "Apply 2 Vulnerable.", "AnyEnemy")

@@ -19,8 +19,8 @@ three charges off in time, and its strip is worth nothing.
 
 from __future__ import annotations
 
-from .cards import CardInfo, parse
-from .learn import knob
+from ..cards import CardInfo, parse
+from ..learn import knob
 
 LATER = 0.7  # a debuff that lands later in the fight, against the same one landing now
 FIGHT_ROUNDS = {"boss": 9, "elite": 6}  # how long such a fight usually runs (an ordinary one: 4)

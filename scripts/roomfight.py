@@ -27,7 +27,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import demonfight as demon  # noqa: E402
 from demonfight import Deck, hands, plays  # noqa: E402
-from sts2bot import closing, combat, learn  # noqa: E402
+from sts2bot.fight import closing, combat  # noqa: E402
+from sts2bot import learn  # noqa: E402
 
 ROUNDS = 16
 DEATH = 60.0  # what a death counts for, in HP below ending on none: the rest of the run

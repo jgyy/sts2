@@ -3,13 +3,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from sts2bot import combat, learn, strategy
+from sts2bot.fight import combat
+from sts2bot import learn
+from sts2bot.run import strategy
 from sts2bot.bot import Bot, Stuck
 from sts2bot.cards import deck_value, parse
-from sts2bot.strategy import Memory
+from sts2bot.run.strategy import Memory
 
-from .fake_game import FakeGame, card
-from .helpers import DEFEND, STRIKE, FakeClock, combat_state, enemy, make_bot  # noqa: F401
+from ..fake_game import FakeGame, card
+from ..helpers import DEFEND, STRIKE, FakeClock, combat_state, enemy, make_bot  # noqa: F401
 
 
 class BossMechanics(unittest.TestCase):
@@ -234,8 +236,8 @@ class CardPlayTriggers(unittest.TestCase):
         self.assertIn(combat.choose_card(s)[1]["card_index"], (0, 1))  # (the Doom card goes first now; both are played)
 
     def test_afterimage_and_strangle_count_for_every_card(self):
-        from sts2bot import triggers
-        from sts2bot.battle import read_enemies
+        from sts2bot.fight import triggers
+        from sts2bot.fight.battle import read_enemies
         foe = enemy("RAT_0", 5, attack=9, status=[{"id": "STRANGLE_POWER", "amount": 3}])
         s = combat_state([DEFEND(0), DEFEND(1)], [foe], energy=2, hp=30)
         s["player"]["status"] = [{"id": "AFTERIMAGE_POWER", "amount": 1}]
@@ -326,7 +328,7 @@ class Disintegration(unittest.TestCase):
 
 class PainfulStabs(unittest.TestCase):
     def test_each_hit_stopped_is_a_wound_saved(self):
-        from sts2bot.battle import read_enemies
+        from sts2bot.fight.battle import read_enemies
 
         guard = lambda i: card(i, "DEFEND_B", "Defend+", "Skill", 1, "Gain 10 Block.", "Self")
 
@@ -491,7 +493,7 @@ class Necrobinder(unittest.TestCase):
     def test_bone_shards_gives_up_the_hp_osty_stood_in_front_with(self):
         s = self.state([self.SHARDS(0)], osty=10, attack=12)
         cards = [parse(c) for c in s["player"]["hand"]]
-        from sts2bot.battle import read_enemies
+        from sts2bot.fight.battle import read_enemies
         kept = combat.simulate([], read_enemies(s), **combat._context(s)).lost  # Osty soaks 10 of 12
         after = combat.simulate(cards, read_enemies(s), **combat._context(s)).lost  # 9 Block instead of his 10 HP
         self.assertEqual((kept, after), (2, 3))
@@ -515,7 +517,7 @@ class StrengthSappedFromAll(unittest.TestCase):
         self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 0}))  # six hits of 4: all behind the Block
 
     def test_an_attack_on_all_that_saps_them_counts_the_sap(self):
-        from sts2bot.battle import read_enemies
+        from sts2bot.fight.battle import read_enemies
 
         crush = card(0, "CRUSH_UNDER", "Crush Under", "Attack", 1, "Deal 8 damage to ALL enemies. All enemies lose 1 Strength this turn.", "AllEnemies")
         foes = [enemy("A", 50, attack="3x4"), enemy("B", 50, attack=10)]
@@ -595,7 +597,7 @@ class LostOnPaper(unittest.TestCase):
         self.assertEqual(plan["lost"], 27)
 
     def test_reach_is_what_has_to_die_for_the_blow_not_to_land(self):
-        from sts2bot.battle import kill_reach, read_enemies
+        from sts2bot.fight.battle import kill_reach, read_enemies
         queen = enemy("QUEEN_0", 300)
         amalgam = enemy("AMALGAM_0", 12, attack=40, block=3, status=[{"id": "MINION_POWER", "amount": 1}, {"id": "POISON_POWER", "amount": 5}])
         foes = read_enemies(combat_state([], [queen, amalgam]))

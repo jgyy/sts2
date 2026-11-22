@@ -11,13 +11,13 @@ import random
 import re
 from dataclasses import dataclass, field
 
-from .learn import knob
+from ..learn import knob
 from .potions import BOSS_FLOORS, boss_worth
 from .relicworth import worth as relic_worth
 from .events import _event_option_value, event  # noqa: F401  (events live in their own module)
-from .cards import _card_key, deck_value, is_basic, is_junk, kind as _kind, parse as _parse
+from ..cards import _card_key, deck_value, is_basic, is_junk, kind as _kind, parse as _parse
 from .decks import BIG_DECK, SKIP_THRESHOLD, _blocks, _hitters, _punch, _stars, deck_fit, reward_bar  # noqa: F401  (what a card is worth in this deck: its own module)
-from . import afflictions, handpick
+from ..fight import afflictions, handpick
 
 Action = tuple[str, dict]
 

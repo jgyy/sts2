@@ -3,8 +3,9 @@
 import unittest
 from unittest import mock
 
-from sts2bot import decks, learn, strategy
-from sts2bot.strategy import Memory
+from sts2bot.run import decks, strategy
+from sts2bot import learn
+from sts2bot.run.strategy import Memory
 
 
 def c(cid, name, ctype, cost, text, rarity="Common"):
