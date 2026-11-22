@@ -177,6 +177,25 @@ def shunned(c, state: dict) -> bool:
     return doom > 0.4 * max(0.0, then)
 
 
+# Share of what an Ethereal card does when played that keeping it in the deck is worth, as a lasting effect (x span).
+# Tuned on scripts/knightfight.py (1,200 fights a value, the same shuffles): 0 won 66%, 0.1 74%, 0.3 77.5% with
+# 17.2 HP left, 0.5 77.7% with 14.2, 1.0 74.8% with 8.7 (it starts trading too much HP for cards).
+ETHEREAL_KEEP = 0.3
+
+
+def kept(c, dmg_value: float) -> float:
+    """What playing an Ethereal card is worth beyond the play itself: left in the hand when the turn ends it is
+    Exhausted, and the deck is without it for the rest of the fight (Powers have their own price in combat.simulate).
+
+    Under the Spectral Knight's Hex every card is Ethereal, and the planner, counting nothing lost, kept the Block
+    cards: in a model of that fight (scripts/knightfight.py) it played three Defends a turn against 33 and let the
+    Strikes beside them go, until the deck held nothing that could finish the Flail Knight.
+    """
+    if not c.ethereal or not c.playable or c.type not in ("Attack", "Skill"):
+        return 0.0
+    return ETHEREAL_KEEP * (c.total_damage * dmg_value + 0.5 * c.block)
+
+
 # Cards that make the next card of one type free ("The next Attack you play costs 0").
 FREE_NEXT = {"UNRELENTING": "Attack", "POUNCE": "Skill"}
 # ... and cards that make every card after them dearer this turn (Borrowed Time: 4 energy, "Cards cost an additional" 1).

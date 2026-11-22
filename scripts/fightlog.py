@@ -272,7 +272,14 @@ def _turns():
 
 
 def reads() -> None:
-    """Single-enemy plays only, with nothing on the enemy that bends damage: read against done."""
+    """Single-enemy plays only, with nothing on the enemy that bends damage: read against done.
+
+    X-cost cards are left out: the hand shows their damage for one energy (Heavenly Drill "d9", did 46 for
+    five), and the planner scales it by the energy it spends, so every one of them read as a misread.
+    (Stardust costs X *Stars*, shows as cost 0, and still reads low for the same reason.)
+    Orb cards still show "read 0" (Dualcast, Glacier, Refract): their damage and Block come from the orbs,
+    which the planner works out in `combat.simulate`, not from the card's text.
+    """
     odd = ("SLIPPERY", "INTANGIBLE", "HARD_TO_KILL", "FLUTTER", "SOAR", "SKITTISH", "BURROWED", "PLATING", "ASLEEP", "ADAPTABLE", "SLOW", "VULNERABLE", "HANG")
     table = collections.defaultdict(list)
     for _kind, _first, plays, _last in _turns():
@@ -280,7 +287,7 @@ def reads() -> None:
             if " ; " in before.group(8) or any(o in before.group(8) for o in odd) or _enemy_hp(after.group(8)) == 0:
                 continue
             card = next((c for c in IN_HAND.finditer(before.group(9)) if c.group(2).strip() == name), None)
-            if card is None:
+            if card is None or card.group(3) == "X":
                 continue
             d = re.search(r"d(\d+)(?:x(\d+))?", card.group(5))
             b = re.search(r"b(\d+)", card.group(5))

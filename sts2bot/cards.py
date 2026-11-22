@@ -293,7 +293,8 @@ def parse(card: dict) -> CardInfo:
         deadly=bool(re.search(r"\bdie\b", full_text, re.I)),
         block_lock=bool(re.search(r"(cannot|can't|can not)\s+gain\s+(any\s+)?block", full_text, re.I)),
         osty_attack=bool(re.search(r"\bOsty\b[^.]*\bdeals\b|if\s+Osty\s+is\s+alive", full_text, re.I)),
-        ethereal=bool(re.search(r"\bEthereal\b", full_text)),
+        # (Or a keyword: the Spectral Knight's Hex gives every card "Hexed": "Add Ethereal to this card.")
+        ethereal=bool(re.search(r"\bEthereal\b", full_text)) or any(isinstance(k, dict) and str(k.get("name")).lower() in ("ethereal", "hexed") for k in card.get("keywords") or []),
         ends_turn=bool(re.search(r"(?:^|\.\s*)(?:end\s+your\s+turn|exhaust\s+your\s+hand)\.", full_text, re.I)),
         replay=_replay(card, full_text),
         osty_dies=bool(re.search(r"\b(?:Osty|he)\s+dies", full_text, re.I)),  # (Sacrifice: "If Osty is alive, he dies and ...")
