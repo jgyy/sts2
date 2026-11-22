@@ -378,8 +378,9 @@ class LiveGameLessons(unittest.TestCase):
         self.assertGreater(tea(12), fight(12))
         # The Sword of Stone needs five elites killed, and the bot meets about one a run.
         self.assertLess(value("Grab the Sword", "Obtain the Sword of Stone.", 80), value("Dive into the Water", "Gain 115 Gold. Lose 7 HP.", 80))
-        # The Punch Off fight is two weak constructs for a relic, a card and a potion: still taken over a relic with an Injury.
-        self.assertGreater(value("I Can Take Them", "Fight them for Greater Rewards."), value("Nab", "Add Injury to your Deck. Obtain a random Relic."))
+        # The Punch Off fight is two constructs that took 16, 37 (a death) and 44 HP in the three it was taken on 2026-11-22:
+        # it costs its HP, so a relic with an Injury (Nab) is taken instead, even at 60 of 80.
+        self.assertLess(value("I Can Take Them", "Fight them for Greater Rewards."), value("Nab", "Add Injury to your Deck. Obtain a random Relic."))
 
     def test_a_heal_gold_and_max_hp_are_worth_their_amounts(self):
         value = lambda text, hp=60: strategy._event_option_value({"title": "", "description": text}, hp, 80)
