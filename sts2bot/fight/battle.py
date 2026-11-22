@@ -18,6 +18,7 @@ REATTACH_REACH = 40  # Decimillipede: HP the other segments may have left for a 
 RAGE_BLOCK = 99  # Crab Rage: Block a crab gains for each ally that dies (gone again when its next turn starts)
 RAGE_COST = 0.3  # ... and what the 6 Strength it keeps costs, in points for each HP it still has (2.0 until 2026-11-21: see combat.simulate)
 SLIP_WORTH = 7.0  # what taking one Slippery stack off is worth, in damage: the hit it lets through later
+STAB_SCAR = 8.0  # Painful Stabs (the Test Subject's second form): what each Wound from a hit that gets through costs, in points
 
 
 # What playing each Power is worth in an ordinary fight, in points of damage
@@ -335,7 +336,7 @@ def read_enemies(state: dict) -> list[Enemy]:
                 vuln_mult=2.0 if _has_power(e, "DEBILITATE") else 1.5,
                 weak_cut=0.5 if _has_power(e, "DEBILITATE") else 0.75,
                 weak_mult=1.5 if _has_power(player, "TRACKING") else 1.0,
-                scar=8.0 * _has_power(e, "PAPER_CUTS") + 8.0 * _has_power(e, "PAINFUL_STABS"),
+                scar=8.0 * _has_power(e, "PAPER_CUTS") + STAB_SCAR * _has_power(e, "PAINFUL_STABS"),
                 rage=_has_power(e, "CRAB_RAGE"),
                 respawns=_stacks(e, "STOCK"),
                 adapts=_has_power(e, "ADAPTABLE"),
