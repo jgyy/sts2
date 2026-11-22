@@ -29,6 +29,11 @@ _GOOD = [
 # three of them fill the belt for nothing. The Potion Courier's other offer is
 # one Uncommon potion.)
 _BAD = [(r"\bfoul potions?\b", 1.0), (r"\bfight to obtain the key\b", 6.0), (r"\bcurse\b", 6.0), (r"\bfight\b", 2.0), (r"draw \d+ fewer cards?", 4.0), (r"\bdowngrade\b", 2.0), (r"\bsacrifice\b", 5.0)]
+# An option that starts a fight is priced by the HP the fight takes, as "Lose N HP" is. Punch Off's "Fight them for
+# Greater Rewards" (two constructs) took 16, 37 (a death) and 44 HP in the three it was taken on 2026-11-22, and was
+# rated 4.5 at any HP, above Nab's 3.5: the +6 for the rewards and -2 for the word "fight" were all it cost. 32 is
+# their mean (the act 1 and 2 elites cost 21 and 30 on the route table, strategy.FIGHT_COST).
+EVENT_FIGHT_HP = [(r"\bfight them\b", 32.0)]
 # Options that end the run in all but name. One event offers ever larger
 # rewards for Max HP until the last step, "Lose Everything", leaves 1 Max HP;
 # the bot walked into it nine times.
@@ -225,6 +230,10 @@ def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int
             # This event has already taken HP from us: each further bite costs more,
             # so a chain of small losses is stopped before it adds up.
             score -= 2.0 + 0.5 * bled
+    for pat, cost in EVENT_FIGHT_HP:
+        if re.search(pat, text):
+            score -= 1000.0 if cost >= hp else 12.0 * cost / max(1, hp) * (ACT3_HP if act is not None and act >= 3 else 1.0)
+            break
     return score
 
 

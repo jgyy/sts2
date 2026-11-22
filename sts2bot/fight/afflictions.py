@@ -22,7 +22,13 @@ from ..cards import _card_key
 log = logging.getLogger("sts2bot.afflictions")
 
 CARD_LOST = 7.5  # HP a turn that one card a turn we may not play comes to (the fight is that much longer)
-SLOTH_MARGIN = 1.25  # cards a turn Sloth has to cost before the burn is the cheaper price
+# Cards a turn Sloth has to cost before the burn is the cheaper price. It was 1.25, set from one fight that
+# scored 3.0. Perfect play at the Demon (scripts/demon/offers.py: 207 decks of 3 to 7 energy and hands of 5 to 7
+# cards, each solved with Mind Rot taken and then Sloth or the burn) puts the crossover at 1.9 whatever the
+# energy: from 1.25 to 1.75 Sloth wins in 48 decks of 49 and the burn gives away 7 points of win chance on average
+# (9 in decks perfect play wins 10-90% of), at 1.75 to 2.0 they tie, from 2.0 the burn takes over (+2 points, +10
+# from 2.25). It sat on the wrong side of the line in the four fights of 2026-11-22 that took it at 1.5 to 1.75.
+SLOTH_MARGIN = 2.0
 IDLE_ENOUGH = 0.5  # share of recent turns that ended with energy unspent, from which an energy less costs next to nothing
 
 

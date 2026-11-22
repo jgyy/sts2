@@ -754,6 +754,11 @@ class Afflictions(unittest.TestCase):
         self.assertEqual(self.sloth(30, [(2, 2), (4, 0), (6, 0), (6, 0), (8, 0)]), 1)  # no HP for six turns of 7
         self.assertEqual(self.sloth(80, []), 1)  # (a bot started in the middle of the fight knows nothing: as before)
 
+    def test_the_burn_is_the_cheaper_price_only_past_two_cards_a_turn_lost(self):  # (see afflictions.SLOTH_MARGIN; turn one is left out)
+        self.assertEqual(self.sloth(80, [(2, 2), (6, 0), (4, 0), (5, 0), (3, 0)]), 1)  # 3, 1, 2, 0: 1.5 a turn
+        self.assertEqual(self.sloth(80, [(2, 2), (6, 0), (7, 0), (3, 0), (4, 0)]), 1)  # 3, 3, 0, 1: 1.75 a turn
+        self.assertEqual(self.sloth(80, [(2, 2), (6, 0), (5, 0), (5, 0), (5, 0)]), 0)  # 3, 2, 2, 2: 2.25 a turn
+
 
 class HandSelections(unittest.TestCase):
     def test_a_sly_card_is_the_one_discarded(self):
