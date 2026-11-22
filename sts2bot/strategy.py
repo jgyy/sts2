@@ -814,7 +814,10 @@ def hand_select(state: dict, mem: Memory) -> list[Action]:
     # while a Strike or a Defend went.)
     sly = lambda c: discarding and any(str(k.get("name")) == "Sly" for k in c.get("keywords") or [])
     ordered = sorted((c for c in ordered if sly(c)), key=deck_value, reverse=True) + [c for c in ordered if not sly(c)]
-    costs = handpick.turn_costs(state, ordered) if _WORST_FIRST.search(prompt) and not kind else None
+    # (With the choice made and only to be confirmed, the confirmation is the first thing sent and the order
+    # below is only for when it is refused: not worth the plan per card, which took two seconds a click.)
+    # (A card Exhausted only has to cost less than a kill or a life: the first such card in line will do.)
+    costs = handpick.turn_costs(state, ordered, 1e-9 if discarding else handpick.RUINOUS / 2) if _WORST_FIRST.search(prompt) and not kind and not hs.get("can_confirm") else None
     if costs:
         # ... and otherwise the card this turn's plan misses least. A discard is back with the
         # next shuffle, so the turn is all that counts; a card Exhausted is gone for the fight,

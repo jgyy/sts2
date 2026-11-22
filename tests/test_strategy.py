@@ -844,6 +844,76 @@ class HandSelections(unittest.TestCase):
         state["hand_select"]["cards"] = [STRIKE(0), card(1, "POMMEL_STRIKE", "Pommel Strike", "Attack", 1, "Deal 9 damage. Draw 1 card.", "AnyEnemy")]
         self.assertEqual(picks()[0], 0)
 
+    def big_hand(self):
+        """Ten cards in hand, six of them copies, in a fight the plan can be made for."""
+        hand = [STRIKE(0), STRIKE(1), STRIKE(2), DEFEND(3), DEFEND(4), DEFEND(5), DEFEND(6), DEFEND(7),
+                card(8, "BASH", "Bash", "Attack", 2, "Deal 8 damage. Apply 2 Vulnerable.", "AnyEnemy"),
+                card(9, "SHRUG", "Shrug It Off", "Skill", 1, "Gain 8 Block. Draw 1 card.", "Self")]
+        state = combat_state(hand, [enemy("A_0", 60, 12), enemy("B_1", 40, 9)], energy=3, hp=60, max_hp=80)
+        state["state_type"] = "hand_select"
+        state["hand_select"] = {"prompt": "Choose a card to Discard.", "can_confirm": False, "cards": hand}
+        return state
+
+    def test_a_confirmation_does_not_wait_for_the_plan(self):
+        # The plan per card took about two seconds with ten in hand, and the confirmation is first to go out anyway.
+        state = self.big_hand()
+        state["hand_select"]["can_confirm"] = True
+        with mock.patch.object(combat, "choose_card", side_effect=AssertionError("planned")):
+            acts = strategy.hand_select(state, Memory())
+        self.assertEqual(acts[0], ("combat_confirm_selection", {}))
+        self.assertIn("combat_select_card", [a[0] for a in acts])  # (the fall-back stays, by rating)
+
+    def test_each_kind_of_card_is_planned_once(self):
+        from sts2bot import handpick
+
+        state = self.big_hand()
+        handpick._answers.clear()
+        real = combat.choose_card
+        with mock.patch.object(combat, "choose_card", side_effect=real) as spy:
+            costs = handpick.turn_costs(state, state["hand_select"]["cards"], tolerance=-1e9)  # (never stopping early)
+        self.assertEqual(spy.call_count, 5)  # the whole hand, then Strike, Defend, Bash, Shrug It Off: not ten
+        self.assertEqual({costs[i] for i in (0, 1, 2)}, {costs[0]})  # (copies cost the same)
+        self.assertEqual({costs[i] for i in (3, 4, 5, 6, 7)}, {costs[3]})
+
+    def test_planning_stops_at_a_card_the_turn_does_not_miss(self):
+        from sts2bot import handpick
+
+        state = self.big_hand()
+        handpick._answers.clear()
+        real = combat.choose_card
+        with mock.patch.object(combat, "choose_card", side_effect=real) as spy:
+            costs = handpick.turn_costs(state, state["hand_select"]["cards"])
+        self.assertEqual(spy.call_count, 2)  # the whole hand and the hand without the first card: nothing lost
+        self.assertEqual(costs[0], 0.0)
+        self.assertEqual(costs[9], handpick.UNPLANNED)  # (the rest keep their order, after it)
+
+    def test_a_card_that_weighs_on_the_hand_is_always_planned_for(self):
+        from sts2bot import handpick
+
+        state = self.big_hand()
+        burn = card(10, "BURN", "Burn", "Status", 0, "Unplayable. At the end of your turn, take 2 damage.")
+        state["hand_select"]["cards"] = state["hand_select"]["cards"] + [burn]
+        handpick._answers.clear()
+        costs = handpick.turn_costs(state, state["hand_select"]["cards"])
+        self.assertNotEqual(costs[10], handpick.UNPLANNED)  # (a Status card may be a burn: it is never skipped over)
+
+    def test_the_same_selection_is_not_planned_again(self):
+        from sts2bot import handpick
+
+        state = self.big_hand()
+        handpick._answers.clear()
+        first = handpick.turn_costs(state, state["hand_select"]["cards"])
+        with mock.patch.object(combat, "choose_card", side_effect=AssertionError("planned again")):
+            again = handpick.turn_costs(state, state["hand_select"]["cards"])
+            state["hand_select"]["selected"] = [{"index": 3}]  # (a click made on the screen changes nothing the plan reads)
+            after_click = handpick.turn_costs(state, state["hand_select"]["cards"])
+        self.assertEqual(first, again)
+        self.assertEqual(first, after_click)
+        state["battle"]["enemies"][0]["hp"] = 5  # (another fight is another question)
+        with mock.patch.object(combat, "choose_card", wraps=combat.choose_card) as spy:
+            handpick.turn_costs(state, state["hand_select"]["cards"])
+        self.assertGreater(spy.call_count, 0)
+
 
 class RewardBar(unittest.TestCase):
     def test_acts_two_and_three_grow_the_bar_half_as_fast(self):

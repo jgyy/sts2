@@ -14,7 +14,7 @@ from dataclasses import dataclass, replace
 from itertools import combinations, permutations
 
 from .battle import (  # noqa: F401  (also the names other modules and the tests reach through here)
-    BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, RAGE_COST, REATTACH_REACH, SLIP_WORTH, WIN_BONUS, Enemy,
+    BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, RAGE_COST, REATTACH_REACH, SLIP_WORTH, WIN_BONUS, Enemy, clone,
     _has_power, _is_attack, constrict, end_of_turn_block, end_of_turn_loss, expected_loss, hand_burns,
     intent_damage, intent_hits, kill_reach, osty_hp, power_amount, read_enemies, _bare_block, _draw_worth, _escape_odds, _next_wither, _sandpit, _wither_bill,
     deck_count, junk_cost, cards_left_this_turn, free_plays, _hit, _hit_count, _poison_total, _power_worth, _set_up, _rage_blocks, _respawns, loss_cap,
@@ -64,7 +64,7 @@ def _orb_damage(kind: str, amount: int, foes: list[Enemy], chip_rate: float, dmg
 
 
 def _would_kill(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> bool:
-    trial = replace(e)
+    trial = clone(e)
     _hit(trial, dmg_per_hit, hits, double_if_vulnerable)
     return not trial.alive
 
@@ -243,7 +243,7 @@ def simulate(
         return None
     if any(c.ends_turn for c in line[:-1]):
         return None  # "End your turn": nothing is played after it
-    foes = [replace(e, chipped=0, stripped=0, vuln_added=0, weak_added=0) for e in enemies]
+    foes = [clone(e, chipped=0, stripped=0, vuln_added=0, weak_added=0) for e in enemies]
     score = 0.0
     # (A pair: every card where the planner would put it, and the last aimed one at this enemy, so that the turn ends facing it.)
     turn_to, focus = (focus[1], None) if isinstance(focus, tuple) else (None, focus)
