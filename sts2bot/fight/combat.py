@@ -17,7 +17,7 @@ from .battle import (  # noqa: F401  (also the names other modules and the tests
     BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, RAGE_COST, REATTACH_REACH, SLIP_WORTH, WIN_BONUS, Enemy, clone,
     _has_power, _is_attack, constrict, end_of_turn_block, end_of_turn_loss, expected_loss, hand_burns,
     intent_damage, intent_hits, kill_reach, osty_hp, power_amount, read_enemies, _bare_block, _draw_worth, _escape_odds, _next_wither, _sandpit, _wither_bill,
-    deck_count, junk_cost, cards_left_this_turn, free_plays, _hit, _hit_count, _poison_total, _power_worth, _set_up, _rage_blocks, _respawns, loss_cap,
+    deck_count, junk_cost, cards_left_this_turn, free_plays, _hit, _hit_count, _poison_total, _power_worth, _set_up, _rage_blocks, _resists, _respawns, loss_cap,
 )
 from ..cards import CardInfo, order_key, parse
 from ..run.potions import fortifier, describe, potion_actions  # noqa: F401
@@ -117,15 +117,6 @@ def _pick_target(enemies: list[Enemy], dmg_per_hit: int, hits: int, double_if_vu
 def _fated(e: Enemy) -> bool:
     """Doom covers its HP: it dies when its turn ends, whatever else we do to it (a boss with another form to come does not)."""
     return e.doom >= e.hp > 0 and not e.adapts
-
-
-def _resists(e: Enemy) -> bool:
-    """Artifact swallows a debuff. Mangle on an enemy with Artifact took none
-    of its Strength away, and the bot walked into the full attack."""
-    if e.artifact > 0:
-        e.artifact -= 1
-        return True
-    return False
 
 
 DEBUFF_CAP = 4  # turns of a debuff beyond this are too far off to count
@@ -441,6 +432,8 @@ def simulate(
                 t = max(alive, key=lambda e: (not e.weak, e.incoming), default=None)
             elif c.doom and not c.vulnerable:
                 t = _pick_target(foes, 0, 0)  # Doom goes where the attacks go: together they end one enemy sooner
+            elif c.poison_needs:
+                t = max(alive, key=lambda e: (e.poison, e.worth), default=None)  # (Bubble Bubble) only the poisoned one takes it
             else:
                 # Vulnerable goes on the enemy we will be hitting the longest (where a kill order is known, the next to die).
                 fresh = [e for e in alive if not e.vulnerable] or alive
@@ -466,7 +459,7 @@ def simulate(
             else:  # untargeted or random: the enemy that matters most
                 victims = sorted(alive_now, key=lambda e: (-e.worth, e.hp))[:1]
             for e in victims:
-                if c.poison and not _resists(e):
+                if c.poison and (e.poison > 0 or not c.poison_needs) and not _resists(e):
                     e.poison += c.poison * x
                 if c.doom and not _resists(e):
                     doom = c.doom * x + triggers.more_doom(c, e)
