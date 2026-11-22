@@ -129,5 +129,64 @@ class RelicsTraded(unittest.TestCase):
         self.assertEqual(self.value("Give Anchor", "Obtain a random Relic."), events._event_option_value({"title": "Give Anchor", "description": "Obtain a random Relic."}, 60, 75, act=2, potions=[]))
 
 
+
+class EnergyOrCardsEveryTurn(unittest.TestCase):
+    """An Ancient's energy-a-turn relic against its cards-a-turn one, by the energy the deck already has (relicworth.energy_lean;
+    scripts/demon/ancients.py: on 3 energy an energy a turn is worth more than a card, on 4 the card more)."""
+
+    FLESH = {"title": "Pael's Flesh", "description": "Gain an additional [necrobinder_energy_icon.png] at the start of your 3rd turn, and every turn after that."}
+    BLOOD = {"title": "Pael's Blood", "description": "At the start of your turn, draw 1 additional card."}
+
+    def setUp(self):
+        from sts2bot.run import relics
+
+        relics.load(None, events._ANCIENT)  # (no runs on record: the table's own numbers)
+
+    def value(self, opt, energy, held=()):
+        return events._event_option_value(opt, 60, 75, act=2, potions=[], held=[{"id": r} for r in held], energy=energy)
+
+    def test_on_three_energy_paels_flesh_beats_paels_blood(self):
+        # (16:30-20:20 on 2026-11-22: Pael's Blood taken all three times the two were offered together.)
+        self.assertGreater(self.value(self.FLESH, 3), self.value(self.BLOOD, 3))
+
+    def test_on_four_energy_the_card_beats_the_energy(self):
+        self.assertGreater(self.value(self.BLOOD, 4), self.value(self.FLESH, 4))
+        # ... and an energy relic held whose energy comes after the first turn counts as the fourth
+        self.assertGreater(self.value(self.BLOOD, 3, held=["PAELS_FLESH"]), self.value(self.FLESH, 3, held=["PAELS_FLESH"]))
+
+    def test_sozu_over_runic_pyramid_on_three_energy_only(self):
+        sozu = {"title": "Sozu", "description": "Gain [defect_energy_icon.png] at the start of each turn. You can no longer obtain Potions."}
+        pyramid = {"title": "Runic Pyramid", "description": "At the end of your turn, you no longer discard your Hand."}
+        self.assertGreater(self.value(sozu, 3), self.value(pyramid, 3))
+        self.assertLess(self.value(sozu, 4), self.value(pyramid, 4))
+
+    def test_an_energy_power_in_the_deck_counts_for_half(self):
+        friendship = {"name": "Friendship", "type": "Power", "cost": "1", "description": "Lose 2 Strength. Gain [necrobinder_energy_icon.png] at the start of each turn."}
+        self.assertEqual(relicworth.spare_energy(3, [], [friendship]), 0.5)
+        self.assertEqual(relicworth.energy_lean("PAELS_BLOOD", 3, [], [friendship]), relicworth.TURN_LEAN["PAELS_BLOOD"][1])
+
+    def test_at_an_ancient_on_three_energy_and_on_four(self):
+        # (Moved from test_strategy.py, where it said "cards every turn come before energy with a price".)
+        ev = lambda *titles: {"options": [{"index": i, "title": t, "description": "Gain [necrobinder_energy_icon.png] at the start of each turn.", "relic_name": t} for i, t in enumerate(titles)]}
+        state = {"state_type": "event", "run": {"act": 2, "floor": 18}, "player": {"hp": 60, "max_hp": 80}}
+
+        def first(*titles, energy=3):
+            mem = Memory()
+            mem.max_energy = energy
+            return strategy.event({**state, "event": ev(*titles)}, mem)[0][1]["index"]
+
+        self.assertEqual(first("Ectoplasm", "Snecko Eye", "Philosopher's Stone"), 1)
+        self.assertEqual(first("Sozu", "Velvet Choker"), 1)
+        # Pael's Blood (a card a turn) over Pael's Flesh (an energy from the third turn) only for a deck already on 4
+        # energy: on 3 the energy is worth more (relicworth.energy_lean, edit 176; until then Blood every time).
+        self.assertEqual(first("Pael's Flesh", "Pael's Blood", energy=4), 1)
+        self.assertEqual(first("Pael's Flesh", "Pael's Blood", energy=3), 0)
+
+    def test_unknown_energy_or_another_relic_leaves_the_table_alone(self):
+        self.assertEqual(relicworth.energy_lean("PAELS_FLESH", None), 0.0)
+        self.assertEqual(relicworth.energy_lean("FUR_COAT", 3), 0.0)
+        self.assertEqual(events._event_option_value(self.FLESH, 60, 75), events._ANCIENT["PAELS_FLESH"])
+
+
 if __name__ == "__main__":
     unittest.main()
