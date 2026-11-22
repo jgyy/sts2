@@ -129,6 +129,8 @@ def _resists(e: Enemy) -> bool:
 
 
 DEBUFF_CAP = 4  # turns of a debuff beyond this are too far off to count
+FORM_WORTH = 40.0  # the Test Subject: what beating one of its forms is worth, in points (that much of the fight is done)
+ENRAGE_PRICE = 2.0  # Enrage: points a Skill costs for each Strength it gives, per hit coming and per 35 HP the enemy has left
 
 
 def _expose(e: Enemy, turns: int = 1) -> None:
@@ -539,7 +541,7 @@ def simulate(
             # it lives. Against the Test Subject's first form (100 HP) the bot
             # played seven Skills and then took a 39-point hit: the price is the
             # extra damage on every turn the enemy still has in it.
-            score -= sum(e.enrage * 2.0 * max(1, e.incoming_hits) * min(4.0, 1.0 + e.hp / 35.0) for e in foes if e.alive)
+            score -= sum(e.enrage * ENRAGE_PRICE * max(1, e.incoming_hits) * min(4.0, 1.0 + e.hp / 35.0) for e in foes if e.alive)
         drawn += c.draw * xs
         if c.strength:
             might += c.strength
@@ -647,7 +649,7 @@ def simulate(
     _respawns(foes)  # a Stock enemy killed by the last card comes back too
     kills = [e for e, orig in zip(foes, enemies) if not e.alive and orig.alive]
     score += 25.0 * sum(e.worth for e in kills)
-    score += 40.0 * sum(1 for e in foes if e.adapted)  # a form beaten: that much of the fight is done
+    score += FORM_WORTH * sum(1 for e in foes if e.adapted)  # a form beaten: that much of the fight is done
     survivors = [e for e in foes if e.alive]
     # The fight is over once every leader is dead: minions leave with them.
     if not survivors or (all(e.minion for e in survivors) and not all(e.minion for e in enemies)):
