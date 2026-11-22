@@ -124,6 +124,44 @@ def id_of(name: str) -> str:
     return re.sub(r"[^A-Z0-9]+", "_", re.sub(r"['’]", "", str(name or "")).upper()).strip("_")
 
 
+# An Ancient's energy-every-turn relic against its cards-every-turn relic, by the energy a turn the deck already has
+# (2026-11-22). The Knowledge Demon solved exactly (`scripts/demon/ancients.py`: perfect play from full HP), in points
+# of the chance of winning on 3 energy / on 4 or more: an energy a turn +46 / +19, Pael's Flesh (from the third turn)
+# +39 / +16, Philosopher's Stone (1 Strength on every hit of the enemy's) +34 / +3, Blessed Antler (its Dazed counted
+# as a dead card) +36 / +7, a card a turn +28 / +44, two cards a turn +43 / +53. `events._ANCIENT` had one number for
+# each, so a deck on 3 energy took Pael's Blood (13.5) over Pael's Flesh (12.5) every time both were offered (3 of 3 in
+# the logs of 16:30-20:20) and Runic Pyramid over Sozu. Live, act 2 bosses (Ascension 5+) held with Pael's Flesh were
+# won 10 times in 22, with Pael's Blood 12 in 36 (on 6 points more HP), with any energy relic 21 in 44, with any
+# cards-a-turn relic 18 in 47, with neither 92 in 218. (Rating points from those: about 10 of the model's to one.)
+TURN_LEAN = {  # relic -> (over its table rating for a deck on 3 energy, for one on 4 or more)
+    "VELVET_CHOKER": (2.5, -1.5), "PRISMATIC_GEM": (2.5, -1.5), "SOZU": (2.5, -1.5), "ECTOPLASM": (2.5, -1.5),
+    "SPIKED_GAUNTLETS": (2.5, -1.5), "WHISPERING_EARRING": (2.5, -1.5), "PAELS_FLESH": (2.0, -1.5), "SEAL_OF_GOLD": (2.0, -1.5),
+    "PHILOSOPHERS_STONE": (2.0, -3.0), "BLESSED_ANTLER": (2.0, -3.0), "BLOOD_SOAKED_ROSE": (2.0, -3.0), "PUMPKIN_CANDLE": (1.25, -0.75),
+    "PAELS_BLOOD": (-1.5, 1.0), "SNECKO_EYE": (0.0, 1.0), "FIDDLE": (0.0, 1.0), "IRON_CLUB": (-0.75, 0.5),
+}
+# The share of an energy a turn each gives once held (Pael's Flesh from the third turn, so not in the energy a fight
+# begins with; Seal of Gold while the gold lasts; the Pumpkin Candle five fights at a time).
+TURN_ENERGY = {rid: 1.0 for rid, (on3, _on4) in TURN_LEAN.items() if on3 > 0} | {"PAELS_FLESH": 0.85, "SEAL_OF_GOLD": 0.8, "PUMPKIN_CANDLE": 0.5}
+
+
+def spare_energy(energy: int, held: list | None = None, deck: list | None = None) -> float:
+    """Energy a turn beyond the 3 every character starts with: as the last fight began (`energy`), or from relics held
+    whose energy comes later in a fight (Pael's Flesh), and half of each energy-a-turn Power in the deck."""
+    from .decks import turn_energy  # (decks reads cards and crowd only, but keep the import where it is needed)
+
+    relics_held = sum(TURN_ENERGY.get(str(r.get("id") or ""), 0.0) for r in held or [] if isinstance(r, dict))
+    powers = 0.5 * sum(turn_energy(c) for c in deck or [] if isinstance(c, dict))
+    return max(float(energy) - 3.0, relics_held) + powers
+
+
+def energy_lean(relic_id: str, energy: int | None, held: list | None = None, deck: list | None = None) -> float:
+    """What an energy-a-turn or cards-a-turn relic is worth over its table rating for this deck (0 when the energy is not known)."""
+    lean = TURN_LEAN.get(str(relic_id or ""))
+    if energy is None or lean is None:
+        return 0.0
+    return lean[0] if spare_energy(energy, held, deck) < 0.5 else lean[1]
+
+
 def worth(relic_id: str, deck: list | None = None, act: int | None = None, hp: int = 0, max_hp: int = 0) -> float:
     """What this relic is worth next to an ordinary shop relic, for this deck, act and HP."""
     rid = str(relic_id or "")

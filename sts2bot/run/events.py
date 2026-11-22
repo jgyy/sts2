@@ -8,7 +8,7 @@ import re
 from . import relics
 from ..cards import deck_value, is_basic, is_known as _known_card
 from .potions import boss_worth
-from .relicworth import id_of as relic_id, worth as relic_worth
+from .relicworth import energy_lean, id_of as relic_id, worth as relic_worth
 
 Action = tuple[str, dict]
 
@@ -135,12 +135,14 @@ ACT3_HP = 1.6  # how much more a point of HP given up in an event costs in act 3
 
 
 def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int | None = None, potions: list | None = None,
-                        held: list | None = None, deck: list | None = None) -> float:
+                        held: list | None = None, deck: list | None = None, energy: int | None = None) -> float:
     text = f"{opt.get('title') or ''}. {opt.get('description') or ''}".lower()
     key = re.sub(r"[^A-Z0-9]+", "_", re.sub(r"['\u2019]", "", str(opt.get("title") or "")).upper()).strip("_")
     known = _ANCIENT.get(key)
     if known is not None:
-        return known + relics.shift(key)  # (the table's number, moved by how the runs that held it went)
+        # (the table's number, moved by how the runs that held it went, and for an energy or a card every turn by the
+        # energy the deck already has: relicworth.energy_lean)
+        return known + relics.shift(key) + energy_lean(key, energy, held, deck)
     score = 0.5
     if opt.get("relic_name"):
         score += 6.0
@@ -253,7 +255,7 @@ def event(state: dict, mem) -> list[Action]:
     bled = max(0, mem.event_hp0 - hp)
     act = (state.get("run") or {}).get("act")
     worth = lambda o: _event_option_value(o, hp, max_hp, bled, act if isinstance(act, int) else None, player.get("potions") or [],
-                                          player.get("relics") or [], getattr(mem, "deck", None))
+                                          player.get("relics") or [], getattr(mem, "deck", None), getattr(mem, "max_energy", None))
     rest = sorted((o for o in opts if not o.get("is_proceed")), key=worth, reverse=True)
     if log.isEnabledFor(logging.DEBUG) and rest:
         log.debug("event %s: %s", ev.get("event_id"), " | ".join(f"[{worth(o):.1f}] {o.get('title')}: {o.get('description')}" for o in rest))

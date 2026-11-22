@@ -973,14 +973,6 @@ class Crowd(unittest.TestCase):
             stoke = card(3, "STOKE", "Stoke", "Skill", 1, "Exhaust your Hand. Add 1 random card into your Hand for each card Exhausted.", rarity="Rare")
             self.assertEqual(deck_value(stoke), 2.0)
 
-    def test_cards_every_turn_come_before_energy_with_a_price(self):
-        ev = lambda *titles: {"options": [{"index": i, "title": t, "description": "Gain [necrobinder_energy_icon.png] at the start of each turn.", "relic_name": t} for i, t in enumerate(titles)]}
-        state = {"state_type": "event", "run": {"act": 2, "floor": 18}, "player": {"hp": 60, "max_hp": 80}}
-        first = lambda *titles: strategy.event({**state, "event": ev(*titles)}, Memory())[0][1]["index"]
-        self.assertEqual(first("Ectoplasm", "Snecko Eye", "Philosopher's Stone"), 1)
-        self.assertEqual(first("Sozu", "Velvet Choker"), 1)
-        self.assertEqual(first("Pael's Flesh", "Pael's Blood"), 1)
-
     def test_a_relic_can_limit_the_cards_played_in_a_turn(self):
         state = combat_state([STRIKE(i) for i in range(3)], [enemy("JAW_WORM_0", 40)])
         self.assertIsNone(combat.cards_left_this_turn(state))
