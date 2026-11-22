@@ -252,7 +252,13 @@ def osty_hp(player: dict) -> int:
 # the logs (2026-11-22 14:24-17:58) neither crab had died, and a Regent took the Crusher to 59 while the Rocket hit
 # 31, 58 and 36 from 190. scripts/crabfight.py with a Bash and a Clothesline in its decks: 62.8% -> 77.0% won over
 # 600 fights (never worse on a deck, "neither died" 112 -> 3); without them 43.0% -> 53.2%. Crusher 8 or 17: the same.
-KNOWN_THREAT = {"MAGI_KNIGHT": 22.0, "FLAIL_KNIGHT": 16.0, "SPECTRAL_KNIGHT": 12.0, "ROCKET": 20.0, "CRUSHER": 13.0}
+# Bowlbug Nectar (act 2 hallway, with the Bowlbug Rock and often an Egg or a Silk): 3, then Buff (16 Strength for good),
+# then 19 every turn. What it had shown so far (3, then 1.5 a round, 10 by round 4) put it under the Rock's 16 all fight,
+# so the Rock was killed first in every logged fight (30 on Ascension 9, 2026-11-22) and the Nectar hit 19 for two or
+# three rounds after it; the Necrobinder lost 19% of its Max HP to the pair, the others 9%. scripts/bosses/bowlfight.py,
+# the real planner on the logged intents: 25.0 HP lost a fight -> 15.5, deaths 4.6% -> 0.2% (with an Egg 48 -> 37), never
+# worse on any of six decks; 19 and 25 the same, 12 half of it.
+KNOWN_THREAT = {"MAGI_KNIGHT": 22.0, "FLAIL_KNIGHT": 16.0, "SPECTRAL_KNIGHT": 12.0, "ROCKET": 20.0, "CRUSHER": 13.0, "BOWLBUG_NECTAR": 19.0}
 FOCUS_FLOOR = 6.0  # damage a turn every enemy is taken to do at least, in that order (as combat.THREAT_FLOOR)
 
 # Minions to kill before their leader although his death takes them along. The Kin (act 1 boss, Ascension

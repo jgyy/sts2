@@ -14,8 +14,9 @@ Action = tuple[str, dict]
 
 log = logging.getLogger("sts2bot.strategy")
 
+_RELIC_WORD = r"\brelics?\b"
 _GOOD = [
-    (r"\brelics?\b", 6.0), (r"\bremove\b", 4.0), (r"\bupgrade\b", 4.0),
+    (_RELIC_WORD, 6.0), (r"\bremove\b", 4.0), (r"\bupgrade\b", 4.0),
     (r"\btransform\b", 2.0), (r"\bpotions?\b", 1.5), (r"\bcards?\b", 1.0), (r"\benchant\b", 3.0),
     (r"draw \d+ additional cards?", 5.0),  # every turn, for the rest of the run
     (r"energy_icon", 5.0),
@@ -132,6 +133,15 @@ _ANCIENT = {
 
 RELIC = 6.0  # what a relic counts for in an event (_GOOD)
 ACT3_HP = 1.6  # how much more a point of HP given up in an event costs in act 3 (the last boss is won from full HP: 6 in 16, none in 12 below 90%)
+# Chance that an ordinary fight ends the run, from the bot's fights.jsonl (Ascension 7+, act 2 monster fights, all
+# characters, 2026-11-22): entered under half HP 22% (71 of 326), from half up 0.4% (7 of 1,661).
+FIGHT_DEATH_LOW, FIGHT_DEATH_HIGH = 0.22, 0.005
+
+
+def _lives_through(fights: int, hp: int, max_hp: int) -> float:
+    """Chance of getting through `fights` more ordinary fights from `hp`: a reward that comes after them needs that."""
+    death = FIGHT_DEATH_LOW if hp < 0.5 * max_hp else FIGHT_DEATH_HIGH
+    return (1.0 - death) ** fights
 
 
 def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int | None = None, potions: list | None = None,
@@ -146,9 +156,14 @@ def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int
     score = 0.5
     if opt.get("relic_name"):
         score += 6.0
+    # Relics that come "after N combats" (Wongo's Mystery Box, three after five) are had only if the run lives through
+    # the fights: at 8 HP the box was rated 16.5 against 5.8 for one relic now, and the run died three fights later.
+    lives = 1.0
+    if m := re.search(r"\bobtain \d+ random relics after (\d+) combats\b", text):
+        lives = _lives_through(int(m.group(1)), hp, max_hp)
     for pat, w in _GOOD:
         if re.search(pat, text) and not re.search(r"(?:lose|pay|give)[^.]*" + pat, text):
-            score += w
+            score += w * (lives if pat == _RELIC_WORD else 1.0)
     # Gold is worth what it buys (a removal is 100 to 200, a relic 150 and up), a heal what is missing and
     # Max HP its amount: all three used to be flat, so 311 Gold was worth what 35 was, "Heal to full HP"
     # the same at 9 HP in 10, and 2 Max HP for 3 damage more than 10 HP back at two thirds health.
@@ -197,7 +212,7 @@ def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int
                 score += RELIC + relic_worth(relic_id(m.group(1)), deck, act, hp, max_hp)
             break
     if m := re.search(r"\bobtain (\d+) random relics\b", text):
-        score += RELIC * (int(m.group(1)) - 1)  # (the word "relics" above counts for one)
+        score += RELIC * (int(m.group(1)) - 1) * lives  # (the word "relics" above counts for one)
     if potions is not None and len(potions) < 2 and re.search(r"\bprocure\b[^.]*\bpotions?\b", text) and "foul" not in text:
         score += 1.0  # (a belt short of two: the potion is worth more than the flat 1.5 above)
     for pat, w in _BAD:
