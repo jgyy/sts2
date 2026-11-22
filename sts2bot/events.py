@@ -8,6 +8,7 @@ import re
 from . import relics
 from .cards import deck_value, is_basic, is_known as _known_card
 from .potions import boss_worth
+from .relicworth import id_of as relic_id, worth as relic_worth
 
 Action = tuple[str, dict]
 
@@ -124,10 +125,12 @@ _ANCIENT = {
 }
 
 
+RELIC = 6.0  # what a relic counts for in an event (_GOOD)
 ACT3_HP = 1.6  # how much more a point of HP given up in an event costs in act 3 (the last boss is won from full HP: 6 in 16, none in 12 below 90%)
 
 
-def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int | None = None, potions: list | None = None) -> float:
+def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int | None = None, potions: list | None = None,
+                        held: list | None = None, deck: list | None = None) -> float:
     text = f"{opt.get('title') or ''}. {opt.get('description') or ''}".lower()
     key = re.sub(r"[^A-Z0-9]+", "_", re.sub(r"['\u2019]", "", str(opt.get("title") or "")).upper()).strip("_")
     known = _ANCIENT.get(key)
@@ -176,6 +179,18 @@ def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int
         if name and re.search(r"\b(?:lose|give|insert)\b[^.]*\b" + re.escape(name), text):
             score -= (1.0 + boss_worth(p) / 12.0) * (1.5 if act is not None and act >= 3 else 1.0)
             break
+    # A relic of ours handed over costs a relic and what this one does (relicworth.py), one traded in brings what
+    # it does: until 2026-11-22 the Relic Trader's three trades all scored 0.5 and the top one was taken (Gorget
+    # for Akabeko over Joss Paper for Gremlin Horn), and Ranwid was given a Beating Remnant like any other relic.
+    ours = {str(r.get("id")) for r in held or []}
+    for gone in re.finditer(r"\b(?:give|trade|lose) ([a-z][a-z' -]*?)(?= for |[.:]|$)", text):
+        if relic_id(gone.group(1)) in ours:
+            score -= RELIC + relic_worth(relic_id(gone.group(1)), deck, act, hp, max_hp)
+            if m := re.search(r"\btrade [a-z' -]+? for ([a-z][a-z' -]*?)(?=[.:]|$)", text):
+                score += RELIC + relic_worth(relic_id(m.group(1)), deck, act, hp, max_hp)
+            break
+    if m := re.search(r"\bobtain (\d+) random relics\b", text):
+        score += RELIC * (int(m.group(1)) - 1)  # (the word "relics" above counts for one)
     if potions is not None and len(potions) < 2 and re.search(r"\bprocure\b[^.]*\bpotions?\b", text) and "foul" not in text:
         score += 1.0  # (a belt short of two: the potion is worth more than the flat 1.5 above)
     for pat, w in _BAD:
@@ -228,7 +243,8 @@ def event(state: dict, mem) -> list[Action]:
         mem.event_id, mem.event_hp0 = eid, hp
     bled = max(0, mem.event_hp0 - hp)
     act = (state.get("run") or {}).get("act")
-    worth = lambda o: _event_option_value(o, hp, max_hp, bled, act if isinstance(act, int) else None, player.get("potions") or [])
+    worth = lambda o: _event_option_value(o, hp, max_hp, bled, act if isinstance(act, int) else None, player.get("potions") or [],
+                                          player.get("relics") or [], getattr(mem, "deck", None))
     rest = sorted((o for o in opts if not o.get("is_proceed")), key=worth, reverse=True)
     if log.isEnabledFor(logging.DEBUG) and rest:
         log.debug("event %s: %s", ev.get("event_id"), " | ".join(f"[{worth(o):.1f}] {o.get('title')}: {o.get('description')}" for o in rest))

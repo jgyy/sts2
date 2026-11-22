@@ -40,6 +40,16 @@ class KeptForTheBoss(unittest.TestCase):
         self.assertEqual(self.shelf(38, 160, 1)[0], 1)  # the potion before the relic, ten floors from the last boss
         self.assertEqual(self.shelf(22, 160, 1)[0], 0)  # in act 2, far from the boss, the relic
 
+    def test_a_merchant_before_the_boss_sells_the_best_potion_first(self):
+        # (2026-11-22 13:53: all three stood at 9.5 and the first listed, Liquid Bronze, was bought.)
+        shelf = [(0, "Liquid Bronze", 76), (1, "Heart of Iron", 78), (2, "Radiant Tincture", 76)]
+        items = [{"index": i, "category": "potion", "potion_name": n, "potion_description": "", "price": p, "is_stocked": True, "can_afford": True} for i, n, p in shelf]
+        for held in (0, 1):
+            player = {"gold": 100, "hp": 60, "max_hp": 75, "max_potion_slots": 2, "potions": [potion(i, "Fire Potion", "Deal 20 damage.") for i in range(held)], "relics": []}
+            state = {"state_type": "shop", "run": {"act": 2, "floor": 31}, "player": player, "shop": {"items": items}}
+            order = [a[1]["index"] for a in strategy.shop(state, Memory()) if a[0] == "shop_purchase"]
+            self.assertEqual(order, [2, 1, 0])
+
     def test_an_event_that_takes_a_potion_is_charged_for_it(self):
         belt = [potion(0, "Attack Potion", "Add 1 of 3 random Attack cards into your Hand."), potion(1, "Strength Potion", "Gain 2 Strength.")]
         value = lambda title, text="Obtain a random Relic.", act=3, held=belt: events._event_option_value({"title": title, "description": text}, 60, 80, act=act, potions=held)

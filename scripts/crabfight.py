@@ -1,6 +1,8 @@
 """Crusher and Rocket as a model fight, played by the bot's own planner (combat.choose_card).
 
-    python3 scripts/crabfight.py [FIGHTS A DECK] [RAGE_COST,RAGE_COST,...]
+    python3 scripts/crabfight.py [FIGHTS] [ARM,ARM,...]   ARM: a RAGE_COST, NAME=VALUE of a learn.py knob
+                                                          (caution=1.5: the HP price; 2026-11-22 sweep below), or
+                                                          threat=ROCKET/20/CRUSHER/12 (battle.KNOWN_THREAT: kill order)
     python3 scripts/crabfight.py trace [SEED]
 
 The game side is a few rules taken from the logs: the two cycles of intents
@@ -22,10 +24,11 @@ import multiprocessing
 import os
 import random
 import sys
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from sts2bot import combat  # noqa: E402
+from sts2bot import battle, combat, learn  # noqa: E402
 from tests.fake_game import card  # noqa: E402
 
 C_CYCLE = [(12, 1, False, False), (4, 1, False, False), (6, 2, False, True), (0, 0, False, False), (12, 1, True, False)]
@@ -151,19 +154,30 @@ def fight(deck_spec, energy, maxhp, rng, chp=206, rhp=196, trace=False):
     return False, 0, 30, first_dead
 
 
+def arm_patch(arm: str):
+    """An arm is a number (combat.RAGE_COST) or NAME=VALUE with a knob of learn.py (caution=1.5: the HP price)."""
+    if arm.startswith("threat="):  # threat=ROCKET/20/CRUSHER/12: battle.KNOWN_THREAT for the fight (kill order, see battle._set_focus)
+        parts = arm[len("threat="):].split("/")
+        return mock.patch.dict(battle.KNOWN_THREAT, {parts[i]: float(parts[i + 1]) for i in range(0, len(parts), 2)})
+    if "=" in arm:
+        name, value = arm.split("=")
+        return mock.patch.dict(learn.KNOB, {name: float(value)})
+    return mock.patch.object(combat, "RAGE_COST", float(arm))
+
+
 def run(args):
-    cost, dk, energy, n, seed = args
-    combat.RAGE_COST = cost
+    arm, dk, energy, n, seed = args
     rng = random.Random(seed)
     wins = hpl = rounds = 0
     firsts = {'CRUSHER_0': 0, 'ROCKET_0': 0, None: 0}
-    for _ in range(n):
-        ok, hp, r, fd = fight(dk, energy, 80, rng)
-        wins += ok
-        hpl += hp
-        rounds += r
-        firsts[fd[0] if fd else None] += 1
-    return cost, dk, energy, wins / n, hpl / n, rounds / n, firsts
+    with arm_patch(arm):
+        for _ in range(n):
+            ok, hp, r, fd = fight(dk, energy, 80, rng)
+            wins += ok
+            hpl += hp
+            rounds += r
+            firsts[fd[0] if fd else None] += 1
+    return arm, dk, energy, wins / n, hpl / n, rounds / n, firsts
 
 
 DECKS = [(13, 9, 8, 7, 2, 2), (16, 9, 8, 7, 2, 2), (13, 12, 8, 7, 2, 2), (16, 12, 7, 8, 2, 2), (19, 9, 8, 7, 2, 2), (22, 12, 8, 7, 2, 2)]  # damage, Block, Strikes, Defends, dead, heavy
@@ -174,13 +188,13 @@ if __name__ == '__main__':
         print(fight(DECKS[3], 4, 80, random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 1), trace=True))
         sys.exit()
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 100
-    costs = [float(x) for x in sys.argv[2].split(',')] if len(sys.argv) > 2 else [combat.RAGE_COST]
-    jobs = [(c, dk, 4, n, 500 + i) for c in costs for i, dk in enumerate(DECKS)]
+    arms = sys.argv[2].split(',') if len(sys.argv) > 2 else [str(combat.RAGE_COST)]
+    jobs = [(a, dk, 4, n, 500 + i) for a in arms for i, dk in enumerate(DECKS)]
     with multiprocessing.Pool(min(8, os.cpu_count() or 2)) as pool:
         out = pool.map(run, jobs)
-    for c in costs:
-        rows = [o for o in out if o[0] == c]
+    for a in arms:
+        rows = [o for o in out if o[0] == a]
         f = {k: sum(o[6][k] for o in rows) for k in ('CRUSHER_0', 'ROCKET_0', None)}
-        print(f"RAGE_COST {c}: won {sum(o[3] for o in rows) / len(rows):.3f}  hp left {sum(o[4] for o in rows) / len(rows):5.1f}  rounds {sum(o[5] for o in rows) / len(rows):4.1f}  first to die: Crusher {f['CRUSHER_0']}, Rocket {f['ROCKET_0']}, neither {f[None]}")
+        print(f"{a}: won {sum(o[3] for o in rows) / len(rows):.3f}  hp left {sum(o[4] for o in rows) / len(rows):5.1f}  rounds {sum(o[5] for o in rows) / len(rows):4.1f}  first to die: Crusher {f['CRUSHER_0']}, Rocket {f['ROCKET_0']}, neither {f[None]}")
     for dk in DECKS:
         print(dk, ' '.join(f"{o[0]}: {o[3]:.2f}" for o in out if o[1] == dk))
