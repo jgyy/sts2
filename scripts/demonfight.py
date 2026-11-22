@@ -3,6 +3,7 @@
     python3 scripts/demonfight.py [FIGHTS A DECK]      won by the planner, next to what perfect play wins
     python3 scripts/demonfight.py regret [FIGHTS]      the turns where the planner gave most away, by kind
     python3 scripts/demonfight.py trace [SEED] [DECK]  one fight, turn by turn, with the best play beside ours
+    python3 scripts/demonfight.py energy [FIGHTS]      the same decks on 3 and on 4 energy a turn (what an energy relic is worth here)
     ... NAME=VALUE                                     with a constant of combat.py or closing.py set to that (CLOSE_REACH=0)
 
 The game side is the Demon as the logs show it on Ascension 7: 379 HP; Debuff, 17, 8x3, 11 and
@@ -283,6 +284,22 @@ def regret(out):
                 print(f"  {k:60} turns a fight {len(v) / fights:5.2f}  given away a fight {sum(v) / fights:.3f}  a turn {sum(v) / len(v):.3f}")
 
 
+def energy_table(n):
+    """The same deck on 3 and on 4 energy a turn, and what the energy is worth at the Demon's door (relicworth.py)."""
+    offers = OFFERS[0]
+    print("perfect play and the planner, the same deck on 3 and 4 energy a turn (relicworth.py's energy relics):")
+    for counts, kw in (((6, 4, 2, 6, 2, 0), dict(da=15, db=11)), ((6, 3, 3, 6, 2, 2), dict(da=17, db=12))):
+        for energy in (3, 4):
+            deck = Deck(counts, energy=energy, **kw)
+            V = solve(deck, offers)
+            rng = random.Random(7)
+            won = sum(fight(deck, offers, V, rng)[0] for _ in range(n)) / n
+            print(f"  {str(deck):52} perfect {float(V[1][0][deck.maxhp, BOSS]):.3f}  planner {won:.3f}")
+    deck = Deck((6, 4, 2, 6, 2, 0), da=15, db=11, energy=4)
+    V = solve(deck, offers)
+    print("  4 energy, perfect play by HP at the Demon's door:", {h: round(float(V[1][0][h, BOSS]), 3) for h in (50, 60, 75)})
+
+
 if __name__ == "__main__":
     logging.disable(logging.CRITICAL)
     for arg in [a for a in sys.argv[1:] if "=" in a]:
@@ -297,6 +314,8 @@ if __name__ == "__main__":
         print(fight(deck, burns, V, random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 1), trace=True)[:2])
     elif sys.argv[1:2] == ["regret"]:
         regret(run(int(sys.argv[2]) if len(sys.argv) > 2 else 100))
+    elif sys.argv[1:2] == ["energy"]:
+        energy_table(int(sys.argv[2]) if len(sys.argv) > 2 else 400)
     else:
         n = int(sys.argv[1]) if len(sys.argv) > 1 else 100
         table(run(n), n)

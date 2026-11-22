@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 
 from .learn import knob
 from .potions import BOSS_FLOORS, boss_worth
+from .relicworth import worth as relic_worth
 from .events import _event_option_value, event  # noqa: F401  (events live in their own module)
 from .cards import _card_key, deck_value, is_basic, is_junk, kind as _kind, parse as _parse
 from .decks import BIG_DECK, SKIP_THRESHOLD, _blocks, _hitters, _punch, _stars, deck_fit, reward_bar  # noqa: F401  (what a card is worth in this deck: its own module)
@@ -279,6 +280,7 @@ def boss_odds(hp_ratio: float, act: int = 1) -> float:
 
 
 REST_HEAL = 0.3  # of Max HP
+LIFT_HITTERS = 5  # cards that deal damage a deck needs before Girya's Strength beats an upgrade
 UPGRADE_EARLY = 4.0  # what an upgrade counts for against resting in act 1 (later acts: the `upgrade_worth` setting, see learn.CHOICES)
 
 
@@ -527,6 +529,15 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
             return 10.0 if heal_first else 1.0
         if "smith" in oid or "upgrade" in oid:
             return 5.0
+        # What a relic adds to the rest site, in place of the upgrade when the bot does not heal: Girya's Lift (1
+        # Strength for good, 3 times), Shovel's Dig (a random relic), Pumpkin Candle's Kindle (its energy back for 5
+        # fights). Until 2026-11-22 they ranked under Smith and were never taken: 31 runs held Girya, 26 Shovel.
+        # (Strength only for a deck that hits: the Necrobinder's Osty and the Defect's orbs do not gain by it.)
+        if "lift" in oid:
+            hitters = sum(1 for c in mem.deck if _parse(c).damage > 0 and not _parse(c).osty_attack)
+            return 6.0 if not mem.deck or hitters >= LIFT_HITTERS else 4.0
+        if "dig" in oid or "kindle" in oid:
+            return 6.0
         return 3.0
 
     out = [("choose_rest_option", {"index": int(o.get("index", 0))}) for o in sorted(opts, key=rank, reverse=True)]
@@ -541,6 +552,7 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
 
 
 REMOVAL_EARLY = {1: 3.5, 2: 1.5}  # what a card removal is worth less in acts 1 and 2 under the `cards_first` setting
+RELIC_BAR = 5.0  # a shop relic wanted less than this (a fair card) is bought only with 200 Gold to spare
 SEAL_RESERVE = 45  # Gold a Merchant does not get while Seal of Gold is held (3 a turn for an energy: a boss fight is 10 to 15 turns)
 
 # What the Fake Merchant's relics are worth next to a real one at 7 (by what their text does over a run).
@@ -601,7 +613,11 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
         elif cat == "relic":
             # (Snecko Eye was refused here until 2026-11-20, as costs the planner could not count on. It reads
             # the cost of every card in hand as drawn, and 3 of the 5 runs that held one were won.)
-            want = 8.0 - price / 200.0
+            # ... and by what the relic does for this deck (relicworth.py): until 2026-11-22 the price alone
+            # decided, so the cheapest was bought whatever it was. One worth less than a fair card only out of plenty.
+            act = (state.get("run") or {}).get("act")
+            want = 8.0 - price / 200.0 + relic_worth(str(item.get("relic_id") or ""), mem.deck, act, int(player.get("hp") or 0), int(player.get("max_hp") or 0))
+            want = want if want >= RELIC_BAR or gold - price >= 200 else -1.0
             if str(item.get("relic_id") or "").startswith("FAKE_"):
                 # The Fake Merchant's copies do a fraction of what their names promise, for about 55 gold each,
                 # and until 2026-11-21 all nine were bought like relics, cheapest first. One only costs:
@@ -640,6 +656,10 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
                 # more 38 in 61 and 7 in 18. What a deck gains by one Strike fewer does not show in what its
                 # fights cost.)
                 want = 9.5 if len(player.get("potions") or []) < 2 else 7.0
+                # ... and of the potions on the shelf the one worth most at that boss (potions.BOSS_WORTH), not the
+                # first listed: on 2026-11-22 13:53 a shelf with Radiant Tincture (32), Heart of Iron (25) and Liquid
+                # Bronze (22) at 76-78 each sold the Liquid Bronze, since all three stood at 9.5.
+                want += min(1.0, boss_worth(item) / 60.0)
             else:
                 want = 2.0 if gold - price >= 60 else -1.0
         else:
@@ -808,6 +828,13 @@ def hand_select(state: dict, mem: Memory) -> list[Action]:
         # Touch of Insanity ("It is free to play this combat"): the dearest card, the best of those. (By rating
         # alone a 0-cost Astral Pulse+ was made free next to a 2-cost Bulwark+.)
         ordered = sorted(ordered, key=lambda c: (str(c.get("type")) in ("Status", "Curse"), -_parse(c).cost))
+    if re.search(r"\badd ethereal\b", prompt, re.I):
+        # Sculpting Strike ("Add Ethereal to a card in your Hand"): a card left in the hand Ethereal is Exhausted
+        # when the turn ends, so the mark goes on what the deck is better without (a curse, a Strike, a Defend)
+        # and not on one Ethereal already. Until 2026-11-22 it went on the best card in hand, 114 times in a
+        # day's logs (Grave Warden, Defend+, Death March).
+        ethereal = lambda c: "ethereal" in str(c.get("description") or "").lower() or any(str(k.get("name")) == "Ethereal" for k in c.get("keywords") or [])
+        ordered = sorted(ordered, key=lambda c: (ethereal(c), _removal_rank(c)))
     discarding = bool(re.search(r"\bdiscard\b", prompt, re.I))
     # A Sly card "discarded from your Hand before the end of your turn" is played
     # for free: the best thing to throw away. (Flick-Flack was kept 9 times in 10
