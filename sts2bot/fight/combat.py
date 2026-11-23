@@ -16,7 +16,7 @@ from .battle import (  # noqa: F401  (also the names other modules and the tests
     BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, RAGE_COST, REATTACH_REACH, SLIP_WORTH, WIN_BONUS, Enemy, clone,
     _has_power, _is_attack, constrict, end_of_turn_block, end_of_turn_loss, expected_loss, hand_burns,
     intent_damage, intent_hits, kill_reach, osty_hp, power_amount, read_enemies, _bare_block, _draw_worth, _escape_odds, _next_wither, _sandpit, _wither_bill,
-    deck_count, junk_cost, cards_left_this_turn, free_plays, _hit, _hit_count, _poison_total, _progress, _would_kill, _power_worth, _set_up, _rage_blocks, _resists, _respawns, loss_cap,
+    deck_count, junk_cost, cards_left_this_turn, next_room, next_energy_worth, free_plays, _hit, _hit_count, _poison_total, _progress, _would_kill, _power_worth, _set_up, _rage_blocks, _resists, _respawns, loss_cap,
 )
 from ..cards import CardInfo, order_key, parse
 from ..run.potions import fortifier, describe, potion_actions
@@ -210,6 +210,7 @@ def simulate(
     doubled: bool = False,  # Duplication (the Duplicator potion): the next card is played an extra time, whatever it is
     fortify: int = 1,  # a Fortifier waits on the belt for this turn's Block ("Triple your Block": 3)
     pace: float = 0.0,  # HP the enemies have lost a round so far in this fight (0: too early to say)
+    room: tuple = (99.0, 1.0),  # energy the next hand can spend beyond its own, and a card kept in the hand's share (battle.next_room)
     arrows: int = -1, aiming: int = 0, stretch: int = 0, tune: frozenset = frozenset(), chord: int = 0, boom: int = 0,  # the Fool's: Arrows owned (-1: not counted), Aim and Stretch on us (in the card texts), Melodies, Violent Chord, Explosive Arrows
 ) -> Outcome | None:
     """Score playing `line` in order. None if it cannot be afforded."""
@@ -249,7 +250,7 @@ def simulate(
     nimble = 0  # Dexterity gained from cards earlier in this line
     held = list(orbs)  # the Defect's orbs as the line goes on
     lasting = 0.0  # worth of effects that pay off over the rest of the fight (scaled by `span` below)
-    later = 0.0  # worth of things that arrive next turn
+    later, nexte, kept = 0.0, 0, False  # worth of things that arrive next turn; energy next turn, and whether the hand is Retained
     # What a lasting effect is still worth: fights against bosses go on for a
     # dozen turns, ordinary ones are over in four.
     span = {"boss": 3.0, "elite": 2.0}.get(fight, 1.0)
@@ -480,8 +481,8 @@ def simulate(
         score += c.star_gain * (2.5 if stars < 4 else 1.0 if stars < 8 else 0.2) + c.souls * 2.5
         stars += c.star_gain
         enduring += c.forge * 0.5
-        # (Energy next turn at a flat 5: with the Queen only buffing, Invoke+ (3 energy) lost to a 7-damage attack.)
-        later += (c.next_energy * 6.0 + c.next_draw * 2.0) * dmg_value + c.next_block * 0.8
+        later, nexte = later + c.next_draw * 2.0 * dmg_value + c.next_block * 0.8, nexte + c.next_energy * xs  # (energy: priced after the line)
+        kept = kept or c.keeps_hand == ("ANY",) or bool(ft.tune & set(c.keeps_hand))  # (Ki Rest with a Wah or Cho Melody)
         if c.dexterity:
             nimble += c.dexterity
             if c.dexterity_lasts:
@@ -578,7 +579,7 @@ def simulate(
             score += 0.9 * _orb_damage(kind, passive, foes, chip_rate, dmg_value)
     if hail and any(o[0] == "FROST" for o in held):
         score += sum(_progress(e, _hit(e, hail, 1, raw=True), chip_rate) * dmg_value * e.worth for e in foes if e.alive)
-    later += ft.later(dmg_value)  # Aim and Stretch kept for the next turn
+    later += ft.later(dmg_value) + next_energy_worth(nexte, room, max(0, hand_size + drawn - len(line)) if kept else 0) * dmg_value  # (Aim, Stretch)
     future += (lasting + enduring) * span + later
     score += future
     if debris:
@@ -843,7 +844,7 @@ def _context(state: dict) -> dict:
         # (Echo Form: "The first card you play each turn is played an extra time", and a second one the second card.)
         doubled=_has_power(player, "DUPLICATION") or max(0, power_amount(player, "ECHO_FORM")) > int(state.get("_plays_this_turn") or 0),
         taint=max((power_amount(e, "VITAL_SPARK") for e in [player, *(battle.get("enemies") or [])]), default=0),
-        pace=closing.pace(state),
+        pace=closing.pace(state), room=next_room(state),
         arrows=arrows_owned(player), aiming=max(0, power_amount(player, "AIM")), stretch=max(0, power_amount(player, "STRETCH")),
         tune=played_melodies(state.get("_played_names")), chord=max(0, power_amount(player, "VIOLENT_CHORD")), boom=max(0, power_amount(player, "EXPLOSIVE_ARROWS")),
     )

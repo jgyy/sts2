@@ -224,6 +224,54 @@ class Dislodging(unittest.TestCase):
         self.assertEqual(combat.simulate([firm], stuck, **kw).lost, 14)
 
 
+KI_REST = lambda i: card(i, "KI_REST", "Ki Rest+", "Skill", 2, "Next turn, gain 6[fool_energy_icon.png]. If you have a Wah Melody or Cho Melody, Retain your Hand this turn.")
+ONES = [{"name": "Strike", "cost": "1", "description": "Deal 6 damage."} for _ in range(10)]
+
+
+class NextTurnEnergy(unittest.TestCase):
+    """Energy next turn is worth what the next hand can spend (live: after Ki Rest+ the turn began on 9.4 and ended on 4.6)."""
+
+    def test_retain_your_hand_is_read_with_the_melodies_it_needs(self):
+        self.assertEqual(parse(KI_REST(0)).keeps_hand, ("WAH", "CHO"))
+        self.assertEqual(parse(KI_REST(0)).next_energy, 6)
+        convergence = card(0, "CONVERGENCE", "Convergence", "Skill", 1, "Next turn, gain [regent_energy_icon.png] and [star_icon.png]. Retain your Hand this turn.")
+        self.assertEqual(parse(convergence).keeps_hand, ("ANY",))
+        self.assertEqual(parse(STRIKE(0)).keeps_hand, ())
+
+    def test_the_room_is_the_next_hands_cost_less_the_energy_it_will_have(self):
+        state = combat_state([], [enemy("A", 100, attack=10)])
+        self.assertEqual(battle.next_room(state), (99.0, 1.0))  # (no piles: every energy counts, as before)
+        state["player"].update(draw_pile=ONES, max_energy=3)
+        self.assertEqual(battle.next_room(state), (2.0, 1.0))  # five cards at 1, three energy of its own
+        state["player"]["status"] = [{"id": "ENERGY_NEXT_TURN_POWER", "amount": 3}]
+        self.assertEqual(battle.next_room(state), (-1.0, 1.0))
+        state["player"]["status"] = [{"id": "SLOTH_POWER", "amount": 0}, {"id": "MIND_ROT_POWER", "amount": 1}]
+        self.assertEqual(battle.next_room(state), (0.0, 1.0))  # three cards a turn
+        self.assertEqual(battle.next_energy_worth(6, (2.0, 1.0)), 6.0 * 2 + 1.0 * 4)
+        self.assertEqual(battle.next_energy_worth(6, (2.0, 1.0), kept=3), 6.0 * 5 + 1.0 * 1)
+        self.assertEqual(battle.next_energy_worth(2, (99.0, 1.0)), 12.0)  # (the old flat 6)
+        beast = {**enemy("CEREMONIAL_BEAST_0", 200), "intents": [{"type": "Debuff", "label": ""}]}
+        self.assertEqual(battle.next_room(combat_state([], [beast]))[0], -99.0)  # Ringing next turn: one card
+
+    def test_no_ki_rest_before_a_ringing_turn(self):
+        # Live 21:28: Ki Rest+ before each of the Ceremonial Beast's four Ringing turns, 9 energy spent on one card each time.
+        beast = {**enemy("CEREMONIAL_BEAST_0", 150), "intents": [{"type": "Debuff", "label": ""}]}
+        epic = card(1, "EPIC_RETRIEVAL", "Epic Retrieval", "Attack", 2, "Deal 15 damage.", "AnyEnemy")
+        state = combat_state([KI_REST(0), epic, STRIKE(2)], [beast], energy=3, kind="boss")
+        state["player"].update(draw_pile=ONES, max_energy=3)
+        self.assertEqual(combat.choose_card(state)[1]["card_index"], 1)
+        with mock.patch.object(combat, "next_room", lambda s: (99.0, 1.0)):
+            self.assertNotEqual(combat.choose_card(state)[1]["card_index"], 1)  # (what it did before: Strike, then Ki Rest+)
+
+    def test_rewards_count_about_two_energy_next_turn(self):
+        from sts2bot import cards
+
+        gain = lambda n: {**card(0, "X", "X", "Skill", 1, "Next turn, gain " + "[fool_energy_icon.png]" * n + "."), "rarity": "Common"}
+        with mock.patch.object(cards, "_crowd_share", lambda: 0.0):
+            self.assertAlmostEqual(cards.deck_value(gain(2)) - cards.deck_value(gain(1)), 0.8)
+            self.assertAlmostEqual(cards.deck_value(gain(6)) - cards.deck_value(gain(2)), 0.8)  # (Ki Rest+: 4.8 for its 6 before)
+
+
 class DeckBuilding(unittest.TestCase):
     def test_shots_beyond_the_arrows_are_worth_less(self):
         from sts2bot.run import decks

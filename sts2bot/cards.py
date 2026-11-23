@@ -59,6 +59,7 @@ class CardInfo:
     next_energy: int = 0  # energy gained next turn
     next_draw: int = 0  # extra cards drawn next turn
     next_block: int = 0  # Block gained next turn
+    keeps_hand: tuple = ()  # "Retain your Hand this turn": ("ANY",), or the Melodies it needs (Ki Rest: "If you have a Wah Melody or Cho Melody")
     enemy_hp_loss: int = 0  # "Enemy loses N HP." (ignores Block)
     souls: int = 0  # Souls added to the draw pile (each: draw 2 cards)
     evoke_all: int = 0  # times every orb is evoked (Shatter)
@@ -136,6 +137,15 @@ def _cost(raw) -> int:
         return max(0, int(s))
     except ValueError:
         return 0
+
+
+def _keeps_hand(text: str) -> tuple:
+    """"Retain your Hand this turn" (Convergence): ("ANY",); behind a Melody (Ki Rest: "If you have a Wah Melody or Cho Melody,
+    Retain your Hand this turn"): the Melodies that do it; () for every other card."""
+    m = re.search(r"(?:if\s+you\s+have\s+([^,.]*?melody[^,.]*?),\s*)?retain\s+your\s+hand", text, re.I)
+    if not m:
+        return ()
+    return tuple(w.upper() for w in re.findall(r"(\w+)\s+melody", m.group(1), re.I)) if m.group(1) else ("ANY",)
 
 
 def _replay(card: dict, text: str) -> int:
@@ -350,7 +360,7 @@ def parse(card: dict) -> CardInfo:
         stretch_dealt=bool(re.search(r"gain\s+stretch\s+equal\s+to\s+the\s+damage\s+dealt", text, re.I)),
         dislodge=bool(re.search(r"\bdislodge\b", text, re.I)), impaled_double=bool(re.search(r"double\s+damage\s+to\s+impaled", text, re.I)),
         arrow_block=bool(re.search(r"if\s+you\s+have\s+an\s+arrow,\s*gain\s+block\s+an\s+additional\s+time", full_text, re.I)),  # ("If you ..." is not in `text`)
-        melody=melodies(card.get("name") or ""), melody_block=melody_block,
+        melody=melodies(card.get("name") or ""), melody_block=melody_block, keeps_hand=_keeps_hand(full_text),
         melody_hits=bool(re.search(r"additional\s+time\s+for\s+each\s+melody", text, re.I)),
         melody_twice=tuple(w.upper() for w in re.findall(r"(\w+)\s+melody", (re.search(r"if\s+you\s+have\s+an?\s+[^,.]*melody[^,.]*,\s*hits\s+twice", full_text, re.I) or re.match("", "")).group(0), re.I)),
         osty_dies=bool(re.search(r"\b(?:Osty|he)\s+dies", full_text, re.I)),  # (Sacrifice: "If Osty is alive, he dies and ...")
@@ -559,7 +569,9 @@ def deck_value(card: dict) -> float:
     score += info.poison * (0.15 if info.poison_needs else 0.3) + info.doom * 0.12 + info.shivs * 0.7 + info.star_gain * 0.6 + info.forge * 0.12
     score += info.summon * 0.15 + len(info.channel) * 1.3 + info.evoke * 0.8 + info.souls * 0.6
     score += info.dexterity * (1.5 if info.dexterity_lasts else 0.4)
-    score += info.next_energy * 0.8 + info.next_draw * 0.5 + info.next_block * 0.08 + info.enemy_hp_loss * 0.15
+    # (Energy next turn: a hand spends about 2 more, whatever comes. The Fool's turn after Ki Whip spent 1.6 of its 2, after
+    # Ki Whip+ 2.0 of 3, Ki Rest 2.0 of 5, Ki Rest+ 2.4 of 6; at 0.8 each Ki Rest topped offers at 6.6. See battle.next_room.)
+    score += min(info.next_energy, 2) * 0.8 + max(0, info.next_energy - 2) * 0.2 + info.next_draw * 0.5 + info.next_block * 0.08 + info.enemy_hp_loss * 0.15
     score += min(info.vulnerable, 3) * 0.6 + min(info.weak, 3) * 0.4
     if info.impaled_only:  # only with our Arrow in the enemy: 39-55% of the turns Nail, Uproot, Recall and Wrest were drawn
         score = base + (score - base) * IMPALED_SHARE
