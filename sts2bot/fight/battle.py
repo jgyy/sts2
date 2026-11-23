@@ -18,6 +18,10 @@ REATTACH_REACH = 40  # Decimillipede: HP the other segments may have left for a 
 RAGE_BLOCK = 99  # Crab Rage: Block a crab gains for each ally that dies (gone again when its next turn starts)
 RAGE_COST = 0.3  # ... and what the 6 Strength it keeps costs, in points for each HP it still has (2.0 until 2026-11-21: see combat.simulate)
 SLIP_WORTH = 7.0  # what taking one Slippery stack off is worth, in damage: the hit it lets through later
+# Energy next turn, in damage: 6 while the next hand has cards to spend it on (with the Queen only buffing, Invoke+ lost to a
+# 7-damage attack at a flat 5), and 1 beyond that (a dear card may still come). See next_room.
+NEXT_ENERGY, SPARE_ENERGY = 6.0, 1.0
+RINGERS = ("CEREMONIAL_BEAST",)  # whose Debuff leaves us Ringing ("You can only play 1 card this turn") next turn: 42 times in 42
 STAB_SCAR = 8.0  # Painful Stabs (the Test Subject's second form): what each Wound from a hit that gets through costs, in points
 
 
@@ -668,6 +672,44 @@ def cards_left_this_turn(state: dict) -> int | None:
     if encore is not None:
         left.append(max(0, encore))
     return min(left) if left else None
+
+
+def next_room(state: dict) -> tuple:
+    """(Energy the next hand can spend beyond what it will have already, what each card kept in the hand adds to that).
+
+    The next hand is five cards of the draw pile at their mean cost (X and dearer than 3 as 3, Unplayable as 0), against the
+    turn's energy and any already coming. Priced at a flat 6 damage each, the Fool's next-turn energy went mostly unspent
+    (fresh profile, 20:17-22:10 on 2026-11-23): after Ki Rest+ (6) the next turn began on 9.4 and ended on 4.6, its hand
+    costing 5.8 to play out; after Ki Whip+ (3), 6.7 and 2.3. Before a Ringing turn none of it can be spent: a lost Ceremonial
+    Beast fight played Ki Rest+ before each of its four Ringing turns and spent 9 energy on one card each time.
+    """
+    player = state.get("player") or {}
+    for e in (state.get("battle") or {}).get("enemies") or []:
+        if re.sub(r"_\d+$", "", str(e.get("entity_id"))) in RINGERS and any("debuff" in str(i.get("type", "")).lower() for i in e.get("intents") or []):
+            return (-99.0, 0.0)
+    pile = list(player.get("draw_pile") or [])
+    if len(pile) < 5:
+        pile += list(player.get("discard_pile") or [])  # (shuffled back in before the hand is drawn)
+    if not pile:
+        return (99.0, 1.0)  # (no piles in the state: as before, every energy counts)
+
+    def cost(c: dict) -> float:
+        if re.search(r"\bunplayable\b", str(c.get("description") or ""), re.I):
+            return 0.0
+        n = str(c.get("cost") or "0")
+        return min(3.0, float(n)) if n.isdigit() else 3.0
+
+    per = sum(map(cost, pile)) / len(pile)
+    draws = 5 + max(0, power_amount(player, "DRAW_CARDS_NEXT_TURN")) - max(0, power_amount(player, "MIND_ROT"))  # ("Draw 1 fewer card each turn")
+    draws = min(draws, 3) if _has_power(player, "SLOTH") else draws  # (the Knowledge Demon's: "You cannot play more than 3 cards each turn")
+    have = int(player.get("max_energy") or 3) + max(0, power_amount(player, "ENERGY_NEXT_TURN"))
+    return (draws * per - have, per)
+
+
+def next_energy_worth(gained: int, room: tuple, kept: int = 0) -> float:
+    """What `gained` energy next turn is worth, in damage, with `kept` cards retained in the hand (next_room's `room`)."""
+    usable = min(float(gained), max(0.0, room[0] + kept * room[1]))
+    return NEXT_ENERGY * usable + SPARE_ENERGY * (gained - usable)
 
 
 def free_plays(state: dict) -> int:
