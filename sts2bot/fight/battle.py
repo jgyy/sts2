@@ -109,6 +109,7 @@ class Enemy:
     thief: bool = False  # Swipe: it holds a card of ours, which comes back if it dies and is gone for good if it gets away
     shell: int = -1  # Hardened Shell (the Skulking Colony): HP it can still lose this turn (-1: no limit)
     focus: float = 1.0  # what a point of damage on it is worth next to one on the enemy to kill first (KNOWN_THREAT fights only)
+    impaled: int = 0  # Impaled: our Arrow stands in it until this many more hits land (or it dies); 0: none
 
     @property
     def worth(self) -> float:
@@ -358,6 +359,7 @@ def read_enemies(state: dict) -> list[Enemy]:
                 # (Block on it: it has been hit already. Curl Up, the Louse Progenitor's, is the same once a fight: 14.)
                 skittish=0 if int(e.get("block") or 0) else _stacks(e, "SKITTISH") or _stacks(e, "CURL_UP"),
                 max_hp=int(e.get("max_hp") or 0),
+                impaled=_stacks(e, "IMPALED"),
             )
         )
     # Surrounded: we face whoever we targeted last, and the one behind us hits
@@ -441,6 +443,8 @@ def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = Fal
     for _ in range(_hit_count(e, hits, double_if_vulnerable)):
         if e.hp <= 0:
             break
+        if e.impaled and not raw:
+            e.impaled -= 1  # (Block or not: the Tunneler's Burrowed Block took the count from 3 to 2)
         absorbed = min(e.block, per)
         e.block -= absorbed
         e.chipped += absorbed
@@ -781,3 +785,4 @@ def loss_cap(player: dict) -> int:
         if m:
             return int(m.group(1))
     return 0
+

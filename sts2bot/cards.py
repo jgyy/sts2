@@ -71,6 +71,20 @@ class CardInfo:
     ethereal: bool = False  # gone for the fight if it is still in the hand when the turn ends
     ends_turn: bool = False  # "End your turn." (Void Form), "Exhaust your Hand." (Fiend Fire, Stoke): nothing in the hand can be played after it
     replay: int = 0  # times it is played again by itself ("Replay 1": Sword Sage's Sovereign Blade, Hidden Gem, Transfigure)
+    # --- the Fool's Arrows: a card that Shoots needs an Arrow not standing in an enemy, or it does nothing
+    shoots: bool = False
+    aim_times: int = 1  # "Aim affects this card 2 times" (Heavy Shot): the Aim in its text counts this often
+    aim: int = 0  # Aim gained ("Your next Arrow deals more damage"), per energy on an X card (Brace)
+    stretch: int = 0  # Stretch gained ("The next time you gain Block from a card, gain additional Block")
+    impaled_only: bool = False  # Nail: "If the enemy is Impaled, Deal 20 damage ...": nothing otherwise
+    on_impaled: tuple = ()  # (energy, cards drawn) it adds when its target is Impaled (Bow Smack, Ki Hop)
+    dislodge: bool = False  # takes our Arrow back out of its (Impaled) target: Uproot, Recall
+    impaled_double: bool = False  # Wah Hammer: "Deals double damage to Impaled enemies"
+    arrow_block: bool = False  # Cho Firm: "If you have an Arrow, gain Block an additional time"
+    melody: tuple = ()  # the Melodies playing it gives for the turn: the Wah, Cho and Ki in its name
+    melody_hits: bool = False  # "Hits an additional time for each Melody you have" (its text counts those there are)
+    melody_block: int = 0  # "Gain 5 Block for each Melody you have" (Harmonic Shield): Block a Melody
+    melody_twice: tuple = ()  # Wah Blast: "If you have a Cho Melody or Ki Melody, hits twice"
 
     @property
     def is_x(self) -> bool:
@@ -79,6 +93,14 @@ class CardInfo:
     @property
     def total_damage(self) -> int:
         return self.damage * self.hits
+
+
+MELODIES = ("WAH", "CHO", "KI")
+
+
+def melodies(name) -> tuple:
+    """The Fool's Melodies a card gives when played ("Wah Melody: activates if you played a "Wah" card this turn"): the words of its name."""
+    return tuple(m for m in MELODIES if m in re.findall(r"[A-Z]+", str(name).upper()))
 
 
 def key_of(name) -> str:
@@ -186,6 +208,19 @@ def parse(card: dict) -> CardInfo:
     target = str(card.get("target_type") or "")
     # A Power does nothing the moment it is played; its text is all "later".
     text = "" if ctype == "Power" else immediate_text(full_text)
+    # "If the enemy is Impaled, ..." (the Fool's Arrow stands in it): Nail is nothing without one, and Bow
+    # Smack's energy and Ki Hop's draw only come with one. Read as plain, Nail was 20 damage on any enemy.
+    impaled_only, on_impaled = False, ()
+    if m := re.search(r"if\s+the\s+enemy\s+is\s+impaled,?\s*((?:\[[^\]]*\]|[^.])*)\.?", text, re.I):  # (an icon's ".png" is not the end)
+        if re.search(r"deal\s+\d+\s+damage|\bapply\b|\bdislodge\b", m.group(1), re.I):
+            impaled_only = True  # (Uproot: "Dislodge and apply 3 Vulnerable"; Recall: "Dislodge and put a card ...")
+        else:
+            on_impaled = (_icons(m.group(1)), _int(r"draw\s+(\d+)\s+card", m.group(1)))
+            text = text[: m.start()] + text[m.end() :]
+    # "Aim affects this card 2 times" (Heavy Shot) is not 2 hits: one hit with the Aim counted twice.
+    aim_times = 1
+    if m := re.search(r"aim\s+affects\s+this\s+card\s+(?:(\d+)\s+times?|twice)\.?", text, re.I):
+        aim_times, text = int(m.group(1) or 2), text[: m.start()] + text[m.end() :]
 
     # "Next turn, gain 4 Block." is read separately below, not as this turn's.
     next_text = "" if ctype == "Power" else " ".join(x for x in re.split(r"(?<=[.!?])\s+", full_text) if x.strip().lower().startswith("next turn"))
@@ -214,6 +249,9 @@ def parse(card: dict) -> CardInfo:
         if hits == 0:
             damage = 0
     block = _int(r"gain\s+(\d+)\s+block", text)
+    melody_block = block if re.search(r"block\s+for\s+each\s+melody", text, re.I) else 0
+    if m := re.search(r"\(gain\s+(\d+)\s+block\)", text, re.I):
+        block = int(m.group(1))  # "Gain 5 Block for each Melody you have. (Gain 0 Block)": what it gives now
     if not block and damage and re.search(r"gain\s+block\s+equal\s+to\s+(?:the\s+)?damage\s+dealt", text, re.I):
         block = damage * hits  # Fisticuffs
     vulnerable = _int(r"apply\s+(\d+)\s+vulnerable", text) or _int(r"(\d+)\s+(?:weak\s+and\s+)?vulnerable", text)
@@ -277,8 +315,9 @@ def parse(card: dict) -> CardInfo:
 
     aoe = target == "AllEnemies" or bool(re.search(r"all\s+enemies", text, re.I))
     random_target = bool(re.search(r"random\s+enemy", text, re.I))
+    aim, stretch = _int(r"gain\s+(\d+)\s+aim", text), _int(r"gain\s+(\d+)\s+stretch", text)
     known = any(
-        (damage, block, vulnerable, weak, draw, energy_gain, strength, enemy_strength_loss, poison, doom, shivs)
+        (damage, block, vulnerable, weak, draw, energy_gain, strength, enemy_strength_loss, poison, doom, shivs, aim, stretch, melody_block, impaled_only)
         + (star_gain, forge, summon, dexterity, len(channel), evoke, evoke_all, next_energy, next_draw, next_block, enemy_hp_loss, souls, heal)
     )
 
@@ -299,6 +338,13 @@ def parse(card: dict) -> CardInfo:
         ethereal=bool(re.search(r"\bEthereal\b", full_text)) or any(isinstance(k, dict) and str(k.get("name")).lower() in ("ethereal", "hexed") for k in card.get("keywords") or []),
         ends_turn=bool(re.search(r"(?:^|\.\s*)(?:end\s+your\s+turn|exhaust\s+your\s+hand)\.", full_text, re.I)),
         replay=_replay(card, full_text),
+        shoots=bool(re.search(r"\bshoot\s+(?:an?|\d+|x)\s+arrows?\b", text, re.I)), aim_times=aim_times, aim=aim, stretch=stretch,
+        impaled_only=impaled_only, on_impaled=on_impaled if any(on_impaled) else (),
+        dislodge=bool(re.search(r"\bdislodge\b", text, re.I)), impaled_double=bool(re.search(r"double\s+damage\s+to\s+impaled", text, re.I)),
+        arrow_block=bool(re.search(r"if\s+you\s+have\s+an\s+arrow,\s*gain\s+block\s+an\s+additional\s+time", full_text, re.I)),  # ("If you ..." is not in `text`)
+        melody=melodies(card.get("name") or ""), melody_block=melody_block,
+        melody_hits=bool(re.search(r"additional\s+time\s+for\s+each\s+melody", text, re.I)),
+        melody_twice=tuple(w.upper() for w in re.findall(r"(\w+)\s+melody", (re.search(r"if\s+you\s+have\s+an?\s+[^,.]*melody[^,.]*,\s*hits\s+twice", full_text, re.I) or re.match("", "")).group(0), re.I)),
         osty_dies=bool(re.search(r"\b(?:Osty|he)\s+dies", full_text, re.I)),  # (Sacrifice: "If Osty is alive, he dies and ...")
         doom_kills=bool(re.search(r"kill\s+enemies\s+with\s+at\s+least\s+as\s+much\s+Doom", full_text, re.I)),
         debris=-1 if re.search(r"fill\s+your\s+hand\s+with\s+debris", text, re.I) else _int(r"add\s+(\d+)\s+debris", text) or int(bool(re.search(r"add\s+a\s+debris", text, re.I))),

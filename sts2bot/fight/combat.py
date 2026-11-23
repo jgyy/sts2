@@ -22,6 +22,7 @@ from ..cards import CardInfo, order_key, parse
 from ..run.potions import fortifier, describe, potion_actions
 from . import sandpit as pit
 from . import artifact, closing, triggers
+from .fool.turn import FoolTurn, arrows_owned, concerns, impaled_pool, played_melodies
 from ..learn import knob
 
 Action = tuple[str, dict]
@@ -209,6 +210,7 @@ def simulate(
     doubled: bool = False,  # Duplication (the Duplicator potion): the next card is played an extra time, whatever it is
     fortify: int = 1,  # a Fortifier waits on the belt for this turn's Block ("Triple your Block": 3)
     pace: float = 0.0,  # HP the enemies have lost a round so far in this fight (0: too early to say)
+    arrows: int = -1, aiming: int = 0, stretch: int = 0, tune: frozenset = frozenset(), chord: int = 0, boom: int = 0,  # the Fool's: Arrows owned (-1: not counted), Aim and Stretch on us (in the card texts), Melodies, Violent Chord, Explosive Arrows
 ) -> Outcome | None:
     """Score playing `line` in order. None if it cannot be afforded."""
     if card_limit is not None and len(line) > card_limit:
@@ -268,6 +270,7 @@ def simulate(
     debris = 0  # Debris this line leaves in our deck
     dazed = 0  # Dazed this line's Attacks bring into it (Personal Hive)
     tainted = 0
+    ft = FoolTurn(arrows, aiming, stretch, tune, chord, boom)  # the Fool's Arrows, Aim, Stretch and Melodies as the line goes on (fool/turn.py)
     known_dead = {e.entity_id for e in foes if not e.alive}
     # (Only Stock and Adaptable enemies come back and only crabs hand on Block: for the rest both are skipped.)
     respawn, rage_blocks = (_respawns if any(e.respawns > 0 or e.adapts for e in foes) else _idle), (_rage_blocks if any(e.rage for e in foes) else _idle)
@@ -320,6 +323,8 @@ def simulate(
             more = dict(block=c.block * k, draw=c.draw * k, summon=c.summon * k, doom=c.doom * k, poison=c.poison * k, shivs=c.shivs * k, souls=c.souls * k)
             c = replace(c, hits=c.hits * (k if c.damage else 1), energy_gain=c.energy_gain * k, **more)
         echo = triggers.ECHO_NEXT.get(c.key, echo)
+        if concerns(c) or (c.block and (ft.stretch or ft.stretch0)):
+            c = ft.before(c, foes, turn_to if turn_to and n == last_aimed else focus)
         energy *= 2 if c.key == "DOUBLE_ENERGY" else 1
         free_all = free_all or c.key == "BULLET_TIME"
         energy += c.energy_gain
@@ -377,7 +382,7 @@ def simulate(
                 t, struck = None, []
                 score += per * hits * 0.8 * dmg_value
             else:
-                t = focused or _pick_target(foes, per, hits, c.double_if_vulnerable)
+                t = focused or _pick_target(impaled_pool(c, foes), per, hits, c.double_if_vulnerable)
                 if c.key == "HANG" and t is not None:
                     # "Double the damage ALL Hang cards deal to this enemy": 10, 20, 40, 80 on the same enemy, and
                     # the card's text goes on saying 10. (The third one did 40 of the 57 a lost fight's last turn dealt.)
@@ -417,7 +422,7 @@ def simulate(
                 t = max(alive, key=lambda e: (e.poison, e.worth), default=None)  # (Bubble Bubble) only the poisoned one takes it
             else:
                 # Vulnerable goes on the enemy we will be hitting the longest (where a kill order is known, the next to die).
-                fresh = [e for e in alive if not e.vulnerable] or alive
+                fresh = [e for e in impaled_pool(c, alive) if not e.vulnerable] or impaled_pool(c, alive)  # (Uproot: the Impaled one)
                 t = max(fresh, key=lambda e: (e.focus, e.hp + e.block), default=None)
             if t is not None:
                 _debuff(t, c, xs)
@@ -425,6 +430,8 @@ def simulate(
             t = None
             for e in alive if c.aoe else []:
                 _debuff(e, c, xs)
+        if ft.books(c) and (chord := ft.after(c, t, xs)):  # Violent Chord, Explosive Arrows: a Wah Melody gained, an enemy Impaled hits ALL enemies
+            score += sum(_progress(e, _hit(e, chord, 1, raw=True), chip_rate) * dmg_value * e.worth for e in foes if e.alive)
         if t is not None:
             faced = t.entity_id
             if n == 0:
@@ -565,6 +572,7 @@ def simulate(
             score += 0.9 * _orb_damage(kind, passive, foes, chip_rate, dmg_value)
     if hail and any(o[0] == "FROST" for o in held):
         score += sum(_progress(e, _hit(e, hail, 1, raw=True), chip_rate) * dmg_value * e.worth for e in foes if e.alive)
+    later += ft.later(dmg_value)  # Aim and Stretch kept for the next turn
     future += (lasting + enduring) * span + later
     score += future
     if debris:
@@ -830,6 +838,8 @@ def _context(state: dict) -> dict:
         doubled=_has_power(player, "DUPLICATION") or max(0, power_amount(player, "ECHO_FORM")) > int(state.get("_plays_this_turn") or 0),
         taint=max((power_amount(e, "VITAL_SPARK") for e in [player, *(battle.get("enemies") or [])]), default=0),
         pace=closing.pace(state),
+        arrows=arrows_owned(player), aiming=max(0, power_amount(player, "AIM")), stretch=max(0, power_amount(player, "STRETCH")),
+        tune=played_melodies(state.get("_played_names")), chord=max(0, power_amount(player, "VIOLENT_CHORD")), boom=max(0, power_amount(player, "EXPLOSIVE_ARROWS")),
     )
 
 
