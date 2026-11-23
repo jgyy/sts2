@@ -447,7 +447,7 @@ def powers() -> None:
     for line in lines():
         m = re.search(r" INFO power (\w+?)(?:_POWER)? \(on (.+?)\): (.*)$", line)
         if m and f'"{m.group(1)}"' not in code:
-            ours = m.group(2).startswith("The ") and m.group(2).split()[-1] in ("Ironclad", "Silent", "Regent", "Necrobinder", "Defect")
+            ours = m.group(2).startswith("The ") and m.group(2).split()[-1] in ("Ironclad", "Silent", "Regent", "Necrobinder", "Defect", "Fool")
             seen.setdefault((ours, m.group(1)), (m.group(2), m.group(3)))
     for (ours, name), (who, text) in sorted(seen.items()):
         print(f"{'on us    ' if ours else 'on enemy '} {name:28} {who[:22]:22} {text[:150]}")

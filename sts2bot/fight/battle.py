@@ -832,3 +832,56 @@ def loss_cap(player: dict) -> int:
             return int(m.group(1))
     return 0
 
+
+# Whom an attack goes at (moved from combat.py on 2026-11-23, when that file reached its 1000 lines).
+THREAT_FLOOR = 6.0  # damage a turn every enemy is taken to do at least, when choosing whom to hit first
+
+
+def _pick_target(enemies: list[Enemy], dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> Enemy | None:
+    alive = [e for e in enemies if e.alive]
+    if not alive:
+        return None
+
+    # Reattach (the Decimillipede, 130 HP in three segments): one killed while another lives is back two
+    # turns later on 25 HP, so killing them one by one never ends. A Regent went in on 85/85, killed a
+    # segment seven times in twelve rounds and died with two of them on 25. Until the others are within
+    # reach the healthiest one is hit and none is finished: they come down together and die together.
+    segs = [e for e in alive if e.reattach]
+    stay = {e.entity_id for e in segs if sum(o.hp + o.block for o in segs if o is not e) > REATTACH_REACH} if len(segs) > 1 else set()
+    if stay:
+        spare = [e for e in segs if not (e.entity_id in stay and _would_kill(e, dmg_per_hit, hits, double_if_vulnerable))]
+        if len(segs) == len(alive):
+            return max(spare or segs, key=lambda e: e.hp + e.block)
+    killable = [e for e in alive if e.entity_id not in stay and _would_kill(e, dmg_per_hit, hits, double_if_vulnerable)]
+    if killable:
+        # Remove the biggest threat first; waste the least damage on ties.
+        # Killing something that revives only pays off if it is about to hit us.
+        useful = [e for e in killable if e.worth > 0 or e.incoming > 0]
+        # (Not a minion that is not even attacking, with an attack more than twice its size: the
+        # leader's death takes it along. Squeeze, 35 damage, went into a 17-HP egg three times while
+        # the Ovicopter that lays them stood at 105, and that fight was lost from 69 HP.)
+        size = dmg_per_hit * hits
+        useful = [e for e in useful if not (e.minion and not e.main_threat and not e.incoming and size > 2 * (e.hp + e.block) and any(o.worth >= 1.0 for o in alive))]
+        if useful:
+            return max(useful, key=lambda e: (e.worth > 0, e.incoming, e.hp + e.block))
+    # Otherwise focus whoever dies soonest, counting Vulnerable as less health;
+    # leaders before their minions, never something that just comes back.
+    # (Not one whose Block would swallow the whole attack, when another would lose HP to it.)
+    # ... and, where the enemies are known to differ, the one that does the most damage for
+    # its health: least is lost in all by killing in that order. Lowest health first left the
+    # Slumbering Beetle (86 HP, 16 a turn and 2 more every turn once awake) until both Bowlbugs
+    # were dead: 5 runs in 24 died in that room, two of them from over 50 HP. Enemies that have
+    # shown under 6 a turn count as 6, so equals are still taken lowest first.
+    # Doom is health already gone (it dies at the end of its turn once Doom covers its HP), and one
+    # that Doom has finished needs nothing more. Read as plain HP, the Necrobinder put Scourge on one
+    # Nibbit and its attacks on the other, then went on hitting the one already done for: seven rounds
+    # and 34 of 49 HP for two 42-HP enemies. (15 of its 44 act 1 bosses were met on under 75% HP,
+    # 7 of those won; of the 29 met on more, 24.)
+    soaks = lambda e: e.block >= dmg_per_hit * hits and not e.keeps_block
+    left = lambda e: (max(1, e.hp - e.doom) + e.block) / (1.5 if e.vulnerable else 1.0)
+    return min(alive, key=lambda e: (_fated(e), -e.worth, soaks(e), left(e) / max(e.threat, THREAT_FLOOR), -e.incoming))
+
+
+def _fated(e: Enemy) -> bool:
+    """Doom covers its HP: it dies when its turn ends, whatever else we do to it (a boss with another form to come does not)."""
+    return e.doom >= e.hp > 0 and not e.adapts

@@ -16,8 +16,9 @@ from __future__ import annotations
 import logging
 import re
 
+from . import combat, triggers
 from .battle import power_amount
-from ..cards import _card_key
+from ..cards import _card_key, parse
 
 log = logging.getLogger("sts2bot.afflictions")
 
@@ -81,3 +82,63 @@ def order(ordered: list[dict], state: dict) -> list[dict]:
     take_burn = hp > 2 * (per_turn + burning) and not spare
     log.debug("affliction: energy left at the end of each turn %s: %s", [left for _, left in turns], "the burn" if take_burn else "Waste Away")
     return first(burn if take_burn else drain)
+
+
+# The other cards a fight offers: "Choose 1 of 3 random Attack cards to add into your Hand. It's free to play this turn."
+# (Attack, Skill, Power and Colorless Potions; Discovery, Splash: 159 offers in four hours of logs.) They were taken by
+# what each would be worth in the deck, whatever the turn: a Colorless Potion on the Knowledge Demon's first turn (a
+# Debuff, no attack) took Ultimate Defend over Beat Down and Stratagem and never played it; an Attack Potion at 15 HP
+# took Flak Cannon ("Exhaust ALL your Status cards. Deal 8 damage for each") with no Status card in the hand.
+def _aimed(card: dict) -> str:
+    """The target a card offered on this screen would have in the hand (the screen does not say)."""
+    text = str(card.get("description") or "")
+    if re.search(r"\ball\s+enemies\b", text, re.I):
+        return "AllEnemies"
+    if re.search(r"random\s+enemy", text, re.I):
+        return "RandomEnemy"
+    return "AnyEnemy" if str(card.get("type")) == "Attack" or re.search(r"\bapply\b|\benemy\b", text, re.I) else "Self"
+
+
+_OFFER: list = [None, 0]  # the last offer screen ranked, and the card put first
+OFFER_MARGIN = 5.0  # planner points by which an offered card has to beat the one the ratings put first
+
+
+def _read(card: dict) -> bool:
+    """A card offered here that the planner can read."""
+    info = parse({**card, "target_type": _aimed(card)})
+    return info.known or info.type == "Power" or info.key in triggers.READ
+
+
+def _iffy(card: dict) -> bool:
+    """A card that may not be playable at all this turn ("Can only be played if ...")."""
+    return bool(re.search(r"can\s+only\s+be\s+played", str(card.get("description") or ""), re.I))
+
+
+def offered(ordered: list[dict], fight: dict | None) -> list[dict]:
+    """`ordered` with the card this turn makes most of first, by the planner's best line with it in the hand at no
+    cost (`fight`: the combat state just before the offer). Ties keep the order they came in."""
+    if not fight or len(ordered) < 2 or any(str(c.get("type")) not in ("Attack", "Skill", "Power") for c in ordered):
+        return ordered
+    player = fight.get("player") or {}
+    hand = list(player.get("hand") or [])
+    seen = (tuple(str(c.get("name")) for c in ordered), tuple(str(c.get("name")) for c in hand), player.get("energy"), (fight.get("battle") or {}).get("round"))
+    if _OFFER[0] == seen:  # (the screen is asked about on every poll while it is open)
+        return [ordered[_OFFER[1]]] + [c for n, c in enumerate(ordered) if n != _OFFER[1]]
+    scores = []
+    for c in ordered:
+        plan: dict = {}
+        free = {**c, "index": len(hand), "cost": "0", "target_type": _aimed(c), "can_play": True, "unplayable_reason": None}
+        combat.choose_card({**fight, "player": {**player, "hand": [*hand, free]}}, plan)
+        scores.append(float(plan.get("score", float("-inf"))))
+    # Only for a card the planner can read and play, and by a clear margin: what it adds to this turn is all the
+    # planner sees, the rating behind the order also counts the draws of it later in the fight (it stays in the deck
+    # until the fight ends), and a card it cannot read gets a flat 2.5 (on the replayed offers Shadowmeld beat a
+    # second Bullet Time so, and Grand Finale, "Can only be played if there are no cards in your Draw Pile", won
+    # with its 60 damage to ALL).
+    fit = [n for n, c in enumerate(ordered) if _read(c) and not _iffy(c)]
+    top = float("-inf") if _iffy(ordered[0]) else scores[0] if _read(ordered[0]) else float("inf")  # (nothing to set an unread card against)
+    best = max(fit, key=lambda n: (scores[n], -n), default=0)
+    best = best if scores[best] >= top + OFFER_MARGIN else 0
+    _OFFER[:] = [seen, best]
+    log.debug("offer: %s", ", ".join(f"{c.get('name')} {s:.1f}" for c, s in zip(ordered, scores)))
+    return [ordered[best]] + [c for n, c in enumerate(ordered) if n != best]
