@@ -206,4 +206,4 @@ ECHO_NEXT = {"BURST": "Skill", "ONE_TWO_PUNCH": "Attack"}
 # Bullet Time everything in the hand is free. (Other players rate all four among their characters' best;
 # read as nothing, they were worth a flat 3 points to the planner whatever was in the hand.)
 PAYS = {"DOUBLE_ENERGY", "BULLET_TIME"}
-READ = {*ECHO_NEXT, *PAYS, "CASCADE", "TIMES_UP", "TIME_S_UP"}  # cards with no numbers in their text that the planner works out all the same
+READ = {*ECHO_NEXT, *PAYS, "CASCADE", "TIMES_UP", "TIME_S_UP", "KI_VERSE"}  # cards with no numbers in their text that the planner works out all the same

@@ -771,6 +771,8 @@ def card_select(state: dict, mem: Memory) -> list[Action]:
 
     ordered = _pick_order(cards, prompt, kind, mem.upgrade_gain)
     ordered = afflictions.order(ordered, state)
+    if kind == "choose":
+        ordered = afflictions.offered(ordered, state.get("_fight_state"))  # (a card a potion offers mid-fight: by the turn)
     shown = key + "|" + ",".join(str(c.get("name")) for c in cards)
     if kind == "choose" and log.isEnabledFor(logging.DEBUG) and shown != mem.logged_select:
         mem.logged_select = shown

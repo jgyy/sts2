@@ -124,6 +124,9 @@ class Bot:
         self._turn_plays = 0
         self._turn_cards = 0  # ... and how many of those were cards (a potion is not one of the "3 cards each turn")
         self._turn_names: list = []  # ... and their names (the Fool's Melodies come from the Wah, Cho and Ki cards played this turn)
+        self._stuck: set = set()  # enemies holding one of the Fool's Arrows when we last looked
+        self._dislodged = False  # ... and whether one has come out of an enemy this turn (Yah!'s energy is spent then)
+        self._fight_state: dict | None = None  # the combat state as the planner last saw it (for a potion's offer of cards)
         self._turn_energy = 0  # energy we had when we last looked at this turn
         self._turns: list = []  # (cards played, energy left over) for each turn of this fight that has ended
         self._last_where: tuple = ()
@@ -186,6 +189,7 @@ class Bot:
             state = {**state, "_fight": self._fight_kind}  # the screen does not say what kind of fight it is in
         if kind == "card_select" and self._turn_key[:2] == strategy._where(state):
             state = {**state, "_turns": [*self._turns, (self._turn_cards, self._turn_energy)]}  # ... nor how the fight has gone
+            state["_fight_state"] = self._fight_state  # ... nor the enemies, the hand or the energy (a potion's offer is for this turn)
         handler = getattr(strategy, "map_screen" if kind == "map" else str(kind), None) if kind in SCREENS else None
         return handler(state, mem) if handler else []
 
@@ -243,6 +247,8 @@ class Bot:
         self._fight_kind = str(state.get("state_type"))
         self._note_deck(state)
         key = (*strategy._where(state), battle.get("round"))
+        stuck = {str(e.get("entity_id")) for e in battle.get("enemies") or [] if int(e.get("hp") or 0) > 0 and combat.power_amount(e, "IMPALED") > 0}
+        self._dislodged, self._stuck = key == self._turn_key and (self._dislodged or bool(self._stuck - stuck)), stuck
         if key != self._turn_key:
             # (What each turn of the fight came to: the Knowledge Demon's offers are judged by it, see afflictions.py.)
             self._turns = [*self._turns, (self._turn_cards, self._turn_energy)] if key[:2] == self._turn_key[:2] else []
@@ -273,7 +279,8 @@ class Bot:
         revive = not standing and self._revive_fight == key[:2]
         threat = {k: total / rounds for k, (total, rounds) in self._threat.items()}
         costs = {str(c.get("name")): cards._cost(c.get("cost")) for c in self.mem.deck}  # (as the fight began: Void Form hides them)
-        wanted = combat.actions({**state, "_plays_this_turn": self._turn_cards, "_played_names": tuple(self._turn_names), "_facing": self._facing, "_revive_pending": revive, "_threat": threat, "_costs": costs})
+        self._fight_state = {**state, "_plays_this_turn": self._turn_cards, "_played_names": tuple(self._turn_names), "_dislodged": self._dislodged, "_facing": self._facing, "_revive_pending": revive, "_threat": threat, "_costs": costs}
+        wanted = combat.actions(self._fight_state)
         # Cards that draw (or reshuffle the hand, like Reboot) show up a moment
         # after the card that brought them: straight after Reboot the hand read
         # as empty, and the bot ended a turn with 4 energy and a kill in reach.

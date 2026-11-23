@@ -89,6 +89,7 @@ class CardInfo:
     melody_hits: bool = False  # "Hits an additional time for each Melody you have" (its text counts those there are)
     melody_block: int = 0  # "Gain 5 Block for each Melody you have" (Harmonic Shield): Block a Melody
     melody_twice: tuple = ()  # Wah Blast: "If you have a Cho Melody or Ki Melody, hits twice"
+    verse: int = 0  # Ki Verse: "The next (2) "Wah", "Cho", or "Ki" card(s) you play this turn ... played an additional time"
 
     @property
     def is_x(self) -> bool:
@@ -363,6 +364,7 @@ def parse(card: dict) -> CardInfo:
         melody=melodies(card.get("name") or ""), melody_block=melody_block, keeps_hand=_keeps_hand(full_text),
         melody_hits=bool(re.search(r"additional\s+time\s+for\s+each\s+melody", text, re.I)),
         melody_twice=tuple(w.upper() for w in re.findall(r"(\w+)\s+melody", (re.search(r"if\s+you\s+have\s+an?\s+[^,.]*melody[^,.]*,\s*hits\s+twice", full_text, re.I) or re.match("", "")).group(0), re.I)),
+        verse=int(m.group(1) or 1) if (m := re.search(r"the\s+next\s+(?:(\d+)\s+)?\W*wah\W+cho\W+or\s+\W*ki\W*\s+cards?\s+you\s+play\s+this\s+turn\s+(?:is|are)\s+played\s+an\s+additional\s+time", full_text, re.I)) else 0,
         osty_dies=bool(re.search(r"\b(?:Osty|he)\s+dies", full_text, re.I)),  # (Sacrifice: "If Osty is alive, he dies and ...")
         doom_kills=bool(re.search(r"kill\s+enemies\s+with\s+at\s+least\s+as\s+much\s+Doom", full_text, re.I)),
         debris=-1 if re.search(r"fill\s+your\s+hand\s+with\s+debris", text, re.I) else _int(r"add\s+(\d+)\s+debris", text) or int(bool(re.search(r"add\s+a\s+debris", text, re.I))),
@@ -627,8 +629,8 @@ def upgrade_gain(base: dict, upgraded: dict) -> float:
 def order_key(c: CardInfo) -> tuple:
     if c.ends_turn:
         rank = 9  # whatever else the turn can do comes before the card that ends it
-    elif c.type == "Power" or c.key == "FRANTIC_ESCAPE":
-        rank = 0  # set-up first; an escape must not be left for energy that is gone
+    elif c.type == "Power" or c.key == "FRANTIC_ESCAPE" or c.verse:
+        rank = 0  # set-up first; an escape must not be left for energy that is gone; Ki Verse before the cards it plays twice
     elif c.draw or c.energy_gain or c.star_gain:
         rank = 1  # what later cards are paid with comes first
     elif c.vulnerable or (c.summon and not c.is_x) or (c.doom and not c.damage):

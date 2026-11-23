@@ -17,12 +17,13 @@ from .battle import (  # noqa: F401  (also the names other modules and the tests
     _has_power, _is_attack, constrict, end_of_turn_block, end_of_turn_loss, expected_loss, hand_burns,
     intent_damage, intent_hits, kill_reach, osty_hp, power_amount, read_enemies, _bare_block, _draw_worth, _escape_odds, _next_wither, _sandpit, _wither_bill,
     deck_count, junk_cost, cards_left_this_turn, next_room, next_energy_worth, free_plays, _hit, _hit_count, _poison_total, _progress, _would_kill, _power_worth, _set_up, _rage_blocks, _resists, _respawns, loss_cap,
+    THREAT_FLOOR, _fated, _pick_target,
 )
 from ..cards import CardInfo, order_key, parse
 from ..run.potions import fortifier, describe, potion_actions
 from . import sandpit as pit
 from . import artifact, closing, triggers
-from .fool.turn import FoolTurn, arrows_owned, concerns, impaled_pool, played_melodies
+from .fool.turn import FoolTurn, arrows_owned, concerns, fool_powers, impaled_pool, played_melodies
 from ..learn import knob
 
 Action = tuple[str, dict]
@@ -32,7 +33,6 @@ log = logging.getLogger("sts2bot.combat")
 MAX_SEARCH_CARDS = 11
 # What a point of our HP costs a line, in points of damage: at full health, more by the time none is left, more for a turn that takes it all.
 HP_BASE, HP_SLOPE, HP_BITE = 1.5, 2.5, 3.0
-THREAT_FLOOR = 6.0  # damage a turn every enemy is taken to do at least, when choosing whom to hit first
 HIVE_COST = 9.0  # Personal Hive: what a Dazed in our draw pile costs once the hand has no card to spare, in points
 HIVE_PACE = 22.0  # ... and the damage a round the Entomancer is taken to lose, for how long the fight still is
 
@@ -63,56 +63,6 @@ def _orb_damage(kind: str, amount: int, foes: list[Enemy], chip_rate: float, dmg
         risk = sum(4.0 * o.hp + 10.0 for e in alive if e.rage and e.hp + e.block <= amount for o in alive if o is not e and o.rage)
         return amount * 0.8 * dmg_value - risk / len(alive)
     return sum(_progress(e, _hit(e, amount, 1, raw=True), chip_rate) * dmg_value * e.worth for e in targets)
-
-
-def _pick_target(enemies: list[Enemy], dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> Enemy | None:
-    alive = [e for e in enemies if e.alive]
-    if not alive:
-        return None
-
-    # Reattach (the Decimillipede, 130 HP in three segments): one killed while another lives is back two
-    # turns later on 25 HP, so killing them one by one never ends. A Regent went in on 85/85, killed a
-    # segment seven times in twelve rounds and died with two of them on 25. Until the others are within
-    # reach the healthiest one is hit and none is finished: they come down together and die together.
-    segs = [e for e in alive if e.reattach]
-    stay = {e.entity_id for e in segs if sum(o.hp + o.block for o in segs if o is not e) > REATTACH_REACH} if len(segs) > 1 else set()
-    if stay:
-        spare = [e for e in segs if not (e.entity_id in stay and _would_kill(e, dmg_per_hit, hits, double_if_vulnerable))]
-        if len(segs) == len(alive):
-            return max(spare or segs, key=lambda e: e.hp + e.block)
-    killable = [e for e in alive if e.entity_id not in stay and _would_kill(e, dmg_per_hit, hits, double_if_vulnerable)]
-    if killable:
-        # Remove the biggest threat first; waste the least damage on ties.
-        # Killing something that revives only pays off if it is about to hit us.
-        useful = [e for e in killable if e.worth > 0 or e.incoming > 0]
-        # (Not a minion that is not even attacking, with an attack more than twice its size: the
-        # leader's death takes it along. Squeeze, 35 damage, went into a 17-HP egg three times while
-        # the Ovicopter that lays them stood at 105, and that fight was lost from 69 HP.)
-        size = dmg_per_hit * hits
-        useful = [e for e in useful if not (e.minion and not e.main_threat and not e.incoming and size > 2 * (e.hp + e.block) and any(o.worth >= 1.0 for o in alive))]
-        if useful:
-            return max(useful, key=lambda e: (e.worth > 0, e.incoming, e.hp + e.block))
-    # Otherwise focus whoever dies soonest, counting Vulnerable as less health;
-    # leaders before their minions, never something that just comes back.
-    # (Not one whose Block would swallow the whole attack, when another would lose HP to it.)
-    # ... and, where the enemies are known to differ, the one that does the most damage for
-    # its health: least is lost in all by killing in that order. Lowest health first left the
-    # Slumbering Beetle (86 HP, 16 a turn and 2 more every turn once awake) until both Bowlbugs
-    # were dead: 5 runs in 24 died in that room, two of them from over 50 HP. Enemies that have
-    # shown under 6 a turn count as 6, so equals are still taken lowest first.
-    # Doom is health already gone (it dies at the end of its turn once Doom covers its HP), and one
-    # that Doom has finished needs nothing more. Read as plain HP, the Necrobinder put Scourge on one
-    # Nibbit and its attacks on the other, then went on hitting the one already done for: seven rounds
-    # and 34 of 49 HP for two 42-HP enemies. (15 of its 44 act 1 bosses were met on under 75% HP,
-    # 7 of those won; of the 29 met on more, 24.)
-    soaks = lambda e: e.block >= dmg_per_hit * hits and not e.keeps_block
-    left = lambda e: (max(1, e.hp - e.doom) + e.block) / (1.5 if e.vulnerable else 1.0)
-    return min(alive, key=lambda e: (_fated(e), -e.worth, soaks(e), left(e) / max(e.threat, THREAT_FLOOR), -e.incoming))
-
-
-def _fated(e: Enemy) -> bool:
-    """Doom covers its HP: it dies when its turn ends, whatever else we do to it (a boss with another form to come does not)."""
-    return e.doom >= e.hp > 0 and not e.adapts
 
 
 DEBUFF_CAP = 4  # turns of a debuff beyond this are too far off to count
@@ -211,7 +161,7 @@ def simulate(
     fortify: int = 1,  # a Fortifier waits on the belt for this turn's Block ("Triple your Block": 3)
     pace: float = 0.0,  # HP the enemies have lost a round so far in this fight (0: too early to say)
     room: tuple = (99.0, 1.0),  # energy the next hand can spend beyond its own, and a card kept in the hand's share (battle.next_room)
-    arrows: int = -1, aiming: int = 0, stretch: int = 0, tune: frozenset = frozenset(), chord: int = 0, boom: int = 0,  # the Fool's: Arrows owned (-1: not counted), Aim and Stretch on us (in the card texts), Melodies, Violent Chord, Explosive Arrows
+    arrows: int = -1, aiming: int = 0, stretch: int = 0, tune: frozenset = frozenset(), chord: int = 0, boom: int = 0, fool: tuple = (),  # the Fool's (fool/turn.py): Arrows (-1: none), Aim, Stretch, Melodies, Violent Chord, Explosive Arrows, powers
 ) -> Outcome | None:
     """Score playing `line` in order. None if it cannot be afforded."""
     if card_limit is not None and len(line) > card_limit:
@@ -271,7 +221,7 @@ def simulate(
     debris = 0  # Debris this line leaves in our deck
     dazed = 0  # Dazed this line's Attacks bring into it (Personal Hive)
     tainted = 0
-    ft = FoolTurn(arrows, aiming, stretch, tune, chord, boom)  # the Fool's Arrows, Aim, Stretch and Melodies as the line goes on (fool/turn.py)
+    ft = FoolTurn(arrows, aiming, stretch, tune, chord, boom, fool, foes)  # the Fool's Arrows, Aim, Stretch and Melodies as the line goes on (fool/turn.py)
     known_dead = {e.entity_id for e in foes if not e.alive}
     # (Only Stock and Adaptable enemies come back and only crabs hand on Block: for the rest both are skipped.)
     respawn, rage_blocks = (_respawns if any(e.respawns > 0 or e.adapts for e in foes) else _idle), (_rage_blocks if any(e.rage for e in foes) else _idle)
@@ -316,7 +266,7 @@ def simulate(
         # time is one of the cards a turn allows. (Sloth, three a turn: with Sword Sage up the Sovereign Blade took
         # the count from 0 to 2, the plan's third card could not be played and 41 HP went on 42, the Demon on 88.)
         echoed = bool(echo) and echo in ("Any", c.type)
-        k, echo = 1 + c.replay + echoed, None if echoed else echo
+        k, echo = 1 + c.replay + echoed + ft.encore(c), None if echoed else echo  # (Ki Verse: the next Wah, Cho or Ki card again)
         if card_limit is not None and plays >= card_limit:
             return None
         plays += k
@@ -435,8 +385,9 @@ def simulate(
             t = None
             for e in alive if c.aoe else []:
                 _debuff(e, c, xs)
-        if ft.books(c) and (chord := ft.after(c, t, xs, dealt)):  # Violent Chord, Explosive Arrows: a Wah Melody gained, an enemy Impaled hits ALL enemies
-            score += sum(_progress(e, _hit(e, chord, 1, raw=True), chip_rate) * dmg_value * e.worth for e in foes if e.alive)
+        if ft.books(c) and ((chord := ft.after(c, t, xs, dealt, foes)) or any(ft.got)):  # Violent Chord, Explosive Arrows: a Wah Melody gained, an enemy Impaled hits ALL enemies
+            block, drawn, energy = block + ft.got[0] * can_block, drawn + ft.got[1], energy + ft.got[2]  # (Song Path, Lullaby; Motif; Yah!)
+            score += sum(_progress(e, _hit(e, chord, 1, raw=True), chip_rate) * dmg_value * e.worth for e in foes if e.alive) if chord else 0.0
         if c.splash and t is not None and dealt:  # Rain Shot: "Damage ALL other enemies equal to the damage dealt"
             score += sum(_progress(e, _hit(e, dealt, 1, raw=True), chip_rate) * dmg_value * e.worth for e in foes if e.alive and e is not t)
         if t is not None:
@@ -847,6 +798,7 @@ def _context(state: dict) -> dict:
         pace=closing.pace(state), room=next_room(state),
         arrows=arrows_owned(player), aiming=max(0, power_amount(player, "AIM")), stretch=max(0, power_amount(player, "STRETCH")),
         tune=played_melodies(state.get("_played_names")), chord=max(0, power_amount(player, "VIOLENT_CHORD")), boom=max(0, power_amount(player, "EXPLOSIVE_ARROWS")),
+        fool=fool_powers(player, bool(state.get("_dislodged"))),
     )
 
 
