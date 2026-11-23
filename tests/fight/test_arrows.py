@@ -209,6 +209,11 @@ class Dislodging(unittest.TestCase):
         state["player"]["status"] = [{"id": "ENCORE_POWER", "amount": 0}]
         self.assertEqual(battle.cards_left_this_turn(state), 0)
 
+    def test_cho_limbs_gains_its_block_twice(self):
+        limbs = parse(card(0, "CHO_LIMBS", "Cho Limbs", "Skill", 2, "Gain 5 Block twice. Costs 2 less [fool_energy_icon.png] if you have a Wah Melody or Ki Melody.", "Self"))
+        plus = parse(card(0, "CHO_LIMBS", "Cho Limbs+", "Skill", 2, "Gain 7 Block twice. Costs 2 less [fool_energy_icon.png] if you have a Wah Melody or Ki Melody.", "Self"))
+        self.assertEqual((limbs.block, plus.block), (10, 14))  # read as 5 and 7
+
     def test_cho_firm_blocks_twice_while_an_arrow_is_to_hand(self):
         firm = parse(card(0, "CHO_FIRM", "Cho Firm", "Skill", 1, "Gain 6 Block. If you have an Arrow, gain Block an additional time.", "Self"))
         self.assertTrue(firm.arrow_block)
@@ -249,7 +254,7 @@ class DeckBuilding(unittest.TestCase):
         # The Fool skipped 29% of card rewards on the bare text rating where the others, mixed with crowd.py, skipped 0-11%.
         from sts2bot import cards
 
-        nock = {**card(0, "NOCK", "Nock", "Skill", 0, "Gain 5 Aim."), "rarity": "Common"}
+        nock = {**card(0, "STEADY_AIM", "Steady Aim", "Skill", 0, "Gain 5 Aim."), "rarity": "Common"}  # (no tier either: Nock has one since crowd.FOOL_RATING)
         with mock.patch.object(cards, "_crowd_share", lambda: 0.0):
             bare = cards.deck_value(nock)
         with mock.patch.object(cards, "_crowd_share", lambda: 0.6):

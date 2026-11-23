@@ -252,6 +252,8 @@ def parse(card: dict) -> CardInfo:
         if hits == 0:
             damage = 0
     block = _int(r"gain\s+(\d+)\s+block", text)
+    if block and re.search(r"gain\s+\d+\s+block\s+twice", text, re.I):
+        block *= _WORD_NUM["twice"]  # "Gain 5 Block twice" (Cho Limbs): two gains of 5, read as one
     melody_block = block if re.search(r"block\s+for\s+each\s+melody", text, re.I) else 0
     if m := re.search(r"\(gain\s+(\d+)\s+block\)", text, re.I):
         block = int(m.group(1))  # "Gain 5 Block for each Melody you have. (Gain 0 Block)": what it gives now
