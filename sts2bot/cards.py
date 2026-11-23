@@ -78,6 +78,8 @@ class CardInfo:
     stretch: int = 0  # Stretch gained ("The next time you gain Block from a card, gain additional Block")
     impaled_only: bool = False  # Nail: "If the enemy is Impaled, Deal 20 damage ...": nothing otherwise
     on_impaled: tuple = ()  # (energy, cards drawn) it adds when its target is Impaled (Bow Smack, Ki Hop)
+    splash: bool = False  # Rain Shot: "Damage ALL other enemies equal to the damage dealt": the same again on each other enemy
+    stretch_dealt: bool = False  # Blossom Shot: "gain Stretch equal to the damage dealt" (what its hits did, as Stretch)
     dislodge: bool = False  # takes our Arrow back out of its (Impaled) target: Uproot, Recall
     impaled_double: bool = False  # Wah Hammer: "Deals double damage to Impaled enemies"
     arrow_block: bool = False  # Cho Firm: "If you have an Arrow, gain Block an additional time"
@@ -340,6 +342,8 @@ def parse(card: dict) -> CardInfo:
         replay=_replay(card, full_text),
         shoots=bool(re.search(r"\bshoot\s+(?:an?|\d+|x)\s+arrows?\b", text, re.I)), aim_times=aim_times, aim=aim, stretch=stretch,
         impaled_only=impaled_only, on_impaled=on_impaled if any(on_impaled) else (),
+        splash=bool(re.search(r"damage\s+all\s+other\s+enemies\s+equal\s+to\s+the\s+damage\s+dealt", text, re.I)),
+        stretch_dealt=bool(re.search(r"gain\s+stretch\s+equal\s+to\s+the\s+damage\s+dealt", text, re.I)),
         dislodge=bool(re.search(r"\bdislodge\b", text, re.I)), impaled_double=bool(re.search(r"double\s+damage\s+to\s+impaled", text, re.I)),
         arrow_block=bool(re.search(r"if\s+you\s+have\s+an\s+arrow,\s*gain\s+block\s+an\s+additional\s+time", full_text, re.I)),  # ("If you ..." is not in `text`)
         melody=melodies(card.get("name") or ""), melody_block=melody_block,

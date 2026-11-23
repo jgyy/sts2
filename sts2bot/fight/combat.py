@@ -368,6 +368,7 @@ def simulate(
         dooming = dooming or bool(c.doom)
         if c.key == "FIEND_FIRE":  # "Exhaust your Hand. Deal 7 damage for each card Exhausted": a hit for every card still in it
             c = replace(c, hits=max(0, hand_size - n - 1 + drawn))
+        dealt = 0  # what the card's hits do to its target: a Shot's Stretch (fool/turn.py), Rain Shot's splash below
         if c.damage:
             per, hits = c.damage + (0 if c.osty_attack else might), c.hits * x  # (Osty's attacks take no Strength: Unleash+ read 11 at Strength 10)
             if c.type == "Attack":
@@ -376,6 +377,7 @@ def simulate(
                     per -= vigor
                 attacks += 1
             per = max(0, per)
+            dealt = per * hits
             if c.aoe:
                 t, struck = None, alive
             elif c.random_target and len(alive) > 1:
@@ -430,8 +432,10 @@ def simulate(
             t = None
             for e in alive if c.aoe else []:
                 _debuff(e, c, xs)
-        if ft.books(c) and (chord := ft.after(c, t, xs)):  # Violent Chord, Explosive Arrows: a Wah Melody gained, an enemy Impaled hits ALL enemies
+        if ft.books(c) and (chord := ft.after(c, t, xs, dealt)):  # Violent Chord, Explosive Arrows: a Wah Melody gained, an enemy Impaled hits ALL enemies
             score += sum(_progress(e, _hit(e, chord, 1, raw=True), chip_rate) * dmg_value * e.worth for e in foes if e.alive)
+        if c.splash and t is not None and dealt:  # Rain Shot: "Damage ALL other enemies equal to the damage dealt"
+            score += sum(_progress(e, _hit(e, dealt, 1, raw=True), chip_rate) * dmg_value * e.worth for e in foes if e.alive and e is not t)
         if t is not None:
             faced = t.entity_id
             if n == 0:
