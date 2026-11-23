@@ -24,8 +24,8 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-from sts2bot import cards  # noqa: E402
-from sts2bot.run import decks  # noqa: E402
+from sts2bot import cards
+from sts2bot.run import decks
 
 LOGS = os.path.expanduser(os.environ.get("STS2BOT_STATE", "~/.local/state/sts2bot/"))
 

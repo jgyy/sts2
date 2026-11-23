@@ -31,7 +31,7 @@ into the code yet: these are candidates to try, one at a time, against the bot's
 | Defensive potions on the turn something big is coming | `potions._DEFENSIVE_POTION` |
 | Discard Sly cards first | `strategy.hand_select` |
 | Use a sleeping enemy's turns for set-up | `combat.choose_card` (Asleep) |
-| Kaiser Crab: do not leave one claw alive for long | `combat._rage_blocks` and the Crab Rage cost in `simulate` |
+| Kaiser Crab: do not leave one claw alive for long | `battle._rage_blocks` and the Crab Rage cost in `combat.simulate` |
 | The Insatiable is a timer | the Sandpit handling in `combat.simulate` |
 | Osty's HP is Block that stays, and worth keeping; Summon before Unleash | `combat._context`, `simulate` (every HP he keeps is priced), `cards.order_key` |
 | Card ratings from run data | `crowd.py` (tierspire.com win and pick rates), mixed into `cards.deck_value` by the `crowd` setting |

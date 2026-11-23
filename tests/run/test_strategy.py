@@ -1,4 +1,3 @@
-import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,12 +6,11 @@ from unittest import mock
 from sts2bot.fight import combat
 from sts2bot import learn
 from sts2bot.run import strategy
-from sts2bot.bot import Bot, Stuck
-from sts2bot.cards import deck_value, parse
+from sts2bot.cards import deck_value
 from sts2bot.run.strategy import Memory
 
-from ..fake_game import FakeGame, card
-from ..helpers import DEFEND, STRIKE, FakeClock, combat_state, enemy, make_bot  # noqa: F401
+from ..fake_game import card
+from ..helpers import DEFEND, STRIKE, combat_state, enemy
 
 
 class LearnedRatings(unittest.TestCase):

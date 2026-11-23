@@ -6,7 +6,7 @@ from sts2bot.fight import combat, sandpit
 
 from ..helpers import STRIKE, card, combat_state, enemy
 
-ESCAPE = lambda i, cost=1: card(  # noqa: E731
+ESCAPE = lambda i, cost=1: card(
     i, "FRANTIC_ESCAPE", "Frantic Escape", "Status", cost,
     "Get farther away. Increase Sandpit by 1. Increase the cost of this card by 1.")
 DECK = [{"name": "Strike"}] * 20 + [{"name": "Frantic Escape"}] * 4  # what is left to draw: an Escape in most hands

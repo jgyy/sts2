@@ -25,8 +25,8 @@ from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 
-from sts2bot.fight import battle, combat, triggers  # noqa: E402
-from tests.fake_game import card  # noqa: E402
+from sts2bot.fight import battle, combat, triggers
+from tests.fake_game import card
 
 CARDS = {  # kind: (id, name, type, cost, text, target) from the number on the card (damage or Block)
     "A": lambda n: ("STRIKE_R", "Strike", "Attack", 1, f"Deal {n} damage.", "AnyEnemy"),

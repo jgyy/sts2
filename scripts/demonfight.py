@@ -30,8 +30,8 @@ import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from sts2bot.fight import closing, combat  # noqa: E402
-from tests.fake_game import card  # noqa: E402
+from sts2bot.fight import closing, combat
+from tests.fake_game import card
 
 BOSS = 379
 ROUNDS = 24

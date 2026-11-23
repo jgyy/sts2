@@ -16,3 +16,10 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["sts2bot", "sts2bot.fight", "sts2bot.run"]
+
+[tool.ruff]
+line-length = 250
+extend-exclude = [".build"]
+
+[tool.ruff.lint]
+select = ["E4", "E9", "F", "RUF100"]
