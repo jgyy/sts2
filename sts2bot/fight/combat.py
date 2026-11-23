@@ -9,7 +9,6 @@ draws and other surprises are picked up automatically.
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import dataclass, replace
 from itertools import combinations, permutations
 
@@ -17,10 +16,10 @@ from .battle import (  # noqa: F401  (also the names other modules and the tests
     BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, RAGE_COST, REATTACH_REACH, SLIP_WORTH, WIN_BONUS, Enemy, clone,
     _has_power, _is_attack, constrict, end_of_turn_block, end_of_turn_loss, expected_loss, hand_burns,
     intent_damage, intent_hits, kill_reach, osty_hp, power_amount, read_enemies, _bare_block, _draw_worth, _escape_odds, _next_wither, _sandpit, _wither_bill,
-    deck_count, junk_cost, cards_left_this_turn, free_plays, _hit, _hit_count, _poison_total, _power_worth, _set_up, _rage_blocks, _resists, _respawns, loss_cap,
+    deck_count, junk_cost, cards_left_this_turn, free_plays, _hit, _hit_count, _poison_total, _progress, _would_kill, _power_worth, _set_up, _rage_blocks, _resists, _respawns, loss_cap,
 )
 from ..cards import CardInfo, order_key, parse
-from ..run.potions import fortifier, describe, potion_actions  # noqa: F401
+from ..run.potions import fortifier, describe, potion_actions
 from . import sandpit as pit
 from . import artifact, closing, triggers
 from ..learn import knob
@@ -35,6 +34,8 @@ HP_BASE, HP_SLOPE, HP_BITE = 1.5, 2.5, 3.0
 THREAT_FLOOR = 6.0  # damage a turn every enemy is taken to do at least, when choosing whom to hit first
 HIVE_COST = 9.0  # Personal Hive: what a Dazed in our draw pile costs once the hand has no card to spare, in points
 HIVE_PACE = 22.0  # ... and the damage a round the Entomancer is taken to lose, for how long the fight still is
+
+_idle = lambda *_: None  # stands in for a rule that cannot apply in this fight
 
 
 def _orb_damage(kind: str, amount: int, foes: list[Enemy], chip_rate: float, dmg_value: float) -> float:
@@ -61,12 +62,6 @@ def _orb_damage(kind: str, amount: int, foes: list[Enemy], chip_rate: float, dmg
         risk = sum(4.0 * o.hp + 10.0 for e in alive if e.rage and e.hp + e.block <= amount for o in alive if o is not e and o.rage)
         return amount * 0.8 * dmg_value - risk / len(alive)
     return sum(_progress(e, _hit(e, amount, 1, raw=True), chip_rate) * dmg_value * e.worth for e in targets)
-
-
-def _would_kill(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> bool:
-    trial = clone(e)
-    _hit(trial, dmg_per_hit, hits, double_if_vulnerable)
-    return not trial.alive
 
 
 def _pick_target(enemies: list[Enemy], dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> Enemy | None:
@@ -157,22 +152,6 @@ def _weaken(e: Enemy, turns: int = 1) -> None:
     if not e.weak:
         e.weak = True
         e.incoming = int(e.incoming * e.weak_cut)
-
-
-def _progress(e: Enemy, hp_removed: int, chip_rate: float) -> float:
-    """How far an attack moved the fight on: HP removed, plus Block worn down.
-
-    Block an enemy keeps between turns is as good as HP. Only counting HP,
-    the bot never attacked a Burrowed enemy (20 Block that stays, 24 damage
-    a turn) and blocked every turn instead, for 180 rounds.
-    """
-    chip, e.chipped = e.chipped, 0
-    # A Slippery stack taken off is a later hit that lands in full. Counted as the 1 HP it removes,
-    # eight stacks were not worth a Defend: Vantom fights that still had Slippery on round 5 were
-    # lost 4 times in 8 (2 in 19 when it was gone by round 4; one bot took until round 8).
-    strip, e.stripped = e.stripped, 0
-    hp_removed += strip * min(SLIP_WORTH, e.hp / 3.0)
-    return hp_removed + chip * (1.0 if e.keeps_block or (e.incoming == 0 and chip and e.block == 0 and chip_rate >= 1) else chip_rate)
 
 
 @dataclass
@@ -290,6 +269,8 @@ def simulate(
     dazed = 0  # Dazed this line's Attacks bring into it (Personal Hive)
     tainted = 0
     known_dead = {e.entity_id for e in foes if not e.alive}
+    # (Only Stock and Adaptable enemies come back and only crabs hand on Block: for the rest both are skipped.)
+    respawn, rage_blocks = (_respawns if any(e.respawns > 0 or e.adapts for e in foes) else _idle), (_rage_blocks if any(e.rage for e in foes) else _idle)
 
     def evoke(orb: tuple, plasma: bool = True) -> None:
         nonlocal block, score, energy
@@ -302,8 +283,8 @@ def simulate(
             energy += 2
 
     for n, c in enumerate(line):
-        _respawns(foes)
-        _rage_blocks(foes, known_dead)  # a crab that died with the last card hands its ally Block
+        respawn(foes)
+        rage_blocks(foes, known_dead)  # a crab that died with the last card hands its ally Block
         before = triggers.marks(foes) if trig else []
         if c.star_cost > stars:
             return None
@@ -373,7 +354,7 @@ def simulate(
 
         xs = x if c.is_x else 1
         alive = [e for e in foes if e.alive]
-        t = focused = next((e for e in alive if e.entity_id == (turn_to if turn_to and n == last_aimed else focus)), None)  # the enemy this card is aimed at, if any
+        t = focused = next((e for e in alive if e.entity_id == aim), None) if (aim := turn_to if turn_to and n == last_aimed else focus) is not None else None  # the enemy this card is aimed at, if any
         if c.key in ("TIMES_UP", "TIME_S_UP") and alive:  # "Deal damage equal to the enemy's Doom": no number in its text (played 16 times, left 37)
             t = focused = focused or max(alive, key=lambda e: e.doom)
             c = replace(c, damage=t.doom, hits=1)
@@ -418,7 +399,7 @@ def simulate(
                     gain = _progress(e, _hit(e, per, n_hits, c.double_if_vulnerable), chip_rate) * dmg_value * e.worth * e.focus
                     score += gain * (0.2 if done and e.alive else 1.0)
                 if waves > 1:
-                    _rage_blocks(foes, known_dead)
+                    rage_blocks(foes, known_dead)
             for e in struck:
                 if e.alive:
                     _debuff(e, c, xs)
@@ -450,7 +431,7 @@ def simulate(
                 first_target = t.entity_id
 
         alive_now = [e for e in foes if e.alive]
-        aimed = next((e for e in alive_now if e.entity_id == (faced or focus)), None)
+        aimed = next((e for e in alive_now if e.entity_id == aim), None) if (aim := faced or focus) is not None else None
         if c.poison or c.doom or c.enemy_hp_loss or c.shivs:
             if c.aoe:
                 victims = alive_now
@@ -493,7 +474,7 @@ def simulate(
             if c.dexterity_lasts:
                 enduring += c.dexterity * 3.5
         if c.channel or c.evoke or c.evoke_all:
-            _rage_blocks(foes, known_dead)  # a crab this card killed has already handed on its Block
+            rage_blocks(foes, known_dead)  # a crab this card killed has already handed on its Block
         for kind in c.channel * xs:
             if orb_slots and len(held) >= orb_slots:
                 evoke(held.pop(0), plasma=False)  # no room: the oldest orb is evoked to make space
@@ -575,8 +556,8 @@ def simulate(
     score += 15.0 * sum(1 for e in foes if e.alive and e.entity_id in kept_block and not e.keeps_block)
     # The Defect's orbs act when the turn ends: Frost adds Block, Lightning hits something.
     # They hit before the enemy acts: one that dies of them does not attack.
-    _respawns(foes)
-    _rage_blocks(foes, known_dead)
+    respawn(foes)
+    rage_blocks(foes, known_dead)
     for kind, passive, _burst in held:
         if kind == "FROST" and can_block:
             block += passive
@@ -639,7 +620,7 @@ def simulate(
     score += sum(artifact.gain(orig.artifact, e.artifact, strip) * e.worth for e, orig in zip(foes, enemies) if e.alive and e.artifact < orig.artifact)
     # Doom finishes an enemy at the end of its turn once it covers its HP.
     score += 20.0 * sum(e.worth for e, orig in zip(foes, enemies) if e.alive and e.doom >= e.hp and orig.doom < orig.hp)
-    _respawns(foes)  # a Stock enemy killed by the last card comes back too
+    respawn(foes)  # a Stock enemy killed by the last card comes back too
     kills = [e for e, orig in zip(foes, enemies) if not e.alive and orig.alive]
     score += 25.0 * sum(e.worth for e in kills)
     score += FORM_WORTH * sum(1 for e in foes if e.adapted)  # a form beaten: that much of the fight is done
@@ -915,6 +896,11 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
     # Bound cards: one per turn. Once one has been played the game marks the
     # rest unplayable, so any still playable means the allowance is unused.
     bound_left = 1 if any(c.bound for c in playable) else None
+    # Copies of a card that differ only in their place in the hand play out alike, and so does a line with nothing
+    # aimed at every aim: each is simulated once and its result reused (the first such line still wins any tie).
+    burning, sorts = {b[0] for b in ctx["burns"]}, {}
+    sort_of = {id(c): (sorts.setdefault(c if c.index in burning else replace(c, index=-1), len(sorts)), bool(c.damage or c.needs_target or c.osty_attack or c.key in ("TIMES_UP", "TIME_S_UP"))) for c in playable}
+    memo: dict = {}
     baseline = simulate([], enemies, **ctx)
     best_score, best_lost = (baseline.score, baseline.lost) if baseline else (float("-inf"), None)
     best_line: list[CardInfo] = []
@@ -941,11 +927,13 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
             for nth, order in enumerate(orders):
                 if nth and budget <= 0:
                     break
-                usable = True
+                usable, sig = True, tuple(sort_of[id(c)] for c in order)
                 for aim in aims:
                     if nth:
                         budget -= 1
-                    out = simulate(list(order), enemies, **ctx, focus=aim)
+                    key = (sig, aim if any(a for _, a in sig) else None)
+                    if (out := memo.get(key, memo)) is memo:
+                        out = memo[key] = simulate(list(order), enemies, **ctx, focus=aim)
                     if out is None:
                         usable = False
                         break
