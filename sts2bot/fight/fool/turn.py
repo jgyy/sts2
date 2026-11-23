@@ -89,8 +89,9 @@ class FoolTurn:
             c, self.stretch, self.stretch_got = replace(c, block=max(0, c.block - self.stretch0 + self.stretch)), 0, 0
         return c
 
-    def after(self, c: CardInfo, target, xs: int = 1) -> int:
-        """Book what the card did; the damage to ALL enemies it sets off (Violent Chord, Explosive Arrows), if any."""
+    def after(self, c: CardInfo, target, xs: int = 1, dealt: int = 0) -> int:
+        """Book what the card did; the damage to ALL enemies it sets off (Violent Chord, Explosive Arrows), if any.
+        `dealt` is the damage the card's hits did to its target (Blossom Shot gains that much Stretch)."""
         boom = 0
         if self.live and target is not None and target.alive:
             target.impaled, boom = IMPALE_HITS, self.boom
@@ -99,7 +100,8 @@ class FoolTurn:
         if self.live:
             self.aim = self.aim_got = 0
         self.aim, self.aim_got = self.aim + c.aim * xs, self.aim_got + c.aim * xs
-        self.stretch, self.stretch_got = self.stretch + c.stretch * xs, self.stretch_got + c.stretch * xs
+        gained = c.stretch + (dealt if c.stretch_dealt else 0)
+        self.stretch, self.stretch_got = self.stretch + gained * xs, self.stretch_got + gained * xs
         wah = "WAH" in c.melody and "WAH" not in self.tune
         self.tune |= set(c.melody)
         self.live = False  # (left on, the Strike after a Shot put the Arrow back in at 3 hits to go)
@@ -107,7 +109,7 @@ class FoolTurn:
 
     def books(self, c: CardInfo) -> bool:
         """Whether `after` has anything to do for this card (the planner skips it for the rest, most of every other character's)."""
-        return bool(self.live or c.melody or c.aim or c.stretch or c.dislodge)
+        return bool(self.live or c.melody or c.aim or c.stretch or c.stretch_dealt or c.dislodge)
 
     def later(self, dmg_value: float) -> float:
         """What the Aim and Stretch this line adds and leaves unspent are worth next turn."""

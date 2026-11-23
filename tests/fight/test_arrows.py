@@ -101,6 +101,25 @@ class Planning(unittest.TestCase):
         d15 = parse(card(0, "DEFEND_F", "Defend", "Skill", 1, "Gain 15 Block.", "Self"))
         self.assertEqual(combat.simulate([d15, d15], foes, **kw).lost, 5)
 
+    def test_blossom_shot_gives_stretch_for_the_damage_it_deals(self):
+        blossom = parse(card(0, "BLOSSOM_SHOT", "Blossom Shot", "Attack", 1, "Shoot an Arrow to deal 11 damage and gain Stretch equal to the damage dealt.", "AnyEnemy"))
+        self.assertEqual((blossom.damage, blossom.shoots, blossom.stretch_dealt), (11, True, True))
+        kw = dict(energy=2, stars=0, hp=60, max_hp=80, block=0, arrows=1)
+        foes = combat.read_enemies({"battle": {"enemies": [enemy("A", 100, attack=25)]}})
+        d5 = parse(card(1, "DEFEND_F", "Defend", "Skill", 1, "Gain 5 Block.", "Self"))
+        self.assertEqual(combat.simulate([d5], foes, **kw).lost, 20)
+        self.assertEqual(combat.simulate([blossom, d5], foes, **kw).lost, 9)  # Stretch 11: the Defend reads 16
+        self.assertEqual(combat.simulate([blossom, d5], foes, **{**kw, "arrows": 0}).lost, 20)  # no Arrow: no damage, no Stretch
+
+    def test_rain_shot_splashes_the_same_damage_on_the_other_enemies(self):
+        rain = parse(card(0, "RAIN_SHOT", "Rain Shot", "Attack", 2, "Shoot an Arrow to deal 12 damage. Damage ALL other enemies equal to the damage dealt.", "AnyEnemy"))
+        self.assertTrue(rain.splash)
+        kw = dict(energy=3, stars=0, hp=60, max_hp=80, block=0, fight="boss", arrows=1)
+        alone = combat.read_enemies({"battle": {"enemies": [enemy("A", 300)]}})
+        two = combat.read_enemies({"battle": {"enemies": [enemy("A", 300), enemy("B", 300)]}})
+        self.assertGreater(combat.simulate([rain], two, **kw).score, combat.simulate([rain], alone, **kw).score + 5)
+        self.assertLess(combat.simulate([rain], two, **{**kw, "arrows": 0}).score, combat.simulate([rain], two, **kw).score - 10)  # no Arrow, no splash
+
 
 class Melodies(unittest.TestCase):
     BLAST = card(0, "WAH_BLAST", "Wah Blast", "Attack", 2, "Deal 14 damage to ALL enemies. If you have a Cho Melody or Ki Melody, hits twice.", "AllEnemies")
