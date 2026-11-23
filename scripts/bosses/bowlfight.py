@@ -16,17 +16,16 @@ average (`_threat`: what each enemy has aimed at us a round so far, this round i
 """
 
 import logging
-import multiprocessing
 import os
 import random
 import sys
 from contextlib import ExitStack
 from unittest import mock
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from sts2bot.fight import battle, combat, triggers
-from tests.fake_game import card
+from modelfight import count, deal, game_state, hand_cards, merged, on_all_cores, setting, target
+from sts2bot.fight import battle, combat
 
 CARDS = {  # kind: (id, name, type, cost, text, target) from the number on the card (damage or Block)
     "A": lambda n: ("STRIKE_R", "Strike", "Attack", 1, f"Deal {n} damage.", "AnyEnemy"),
@@ -64,13 +63,7 @@ def fight(spec, rng, egg=False, maxhp=75, start=60, trace=False):
     seen = {k: [0, 0] for k in E}
     order = []
     for r in range(1, 21):
-        hand = []
-        for _ in range(5):
-            if not draw:
-                draw, disc = disc, []
-                rng.shuffle(draw)
-            if draw:
-                hand.append(draw.pop())
+        hand = deal(draw, disc, rng)
         en, block = 3, 0
         for eid, e in E.items():
             if e["hp"] > 0:
@@ -91,19 +84,10 @@ def fight(spec, rng, egg=False, maxhp=75, start=60, trace=False):
                 if eid.startswith("BOWLBUG_ROCK"):
                     st.append({"id": "IMBALANCED_POWER", "amount": 1})
                 enemies.append({"entity_id": eid, "hp": e["hp"], "max_hp": e["mx"], "block": e["blk"], "status": st, "intents": intents})
-            cards = []
-            for i, c in enumerate(hand):
-                cid, name, ctype, cost, text, target = CARDS[c](shown(c))
-                extra = {"can_play": False, "unplayable_reason": "HasUnplayableKeyword"} if c == "F" else {}
-                cards.append(card(i, cid, name, ctype, cost, text, target, **extra))
+            cards = hand_cards(hand, lambda c: CARDS[c](shown(c)))
             pile = lambda cs: [{"name": CARDS[c](0)[1], "cost": str(COST[c]), "description": CARDS[c](shown(c))[4]} for c in cs]
-            return {
-                "state_type": "monster", "run": {"act": 2, "floor": 25, "ascension": 9},
-                "battle": {"round": r, "turn": "player", "is_play_phase": True, "enemies": enemies},
-                "player": {"hp": hp, "max_hp": maxhp, "block": block, "energy": en, "hand": cards, "potions": [], "status": [],
-                           "draw_pile": pile(draw), "discard_pile": pile(disc), "draw_pile_count": len(draw), "discard_pile_count": len(disc), "exhaust_pile_count": 0},
-                "_threat": {k: t / max(1, n) for k, (t, n) in seen.items()},
-            }
+            return game_state("monster", {"act": 2, "floor": 25, "ascension": 9}, r, enemies, cards, pile, draw, disc, hp=hp, maxhp=maxhp, block=block, energy=en,
+                              status=[], _threat={k: t / max(1, n) for k, (t, n) in seen.items()})
 
         def hit(eid, amount):
             e = E[eid]
@@ -126,10 +110,7 @@ def fight(spec, rng, egg=False, maxhp=75, start=60, trace=False):
                     if e["hp"] > 0:
                         hit(eid, dealt(c, da))
             elif c in "AH":
-                t = act[1].get("target")
-                if t is None or E[t]["hp"] <= 0:
-                    t = next(x for x in E if E[x]["hp"] > 0)
-                hit(t, dealt(c, da))
+                hit(target(act, E), dealt(c, da))
             elif c == "B":
                 block += db
             en -= COST[c]
@@ -158,12 +139,6 @@ def fight(spec, rng, egg=False, maxhp=75, start=60, trace=False):
         if hp <= 0:
             return start, r, "".join(order) + "x"
     return start - hp, 20, "".join(order)
-
-
-def setting(name: str, value: float):
-    """Patch one constant of battle.py, combat.py or triggers.py (NAME=VALUE on the command line)."""
-    mod = next(m for m in (battle, combat, triggers) if hasattr(m, name))
-    return mock.patch.object(mod, name, value)
 
 
 def arm_patch(arm):
@@ -196,7 +171,7 @@ def run(args):
             lost += loss
             rounds += r
             deaths += order.endswith("x")
-            firsts[order[:1] or "-"] = firsts.get(order[:1] or "-", 0) + 1
+            count(firsts, order[:1] or "-")
     return arm, spec, lost / n, rounds / n, deaths / n, firsts
 
 
@@ -231,14 +206,10 @@ if __name__ == "__main__":
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 100
     arms = sys.argv[2:] or ["off", "on"]
     jobs = [(arm, dk, n, 900 + i) for arm in arms for i, dk in enumerate(DECKS)]
-    with multiprocessing.Pool(min(12, os.cpu_count() or 2)) as pool:
-        out = pool.map(run, jobs)
+    out = on_all_cores(run, jobs)
     for arm in arms:
         rows = [o for o in out if o[0] == arm]
-        f = {}
-        for o in rows:
-            for k, v in o[5].items():
-                f[k] = f.get(k, 0) + v
+        f = merged(o[5] for o in rows)
         print(f"{arm:20s}: hp lost {sum(o[2] for o in rows) / len(rows):5.2f}  rounds {sum(o[3] for o in rows) / len(rows):4.1f}  died {sum(o[4] for o in rows) / len(rows):.3f}  first to die {dict(sorted(f.items()))}")
     for dk in DECKS:
         print(dk, "  ".join(f"{o[0]}: lost {o[2]:5.2f}" for o in out if o[1] == dk))

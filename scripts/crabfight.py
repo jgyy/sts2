@@ -22,14 +22,14 @@ read it before believing a table.
 
 import contextlib
 import logging
-import multiprocessing
 import os
 import random
 import sys
 from unittest import mock
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from modelfight import UNPLAYABLE, deal, game_state, on_all_cores, target
 from sts2bot.fight import battle, combat
 from sts2bot import learn
 from tests.fake_game import card
@@ -53,12 +53,7 @@ def fight(deck_spec, energy, maxhp, rng, chp=206, rhp=196, trace=False):
     weak = frail = 0
     first_dead = None
     for r in range(1, 31):
-        hand = []
-        for _ in range(5):
-            if not draw:
-                draw, disc = disc, []
-                rng.shuffle(draw)
-            if draw: hand.append(draw.pop())
+        hand = deal(draw, disc, rng)
         en = energy
         block = 0
         k = (r - 1) % 5
@@ -105,7 +100,7 @@ def fight(deck_spec, energy, maxhp, rng, chp=206, rhp=196, trace=False):
                 elif c == 'V': cards.append(card(i, "BASH_R", "Bash", "Attack", 1, f"Deal {int(da // 2 * (0.75 if weak else 1))} damage. Apply 2 Vulnerable.", "AnyEnemy"))
                 elif c == 'W': cards.append(card(i, "CLOTHESLINE_R", "Clothesline", "Attack", 1, f"Deal {int(da // 2 * (0.75 if weak else 1))} damage. Apply 2 Weak.", "AnyEnemy"))
                 elif c == 'B': cards.append(card(i, "DEFEND_R", "Defend", "Skill", 1, f"Gain {int(db * (0.75 if frail else 1))} Block.", "Self"))
-                else: cards.append(card(i, "CLUMSY", "Clumsy", "Curse", -1, "Unplayable.", "None", can_play=False, unplayable_reason="HasUnplayableKeyword"))
+                else: cards.append(card(i, "CLUMSY", "Clumsy", "Curse", -1, "Unplayable.", "None", **UNPLAYABLE))
             pst = [{"id": "SURROUNDED_POWER", "amount": 1}]
             if weak: pst.append({"id": "WEAK_POWER", "amount": weak})
             if frail: pst.append({"id": "FRAIL_POWER", "amount": frail})
@@ -113,13 +108,8 @@ def fight(deck_spec, energy, maxhp, rng, chp=206, rhp=196, trace=False):
             text = {'A': f"Deal {da} damage.", 'B': f"Gain {db} Block.", 'F': "Unplayable.", 'H': f"Deal {int(2.2 * da)} damage.",
                     'V': f"Deal {da // 2} damage. Apply 2 Vulnerable.", 'W': f"Deal {da // 2} damage. Apply 2 Weak."}
             pile = lambda cs: [{"name": name[c], "cost": "2" if c == 'H' else "1", "description": text[c]} for c in cs]
-            return {
-                "state_type": "boss", "run": {"act": 2, "floor": 33, "ascension": 7},
-                "battle": {"round": r, "turn": "player", "is_play_phase": True, "enemies": enemies},
-                "player": {"hp": hp, "max_hp": maxhp, "block": block, "energy": en, "hand": cards, "potions": [], "status": pst,
-                           "draw_pile": pile(draw), "discard_pile": pile(disc), "draw_pile_count": len(draw), "discard_pile_count": len(disc), "exhaust_pile_count": 0},
-                "_facing": facing,
-            }
+            return game_state("boss", {"act": 2, "floor": 33, "ascension": 7}, r, enemies, cards, pile, draw, disc, hp=hp, maxhp=maxhp, block=block, energy=en,
+                              status=pst, _facing=facing)
 
         for _ in range(12):
             if all(e['hp'] <= 0 for e in E.values()): break
@@ -127,8 +117,7 @@ def fight(deck_spec, energy, maxhp, rng, chp=206, rhp=196, trace=False):
             if act is None: break
             i = act[1]["card_index"]; c = hand[i]
             if c in 'AHVW':
-                t = act[1].get("target")
-                if t is None or E[t]['hp'] <= 0: t = next(x for x in E if E[x]['hp'] > 0)
+                t = target(act, E)
                 d = int({'A': da, 'H': 2.2 * da}.get(c, da // 2) * (0.75 if weak else 1))
                 e = E[t]
                 if e['vul']: d = int(d * 1.5)
@@ -219,8 +208,7 @@ if __name__ == '__main__':
     if sys.argv[3:4] == ["debuff"]:
         DECKS[:] = DEBUFF_DECKS
     jobs = [(a, dk, 4, n, 500 + i) for a in arms for i, dk in enumerate(DECKS)]
-    with multiprocessing.Pool(min(8, os.cpu_count() or 2)) as pool:
-        out = pool.map(run, jobs)
+    out = on_all_cores(run, jobs, most=8)
     for a in arms:
         rows = [o for o in out if o[0] == a]
         f = {k: sum(o[6][k] for o in rows) for k in ('CRUSHER_0', 'ROCKET_0', None)}
