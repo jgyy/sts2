@@ -123,6 +123,7 @@ class Bot:
         self._turn_key: tuple = ()
         self._turn_plays = 0
         self._turn_cards = 0  # ... and how many of those were cards (a potion is not one of the "3 cards each turn")
+        self._turn_names: list = []  # ... and their names (the Fool's Melodies come from the Wah, Cho and Ki cards played this turn)
         self._turn_energy = 0  # energy we had when we last looked at this turn
         self._turns: list = []  # (cards played, energy left over) for each turn of this fight that has ended
         self._last_where: tuple = ()
@@ -245,7 +246,7 @@ class Bot:
         if key != self._turn_key:
             # (What each turn of the fight came to: the Knowledge Demon's offers are judged by it, see afflictions.py.)
             self._turns = [*self._turns, (self._turn_cards, self._turn_energy)] if key[:2] == self._turn_key[:2] else []
-            self._turn_key, self._turn_plays, self._turn_cards = key, 0, 0
+            self._turn_key, self._turn_plays, self._turn_cards, self._turn_names = key, 0, 0, []
             # What each enemy has shown of itself so far: one intent says little (half of them
             # attack every other turn), the average over the fight says who is doing the damage.
             if key[:2] != self._threat_fight:
@@ -272,7 +273,7 @@ class Bot:
         revive = not standing and self._revive_fight == key[:2]
         threat = {k: total / rounds for k, (total, rounds) in self._threat.items()}
         costs = {str(c.get("name")): cards._cost(c.get("cost")) for c in self.mem.deck}  # (as the fight began: Void Form hides them)
-        wanted = combat.actions({**state, "_plays_this_turn": self._turn_cards, "_facing": self._facing, "_revive_pending": revive, "_threat": threat, "_costs": costs})
+        wanted = combat.actions({**state, "_plays_this_turn": self._turn_cards, "_played_names": tuple(self._turn_names), "_facing": self._facing, "_revive_pending": revive, "_threat": threat, "_costs": costs})
         # Cards that draw (or reshuffle the hand, like Reboot) show up a moment
         # after the card that brought them: straight after Reboot the hand read
         # as empty, and the bot ended a turn with 4 energy and a kill in reach.
@@ -350,6 +351,8 @@ class Bot:
                 # cards played, and a Bodyguard stayed in the hand with the energy for it in front of 30.)
                 self._turn_cards += 1
                 self._played_from, self._played_at = self._hand_sig(state), self.clock()
+                hand = (state.get("player") or {}).get("hand") or []
+                self._turn_names += [str(c.get("name")) for c in hand if c.get("index") == params.get("card_index")]
             if params.get("target"):
                 self._facing = params["target"]  # we turn towards whatever we aim at
         elif action == "menu_select" and kind == "menu":

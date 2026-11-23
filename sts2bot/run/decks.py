@@ -14,6 +14,10 @@ from ..learn import knob
 
 SKIP_THRESHOLD = 3.0  # card rewards scoring below this are skipped
 BIG_DECK = 24
+# The Fool's Arrows: a Shot does nothing while our Arrow stands in an enemy (until three more hits on it, or its death),
+# so a deck fires about one Shot a turn whatever it holds. Each Shot beyond the Arrows keeps this share of the one
+# before it. (A guess from the rules, to be checked on Fool runs: its first ten held 2-4 Shots by floor 9-17.)
+SHOT_SPARE = 0.5
 
 
 # The Regent's starting relic gives 3 Stars a fight, once. A boss fight goes through the deck two or
@@ -176,6 +180,9 @@ def deck_fit(card: dict, deck: list, act: int | None = None, energy: int = 3) ->
         # Countdown, Reaper Form, Blight Strike), while cards.py rated it a flat 3.0 (4-5 at the offers).
         return -deck_value(card)
     fit = 0.0
+    if _parse(card).shoots:
+        beyond = sum(1 for c in deck if _parse(c).shoots) - sum(1 for c in deck if _card_key(c) == "QUIVER")
+        fit -= max(0.0, deck_value(card)) * (1.0 - SHOT_SPARE**beyond) if beyond > 0 else 0.0
     # A card that costs more than a turn's energy is only ever played with help (Bury, 4 for 52 damage,
     # on the Necrobinder's 3: taken 24 times as the best damage for its cost on offer, 2.1 floors a pick
     # under par, and seen in the hand at "4!" all through a Knowledge Demon fight lost at 12 damage a round).
