@@ -28,17 +28,18 @@ decks hit far harder than a Strike; see DECKS); each fight has its own seed, so 
 """
 
 import logging
-import multiprocessing
 import os
 import random
 import sys
+from contextlib import ExitStack
 from unittest import mock
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
+import modelfight
+from modelfight import deal, game_state, hand_cards, on_all_cores
 from sts2bot import learn
-from sts2bot.fight import battle, combat, triggers
-from tests.fake_game import card
+from sts2bot.fight import combat
 
 FORM_HP = (111, 212, 313)
 ENRAGE, HIT, BURNS, BUFF = 3, 11, 5, 3  # Ascension 9
@@ -78,13 +79,7 @@ def fight(spec, rng, maxhp=75, trace=False):
     our_vuln = 0  # rounds of Vulnerable on us
     lost_in = {1: 0, 2: 0, 3: 0}
     for r in range(1, 40):
-        hand = []
-        for _ in range(size):
-            if not draw:
-                draw, disc = disc, []
-                rng.shuffle(draw)
-            if draw:
-                hand.append(draw.pop())
+        hand = deal(draw, disc, rng, size)
         en, block = energy, 0
         intangible = form == 3 and k % 2 == 0
         if trace:
@@ -106,19 +101,10 @@ def fight(spec, rng, maxhp=75, trace=False):
             st += [{"id": "VULNERABLE_POWER", "amount": e["vuln"]}] if e["vuln"] else []
             st += [{"id": "WEAK_POWER", "amount": e["weak"]}] if e["weak"] else []
             enemies = [{"entity_id": "TEST_SUBJECT_0", "hp": e["hp"], "max_hp": FORM_HP[form - 1], "block": 0, "status": st, "intents": label()}]
-            cards = []
-            for i, c in enumerate(hand):
-                cid, name, ctype, cost, text, target = CARDS[c](db if c == "B" else da)
-                extra = {"can_play": False, "unplayable_reason": "HasUnplayableKeyword"} if c in DEAD else {}
-                cards.append(card(i, cid, name, ctype, cost, text, target, **extra))
+            cards = hand_cards(hand, lambda c: CARDS[c](db if c == "B" else da), dead=DEAD)
             pile = lambda cs: [{"name": CARDS[c](da)[1], "cost": str(CARDS[c](da)[3]), "description": CARDS[c](db if c == "B" else da)[4]} for c in cs]
-            return {
-                "state_type": "boss", "run": {"act": 3, "floor": 48, "ascension": 9},
-                "battle": {"round": r, "turn": "player", "is_play_phase": True, "enemies": enemies},
-                "player": {"hp": hp, "max_hp": maxhp, "block": block, "energy": en, "hand": cards, "potions": [],
-                           "status": [{"id": "VULNERABLE_POWER", "amount": our_vuln}] if our_vuln else [],
-                           "draw_pile": pile(draw), "discard_pile": pile(disc), "draw_pile_count": len(draw), "discard_pile_count": len(disc), "exhaust_pile_count": 0},
-            }
+            return game_state("boss", {"act": 3, "floor": 48, "ascension": 9}, r, enemies, cards, pile, draw, disc, hp=hp, maxhp=maxhp, block=block, energy=en,
+                              status=[{"id": "VULNERABLE_POWER", "amount": our_vuln}] if our_vuln else [])
 
         killed = False
         for _ in range(15):
@@ -190,23 +176,21 @@ KNOBS = {"debuff_worth": 2.0}  # the live sampler's arms are 2.0 and 3.0 (learn.
 
 def setting(name: str, value: float):
     """Patch one constant of battle.py, combat.py or triggers.py (NAME=VALUE), or a setting (K.name=VALUE)."""
-    if name.startswith("K."):
-        return mock.patch.dict(learn.KNOB, {name[2:]: value})
-    mod = next(m for m in (battle, combat, triggers) if hasattr(m, name))
-    return mock.patch.object(mod, name, value)
+    return mock.patch.dict(learn.KNOB, {name[2:]: value}) if name.startswith("K.") else modelfight.setting(name, value)
 
 
-def patches(arm: str) -> list:
-    return [mock.patch.dict(learn.KNOB, KNOBS)] + [setting(p.split("=")[0], float(p.split("=")[1])) for p in arm.split("+") if "=" in p]
+def patched(arm: str) -> ExitStack:
+    """Every patch an arm asks for, entered (leave the stack to undo them)."""
+    stack = ExitStack()
+    for p in [mock.patch.dict(learn.KNOB, KNOBS)] + [setting(p.split("=")[0], float(p.split("=")[1])) for p in arm.split("+") if "=" in p]:
+        stack.enter_context(p)
+    return stack
 
 
 def run(args):
     arm, spec, n, seed = args
     logging.disable(logging.CRITICAL)
-    ps = patches(arm)
-    for p in ps:
-        p.start()
-    try:
+    with patched(arm):
         wins = hpl = rounds = 0
         reached = {1: 0, 2: 0, 3: 0}
         lost = {1: 0, 2: 0, 3: 0}
@@ -218,9 +202,6 @@ def run(args):
             reached[form] += not ok
             for f in lost:
                 lost[f] += lost_in[f]
-    finally:
-        for p in reversed(ps):
-            p.stop()
     return arm, spec, wins / n, hpl / n, rounds / n, reached, {f: v / n for f, v in lost.items()}
 
 
@@ -236,9 +217,8 @@ if __name__ == "__main__":
         seed = int(sys.argv[2]) if len(sys.argv) > 2 else 1
         dk = DECKS[int(sys.argv[3])] if len(sys.argv) > 3 else DECKS[1]
         arm = sys.argv[4] if len(sys.argv) > 4 else "on"
-        for p in patches(arm):
-            p.start()
-        print(fight(dk, random.Random(seed), trace=True))
+        with patched(arm):
+            print(fight(dk, random.Random(seed), trace=True))
         sys.exit()
     if sys.argv[1:2] == ["flips"]:
         i, arms = int(sys.argv[2]), (sys.argv[3:] + ["on", "on"])[:2]
@@ -246,20 +226,15 @@ if __name__ == "__main__":
             seed = (900 + i) * 10007 + j
             res = {}
             for arm in arms:
-                ps = patches(arm)
-                for p in ps:
-                    p.start()
-                res[arm] = fight(DECKS[i], random.Random(seed))[:4]
-                for p in reversed(ps):
-                    p.stop()
+                with patched(arm):
+                    res[arm] = fight(DECKS[i], random.Random(seed))[:4]
             if len({v[0] for v in res.values()}) > 1:
                 print(seed, res)
         sys.exit()
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 100
     arms = sys.argv[2:] or ["on"]
     jobs = [(arm, dk, n, 900 + i) for arm in arms for i, dk in enumerate(DECKS)]
-    with multiprocessing.Pool(min(12, os.cpu_count() or 2)) as pool:
-        out = pool.map(run, jobs)
+    out = on_all_cores(run, jobs)
     for arm in arms:
         rows = [o for o in out if o[0] == arm]
         died = {f: sum(o[5][f] for o in rows) for f in (1, 2, 3)}

@@ -246,6 +246,7 @@ planner constant or tuned setting.
 | `scripts/roomfight.py` | an ordinary act 2 fight: HP lost next to the least any play could lose |
 | `scripts/bosses/bowlfight.py` | Bowlbug Rock and Nectar |
 | `scripts/bosses/subjectfight.py` | the Test Subject |
+| `scripts/modelfight.py` | what the model fights above share: drawing, the combat state, patching a constant, the process pool |
 | `scripts/demon/*.py` | relics, afflictions and Powers at the Knowledge Demon, priced by perfect play |
 | `scripts/audit/*.py` | cards played for nothing, and card text `cards.parse` misread |
 
