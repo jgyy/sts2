@@ -71,6 +71,7 @@ class CardInfo:
     ethereal: bool = False  # gone for the fight if it is still in the hand when the turn ends
     ends_turn: bool = False  # "End your turn." (Void Form), "Exhaust your Hand." (Fiend Fire, Stoke): nothing in the hand can be played after it
     replay: int = 0  # times it is played again by itself ("Replay 1": Sword Sage's Sovereign Blade, Hidden Gem, Transfigure)
+    play_limit: int = -1  # "You can only play 1 more card this turn." (Encore): cards allowed after it (-1: no limit)
     # --- the Fool's Arrows: a card that Shoots needs an Arrow not standing in an enemy, or it does nothing
     shoots: bool = False
     aim_times: int = 1  # "Aim affects this card 2 times" (Heavy Shot): the Aim in its text counts this often
@@ -172,7 +173,7 @@ def kind(card: dict) -> str:
     if str(card.get("type")) not in ("Attack", "Skill"):
         return ""
     info = parse(card)
-    if info.energy_gain or info.next_energy:
+    if (info.energy_gain or info.next_energy) and info.play_limit < 0:  # (Encore's energy pays for one card)
         return "energy"
     if info.cost == 0 and not info.star_cost:
         return "free" if str(card.get("type")) == "Attack" and info.total_damage else ""
@@ -340,6 +341,7 @@ def parse(card: dict) -> CardInfo:
         ethereal=bool(re.search(r"\bEthereal\b", full_text)) or any(isinstance(k, dict) and str(k.get("name")).lower() in ("ethereal", "hexed") for k in card.get("keywords") or []),
         ends_turn=bool(re.search(r"(?:^|\.\s*)(?:end\s+your\s+turn|exhaust\s+your\s+hand)\.", full_text, re.I)),
         replay=_replay(card, full_text),
+        play_limit=_int(r"you\s+can\s+only\s+play\s+(\d+)\s+more\s+cards?\s+this\s+turn", full_text) if re.search(r"only\s+play\s+\d+\s+more\s+card", full_text, re.I) else -1,
         shoots=bool(re.search(r"\bshoot\s+(?:an?|\d+|x)\s+arrows?\b", text, re.I)), aim_times=aim_times, aim=aim, stretch=stretch,
         impaled_only=impaled_only, on_impaled=on_impaled if any(on_impaled) else (),
         splash=bool(re.search(r"damage\s+all\s+other\s+enemies\s+equal\s+to\s+the\s+damage\s+dealt", text, re.I)),
@@ -495,6 +497,10 @@ def is_known(card: dict) -> bool:
 
 
 _RARITY = {"Basic": 0.0, "Common": 1.0, "Uncommon": 2.2, "Rare": 3.5, "Ancient": 4.5, "Event": 2.0}
+# What the crowd's numbers (crowd.py) make a card of each rarity worth on average (433 rated cards, sd 0.8-1.0): what a card
+# with no numbers of its own (every Fool card, on the beta) is mixed with, so that it is rated on the same scale as the rest.
+_RARITY_CROWD = {"Common": 3.69, "Uncommon": 4.85, "Rare": 6.26}
+IMPALED_SHARE = 0.5  # of what a card that needs an Impaled enemy does, counted at rewards (see deck_value)
 
 # Cards the crowd's numbers (crowd.py) are not asked about: what makes them good in other
 # hands is what this bot cannot do. The Gambit can end the run.
@@ -535,10 +541,12 @@ def deck_value(card: dict) -> float:
     if tier is not None:
         return (1.0 - share) * tier + share * (crowd or 0.0) + upgraded
     info = parse(card)
+    if crowd is None and key not in _OWN_VIEW and (info.known or ctype == "Power") and (crowd := _RARITY_CROWD.get(str(card.get("rarity") or card.get("card_rarity") or ""))):
+        share = _crowd_share()  # (the Fool's cards: on the bare text rating they skipped 29% of rewards, the others 0-11%)
     if info.deadly:
         return -6.0  # e.g. "If you take unblocked attack damage this combat, die."
     cost = max(1, info.cost) if not info.is_x else 2
-    score = _RARITY.get(str(card.get("rarity") or card.get("card_rarity") or ""), 1.0)
+    score = base = _RARITY.get(str(card.get("rarity") or card.get("card_rarity") or ""), 1.0)
 
     dmg = info.total_damage * (1.6 if info.aoe else 1.0)
     # (Capped: uncapped, Crash Landing came to 15.9 and Seven Stars to 12.1, above every card rated by hand.)
@@ -551,6 +559,8 @@ def deck_value(card: dict) -> float:
     score += info.dexterity * (1.5 if info.dexterity_lasts else 0.4)
     score += info.next_energy * 0.8 + info.next_draw * 0.5 + info.next_block * 0.08 + info.enemy_hp_loss * 0.15
     score += min(info.vulnerable, 3) * 0.6 + min(info.weak, 3) * 0.4
+    if info.impaled_only:  # only with our Arrow in the enemy: 39-55% of the turns Nail, Uproot, Recall and Wrest were drawn
+        score = base + (score - base) * IMPALED_SHARE
     if info.cost == 0 and info.known:
         score += 0.5
     if ctype == "Power":
@@ -567,7 +577,9 @@ def deck_value(card: dict) -> float:
     if is_basic(card):
         score -= 2.5
     score += _known_nudge(card)
-    return (1.0 - share) * score + share * (crowd or 0.0) + upgraded
+    value = (1.0 - share) * score + share * (crowd or 0.0) + upgraded
+    # Encore (rated 7.4): "You can only play 1 more card this turn", at best a cantrip played last.
+    return min(value, 2.0 + upgraded) if info.play_limit >= 0 else value
 
 
 def upgrade_gain(base: dict, upgraded: dict) -> float:

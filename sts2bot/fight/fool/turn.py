@@ -71,8 +71,8 @@ class FoolTurn:
             c = replace(c, damage=max(0, c.damage + (self.aim - self.aim0) * c.aim_times))
         if c.impaled_only or c.on_impaled or c.impaled_double:
             stuck = [e for e in foes if e.alive and e.impaled > 0 and (aimed_at is None or e.entity_id == aimed_at)]
-            if not stuck and c.impaled_only:
-                c = replace(c, damage=0, weak=0, vulnerable=0, dislodge=False)
+            if not stuck and c.impaled_only:  # (Wrest's draw too: left in, 69 of 106 Wrests drew nothing, played before the Shot)
+                c = replace(c, damage=0, weak=0, vulnerable=0, draw=0, energy_gain=0, dislodge=False)
             elif stuck and c.on_impaled:
                 c = replace(c, energy_gain=c.energy_gain + c.on_impaled[0], draw=c.draw + c.on_impaled[1])
             elif stuck and c.impaled_double:

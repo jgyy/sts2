@@ -319,6 +319,8 @@ def simulate(
         if card_limit is not None and plays >= card_limit:
             return None
         plays += k
+        if c.play_limit >= 0:  # Encore: "You can only play 1 more card this turn" (it was played first, then one Wrest, 4 energy left)
+            card_limit = plays + c.play_limit if card_limit is None else min(card_limit, plays + c.play_limit)
         if k > 1:
             more = dict(block=c.block * k, draw=c.draw * k, summon=c.summon * k, doom=c.doom * k, poison=c.poison * k, shivs=c.shivs * k, souls=c.souls * k)
             c = replace(c, hits=c.hits * (k if c.damage else 1), energy_gain=c.energy_gain * k, **more)
