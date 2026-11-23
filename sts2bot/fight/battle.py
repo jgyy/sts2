@@ -391,18 +391,52 @@ def _hit_count(e: Enemy, hits: int, double_if_vulnerable: bool = False) -> int:
     return hits * (2 if double_if_vulnerable and e.vulnerable else 1)
 
 
+def _per_hit(e: Enemy, dmg_per_hit: int, raw: bool = False) -> int:
+    """What one hit takes off this enemy's Block and HP (see `_hit`)."""
+    per = dmg_per_hit * (e.damage_mult if not (raw and e.damage_mult) else 1.0)  # (Flutter and Soar: "less damage from Attacks")
+    if not raw:
+        per *= (e.vuln_mult if e.vulnerable else 1.0) * (e.weak_mult if e.weak else 1.0)
+        if e.slow > 0:
+            per *= 1.0 + e.slow / 100.0
+    return int(per)
+
+
+def _would_kill(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> bool:
+    """Whether this attack leaves the enemy dead, without touching it.
+
+    The planner asks this of every enemy for every attack it tries, so the plain case is worked out
+    directly: hit after hit goes through Block and then HP. Anything that bends a hit is played out on a copy.
+    """
+    if e.skittish or e.hit_cap or e.slippery or e.shell >= 0 or e.flutter:
+        trial = clone(e)
+        _hit(trial, dmg_per_hit, hits, double_if_vulnerable)
+        return not trial.alive
+    return e.hp <= 0 or _per_hit(e, dmg_per_hit) * _hit_count(e, hits, double_if_vulnerable) >= e.hp + e.block
+
+
+def _progress(e: Enemy, hp_removed: int, chip_rate: float) -> float:
+    """How far an attack moved the fight on: HP removed, plus Block worn down.
+
+    Block an enemy keeps between turns is as good as HP. Only counting HP,
+    the bot never attacked a Burrowed enemy (20 Block that stays, 24 damage
+    a turn) and blocked every turn instead, for 180 rounds.
+    """
+    chip, e.chipped = e.chipped, 0
+    # A Slippery stack taken off is a later hit that lands in full. Counted as the 1 HP it removes,
+    # eight stacks were not worth a Defend: Vantom fights that still had Slippery on round 5 were
+    # lost 4 times in 8 (2 in 19 when it was gone by round 4; one bot took until round 8).
+    strip, e.stripped = e.stripped, 0
+    hp_removed += strip * min(SLIP_WORTH, e.hp / 3.0)
+    return hp_removed + chip * (1.0 if e.keeps_block or (e.incoming == 0 and chip and e.block == 0 and chip_rate >= 1) else chip_rate)
+
+
 def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False, raw: bool = False) -> int:
     """Apply an attack hit by hit, return HP actually removed.
 
     `raw` is damage that is not an Attack (an orb's): Vulnerable does nothing
     for it (a Lightning evoked twice did 16 to a Vulnerable enemy, 18 times in 18).
     """
-    per = dmg_per_hit * (e.damage_mult if not (raw and e.damage_mult) else 1.0)  # (Flutter and Soar: "less damage from Attacks")
-    if not raw:
-        per *= (e.vuln_mult if e.vulnerable else 1.0) * (e.weak_mult if e.weak else 1.0)
-        if e.slow > 0:
-            per *= 1.0 + e.slow / 100.0
-    per = int(per)
+    per = _per_hit(e, dmg_per_hit, raw)
     removed = 0
     for _ in range(_hit_count(e, hits, double_if_vulnerable)):
         if e.hp <= 0:
