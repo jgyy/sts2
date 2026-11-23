@@ -663,7 +663,11 @@ def cards_left_this_turn(state: dict) -> int | None:
         m = re.search(r"cannot play more than (\d+) cards", str(c.get("description") or ""), re.I)
         if m:
             limits.append(int(m.group(1)))
-    return max(0, min(limits) - played) if limits else None
+    left = [max(0, n - played) for n in limits]
+    encore = _shown(player, "ENCORE", 1)  # "You can only play 1 more card this turn": the game counts it down, 1 then 0
+    if encore is not None:
+        left.append(max(0, encore))
+    return min(left) if left else None
 
 
 def free_plays(state: dict) -> int:

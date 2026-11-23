@@ -2,6 +2,7 @@
 and Stretch with the first Block card."""
 
 import unittest
+from unittest import mock
 
 from sts2bot.fight import battle, combat
 from sts2bot.fight.fool import turn
@@ -177,6 +178,37 @@ class Dislodging(unittest.TestCase):
         shot = parse(FOOLISH(1))
         self.assertGreater(combat.simulate([info, shot], foes, **kw).score, combat.simulate([shot, info], foes, **kw).score + 15)
 
+    def test_wrest_draws_only_from_an_impaled_enemy(self):
+        # Live 20:41-21:35: 69 of 106 Wrests drew nothing, most played before the Shot that would have let them draw.
+        wrest = parse(card(0, "WREST", "Wrest", "Skill", 0, "If the enemy is Impaled, Dislodge and draw 2 cards.", "AnyEnemy"))
+        self.assertEqual((wrest.impaled_only, wrest.dislodge, wrest.draw), (True, True, 2))
+        kw = dict(energy=1, stars=0, hp=60, max_hp=80, block=0, fight="boss", arrows=1)
+        foes = lambda: combat.read_enemies({"battle": {"enemies": [enemy("A", 300)]}})
+        self.assertEqual(combat.simulate([wrest], foes(), **kw).score, combat.simulate([], foes(), **kw).score)
+        shot = parse(FOOLISH(1))
+        self.assertGreater(combat.simulate([shot, wrest], foes(), **kw).score, combat.simulate([wrest, shot], foes(), **kw).score)
+        state = combat_state([card(0, "WREST", "Wrest", "Skill", 0, "If the enemy is Impaled, Dislodge and draw 2 cards.", "AnyEnemy"), FOOLISH(1)], [enemy("A", 300, attack=5)], energy=1)
+        self.assertEqual(combat.choose_card(state)[1]["card_index"], 1)  # the Shot first
+
+    def test_encore_leaves_one_more_card(self):
+        # Live 21:04 and 21:32: Encore went first, then one Wrest, and the turn ended on 3-4 energy (a Soul Fysh and a
+        # Lagavulin Matriarch lost from 69 and 82 HP).
+        text = "Gain [fool_energy_icon.png]. Draw 2 cards. You can only play 1 more card this turn."
+        encore = parse(card(0, "ENCORE", "Encore", "Skill", 0, text))
+        self.assertEqual((encore.play_limit, encore.energy_gain, encore.draw), (1, 1, 2))
+        self.assertEqual(parse(STRIKE(0)).play_limit, -1)
+        kw = dict(energy=3, stars=0, hp=60, max_hp=80, block=0, fight="boss")
+        foes = lambda: combat.read_enemies({"battle": {"enemies": [enemy("A", 300, attack=10)]}})
+        strikes = [parse(STRIKE(i)) for i in (1, 2, 3)]
+        self.assertIsNone(combat.simulate([encore, *strikes[:2]], foes(), **kw))
+        self.assertIsNotNone(combat.simulate([*strikes[:2], encore], foes(), **kw))
+        state = combat_state([card(0, "ENCORE", "Encore", "Skill", 0, text), STRIKE(1), STRIKE(2), STRIKE(3)], [enemy("A", 300, attack=5)], energy=3)
+        self.assertNotEqual(combat.choose_card(state)[1]["card_index"], 0)  # three Strikes first, Encore last if at all
+        state["player"]["status"] = [{"id": "ENCORE_POWER", "amount": 1}]
+        self.assertEqual(battle.cards_left_this_turn(state), 1)
+        state["player"]["status"] = [{"id": "ENCORE_POWER", "amount": 0}]
+        self.assertEqual(battle.cards_left_this_turn(state), 0)
+
     def test_cho_firm_blocks_twice_while_an_arrow_is_to_hand(self):
         firm = parse(card(0, "CHO_FIRM", "Cho Firm", "Skill", 1, "Gain 6 Block. If you have an Arrow, gain Block an additional time.", "Self"))
         self.assertTrue(firm.arrow_block)
@@ -200,6 +232,30 @@ class DeckBuilding(unittest.TestCase):
         self.assertLess(second, 0.0)
         quiver = card(0, "QUIVER", "Quiver", "Power", 1, "Gain 1 additional Arrow.")
         self.assertEqual(decks.deck_fit(quick, deck + [FOOLISH(0), quiver], act=1), 0.0)  # a second Arrow for it
+
+    def test_encore_and_impaled_only_cards_are_rated_for_what_they_do(self):
+        from sts2bot import cards
+
+        encore = {**card(0, "ENCORE", "Encore", "Skill", 0, "Gain [fool_energy_icon.png]. Draw 2 cards. You can only play 1 more card this turn."), "rarity": "Rare"}
+        self.assertLessEqual(cards.deck_value(encore), 2.0)  # was 7.4, above every other Fool card offered
+        self.assertEqual(cards.kind(encore), "")
+        text = "If the enemy is Impaled, Dislodge and draw 2 cards."
+        wrest = {**card(0, "WREST", "Wrest", "Skill", 0, text, "AnyEnemy"), "rarity": "Uncommon"}
+        plain = {**card(0, "DRAWER", "Drawer", "Skill", 0, "Draw 2 cards.", "AnyEnemy"), "rarity": "Uncommon"}
+        with mock.patch.object(cards, "_crowd_share", lambda: 0.0):
+            self.assertAlmostEqual(cards.deck_value(plain) - cards.deck_value(wrest), 0.8)  # half of its 2 cards' 1.6
+
+    def test_a_card_the_crowd_has_no_numbers_for_is_mixed_with_its_rarity(self):
+        # The Fool skipped 29% of card rewards on the bare text rating where the others, mixed with crowd.py, skipped 0-11%.
+        from sts2bot import cards
+
+        nock = {**card(0, "NOCK", "Nock", "Skill", 0, "Gain 5 Aim."), "rarity": "Common"}
+        with mock.patch.object(cards, "_crowd_share", lambda: 0.0):
+            bare = cards.deck_value(nock)
+        with mock.patch.object(cards, "_crowd_share", lambda: 0.6):
+            self.assertAlmostEqual(cards.deck_value(nock), 0.4 * bare + 0.6 * cards._RARITY_CROWD["Common"])
+            strike = {**STRIKE(0), "rarity": "Basic"}
+            self.assertEqual(cards.deck_value(strike), -2.5)  # (no mean for a Basic card: left alone)
 
 
 if __name__ == "__main__":
