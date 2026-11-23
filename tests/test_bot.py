@@ -856,6 +856,11 @@ class HttpClient(unittest.TestCase):
             client.state()
         self.assertFalse(client.ping())
 
+    def test_chunked_answers_are_read_whole(self):
+        from sts2bot.client import _dechunk
+
+        self.assertEqual(_dechunk(b"4\r\n{\"a\"\r\n5;x=1\r\n: 12}\r\n0\r\n\r\n"), b'{"a": 12}')
+
 
 if __name__ == "__main__":
     unittest.main()

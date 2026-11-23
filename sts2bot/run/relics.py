@@ -21,9 +21,11 @@ opens with one Ancient).
 
 from __future__ import annotations
 
-import json
 import logging
+import sys
 from pathlib import Path
+
+from ..learn import history
 
 log = logging.getLogger("sts2bot.relics")
 
@@ -98,7 +100,9 @@ def note(run: dict, rebuild: bool = True) -> None:
     if not run.get("character") or relics is None or not isinstance(floor, int):
         return  # (the first hundred runs were written down without their relics)
     final = floor + (WIN_BONUS if run.get("result") == "win" else 0)
-    _runs.append((str(run["character"]), int(run.get("ascension") or 0) // BAND, final, {str(r) for r in relics}))
+    # (Only the relics the record is about are kept, one shared copy of each name: a run holds a dozen or more.)
+    held = frozenset(sys.intern(str(r)) for r in relics if str(r) in _known or str(r) in ACT2)
+    _runs.append((sys.intern(str(run["character"])), int(run.get("ascension") or 0) // BAND, final, held))
     if rebuild:
         _rebuild()
 
@@ -109,13 +113,9 @@ def load(runs_file: Path | None, known) -> None:
     _known.update(known)
     _runs.clear()
     _table.clear()
-    try:
-        lines = runs_file.read_text().splitlines() if runs_file else []
-    except OSError:
-        lines = []
-    for line in lines:
+    for run in history(runs_file):
         try:
-            note(json.loads(line), rebuild=False)
+            note(run, rebuild=False)
         except (ValueError, TypeError, AttributeError):
             continue
     _rebuild()

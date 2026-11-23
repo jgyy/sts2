@@ -180,19 +180,30 @@ class CardStats:
         _save(self.path, {"finals": self.finals, "cards": self.cards, "kinds": self.kinds}, "card statistics")
 
 
+def history(runs_file: Path | None):
+    """Each run in runs.jsonl as a dict, read one line at a time.
+
+    The file grows by every run ever played (megabytes after a few thousand), and a whole copy of it held
+    in memory while it is parsed puts that much on the process for good: Python keeps what it freed.
+    """
+    try:
+        with open(runs_file, encoding="utf-8", errors="replace") as f:
+            for line in f:
+                try:
+                    r = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(r, dict):
+                    yield r
+    except (OSError, TypeError):  # (TypeError: no file given)
+        return
+
+
 def seed_from_history(stats: CardStats, runs_file: Path) -> None:
     """Fill in the "usual result" from the run history when the statistics are new."""
     if stats.finals:
         return
-    try:
-        lines = runs_file.read_text().splitlines()
-    except OSError:
-        return
-    for line in lines:
-        try:
-            r = json.loads(line)
-        except ValueError:
-            continue
+    for r in history(runs_file):
         if r.get("character") and isinstance(r.get("floor"), int):
             final = r["floor"] + (WIN_BONUS if r.get("result") == "win" else 0)
             stats.finals.setdefault(str(r["character"]), []).append(final)
