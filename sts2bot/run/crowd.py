@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import re
 
+from .. import games
+
 _TABLES = {
     "IRONCLAD": """
 Offering 51.9 51.9, Crimson Mantle 49.1 42.6, Unmovable 48.5 42.6, Barricade 47.7 34.2, Pyre 44.6 54.8,
@@ -182,7 +184,11 @@ FOOL_RATING = {_key(name): value for value, names in _FOOL_TIERS.items() for nam
 
 
 def rating(key: str) -> float | None:
-    """What the crowd's numbers make a card worth, on the scale of cards._TIER (None: no numbers for it)."""
+    """What the crowd's numbers make a card worth, on the scale of cards._TIER (None: no numbers for it).
+
+    The numbers are Slay the Spire 2's: playing the first game there are none."""
+    if not games.uses_sts2_tables():
+        return None
     got = RATING.get(key.replace("_S_", "S_") if key not in RATING else key)
     return FOOL_RATING.get(key) if got is None else got
 

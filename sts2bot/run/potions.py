@@ -5,11 +5,20 @@ from __future__ import annotations
 import re
 
 from ..fight.battle import end_of_turn_block, expected_loss, osty_hp, read_enemies
+from .. import games
 from ..cards import parse
 
 Action = tuple[str, dict]
 
 BOSS_FLOORS = (17, 33, 48)
+STS1_BOSS_FLOORS = (16, 33, 50)  # the first game's acts are 17 floors each, the boss on the last
+
+
+def boss_floors() -> tuple:
+    """The floors each act's boss is met on, in the game being played."""
+    return BOSS_FLOORS if games.uses_sts2_tables() else STS1_BOSS_FLOORS
+
+
 # Floors before each act's boss from which a full belt is no longer a reason to drink.
 # (Six in every act until 2026-11-22. A belt holds two from Ascension 4, so "full" spent one of them on
 # round 1 of the next ordinary fight: in act 3 93 potions went on ordinary fights and 40 reached the last
@@ -65,7 +74,7 @@ def boss_worth(potion: dict) -> float:
 
 def saving(floor) -> bool:
     """The next boss is near enough that what is on the belt is kept for it (see SAVE_FLOORS)."""
-    return isinstance(floor, int) and any(0 < boss - floor <= SAVE_FLOORS[act] for act, boss in enumerate(BOSS_FLOORS, 1))
+    return isinstance(floor, int) and any(0 < boss - floor <= SAVE_FLOORS[act] for act, boss in enumerate(boss_floors(), 1))
 
 
 def fortifier(player: dict) -> bool:

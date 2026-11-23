@@ -1,5 +1,9 @@
 """Keeps the game and the bot alive around the clock.
 
+The supervisor itself is the same for both games; what is particular to one
+(how to start and stop it, its bridge mod, its session settings) is its host:
+`Sts2Host` here, `games.sts1.host.Sts1Host` for the first game.
+
 Launches Slay the Spire 2 when it is not running, waits for the bridge mod to
 answer, plays, and restarts the game if it crashes, freezes, or the bot gets
 stuck. A run that hangs twice in the same place is abandoned.
@@ -313,12 +317,56 @@ def launch_game(cmd: str) -> None:
     _spawn(argv, cwd=exe.parent if exe.is_absolute() and exe.parent.is_dir() else None, env=env)
 
 
+class Sts2Host:
+    """What the supervisor needs to know about Slay the Spire 2: how to start, find and stop it, how to keep
+    its bridge mod built, and the session settings sent through the mod. (Each call looks the module's
+    function up when it is made, so tests can stand in for them.) games/sts1/host.py is the first game's."""
+
+    name = "Slay the Spire 2"
+    heals_mod = True  # the bridge mod can be rebuilt by the supervisor
+
+    def running(self) -> bool:
+        return game_running()
+
+    def launch(self, cmd: str) -> None:
+        launch_game(cmd)
+
+    def kill(self) -> None:
+        kill_game()
+
+    def mod_is_stale(self) -> bool:
+        return mod_is_stale()
+
+    def rebuild_mod(self) -> bool:
+        return rebuild_mod()
+
+    def mod_load_error(self, since: float = 0.0) -> str | None:
+        return mod_load_error(since)
+
+    def missing_steam(self, since: float = 0.0) -> bool:
+        """True if the game came up without the Steam client it needs."""
+        return not steam_running() and started_without_steam(since)
+
+    def no_api_hint(self) -> str:
+        return "Is the STS2_MCP mod installed and are mods enabled in the game's settings?"
+
+    def configure(self, sup: "Supervisor") -> None:
+        """Session settings, sent each time the bot (re)connects."""
+        if sup.fast_mode:
+            set_fast_mode(sup.client, sup.fast_mode)
+        if sup.light_graphics:
+            set_light_graphics(sup.client, maximize=not sup.small_window)
+        if sup.time_scale and sup.time_scale != 1.0 and set_time_scale(sup.client, sup.time_scale):
+            sup.bot.time_scale = sup.time_scale  # the bot keeps it set: the game resets it
+
+
 class Supervisor:
     def __init__(
         self,
         bot: Bot,
         client: Client,
         *,
+        host=None,
         launch_cmd: str = DEFAULT_LAUNCH,
         manage_game: bool = True,
         fast_mode: str | None = "instant",
@@ -331,6 +379,7 @@ class Supervisor:
     ):
         self.bot = bot
         self.client = client
+        self.host = host or Sts2Host()
         self.launch_cmd = launch_cmd
         self.manage_game = manage_game
         self.fast_mode = fast_mode
@@ -339,7 +388,7 @@ class Supervisor:
         self.time_scale = time_scale
         self.boot_timeout = boot_timeout
         self.outage_grace = outage_grace
-        self.heal_mod = heal_mod and manage_game
+        self.heal_mod = heal_mod and manage_game and self.host.heals_mod
         self.restarts = 0
         self._last_stuck_at: tuple | None = None
         self._mod_retry_at = 0.0  # no rebuild attempts before this (after a failed build)
@@ -355,12 +404,12 @@ class Supervisor:
         while time.monotonic() < deadline:
             if self.client.ping():
                 return True
-            if launched_at is not None and mod_load_error(launched_at):
+            if launched_at is not None and self.host.mod_load_error(launched_at):
                 return False
             if self.manage_game and time.monotonic() - started > 10.0:
-                if not game_running():
+                if not self.host.running():
                     return False  # it died: no point waiting out the timeout
-                if not steam_running() and started_without_steam(launched_at or 0.0):
+                if self.host.missing_steam(launched_at or 0.0):
                     return False
             time.sleep(2.0)
         return False
@@ -369,7 +418,7 @@ class Supervisor:
         """Rebuild the mod, at most once per back-off period while it keeps failing."""
         if time.monotonic() < self._mod_retry_at:
             return False
-        if rebuild_mod():
+        if self.host.rebuild_mod():
             self._mod_retry_at, self._mod_backoff = 0.0, 300.0
             return True
         self._mod_retry_at = time.monotonic() + self._mod_backoff
@@ -388,19 +437,19 @@ class Supervisor:
                 self._wait_for_api(60.0)
                 continue
             launched_at = None
-            if not game_running():
-                if self.heal_mod and mod_is_stale():
+            if not self.host.running():
+                if self.heal_mod and self.host.mod_is_stale():
                     log.warning("the game files changed since the bridge mod was built (game update?)")
                     self._rebuild_mod()
                 launched_at = time.time() - 1.0
-                launch_game(self.launch_cmd)
+                self.host.launch(self.launch_cmd)
             if self._wait_for_api(self.boot_timeout, launched_at if self.heal_mod else None):
                 log.info("game is up")
                 return
-            why = mod_load_error(launched_at or 0.0)
+            why = self.host.mod_load_error(launched_at or 0.0)
             if why:
                 log.error("the game did not load the bridge mod: %s", why)
-                kill_game()
+                self.host.kill()
                 if self.heal_mod and self._rebuild_mod():
                     backoff = 10.0
                     continue  # relaunch straight away with the fresh build
@@ -409,17 +458,13 @@ class Supervisor:
                 time.sleep(max(1.0, min(wait, 3600.0)))
                 backoff = min(backoff * 2, 300.0)
                 continue
-            if not game_running():
+            if not self.host.running():
                 log.error("the game exited before the bot API came up; starting it again")
-            elif not steam_running() and started_without_steam(launched_at or 0.0):
+            elif self.host.missing_steam(launched_at or 0.0):
                 log.error("the game was started without Steam; restarting it with Steam running")
             else:
-                log.error(
-                    "game did not expose the bot API within %.0fs. Is the STS2_MCP mod installed "
-                    "and are mods enabled in the game's settings? Restarting the game.",
-                    self.boot_timeout,
-                )
-            kill_game()
+                log.error("game did not expose the bot API within %.0fs. %s Restarting the game.", self.boot_timeout, self.host.no_api_hint())
+            self.host.kill()
             time.sleep(backoff)
             backoff = min(backoff * 2, 300.0)
 
@@ -450,23 +495,18 @@ class Supervisor:
         self.restarts += 1
         log.warning("restart #%d: %s", self.restarts, why)
         if self.manage_game:
-            kill_game()
+            self.host.kill()
             time.sleep(3.0)
 
     def run(self, max_runs: int | None = None) -> None:
         while max_runs is None or self.bot.runs_finished < max_runs:
             self.ensure_game()
             try:
-                if self.fast_mode:
-                    set_fast_mode(self.client, self.fast_mode)
-                if self.light_graphics:
-                    set_light_graphics(self.client, maximize=not self.small_window)
-                if self.time_scale and self.time_scale != 1.0 and set_time_scale(self.client, self.time_scale):
-                    self.bot.time_scale = self.time_scale  # the bot keeps it set: the game resets it
+                self.host.configure(self)
                 self.bot.run(max_runs)
             except GameUnavailable as e:
                 log.warning("lost contact with the game: %s", e)
-                if self.manage_game and not game_running():
+                if self.manage_game and not self.host.running():
                     self._note_crash()
                     self.restart_game("the game crashed")  # no point waiting for a dead process
                     continue

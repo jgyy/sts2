@@ -4,6 +4,10 @@ A bot that plays Slay the Spire 2 around the clock: it starts a run, plays it
 to the end, returns to the menu and starts the next one. If the game crashes or
 freezes, it restarts the game and carries on.
 
+The same bot also plays the first **Slay the Spire** (`--game sts1`, through
+CommunicationMod): see [Slay the Spire 1](#slay-the-spire-1). One game is
+played at a time.
+
 ## How it works
 
 ```
@@ -162,6 +166,74 @@ hourly). Fixing that needs a change to `scripts/mod_patches/sts2bot.patch`,
 which holds the bot's additions to the mod and its fixes for newer game
 versions.
 
+## Slay the Spire 1
+
+`python3 -m sts2bot --game sts1` plays the first game with the same planner,
+map, reward, shop and rest-site logic, learning and supervisor. Only the way
+the bot talks to the game is different:
+
+```
+Slay the Spire  <-- CommunicationMod (stdin/stdout) -->  relay.py  <-- HTTP on localhost:15527 -->  sts2bot --game sts1
+```
+
+- **CommunicationMod** runs one program and talks to it over that program's
+  stdin and stdout. The bot is a long-running service with its own supervisor,
+  so CommunicationMod starts a small relay instead (`sts2bot/games/sts1/relay.py`,
+  standard library only), which the bot reaches on localhost.
+- **Translation** (`sts2bot/games/sts1/`): `screens.py` turns the first game's
+  state (screen types `MAP`, `COMBAT_REWARD`, `GRID` ...) into the state the
+  bot already reads, and `client.py` turns the bot's actions back into
+  CommunicationMod commands (`play 2 0`, `choose 1`, `choose purge` ...).
+- **Card text** (`sts2bot/games/sts1/text/`): CommunicationMod sends no card
+  text, and the planner reads what a card does from its text, so every card
+  and potion of the first game is written out there (base and upgraded).
+- **Ratings**: the hand-made card ratings, the crowd's win rates and the
+  Ancients' relic ratings are Slay the Spire 2's, so they are switched off for
+  the first game (`sts2bot/games/__init__.py`); its cards are judged from their
+  text, and `learn.py` corrects that from the bot's own runs as usual. Logs,
+  run history and what is learned go to `~/.local/state/sts2bot/sts1/`, apart
+  from the second game's.
+
+### Setup
+
+1. Subscribe to **ModTheSpire**, **BaseMod** and **CommunicationMod** on the
+   Steam Workshop (or put the jars where ModTheSpire finds them).
+2. Point CommunicationMod at the relay:
+
+   ```sh
+   python3 -m sts2bot sts1-setup      # writes ~/.config/ModTheSpire/CommunicationMod/config.properties
+   ```
+
+3. Run the bot:
+
+   ```sh
+   python3 -m sts2bot --game sts1                  # launches the game through ModTheSpire if needed
+   python3 -m sts2bot --game sts1 --runs 1 -v
+   python3 -m sts2bot --game sts1 --character WATCHER
+   python3 -m sts2bot --game sts1 --no-launch      # you start the game (with BaseMod and CommunicationMod enabled)
+   ```
+
+The game is launched as `java -jar ModTheSpire.jar --skip-launcher --mods
+basemod,CommunicationMod` from the game folder (with the game's own Java),
+or through Steam if ModTheSpire is not found. Set `STS1_GAME_DIR`,
+`STS1_MTS_JAR` or `--launch-cmd` if yours live elsewhere.
+
+Characters are `IRONCLAD`, `THE_SILENT`, `DEFECT` and `WATCHER`. Each run is
+played at the highest ascension that character has open, read from the game's
+save files (`preferences/` in the game folder, first save slot; set
+`STS1_PREFS_DIR` for another).
+
+Differences from the second game:
+
+- The game's own **Fast Mode** setting is the speed control; `--fast-mode`,
+  `--time-scale` and the graphics options only apply to Slay the Spire 2.
+- CommunicationMod cannot continue a saved run, so a run interrupted by a crash
+  is not resumed: the bot starts a new one.
+- The planner knows nothing of the Watcher's Stances or of Mantra, and plays
+  her cards for what they do outright. Defect orbs are planned as in the second
+  game.
+- The bot takes no Keys on purpose, so a won run ends after the act 3 boss.
+
 ## Unlocks and the Timeline
 
 The game awards unlocks ("epochs") as runs are played: ascension levels, new
@@ -254,6 +326,7 @@ planner constant or tuned setting.
 
 | Option | Default | Meaning |
 |---|---|---|
+| `--game` | `sts2` | `sts2`, or `sts1` for the first Slay the Spire (see above) |
 | `--character` | `auto` | `auto` (and `random`) plays a character with the lowest ascension, drawn at random among those on that level; or a character id, or `cycle` over unlocked characters. Every run uses the highest ascension that character has unlocked |
 | `--runs N` | forever | Stop after N runs |
 | `--first CHARACTER` | none | With `--character auto`: play this character until it has earned all of its own epochs, then carry on in the usual order |
@@ -265,7 +338,7 @@ planner constant or tuned setting.
 | `--full-graphics` | off | Keep the game's normal window and graphics. By default the bot maximises the window and turns anti-aliasing and the frame cap off for the session (not saved to your settings) |
 | `--small-window` | off | Shrink the game window to 960x540 instead of maximising it (a little faster on a slow machine) |
 | `--stuck-timeout` | `300` | Seconds without change before the game is restarted |
-| `--host`, `--port` | `127.0.0.1`, `15526` | Where the bridge mod listens |
+| `--host`, `--port` | `127.0.0.1`, `15526` (`15527` with `--game sts1`) | Where the bridge mod (or the first game's relay) listens |
 | `-v` | off | Log every action |
 
 ## Development
@@ -276,8 +349,9 @@ ruff check .                                  # lint (settings in pyproject.toml
 ```
 
 The tests run the bot against a small simulated game (`tests/fake_game.py`)
-that speaks the same state and action format as the mod. They do not need the
-real game. `tests/test_size.py` also keeps the code base in shape:
+that speaks the same state and action format as the mod, and the first game's
+path against a stand-in for CommunicationMod (`tests/sts1/fake_comm.py`),
+through the real relay. They do not need either game. `tests/test_size.py` also keeps the code base in shape:
 
 - no script is longer than 1000 lines (split it);
 - no directory holds more than 10 files (move the rest into a new directory);
