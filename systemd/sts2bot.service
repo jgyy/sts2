@@ -9,6 +9,8 @@
 # To turn it off: python3 -m sts2bot service disable (see the README, "Running 24/7").
 #
 # The bot starts Steam itself if it is not running (Steam must be able to log in unattended).
+#
+# To play the first Slay the Spire instead, add --game sts1 at the end of ExecStart (one game at a time).
 
 [Unit]
 Description=Slay the Spire 2 bot

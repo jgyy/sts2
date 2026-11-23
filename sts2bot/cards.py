@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from . import games
 from .run.crowd import rating as crowd_rating
 
 _WORD_NUM = {"twice": 2, "thrice": 3}
@@ -390,6 +391,8 @@ _KNOWN = {
 
 
 def _known_nudge(card: dict) -> float:
+    if not games.uses_sts2_tables():
+        return 0.0
     return next((_KNOWN[k] for k in (key_of(card.get("id")), key_of(card.get("name"))) if k in _KNOWN), 0.0)
 
 
@@ -507,7 +510,7 @@ def _card_key(card: dict) -> str:
 
 def is_known(card: dict) -> bool:
     """True if the card is one we have rated by hand."""
-    return _card_key(card) in _TIER
+    return games.uses_sts2_tables() and _card_key(card) in _TIER
 
 
 _RARITY = {"Basic": 0.0, "Common": 1.0, "Uncommon": 2.2, "Rare": 3.5, "Ancient": 4.5, "Event": 2.0}
@@ -551,7 +554,7 @@ def deck_value(card: dict) -> float:
     # ours put the plain attacks first, half a million runs a character put them last.
     crowd = None if key in _OWN_VIEW else crowd_rating(key)
     share = _crowd_share() if crowd is not None else 0.0
-    tier = _TIER.get(key)
+    tier = _TIER.get(key) if games.uses_sts2_tables() else None
     if tier is not None:
         return (1.0 - share) * tier + share * (crowd or 0.0) + upgraded
     info = parse(card)

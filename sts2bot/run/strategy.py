@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass, field
 
 from ..learn import knob
-from .potions import BOSS_FLOORS, boss_worth
+from .potions import boss_floors, boss_worth
 from .relicworth import worth as relic_worth
 from .events import _event_option_value, event  # noqa: F401  (events live in their own module)
 from ..cards import _card_key, deck_value, is_basic, is_junk, kind as _kind, parse as _parse
@@ -674,11 +674,11 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
             # times in 35, with one or none 5 in 24. And the gold kept back is
             # for a shop that comes after the boss, or never.
             floor = (state.get("run") or {}).get("floor")
-            boss_next = isinstance(floor, int) and any(0 < boss - floor <= 3 for boss in BOSS_FLOORS)
+            boss_next = isinstance(floor, int) and any(0 < boss - floor <= 3 for boss in boss_floors())
             # ... and all through act 3: nothing a Merchant sells there has longer than the last boss to pay
             # for itself, and that boss was met with one potion or none 14 times in 31 (never beaten so; one
             # run reached it holding one potion and 240 Gold).
-            boss_next = boss_next or (isinstance(floor, int) and floor > BOSS_FLOORS[1])
+            boss_next = boss_next or (isinstance(floor, int) and floor > boss_floors()[1])
             if belt_full:
                 want = -1.0
             elif boss_next:

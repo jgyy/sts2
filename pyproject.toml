@@ -1,7 +1,7 @@
 [project]
 name = "sts2bot"
 version = "0.1.0"
-description = "A bot that plays Slay the Spire 2 around the clock"
+description = "A bot that plays Slay the Spire 2 (or the first Slay the Spire) around the clock"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
@@ -15,7 +15,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["sts2bot", "sts2bot.fight", "sts2bot.run"]
+packages = ["sts2bot", "sts2bot.fight", "sts2bot.fight.fool", "sts2bot.run", "sts2bot.games", "sts2bot.games.sts1", "sts2bot.games.sts1.text"]
 
 [tool.ruff]
 line-length = 250
