@@ -26,8 +26,8 @@ from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from sts2bot.fight import battle, combat, triggers  # noqa: E402
-from tests.fake_game import card  # noqa: E402
+from sts2bot.fight import battle, combat, triggers
+from tests.fake_game import card
 
 HP = {"KIN_FOLLOWER_0": 63, "KIN_FOLLOWER_1": 62, "KIN_PRIEST_0": 199}
 

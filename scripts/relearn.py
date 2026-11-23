@@ -20,7 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from sts2bot import cards, learn  # noqa: E402
+from sts2bot import cards, learn
 
 LOGS = Path(os.path.expanduser(os.environ.get("STS2BOT_STATE", "~/.local/state/sts2bot/")))
 

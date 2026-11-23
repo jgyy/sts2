@@ -30,9 +30,9 @@ from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from sts2bot.fight import battle, combat  # noqa: E402
-from sts2bot import learn  # noqa: E402
-from tests.fake_game import card  # noqa: E402
+from sts2bot.fight import battle, combat
+from sts2bot import learn
+from tests.fake_game import card
 
 C_CYCLE = [(12, 1, False, False), (4, 1, False, False), (6, 2, False, True), (0, 0, False, False), (12, 1, True, False)]
 R_CYCLE = [(3, 1), (18, 1), (0, 0), (31, 1), (0, 0)]
@@ -112,7 +112,7 @@ def fight(deck_spec, energy, maxhp, rng, chp=206, rhp=196, trace=False):
             name = {'A': "Strike", 'B': "Defend", 'F': "Clumsy", 'H': "Heavy Blow", 'V': "Bash", 'W': "Clothesline"}
             text = {'A': f"Deal {da} damage.", 'B': f"Gain {db} Block.", 'F': "Unplayable.", 'H': f"Deal {int(2.2 * da)} damage.",
                     'V': f"Deal {da // 2} damage. Apply 2 Vulnerable.", 'W': f"Deal {da // 2} damage. Apply 2 Weak."}
-            pile = lambda cs: [{"name": name[c], "cost": "2" if c == 'H' else "1", "description": text[c]} for c in cs]  # noqa: E731
+            pile = lambda cs: [{"name": name[c], "cost": "2" if c == 'H' else "1", "description": text[c]} for c in cs]
             return {
                 "state_type": "boss", "run": {"act": 2, "floor": 33, "ascension": 7},
                 "battle": {"round": r, "turn": "player", "is_play_phase": True, "enemies": enemies},

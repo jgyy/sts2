@@ -8,7 +8,7 @@ from pathlib import Path
 
 MAX_LINES = 1000
 MAX_FILES = 10  # a directory's files (subdirectories not counted)
-SKIP = {"__pycache__", ".git", ".build", ".pytest_cache"}  # generated or not ours
+SKIP = {"__pycache__", ".git", ".build", ".pytest_cache", ".ruff_cache", ".venv"}  # generated or not ours
 ROOT = Path(__file__).resolve().parent.parent
 
 

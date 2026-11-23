@@ -1,17 +1,12 @@
-import json
-import tempfile
 import unittest
-from pathlib import Path
 
 from sts2bot.fight import battle, combat
 from sts2bot import learn
 from sts2bot.run import strategy
-from sts2bot.bot import Bot, Stuck
 from sts2bot.cards import deck_value, parse
-from sts2bot.run.strategy import Memory
 
 from ..fake_game import FakeGame, card
-from ..helpers import DEFEND, STRIKE, FakeClock, combat_state, enemy, make_bot  # noqa: F401
+from ..helpers import DEFEND, STRIKE, combat_state, enemy, make_bot
 
 
 class CardParsing(unittest.TestCase):
@@ -195,7 +190,6 @@ class CombatPlanning(unittest.TestCase):
         plain = card(0, "SOMETHING_NEW", "Something New", "Skill", 1, "Gain 8 Block. Draw 1 card.", "Self")
         from unittest import mock
 
-        from sts2bot import learn
 
         with mock.patch.dict(learn.KNOB, {"crowd": 0.0}):  # our own table (other players' runs rate Barricade high)
             self.assertGreater(deck_value(shrug), deck_value(plain))

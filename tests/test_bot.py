@@ -5,14 +5,13 @@ from unittest import mock
 from pathlib import Path
 
 from sts2bot.fight import combat
-from sts2bot import learn
 from sts2bot.run import strategy
 from sts2bot.bot import Bot, Stuck
-from sts2bot.cards import deck_value, parse
+from sts2bot.cards import parse
 from sts2bot.run.strategy import Memory
 
 from .fake_game import FakeGame, card
-from .helpers import DEFEND, STRIKE, FakeClock, combat_state, enemy, make_bot  # noqa: F401
+from .helpers import DEFEND, STRIKE, FakeClock, combat_state, enemy, make_bot
 
 
 class FullLoop(unittest.TestCase):
@@ -253,7 +252,9 @@ class FastMode(unittest.TestCase):
 
 class CrashRecovery(unittest.TestCase):
     def test_a_crashed_child_is_not_counted_as_running(self):
-        import subprocess, sys, time
+        import subprocess
+        import sys
+        import time
         from unittest import mock
         from sts2bot import supervisor
 
@@ -713,7 +714,8 @@ class ModUpkeep(unittest.TestCase):
     """A game update breaks the bridge mod; the supervisor rebuilds it by itself."""
 
     def test_load_failure_is_read_from_the_game_log(self):
-        import os, time
+        import os
+        import time
         from unittest import mock
         from sts2bot import supervisor
 
