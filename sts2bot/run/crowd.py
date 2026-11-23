@@ -160,10 +160,31 @@ def _ratings() -> dict:
 
 RATING = _ratings()
 
+# The Fool has no table on tierspire.com (checked 2026-11-23), so its cards have only a writer's tiers: gamerblurb.com's
+# "The Fool tier list" (14 Nov 2026, the first week of the beta, 79 cards: S 9, A 25, B 31, C 14). One opinion, not
+# runs, so the tiers are drawn in a little (S 7.2 to C 3.3; the means come to the same 5.0 as above). What they fix is
+# what cards.parse cannot read: it gave Cho Ready, Song Path and Violent Chord 1.7-2.8 (Aim and Melodies are no damage
+# and no Block) and Quick Shot, Heavy Shot, Rain Shot and Nail 5-9, though a Fool holds one Arrow; before this, 137
+# of 314 Fool picks were below the best tier on the screen. Tiers cross rarity (S: 1 Common, 5 Uncommon, 3 Rare).
+_FOOL_TIERS = {
+    7.2: "Wah Cho Ki, Motif, Song Path, Wrest, Cho Ready, Wah Cho, Quiver, Violent Chord, Mythic Form",
+    5.8: """Archery, Bow Smack, Cho Firm, Cho Ki, Coda, Explosive Arrows, Harmonic Shield, Hidden Roots, Ki Hop, Ki Rest,
+        Ki Verse, Ki Whip, Lullaby, Melodic Shot, Rhythm Strike, Rummage, Serrated Arrows, Sky Shot, Vitriol, Wah Blast,
+        Wah Hammer, Wah Ki, Wah Sweep, Wah Symphony, Yah!""",
+    4.5: """All Is Well, Anguish, Arrow Stab, Blossom Shot, Bounce, Brace, Cho Barbs, Cho Chorus, Cho Limbs, Deep Stretch,
+        Dislike You, Ecstasy, Encore, Ennui, Growth, Heavy Shot, Hobbling Shot, Honing, Ki Chant, Nail, Nock,
+        Punch of Joy, Rain Shot, Rapid Shot, Recall, Repeat Shot, Show Off, Steady Cadence, Uproot, Wah Touch,
+        Whistling Arrows""",
+    3.3: """Blot out the Sky, Brighten Up, Epic Retrieval, Florescence, Jest, Locked In, Mourning Blow, Quick Shot, Quietus,
+        Simpleton, Sorrowful Strike, Timber, Trick Shot, Tune""",
+}
+FOOL_RATING = {_key(name): value for value, names in _FOOL_TIERS.items() for name in re.split(r",\s*", " ".join(names.split()))}
+
 
 def rating(key: str) -> float | None:
     """What the crowd's numbers make a card worth, on the scale of cards._TIER (None: no numbers for it)."""
-    return RATING.get(key.replace("_S_", "S_") if key not in RATING else key)
+    got = RATING.get(key.replace("_S_", "S_") if key not in RATING else key)
+    return FOOL_RATING.get(key) if got is None else got
 
 
 # Which cards win together. The same site groups runs by how alike their final decks are and names each group
