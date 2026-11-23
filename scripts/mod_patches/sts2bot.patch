@@ -1,8 +1,33 @@
 diff --git a/McpMod.Actions.cs b/McpMod.Actions.cs
-index 2553f3f..fe291f7 100644
+index 2553f3f..7b74129 100644
 --- a/McpMod.Actions.cs
 +++ b/McpMod.Actions.cs
-@@ -665,6 +665,23 @@ public static partial class McpMod
+@@ -362,8 +362,10 @@ public static partial class McpMod
+             var merchUI = NMerchantRoom.Instance;
+             if (merchUI?.Inventory != null && !merchUI.Inventory.IsOpen)
+                 merchUI.OpenInventory();
+-            // v0.107 split the merchant into per-player inventories; take the local one.
+-            inventory = merchantRoom.GetLocalInventory();
++            // v0.107 split the merchant into per-player inventories; v0.113 moved them off the room.
++            // Take the shop screen's own (what AutoSlay's ShopRoomHandler buys from), else the synchronizer's.
++            inventory = NMerchantRoom.Instance?.Inventory?.Inventory
++                        ?? RunManager.Instance.MerchantSynchronizer?.GetLocalInventory();
+         }
+         else if (player.RunState.CurrentRoom is EventRoom eventRoom
+                  && eventRoom.CanonicalEvent is FakeMerchant
+@@ -413,8 +415,9 @@ public static partial class McpMod
+         if (!entry.EnoughGold)
+             return Error($"Not enough gold (need {entry.Cost}, have {player.Gold})");
+ 
+-        // Fire-and-forget purchase (same path as AutoSlay)
+-        _ = entry.OnTryPurchaseWrapper(inventory);
++        // Fire-and-forget purchase, the call AutoSlay's ShopRoomHandler makes in v0.113. (Going through
++        // MerchantSynchronizer.PurchaseLocalEntry instead killed the game within two seconds.)
++        _ = entry.OnTryPurchaseUnsynchronized(inventory, false);
+ 
+         return new Dictionary<string, object?>
+         {
+@@ -665,6 +668,23 @@ public static partial class McpMod
          if (overlay is not NCardGridSelectionScreen screen)
              return Error("No card selection screen is open");
  
@@ -26,7 +51,7 @@ index 2553f3f..fe291f7 100644
          // Check all preview containers (upgrade uses UpgradeSinglePreviewContainer / UpgradeMultiPreviewContainer,
          // NDeckCardSelectScreen uses PreviewContainer with %PreviewConfirm)
          foreach (var containerName in new[] { "%UpgradeSinglePreviewContainer", "%UpgradeMultiPreviewContainer", "%PreviewContainer" })
-@@ -689,7 +706,8 @@ public static partial class McpMod
+@@ -689,7 +709,8 @@ public static partial class McpMod
          // Try main confirm button
          var mainConfirm = screen.GetNodeOrNull<NConfirmButton>("Confirm")
                            ?? screen.GetNodeOrNull<NConfirmButton>("%Confirm");
@@ -36,7 +61,7 @@ index 2553f3f..fe291f7 100644
          {
              mainConfirm.ForceClick();
              return new Dictionary<string, object?>
-@@ -1094,14 +1112,19 @@ public static partial class McpMod
+@@ -1094,14 +1115,19 @@ public static partial class McpMod
          gameOver ??= FindAll<NGameOverScreen>(tree.Root).FirstOrDefault(IsNodeVisible);
          if (gameOver != null)
          {
@@ -60,7 +85,7 @@ index 2553f3f..fe291f7 100644
                  return result;
  
              var returnMethod = gameOver.GetType().GetMethod(
-@@ -1112,7 +1135,7 @@ public static partial class McpMod
+@@ -1112,7 +1138,7 @@ public static partial class McpMod
              if (returnMethod != null)
              {
                  returnMethod.Invoke(gameOver, null);
@@ -69,7 +94,7 @@ index 2553f3f..fe291f7 100644
              }
  
              return Error("Game-over main_menu option is not available");
-@@ -1181,6 +1204,25 @@ public static partial class McpMod
+@@ -1181,6 +1207,25 @@ public static partial class McpMod
              if (string.Equals(option, "advance", System.StringComparison.OrdinalIgnoreCase) ||
                  string.Equals(option, "proceed", System.StringComparison.OrdinalIgnoreCase))
              {
@@ -95,7 +120,7 @@ index 2553f3f..fe291f7 100644
                  // Check for timeline tutorial screen (first-time "Proceed" button).
                  var tutorial = FindFirst<NTimelineTutorial>(tree.Root);
                  if (tutorial != null && IsNodeVisible(tutorial))
-@@ -1223,8 +1265,8 @@ public static partial class McpMod
+@@ -1223,8 +1268,8 @@ public static partial class McpMod
                          closeClickable.ForceClick();
                          return new Dictionary<string, object?> { ["status"] = "ok", ["message"] = "Closed epoch inspect screen" };
                      }
@@ -106,7 +131,7 @@ index 2553f3f..fe291f7 100644
                  }
  
                  // Check for queued unlock screens.
-@@ -1232,12 +1274,49 @@ public static partial class McpMod
+@@ -1232,12 +1277,49 @@ public static partial class McpMod
                  if (queuedUnlockResult != null)
                      return queuedUnlockResult;
  
@@ -157,7 +182,7 @@ index 2553f3f..fe291f7 100644
                          ["pending_epoch_ids"] = unrevealedEpochs,
                          ["manual_action_required"] = true,
                          ["done"] = true
-@@ -1371,12 +1450,7 @@ public static partial class McpMod
+@@ -1371,12 +1453,7 @@ public static partial class McpMod
  
              // Main menu buttons
              var normalizedMainMenuOption = option.ToLowerInvariant();
@@ -255,7 +280,7 @@ index 0000000..02cf6e5
 +    }
 +}
 diff --git a/McpMod.StateBuilder.cs b/McpMod.StateBuilder.cs
-index 76eee84..2a48de6 100644
+index 76eee84..ff161de 100644
 --- a/McpMod.StateBuilder.cs
 +++ b/McpMod.StateBuilder.cs
 @@ -351,18 +351,7 @@ public static partial class McpMod
@@ -369,7 +394,17 @@ index 76eee84..2a48de6 100644
                          bool isReady = false;
                          try { isReady = lobby.IsPlayerReady(sp.NetId); } catch { }
                          players.Add(new Dictionary<string, object?>
-@@ -1933,6 +1945,12 @@ public static partial class McpMod
+@@ -1564,7 +1576,8 @@ public static partial class McpMod
+     {
+         var state = new Dictionary<string, object?>();
+ 
+-        var inventory = merchantRoom.GetLocalInventory();
++        var inventory = NMerchantRoom.Instance?.Inventory?.Inventory
++                        ?? RunManager.Instance.MerchantSynchronizer?.GetLocalInventory();
+         if (inventory == null)
+         {
+             state["items"] = new List<Dictionary<string, object?>>();
+@@ -1933,6 +1946,12 @@ public static partial class McpMod
          bool previewShowing = (previewSingle?.Visible ?? false)
                              || (previewMulti?.Visible ?? false)
                              || (previewGeneric?.Visible ?? false);
