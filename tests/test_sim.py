@@ -1,5 +1,6 @@
 """The model-run simulator (sim/): every first-game card plays without error, and a fight of each game runs to its end."""
 
+import importlib
 import logging
 import unittest
 
@@ -10,7 +11,6 @@ from sim.run import Run
 
 
 def _content(game: str):
-    import importlib
     games.select(game)
     return importlib.import_module(f"sim.content.{game}")
 
@@ -41,16 +41,12 @@ class Sim(unittest.TestCase):
                 f.enemies_turn()
 
     def test_a_fight_of_each_game_ends(self):
-        for game, character, foes in (("sts1", "WATCHER", ["CULTIST"]), ("sts2", "REGENT", ["NIBBIT"])):
+        for game, character, foes, kind in (("sts1", "WATCHER", ["CULTIST"], "monster"), ("sts2", "REGENT", ["NIBBIT"], 0)):
             mod = _content(game)
             run = Run(mod, character, 3)
             run.act_id = "OVERGROWTH"
             run.note_deck()
-            f = Fight(run, [mod._new(k, n, run, 0) if game == "sts2" else mod._new(k, n, run, "monster") for n, k in enumerate(foes)], "monster")
+            f = Fight(run, [mod._new(k, n, run, kind) for n, k in enumerate(foes)], "monster")
             f.run_fight()
             self.assertTrue(f.won or f.lost)
             self.assertGreater(f.round, 0)
-
-
-if __name__ == "__main__":
-    unittest.main()

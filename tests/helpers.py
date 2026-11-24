@@ -1,6 +1,5 @@
 """What the test files share: a clock that does not wait, and small builders for combat states."""
 
-
 from sts2bot.bot import Bot
 
 from .fake_game import card
@@ -23,22 +22,10 @@ def make_bot(game, **kw):
 
 
 def combat_state(hand, enemies, *, energy=3, hp=80, max_hp=80, block=0, kind="monster", potions=()):
-    return {
-        "state_type": kind,
-        "run": {"act": 1, "floor": 3, "ascension": 0},
-        "battle": {"round": 1, "turn": "player", "is_play_phase": True, "enemies": enemies},
-        "player": {
-            "hp": hp,
-            "max_hp": max_hp,
-            "block": block,
-            "energy": energy,
-            "hand": hand,
-            "potions": list(potions),
-            "draw_pile_count": 5,
-            "discard_pile_count": 0,
-            "exhaust_pile_count": 0,
-        },
-    }
+    player = {"hp": hp, "max_hp": max_hp, "block": block, "energy": energy, "hand": hand, "potions": list(potions),
+              "draw_pile_count": 5, "discard_pile_count": 0, "exhaust_pile_count": 0}
+    return {"state_type": kind, "run": {"act": 1, "floor": 3, "ascension": 0},
+            "battle": {"round": 1, "turn": "player", "is_play_phase": True, "enemies": enemies}, "player": player}
 
 
 def enemy(eid, hp, attack=None, block=0, status=()):

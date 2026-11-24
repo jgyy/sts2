@@ -21,9 +21,7 @@ class Direct(Sts1Client):
 
     def send(self, command):
         answer = self.fake.command(command)
-        if "error" in answer:
-            return {"status": "error", "error": answer["error"]}
-        return {"status": "ok", "message": answer}
+        return {"status": "error", "error": answer["error"]} if "error" in answer else {"status": "ok", "message": answer}
 
 
 class Sts1Case(unittest.TestCase):

@@ -1,9 +1,5 @@
-"""A tiny stand-in for the game that speaks the bridge mod's state/action shapes.
-
-It is not Slay the Spire: just enough screens (menu, map, combat, rewards,
-card reward, rest site, card select, game over) to drive the bot loop for
-several complete runs without the real game.
-"""
+"""A tiny stand-in for the game that speaks the bridge mod's state/action shapes. It is not Slay the Spire: just enough
+screens (menu, map, combat, rewards, card reward, rest site, card select, game over) to drive the bot loop for whole runs."""
 
 from __future__ import annotations
 
@@ -11,20 +7,8 @@ import random
 
 
 def card(index, cid, name, ctype, cost, desc, target="None", rarity="Common", **extra):
-    return {
-        "index": index,
-        "id": cid,
-        "name": name,
-        "type": ctype,
-        "cost": str(cost),
-        "star_cost": None,
-        "description": desc,
-        "target_type": target,
-        "can_play": True,
-        "is_upgraded": False,
-        "rarity": rarity,
-        **extra,
-    }
+    return {"index": index, "id": cid, "name": name, "type": ctype, "cost": str(cost), "star_cost": None, "description": desc,
+            "target_type": target, "can_play": True, "is_upgraded": False, "rarity": rarity, **extra}
 
 
 STRIKE = ("STRIKE_R", "Strike", "Attack", 1, "Deal 6 damage.", "AnyEnemy")
@@ -32,32 +16,25 @@ DEFEND = ("DEFEND_R", "Defend", "Skill", 1, "Gain 5 Block.", "Self")
 BASH = ("BASH", "Bash", "Attack", 2, "Deal 8 damage. Apply 2 Vulnerable.", "AnyEnemy")
 
 
+def _options(*names, off=()):
+    return [{"name": n, "enabled": n not in off} for n in names]
+
+
 class FakeGame:
     def __init__(self, seed: int = 0, floors: int = 4, enemy_hp: int = 30, enemy_attack: int = 9):
         self.rng = random.Random(seed)
-        self.floors = floors
-        self.enemy_hp = enemy_hp
-        self.enemy_attack = enemy_attack
+        self.floors, self.enemy_hp, self.enemy_attack = floors, enemy_hp, enemy_attack
         self.actions: list[tuple[str, dict]] = []
-        self.runs_started = 0
-        self.screen = "main"
-        self.character = None
-        self.has_save = False
-
-    # ------------------------------------------------------------ helpers
+        self.runs_started, self.screen, self.character, self.has_save = 0, "main", None, False
 
     def _new_run(self):
         self.runs_started += 1
-        self.floor = 0
-        self.hp = self.max_hp = 80
-        self.gold = 99
+        self.floor, self.hp, self.max_hp, self.gold = 0, 80, 80, 99
         self.deck = [STRIKE] * 5 + [DEFEND] * 4 + [BASH]
-        self.screen = "map"
-        self.has_save = True
+        self.screen, self.has_save = "map", True
 
     def _start_combat(self):
-        self.screen = "combat"
-        self.round = 0
+        self.screen, self.round = "combat", 0
         self.enemy = {"hp": self.enemy_hp, "block": 0, "vuln": 0}
         self.draw = list(self.deck)
         self.rng.shuffle(self.draw)
@@ -66,9 +43,7 @@ class FakeGame:
 
     def _start_turn(self):
         self.round += 1
-        self.energy = 3
-        self.block = 0
-        self.hand = []
+        self.energy, self.block, self.hand = 3, 0, []
         for _ in range(5):
             if not self.draw:
                 self.draw, self.discard = self.discard, []
@@ -77,39 +52,15 @@ class FakeGame:
                 self.hand.append(self.draw.pop())
 
     def _player(self, combat=False):
-        p = {
-            "character": "The Ironclad",
-            "hp": self.hp,
-            "max_hp": self.max_hp,
-            "block": getattr(self, "block", 0),
-            "gold": self.gold,
-            "status": [],
-            "relics": [{"id": "BURNING_BLOOD", "name": "Burning Blood"}],
-            "potions": [],
-            "max_potion_slots": 3,
-        }
+        p = {"character": "The Ironclad", "hp": self.hp, "max_hp": self.max_hp, "block": getattr(self, "block", 0), "gold": self.gold,
+             "status": [], "relics": [{"id": "BURNING_BLOOD", "name": "Burning Blood"}], "potions": [], "max_potion_slots": 3}
         if combat:
-            p.update(
-                energy=self.energy,
-                max_energy=3,
-                hand=[
-                    {**card(i, *c), "can_play": c[3] <= self.energy} for i, c in enumerate(self.hand)
-                ],
-                draw_pile_count=len(self.draw),
-                discard_pile_count=len(self.discard),
-                exhaust_pile_count=0,
-            )
+            p.update(energy=self.energy, max_energy=3, hand=[{**card(i, *c), "can_play": c[3] <= self.energy} for i, c in enumerate(self.hand)],
+                     draw_pile_count=len(self.draw), discard_pile_count=len(self.discard), exhaust_pile_count=0)
         return p
 
     def _wrap(self, kind, **body):
-        return {
-            "state_type": kind,
-            "run": {"act": 1, "floor": self.floor, "ascension": 0},
-            "player": self._player(kind in ("monster", "boss")),
-            **body,
-        }
-
-    # -------------------------------------------------------------- state
+        return {"state_type": kind, "run": {"act": 1, "floor": self.floor, "ascension": 0}, "player": self._player(kind in ("monster", "boss")), **body}
 
     def state(self) -> dict:
         s = self.screen
@@ -117,105 +68,38 @@ class FakeGame:
             opts = (["continue", "abandon_run"] if self.has_save else []) + ["singleplayer", "settings", "quit"]
             return {"state_type": "menu", "menu_screen": "main", "options": opts}
         if s == "singleplayer":
-            return {
-                "state_type": "menu",
-                "menu_screen": "singleplayer",
-                "options": [{"name": "standard", "enabled": True}, {"name": "back", "enabled": True}],
-            }
-        if s == "character_select":
-            return {
-                "state_type": "menu",
-                "menu_screen": "character_select",
-                "characters": [
-                    {"id": "IRONCLAD", "name": "The Ironclad", "locked": False},
-                    {"id": "SILENT", "name": "The Silent", "locked": True},
-                ],
-                "options": [
-                    {"name": "IRONCLAD", "enabled": True},
-                    {"name": "SILENT", "enabled": False},
-                    {"name": "confirm", "enabled": self.character is not None},
-                    {"name": "back", "enabled": True},
-                ],
-            }
+            return {"state_type": "menu", "menu_screen": s, "options": _options("standard", "back")}
         if s == "popup":
-            return {
-                "state_type": "menu",
-                "menu_screen": "popup",
-                "options": [{"name": "yes", "enabled": True}, {"name": "no", "enabled": True}],
-            }
+            return {"state_type": "menu", "menu_screen": s, "options": _options("yes", "no")}
+        if s == "character_select":
+            chars = [{"id": "IRONCLAD", "name": "The Ironclad", "locked": False}, {"id": "SILENT", "name": "The Silent", "locked": True}]
+            opts = _options("IRONCLAD", "SILENT", "confirm", "back", off=("SILENT",) if self.character is not None else ("SILENT", "confirm"))
+            return {"state_type": "menu", "menu_screen": s, "characters": chars, "options": opts}
         if s == "map":
             kinds = ["Monster", "RestSite"] if self.floor % 2 else ["Monster", "Monster"]
-            return self._wrap(
-                "map",
-                map={
-                    "next_options": [
-                        {"index": i, "col": i, "row": self.floor + 1, "type": k, "leads_to": []}
-                        for i, k in enumerate(kinds)
-                    ],
-                    "nodes": [],
-                },
-            )
+            nxt = [{"index": i, "col": i, "row": self.floor + 1, "type": k, "leads_to": []} for i, k in enumerate(kinds)]
+            return self._wrap("map", map={"next_options": nxt, "nodes": []})
         if s == "combat":
-            return self._wrap(
-                "monster",
-                battle={
-                    "round": self.round,
-                    "turn": "player",
-                    "is_play_phase": True,
-                    "enemies": [
-                        {
-                            "entity_id": "JAW_WORM_0",
-                            "name": "Jaw Worm",
-                            "hp": self.enemy["hp"],
-                            "max_hp": self.enemy_hp,
-                            "block": self.enemy["block"],
-                            "status": [{"id": "VULNERABLE_POWER", "amount": self.enemy["vuln"]}] if self.enemy["vuln"] else [],
-                            "intents": [{"type": "Attack", "label": str(self.enemy_attack)}],
-                        }
-                    ],
-                },
-            )
+            e = self.enemy
+            foe = {"entity_id": "JAW_WORM_0", "name": "Jaw Worm", "hp": e["hp"], "max_hp": self.enemy_hp, "block": e["block"],
+                   "status": [{"id": "VULNERABLE_POWER", "amount": e["vuln"]}] if e["vuln"] else [], "intents": [{"type": "Attack", "label": str(self.enemy_attack)}]}
+            return self._wrap("monster", battle={"round": self.round, "turn": "player", "is_play_phase": True, "enemies": [foe]})
         if s == "rewards":
             return self._wrap("rewards", rewards={"items": self.reward_items, "can_proceed": True})
         if s == "card_reward":
-            return self._wrap(
-                "card_reward",
-                card_reward={
-                    "cards": [
-                        card(0, "UPPERCUT", "Uppercut", "Attack", 2, "Deal 13 damage. Apply 1 Weak. Apply 1 Vulnerable.", "AnyEnemy", "Uncommon"),
-                        card(1, "STRIKE_R", "Strike", "Attack", 1, "Deal 6 damage.", "AnyEnemy", "Basic"),
-                    ],
-                    "can_skip": True,
-                },
-            )
+            offer = [card(0, "UPPERCUT", "Uppercut", "Attack", 2, "Deal 13 damage. Apply 1 Weak. Apply 1 Vulnerable.", "AnyEnemy", "Uncommon"),
+                     card(1, "STRIKE_R", "Strike", "Attack", 1, "Deal 6 damage.", "AnyEnemy", "Basic")]
+            return self._wrap("card_reward", card_reward={"cards": offer, "can_skip": True})
         if s == "rest":
-            return self._wrap(
-                "rest_site",
-                rest_site={
-                    "options": [
-                        {"index": 0, "id": "rest", "name": "Rest", "is_enabled": True},
-                        {"index": 1, "id": "smith", "name": "Smith", "is_enabled": True},
-                    ],
-                    "can_proceed": self.rested,
-                },
-            )
+            opts = [{"index": 0, "id": "rest", "name": "Rest", "is_enabled": True}, {"index": 1, "id": "smith", "name": "Smith", "is_enabled": True}]
+            return self._wrap("rest_site", rest_site={"options": opts, "can_proceed": self.rested})
         if s == "upgrade":
-            return self._wrap(
-                "card_select",
-                card_select={
-                    "screen_type": "upgrade",
-                    "prompt": "Choose a card to Upgrade.",
-                    "cards": [card(i, *c) for i, c in enumerate(self.deck)],
-                    "preview_showing": self.upgrade_pick is not None,
-                    "can_confirm": self.upgrade_pick is not None,
-                    "can_cancel": True,
-                },
-            )
+            picked = self.upgrade_pick is not None
+            return self._wrap("card_select", card_select={"screen_type": "upgrade", "prompt": "Choose a card to Upgrade.", "cards": [card(i, *c) for i, c in enumerate(self.deck)],
+                                                          "preview_showing": picked, "can_confirm": picked, "can_cancel": True})
         if s == "game_over":
             return self._wrap("game_over", game_over={"options": ["main_menu"]})
         raise AssertionError(s)
-
-    # ------------------------------------------------------------- action
 
     def act(self, action: str, **p) -> dict:
         self.actions.append((action, p))
@@ -238,8 +122,7 @@ class FakeGame:
             elif s == "main" and opt == "abandon_run" and self.has_save:
                 self.screen = "popup"
             elif s == "popup" and opt == "yes":
-                self.has_save = False
-                self.screen = "main"
+                self.has_save, self.screen = False, "main"
             elif s == "singleplayer" and opt == "standard":
                 self.screen, self.character = "character_select", None
             elif s == "character_select" and opt == "IRONCLAD":
@@ -270,18 +153,13 @@ class FakeGame:
             self.energy -= c[3]
             if c[2] == "Attack":
                 dmg = 13 if c[0] == "UPPERCUT" else int(c[4].split()[1])
-                if self.enemy["vuln"]:
-                    dmg = int(dmg * 1.5)
-                self.enemy["hp"] -= dmg
+                self.enemy["hp"] -= int(dmg * 1.5) if self.enemy["vuln"] else dmg
                 if c[0] in ("BASH", "UPPERCUT"):
                     self.enemy["vuln"] += 2
             else:
                 self.block += 5
             if self.enemy["hp"] <= 0:
-                self.reward_items = [
-                    {"index": 0, "type": "gold", "gold_amount": 20},
-                    {"index": 1, "type": "card"},
-                ]
+                self.reward_items = [{"index": 0, "type": "gold", "gold_amount": 20}, {"index": 1, "type": "card"}]
                 self.screen = "game_over" if self.floor >= self.floors else "rewards"
             return c[1]
         if s == "combat" and action == "end_turn":
@@ -301,7 +179,7 @@ class FakeGame:
             else:
                 self.screen = "card_reward"
             return item["type"]
-        if s == "rewards" and action == "proceed":
+        if action == "proceed" and (s == "rewards" or s == "rest" and self.rested):
             self.screen = "map"
             return "map"
         if s == "card_reward" and action == "select_card_reward":
@@ -315,14 +193,10 @@ class FakeGame:
             return "skip"
         if s == "rest" and action == "choose_rest_option" and not self.rested:
             if p["index"] == 0:
-                self.hp = min(self.max_hp, self.hp + 24)
-                self.rested = True
+                self.hp, self.rested = min(self.max_hp, self.hp + 24), True
             else:
                 self.screen, self.upgrade_pick = "upgrade", None
             return "rest"
-        if s == "rest" and action == "proceed" and self.rested:
-            self.screen = "map"
-            return "map"
         if s == "upgrade" and action == "select_card":
             self.upgrade_pick = p["index"]
             return "picked"
@@ -331,6 +205,5 @@ class FakeGame:
             return "upgraded"
         return None
 
-    # the Client interface the bot uses
-    def ping(self) -> bool:
+    def ping(self) -> bool:  # (the Client interface the bot uses)
         return True

@@ -1,22 +1,65 @@
+"""Tests of the choices between fights."""
+
+import random
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-from sts2bot.fight import combat
 from sts2bot import learn
-from sts2bot.run import strategy
-from sts2bot.cards import deck_value
+from sts2bot.cards import deck_value, upgrade_gain
+from sts2bot.fight import combat, handpick
+from sts2bot.run import crowd, events, strategy
 from sts2bot.run.strategy import Memory
 
 from ..fake_game import card
 from ..helpers import DEFEND, STRIKE, combat_state, enemy
 
 
+def c(cid, name, ctype, cost, text, **kw):
+    """A card as the deck lists it."""
+    return {"id": cid, "name": name, "type": ctype, "cost": cost, "description": text, **kw}
+
+
+IRON_STRIKE = c("STRIKE_IRONCLAD", "Strike", "Attack", 1, "Deal 6 damage.")
+IRON_DEFEND = c("DEFEND_IRONCLAD", "Defend", "Skill", 1, "Gain 5 Block.")
+STAR = "[star_icon.png]"
+
+
+def node(col, row, kind, *children):
+    return {"col": col, "row": row, "type": kind, "children": [list(x) for x in children]}
+
+
+def opt(index, col, row, kind):
+    return {"index": index, "col": col, "row": row, "type": kind}
+
+
+def item(index, category, price, stocked=True, **kw):
+    return {"index": index, "category": category, "price": price, "is_stocked": stocked, "can_afford": True, **kw}
+
+
+def boss_after(col, row, boss_col):
+    """What the bot remembers standing on the rest site at (col, row), the boss next."""
+    mem = Memory(boss_next=True)
+    mem.map_nodes = {(col, row): node(col, row, "RestSite", (boss_col, row + 1)), (boss_col, row + 1): node(boss_col, row + 1, "Boss")}
+    mem.map_at = (col, row)
+    return mem
+
+
+def picks(state):
+    """The cards a hand selection clicks on, in order."""
+    return [a[1]["card_index"] for a in strategy.hand_select(state, Memory()) if a[0] == "combat_select_card"]
+
+
+def character_select(locked, ascension=0, max_ascension=3):
+    """The character select screen ({id: locked}), with the confirm button lit."""
+    return {"state_type": "menu", "menu_screen": "character_select", "characters": [{"id": k, "locked": v} for k, v in locked.items()],
+            "options": [{"name": k, "enabled": True} for k, v in locked.items() if not v] + [{"name": "confirm", "enabled": True}],
+            "ascension": ascension, "max_ascension": max_ascension}
+
+
 class LearnedRatings(unittest.TestCase):
     def test_cards_that_went_far_rise_and_the_rest_fall(self):
-        from sts2bot import learn
-
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "card_stats.json"
             stats = learn.CardStats(path)
@@ -34,14 +77,9 @@ class LearnedRatings(unittest.TestCase):
             self.assertLessEqual(len(again.finals["The Silent"]), learn.HISTORY)
 
     def test_an_elite_met_hurt_costs_more_than_its_average(self):
-        from unittest import mock
-
         with mock.patch.dict(learn.KNOB, {"elite_worth": 2.5}):
-            way = [("Elite", 5), ("Monster", 6)]
-            healthy = strategy.path_value(way, 80, 80, 0, 2)
-            sore = strategy.path_value(way, 56, 80, 0, 2)  # 70%: 1 lost in 8
-            hurt = strategy.path_value(way, 48, 80, 0, 2)  # 60%: where a third of these fights were lost
-            low = strategy.path_value(way, 38, 80, 0, 2)
+            # At 70% HP one of these fights was lost in 8; at 60%, a third of them.
+            healthy, sore, hurt, low = [strategy.path_value([("Elite", 5), ("Monster", 6)], hp, 80, 0, 2) for hp in (80, 56, 48, 38)]
         self.assertLess(sore, healthy - 2.0)
         self.assertLess(hurt, healthy - 5.0)
         self.assertLess(low, hurt - 5.0)
@@ -57,42 +95,39 @@ class LearnedRatings(unittest.TestCase):
 
     def test_an_act_3_elite_is_a_fifth_of_a_run_and_its_relic_has_one_boss_left(self):
         # Sixteen met on Ascension 5-6: three ended the run there, two more left it to die in the next room.
-        with_elite = [("Elite", 9), ("RestSite", 10), ("Monster", 11), ("RestSite", 12), ("Boss", 13)]
-        without = [("Unknown", 9), ("RestSite", 10), ("Monster", 11), ("RestSite", 12), ("Boss", 13)]
+        on = [("RestSite", 10), ("Monster", 11), ("RestSite", 12), ("Boss", 13)]
+        with_elite, without = [("Elite", 9)] + on, [("Unknown", 9)] + on
         with mock.patch.dict(learn.KNOB, {"elite_worth": 6.0, "upgrade_worth": 2.5}):
             self.assertLess(strategy.path_value(with_elite, 98, 100, 0, 3), strategy.path_value(without, 98, 100, 0, 3))
             # ... while in act 2 the same choice still goes to the elite (its relic has an act and a half to pay).
             self.assertGreater(strategy.path_value(with_elite, 98, 100, 0, 2), strategy.path_value(without, 98, 100, 0, 2))
 
     def test_hp_given_up_in_an_act_3_event_costs_more(self):
-        from sts2bot.run import events
         mushroom = {"title": "Fragrant Mushroom", "description": "Lose 15 HP. Upgrade 2 random cards."}
         early, late = events._event_option_value(mushroom, 60, 80, act=2), events._event_option_value(mushroom, 60, 80, act=3)
         self.assertAlmostEqual(early - late, 12.0 * 15 / 60 * (events.ACT3_HP - 1.0))
         self.assertEqual(events._event_option_value(mushroom, 60, 80), early)
 
     def test_star_makers_are_worth_less_once_nothing_spends_their_stars(self):
-        venerate = lambda i: card(i, "VENERATE", "Venerate", "Skill", 1, "Gain [star_icon.png][star_icon.png].", "Self")
+        venerate = lambda i: card(i, "VENERATE", "Venerate", "Skill", 1, f"Gain {STAR}{STAR}.", "Self")
         deck = [venerate(0), venerate(1), STRIKE(2), STRIKE(3)]  # makes 4 Stars a cycle, spends none
-        cache = card(9, "HIDDEN_CACHE", "Hidden Cache", "Skill", 1, "Gain [star_icon.png]. Next turn, gain [star_icon.png][star_icon.png][star_icon.png].", "Self")
+        cache = card(9, "HIDDEN_CACHE", "Hidden Cache", "Skill", 1, f"Gain {STAR}. Next turn, gain {STAR}{STAR}{STAR}.", "Self")
         self.assertLess(strategy.deck_fit(cache, deck), -0.4)
         self.assertEqual(strategy.deck_fit(cache, [STRIKE(0)]), 0.0)  # an empty star bank still wants makers
 
     def test_a_deck_short_of_stars_wants_makers_not_one_more_card_that_spends_them(self):
         star = lambda i, name, need, text: {**card(i, name.upper().replace(" ", "_"), name, "Attack", 0, text, "AnyEnemy"), "star_cost": need}
-        venerate = card(0, "VENERATE", "Venerate", "Skill", 1, "Gain [star_icon.png][star_icon.png].", "Self")
-        blow = card(1, "KNOCKOUT_BLOW", "Knockout Blow", "Attack", 3, "Deal 30 damage. If this kills an enemy, gain " + "[star_icon.png]" * 5 + ".", "AnyEnemy")
+        venerate = card(0, "VENERATE", "Venerate", "Skill", 1, f"Gain {STAR}{STAR}.", "Self")
+        blow = card(1, "KNOCKOUT_BLOW", "Knockout Blow", "Attack", 3, "Deal 30 damage. If this kills an enemy, gain " + STAR * 5 + ".", "AnyEnemy")
         deck = [venerate, blow, star(2, "Falling Star", 2, "Deal 8 damage."), star(3, "Astral Pulse", 3, "Deal 6 damage to ALL enemies twice."), STRIKE(4)]
         # Needs 5 Stars a cycle and makes 3 (the Blow's five come with a kill: one), plus the one the fight starts with.
-        seven = star(9, "Seven Stars", 7, "Deal 7 damage to ALL enemies 7 times.")
-        self.assertLess(strategy.deck_fit(seven, deck), -3.5)
-        glow = card(8, "GLOW", "Glow", "Skill", 1, "Gain [star_icon.png]. Draw 1 card. Next turn, draw 1 card.", "Self")
+        self.assertLess(strategy.deck_fit(star(9, "Seven Stars", 7, "Deal 7 damage to ALL enemies 7 times."), deck), -3.5)
+        glow = card(8, "GLOW", "Glow", "Skill", 1, f"Gain {STAR}. Draw 1 card. Next turn, draw 1 card.", "Self")
         self.assertGreater(strategy.deck_fit(glow, deck), 0.4)
 
     def test_a_strike_is_removed_before_a_defend(self):
         cards_ = [DEFEND(0), STRIKE(1), card(2, "POMMEL_STRIKE", "Pommel Strike", "Attack", 1, "Deal 9 damage. Draw 1 card.", "AnyEnemy")]
-        order = strategy._pick_order(cards_, "Choose a card to Remove.")
-        self.assertEqual([c["index"] for c in order], [1, 0, 2])
+        self.assertEqual([x["index"] for x in strategy._pick_order(cards_, "Choose a card to Remove.")], [1, 0, 2])
 
     def test_an_attack_is_worth_more_to_a_deck_that_cannot_kill(self):
         attack = card(0, "DEFILE", "Defile", "Attack", 1, "Ethereal. Deal 13 damage.", "AnyEnemy")
@@ -112,21 +147,16 @@ class LearnedRatings(unittest.TestCase):
         self.assertGreater(strategy.deck_fit(attack, soft, 2), 1.0)
 
     def test_the_first_attack_of_a_run_comes_before_what_pays_off_later(self):
-        strike = {"id": "STRIKE_REGENT", "name": "Strike", "type": "Attack", "cost": 1, "description": "Deal 6 damage."}
-        defend = {"id": "DEFEND_REGENT", "name": "Defend", "type": "Skill", "cost": 1, "description": "Gain 5 Block."}
-        star = {"id": "FALLING_STAR", "name": "Falling Star", "type": "Attack", "cost": 0, "star_cost": 2, "description": "Deal 8 damage. Apply 1 Weak. Apply 1 Vulnerable."}
-        attack = {"id": "KINGLY_PUNCH", "name": "Kingly Punch", "type": "Attack", "cost": 1, "description": "Deal 8 damage."}
-        starter = [strike] * 4 + [defend] * 4 + [star]
+        defend = c("DEFEND_REGENT", "Defend", "Skill", 1, "Gain 5 Block.")
+        attack = c("KINGLY_PUNCH", "Kingly Punch", "Attack", 1, "Deal 8 damage.")
+        star = c("FALLING_STAR", "Falling Star", "Attack", 0, "Deal 8 damage. Apply 1 Weak. Apply 1 Vulnerable.", star_cost=2)
+        starter = [c("STRIKE_REGENT", "Strike", "Attack", 1, "Deal 6 damage.")] * 4 + [defend] * 4 + [star]
         first = strategy.deck_fit(attack, starter, 1)
         self.assertGreaterEqual(first, 3.0)  # (the Regent's own Falling Star is not one it has taken)
         second = strategy.deck_fit(attack, starter + [{**attack, "id": "OTHER", "name": "Other"}], 1)
         self.assertLessEqual(second, 2.0)
         self.assertLessEqual(strategy.deck_fit(attack, starter, 2), 2.0)  # act 1 only
         # How hard a deck short of damage leans to attacks is a setting under test.
-        from unittest import mock
-
-        from sts2bot import learn
-
         soft = starter + [{**defend, "id": f"B{i}", "name": f"B{i}"} for i in range(8)] + [{**attack, "id": "OTHER", "name": "Other"}]
         with mock.patch.dict(learn.KNOB, {"punch": 1.8}):
             self.assertGreater(strategy.deck_fit(attack, soft, 2), 3.0)
@@ -134,13 +164,8 @@ class LearnedRatings(unittest.TestCase):
             self.assertLessEqual(strategy.deck_fit(attack, soft, 2), 2.0)
 
     def test_the_first_two_sources_of_weak_are_wanted_under_the_setting(self):
-        from unittest import mock
-
-        from sts2bot import learn
-
-        skill = lambda name, text: {"id": name.upper(), "name": name, "type": "Skill", "cost": 1, "description": text}
-        weak, other = skill("Sap", "Apply 2 Weak."), skill("Guard", "Gain 8 Block.")
-        deck = [{"id": "STRIKE_IRONCLAD", "name": "Strike", "type": "Attack", "cost": 1, "description": "Deal 6 damage."}] * 9
+        skill = lambda name, text: c(name.upper(), name, "Skill", 1, text)
+        weak, other, deck = skill("Sap", "Apply 2 Weak."), skill("Guard", "Gain 8 Block."), [IRON_STRIKE] * 9
         plain, plain_other = strategy.deck_fit(weak, deck, 2), strategy.deck_fit(other, deck, 2)
         with mock.patch.dict(learn.KNOB, {"weak_want": 1.0}):
             self.assertAlmostEqual(strategy.deck_fit(weak, deck, 2), plain + 1.0)
@@ -149,44 +174,31 @@ class LearnedRatings(unittest.TestCase):
             self.assertAlmostEqual(strategy.deck_fit(weak, held, 2), strategy.deck_fit(other, held, 2))  # two held: no more than any card
 
     def test_the_first_block_cards_beyond_the_defends_are_wanted_under_the_setting(self):
-        from unittest import mock
-
-        from sts2bot import learn
-
-        strike = {"id": "STRIKE_IRONCLAD", "name": "Strike", "type": "Attack", "cost": 1, "description": "Deal 6 damage."}
-        defend = {"id": "DEFEND_IRONCLAD", "name": "Defend", "type": "Skill", "cost": 1, "description": "Gain 5 Block."}
         guard = lambda i: {"name": f"Guard {i}", "cost": 1, "description": "Gain 8 Block."}  # (as the draw pile lists a card)
-        offer = {"id": "SHRUG_IT_OFF", "name": "Shrug It Off", "type": "Skill", "cost": 1, "description": "Gain 8 Block. Draw 1 card."}
-        other = {"id": "SAP", "name": "Sap", "type": "Skill", "cost": 1, "description": "Draw 2 cards."}
+        offer = c("SHRUG_IT_OFF", "Shrug It Off", "Skill", 1, "Gain 8 Block. Draw 1 card.")
+        other = c("SAP", "Sap", "Skill", 1, "Draw 2 cards.")
         # The Defends are not Block cards the deck took, upgraded or not.
-        base = [strike] * 5 + [defend] * 4 + [{"name": "Defend+", "cost": 1, "description": "Gain 8 Block."}]
+        base = [IRON_STRIKE] * 5 + [IRON_DEFEND] * 4 + [{"name": "Defend+", "cost": 1, "description": "Gain 8 Block."}]
         self.assertFalse(any(map(strategy._blocks, base)))
         plain = strategy.deck_fit(offer, base, 1)
         with mock.patch.dict(learn.KNOB, {"block_want": 1.5}):
             held = [strategy.deck_fit(offer, base + [guard(i) for i in range(n)], 1) for n in (0, 1, 2, 3)]
             self.assertAlmostEqual(strategy.deck_fit(other, base, 1), strategy.deck_fit(other, base + [guard(0)], 1))  # (no other card moves)
             # A deck of 24 has room for one more.
-            big = base + [strike] * 12 + [guard(0), guard(1)]
+            big = base + [IRON_STRIKE] * 12 + [guard(0), guard(1)]
             self.assertAlmostEqual(strategy.deck_fit(offer, big, 2) - strategy.deck_fit(other, big, 2), 1.5)
             # One that costs more than a turn's energy is not wanted for it.
-            dear = {"id": "BULWARK", "name": "Bulwark", "type": "Skill", "cost": 4, "description": "Gain 30 Block."}
-            self.assertLess(strategy.deck_fit(dear, base, 1), 0.0)
+            self.assertLess(strategy.deck_fit(c("BULWARK", "Bulwark", "Skill", 4, "Gain 30 Block."), base, 1), 0.0)
         self.assertAlmostEqual(held[0], plain + 1.5)
         self.assertAlmostEqual(held[1], held[0])  # the second as much as the first
         self.assertAlmostEqual(held[2], plain + 0.75)  # half for the third
         self.assertAlmostEqual(held[3], plain)  # and then a Block card is worth what it is rated
 
     def test_the_lean_to_attacks_lets_go_once_the_deck_has_its_share_under_the_setting(self):
-        from unittest import mock
-
-        from sts2bot import learn
-
-        strike = {"id": "STRIKE_IRONCLAD", "name": "Strike", "type": "Attack", "cost": 1, "description": "Deal 6 damage."}
-        defend = {"id": "DEFEND_IRONCLAD", "name": "Defend", "type": "Skill", "cost": 1, "description": "Gain 5 Block."}
         hit = lambda i: {"name": f"Hit {i}", "cost": 1, "description": "Deal 9 damage."}  # (as the draw pile lists a card: no id, no type)
-        offer = {"id": "NEW_HIT", "name": "New Hit", "type": "Attack", "cost": 1, "description": "Deal 10 damage."}
+        offer = c("NEW_HIT", "New Hit", "Attack", 1, "Deal 10 damage.")
         # Upgraded Strikes are not cards the deck took: they leave the room as it was.
-        base = [strike] * 3 + [{"name": "Strike+", "cost": 1, "description": "Deal 9 damage."}] * 2 + [defend] * 9
+        base = [IRON_STRIKE] * 3 + [{"name": "Strike+", "cost": 1, "description": "Deal 9 damage."}] * 2 + [IRON_DEFEND] * 9
         self.assertEqual(strategy._hitters(base + [hit(0), hit(1)]), 2)
         with mock.patch.dict(learn.KNOB, {"punch": 1.8}):
             always = [strategy.deck_fit(offer, base + [hit(i) for i in range(n)], 2) for n in (3, 6)]
@@ -194,38 +206,31 @@ class LearnedRatings(unittest.TestCase):
                 capped = [strategy.deck_fit(offer, base + [hit(i) for i in range(n)], 2) for n in (3, 4, 5, 6)]
         self.assertGreater(always[1], 1.5)  # (without the setting a deck of six such attacks still leans to a seventh)
         self.assertAlmostEqual(capped[0], always[0])  # three held: the lean in full
-        self.assertGreater(capped[0], capped[1])
-        self.assertGreater(capped[1], capped[2])
-        self.assertGreater(capped[2], capped[3])
+        for more, fewer in zip(capped, capped[1:]):
+            self.assertGreater(more, fewer)
         self.assertAlmostEqual(capped[3], 0.0)  # six held: an attack is worth what it is rated, no more
 
     def test_a_card_is_worth_more_beside_the_cards_other_players_win_with_it(self):
-        def card(name):
-            return {"id": name.upper().replace(" ", "_"), "name": name, "type": "Power", "cost": 1, "description": "Whenever a card is Exhausted, draw 1 card."}
-
-        deck = [{"id": "STRIKE_IRONCLAD", "name": "Strike", "type": "Attack", "cost": 1, "description": "Deal 6 damage."}] * 9
-        deck += [{"id": "TRUE_GRIT", "name": "True Grit", "type": "Skill", "cost": 1, "description": "Gain 7 Block. Exhaust a random card in your Hand."}] * 2
-        alone = strategy.deck_fit(card("Dark Embrace"), deck, 2)
-        beside = strategy.deck_fit(card("Dark Embrace"), deck + [card("Feel No Pain")], 2)
+        power = lambda name: c(name.upper().replace(" ", "_"), name, "Power", 1, "Whenever a card is Exhausted, draw 1 card.")
+        deck = [IRON_STRIKE] * 9 + [c("TRUE_GRIT", "True Grit", "Skill", 1, "Gain 7 Block. Exhaust a random card in your Hand.")] * 2
+        alone = strategy.deck_fit(power("Dark Embrace"), deck, 2)
+        beside = strategy.deck_fit(power("Dark Embrace"), deck + [power("Feel No Pain")], 2)
         self.assertGreater(beside, alone + 1.0)
         # A card of no such group gains nothing from it.
-        self.assertEqual(strategy.deck_fit(card("Barricade"), deck + [card("Feel No Pain")], 2), strategy.deck_fit(card("Barricade"), deck, 2))
+        self.assertEqual(strategy.deck_fit(power("Barricade"), deck + [power("Feel No Pain")], 2), strategy.deck_fit(power("Barricade"), deck, 2))
 
     def test_a_card_dearer_than_a_turns_energy_is_not_the_damage_a_deck_is_short_of(self):
-        strike = {"id": "STRIKE_NECROBINDER", "name": "Strike", "type": "Attack", "cost": 1, "description": "Deal 6 damage."}
-        defend = {"id": "DEFEND_NECROBINDER", "name": "Defend", "type": "Skill", "cost": 1, "description": "Gain 5 Block."}
-        bury = {"id": "BURY", "name": "Bury", "type": "Attack", "cost": 4, "description": "Deal 52 damage."}
-        kick = {"id": "KINGLY_KICK", "name": "Kingly Kick", "type": "Attack", "cost": 4, "description": "Deal 27 damage. Whenever you draw this card, reduce its cost by 1."}
-        wisp = {"id": "WISP", "name": "Wisp", "type": "Skill", "cost": 0, "description": "Gain [necrobinder_energy_icon.png]. Exhaust."}
-        deck = [strike] * 4 + [defend] * 4 + [{**strike, "id": "REAVE", "name": "Reave", "description": "Deal 10 damage."}]
+        strike = c("STRIKE_NECROBINDER", "Strike", "Attack", 1, "Deal 6 damage.")
+        bury = c("BURY", "Bury", "Attack", 4, "Deal 52 damage.")
+        kick = c("KINGLY_KICK", "Kingly Kick", "Attack", 4, "Deal 27 damage. Whenever you draw this card, reduce its cost by 1.")
+        wisp = c("WISP", "Wisp", "Skill", 0, "Gain [necrobinder_energy_icon.png]. Exhaust.")
+        deck = [strike] * 4 + [c("DEFEND_NECROBINDER", "Defend", "Skill", 1, "Gain 5 Block.")] * 4 + [{**strike, "id": "REAVE", "name": "Reave", "description": "Deal 10 damage."}]
         self.assertLessEqual(strategy.deck_fit(bury, deck, 2), -3.0)  # 13 damage an energy on paper, and never played
         self.assertGreater(strategy.deck_fit(bury, deck, 2, 4), 0.0)  # with a fourth energy it is what the deck wants
         self.assertGreater(strategy.deck_fit(bury, deck + [wisp, wisp], 2), strategy.deck_fit(bury, deck, 2))
         self.assertGreaterEqual(strategy.deck_fit(kick, deck, 2), 0.0)  # one that gets cheaper is not held against
 
     def test_a_card_is_judged_against_the_characters_other_picks(self):
-        from sts2bot import learn
-
         stats = learn.CardStats(None)
         # Every pick "beat the usual" (the bot got better meanwhile); Slice only by a little.
         stats.cards["The Silent"] = {"FOOTWORK": [120.0, 1200.0], "SLICE": [120.0, 240.0]}
@@ -250,8 +255,6 @@ class EndOfRun(unittest.TestCase):
 
 class Upgrades(unittest.TestCase):
     def test_the_upgrade_that_adds_most_is_taken(self):
-        from sts2bot.cards import upgrade_gain
-
         strike = (card(0, "STRIKE_R", "Strike", "Attack", 1, "Deal 6 damage.", "AnyEnemy"), {"type": "Attack", "cost": 1, "description": "Deal 9 damage."})
         big = (card(1, "DEVASTATE", "Devastate", "Attack", 1, "Deal 35 damage.", "AnyEnemy"), {"type": "Attack", "cost": 1, "description": "Deal 47 damage."})
         cheap = (card(2, "X", "Body Slam", "Attack", 1, "Deal damage equal to your Block.", "AnyEnemy"), {"type": "Attack", "cost": 0, "description": "Deal damage equal to your Block."})
@@ -260,7 +263,7 @@ class Upgrades(unittest.TestCase):
         self.assertEqual(upgrade_gain(*cheap), 6.0)  # a point of energy saved on every play
         table = {"STRIKE_R": 3.0, "DEVASTATE": 12.0, "SHRUG_IT_OFF": 3.0}
         shrug = card(3, "SHRUG_IT_OFF", "Shrug It Off", "Skill", 1, "Gain 8 Block. Draw 1 card.", "Self")
-        mem = Memory(upgrade_gain=lambda c: table.get(c["id"]))
+        mem = Memory(upgrade_gain=lambda x: table.get(x["id"]))
         state = {"state_type": "card_select", "run": {"act": 1, "floor": 6},
                  "card_select": {"screen_type": "upgrade", "prompt": "Choose a card to Upgrade.", "cards": [strike[0], shrug, big[0]]}}
         first = next(a for a in strategy.card_select(state, mem) if a[0] == "select_card")
@@ -269,10 +272,6 @@ class Upgrades(unittest.TestCase):
 
 class Tuning(unittest.TestCase):
     def test_settings_that_do_well_get_used_more(self):
-        import random
-        from unittest import mock
-        from sts2bot import learn
-
         # (Whatever is on trial just now: the sampler is what is tested, on a setting with two values.)
         with tempfile.TemporaryDirectory() as d, mock.patch.dict(learn.KNOB), mock.patch.dict(learn.CHOICES, {"caution": [0.75, 1.0]}):
             knobs = learn.Knobs(Path(d) / "tuning.json", rng=random.Random(1))
@@ -285,43 +284,33 @@ class Tuning(unittest.TestCase):
 
 
 class Strategy(unittest.TestCase):
-    def base(self, kind, hp=80, gold=100, **body):
-        return {"state_type": kind, "run": {"act": 1, "floor": 5}, "player": {"hp": hp, "max_hp": 80, "gold": gold, "potions": []}, **body}
+    def base(self, kind, hp=80, gold=100, act=1, max_hp=80, **body):
+        return {"state_type": kind, "run": {"act": act, "floor": 5}, "player": {"hp": hp, "max_hp": max_hp, "gold": gold, "potions": []}, **body}
+
+    def rest(self, hp, ids=("REST", "SMITH"), **kw):
+        return self.base("rest_site", hp=hp, rest_site={"options": [{"index": i, "id": x, "is_enabled": True} for i, x in enumerate(ids)]}, **kw)
+
+    def shop(self, gold, *items, **kw):
+        return self.base("shop", gold=gold, shop={"items": list(items), "can_proceed": True}, **kw)
 
     def test_map_avoids_elite_when_hurt_and_takes_it_when_healthy(self):
-        m = {
-            "next_options": [{"index": 0, "col": 0, "row": 1, "type": "Elite"}, {"index": 1, "col": 1, "row": 1, "type": "Monster"}],
-            "nodes": [
-                {"col": 0, "row": 1, "type": "Elite", "children": []},
-                {"col": 1, "row": 1, "type": "Monster", "children": []},
-            ],
-        }
-        hurt, healthy = self.base("map", hp=30, map=m), self.base("map", hp=80, map=m)
-        hurt["run"]["act"] = healthy["run"]["act"] = 2  # early act 1 elites are avoided regardless
+        m = {"next_options": [opt(0, 0, 1, "Elite"), opt(1, 1, 1, "Monster")], "nodes": [node(0, 1, "Elite"), node(1, 1, "Monster")]}
+        hurt, healthy = self.base("map", hp=30, act=2, map=m), self.base("map", hp=80, act=2, map=m)  # (early act 1 elites are avoided regardless)
         self.assertEqual(strategy.map_screen(hurt, Memory())[0][1], {"index": 1})
         self.assertEqual(strategy.map_screen(healthy, Memory())[0][1], {"index": 0})
 
     def test_map_looks_ahead(self):
-        m = {
-            "next_options": [{"index": 0, "col": 0, "row": 1, "type": "Monster"}, {"index": 1, "col": 1, "row": 1, "type": "Monster"}],
-            "nodes": [
-                {"col": 0, "row": 1, "type": "Monster", "children": [[0, 2]]},
-                {"col": 1, "row": 1, "type": "Monster", "children": [[1, 2]]},
-                {"col": 0, "row": 2, "type": "Monster", "children": []},
-                {"col": 1, "row": 2, "type": "Treasure", "children": []},
-            ],
-        }
+        m = {"next_options": [opt(0, 0, 1, "Monster"), opt(1, 1, 1, "Monster")],
+             "nodes": [node(0, 1, "Monster", (0, 2)), node(1, 1, "Monster", (1, 2)), node(0, 2, "Monster"), node(1, 2, "Treasure")]}
         self.assertEqual(strategy.map_screen(self.base("map", map=m), Memory())[0][1], {"index": 1})
 
     def test_badly_hurt_an_elite_is_never_the_way_on_while_there_is_another(self):
-        # 14 of 76 HP in act 2: both roads are dead on paper (-67.1 and -72.2), and the elite's relic and the
-        # rest site behind it tipped it. The Unknown room is a fight one time in five; the elite always is.
-        nodes = [{"col": 2, "row": 10, "type": "Elite", "children": [[2, 11]]}, {"col": 3, "row": 10, "type": "Unknown", "children": [[3, 11]]},
-                 {"col": 2, "row": 11, "type": "RestSite", "children": [[2, 12]]}, {"col": 3, "row": 11, "type": "Monster", "children": [[2, 12]]},
-                 {"col": 2, "row": 12, "type": "Monster", "children": [[2, 13]]}, {"col": 2, "row": 13, "type": "Boss", "children": []}]
-        opts = [{"index": 0, "col": 2, "row": 10, "type": "Elite"}, {"index": 1, "col": 3, "row": 10, "type": "Unknown"}]
-        state = self.base("map", hp=14, map={"next_options": opts, "nodes": nodes})
-        state["player"]["max_hp"], state["run"]["act"] = 76, 2
+        # 14 of 76 HP in act 2: both roads are dead on paper (-67.1 and -72.2), and the elite's relic and the rest site
+        # behind it tipped it. The Unknown room is a fight one time in five; the elite always is.
+        nodes = [node(2, 10, "Elite", (2, 11)), node(3, 10, "Unknown", (3, 11)), node(2, 11, "RestSite", (2, 12)), node(3, 11, "Monster", (2, 12)),
+                 node(2, 12, "Monster", (2, 13)), node(2, 13, "Boss")]
+        opts = [opt(0, 2, 10, "Elite"), opt(1, 3, 10, "Unknown")]
+        state = self.base("map", hp=14, max_hp=76, act=2, map={"next_options": opts, "nodes": nodes})
         with mock.patch.dict(learn.KNOB, {"elite_worth": 6.0}):
             self.assertEqual(strategy.map_screen(state, Memory())[0][1], {"index": 1})
             with mock.patch.object(strategy, "ELITE_FLOOR", 0.0):
@@ -330,29 +319,21 @@ class Strategy(unittest.TestCase):
             self.assertEqual(strategy.map_screen(state, Memory())[0][1], {"index": 0})
 
     def test_route_keeps_enough_health_for_the_boss(self):
-        # An elite right before the boss costs more than its relic is worth, even from
-        # full health. With a rest site in between an act 1 elite (20 HP) is paid for:
-        # from 80% HP up a boss is beaten as often as from full. An act 2 elite (27 HP)
+        # An elite right before the boss costs more than its relic is worth, even from full health. With a rest site in between
+        # an act 1 elite (20 HP) is paid for: from 80% HP up a boss is beaten as often as from full. An act 2 elite (27 HP)
         # needs two, and nothing pays for one met badly hurt.
-        def route(mid):
-            mids = mid.split("+")
-            nodes = [{"col": 0, "row": 12, "type": "Elite", "children": [[0, 13]]}, {"col": 1, "row": 12, "type": "Monster", "children": [[0, 13]]}]
-            nodes += [{"col": 0, "row": 13 + n, "type": kind, "children": [[0, 14 + n]]} for n, kind in enumerate(mids)]
-            nodes += [{"col": 0, "row": 13 + len(mids), "type": "Boss", "children": []}]
-            opts = [{"index": 0, "col": 0, "row": 12, "type": "Elite"}, {"index": 1, "col": 1, "row": 12, "type": "Monster"}]
-            return {"next_options": opts, "nodes": nodes}
-
         def pick(hp, mid, act=1):
-            state = self.base("map", hp=hp, map=route(mid))
-            state["run"]["act"] = act
-            return strategy.map_screen(state, Memory())[0][1]["index"]
+            mids = mid.split("+")
+            nodes = [node(0, 12, "Elite", (0, 13)), node(1, 12, "Monster", (0, 13))] + [node(0, 13 + n, kind, (0, 14 + n)) for n, kind in enumerate(mids)]
+            route = {"next_options": [opt(0, 0, 12, "Elite"), opt(1, 1, 12, "Monster")], "nodes": nodes + [node(0, 13 + len(mids), "Boss")]}
+            return strategy.map_screen(self.base("map", hp=hp, act=act, map=route), Memory())[0][1]["index"]
 
         self.assertEqual(pick(80, "Unknown"), 1)
         with mock.patch.dict(learn.KNOB, {"elite_worth": 6.0}):  # (the worth in force; at 2.5 the monster and an upgrade win in act 1)
             self.assertEqual(pick(80, "RestSite"), 0)
         self.assertEqual(pick(60, "RestSite"), 1)
         self.assertEqual(pick(80, "RestSite", act=2), 1)
-        with mock.patch.dict(learn.KNOB, {"elite_worth": 4.0}):  # (since 2026-11-22's act 2 curve, 18.2 against 18.3 at 2.5)
+        with mock.patch.dict(learn.KNOB, {"elite_worth": 4.0}):  # (since the act 2 curve, 18.2 against 18.3 at 2.5)
             self.assertEqual(pick(80, "RestSite+RestSite", act=2), 0)
         self.assertEqual(pick(40, "RestSite+RestSite"), 1)
         self.assertEqual(strategy.boss_odds(0.9), strategy.boss_odds(1.0))
@@ -365,27 +346,22 @@ class Strategy(unittest.TestCase):
         fight_or_rest = [("Monster", 12), ("RestSite", 13), ("Boss", 14)], [("RestSite", 12), ("RestSite", 13), ("Boss", 14)]
         self.assertGreater(strategy.path_value(fight_or_rest[1], 50, 80, 0, 3), strategy.path_value(fight_or_rest[0], 50, 80, 0, 3) + 3.0)
 
-    def test_rests_before_the_boss_unless_nearly_full(self):
-        opts = [{"index": 0, "id": "REST", "is_enabled": True}, {"index": 1, "id": "SMITH", "is_enabled": True}]
-        s = self.base("rest_site", hp=60, rest_site={"options": opts})  # 75%
+    def test_rest_heals_when_low_or_before_the_boss_and_smiths_when_healthy(self):
+        s = self.rest(60)  # 75%
         self.assertEqual(strategy.rest_site(s, Memory())[0][1]["index"], 1)
         self.assertEqual(strategy.rest_site(s, Memory(boss_next=True))[0][1]["index"], 0)
+        self.assertEqual(strategy.rest_site(self.rest(30, ("rest", "smith")), Memory())[0][1], {"index": 0})
+        self.assertEqual(strategy.rest_site(self.rest(78, ("rest", "smith")), Memory())[0][1], {"index": 1})
 
     def test_avoids_elites_early_in_act_one_and_notes_the_boss(self):
-        nodes = [{"col": 0, "row": 2, "type": "Elite", "children": [[0, 3]]}, {"col": 1, "row": 2, "type": "Monster", "children": [[0, 3]]},
-                 {"col": 0, "row": 3, "type": "Boss", "children": []}]
-        opts = [{"index": 0, "col": 0, "row": 2, "type": "Elite"}, {"index": 1, "col": 1, "row": 2, "type": "Monster"}]
-        s = self.base("map", hp=80, map={"next_options": opts, "nodes": nodes})
-        s["run"]["act"] = 1
+        nodes = [node(0, 2, "Elite", (0, 3)), node(1, 2, "Monster", (0, 3)), node(0, 3, "Boss")]
+        s = self.base("map", hp=80, map={"next_options": [opt(0, 0, 2, "Elite"), opt(1, 1, 2, "Monster")], "nodes": nodes})
         mem = Memory()
         self.assertEqual(strategy.map_screen(s, mem)[0][1]["index"], 1)
         self.assertTrue(mem.boss_next)
         # Later on an elite is fine, as long as there are rest sites enough before the boss.
-        nodes[2:] = [{"col": 0, "row": 3, "type": "RestSite", "children": [[0, 4]]}, {"col": 0, "row": 4, "type": "RestSite", "children": [[0, 5]]},
-                     {"col": 0, "row": 5, "type": "Boss", "children": []}]
+        nodes[2:] = [node(0, 3, "RestSite", (0, 4)), node(0, 4, "RestSite", (0, 5)), node(0, 5, "Boss")]
         s["run"]["act"] = 2
-        from unittest import mock
-
         with mock.patch.dict(learn.KNOB, {"elite_worth": 4.0}):  # where the learner values a relic that much
             self.assertEqual(strategy.map_screen(s, mem)[0][1]["index"], 0)
         # At a low worth it is not: a bad fight there means meeting the boss short of full HP.
@@ -393,98 +369,53 @@ class Strategy(unittest.TestCase):
             self.assertEqual(strategy.map_screen(s, mem)[0][1]["index"], 1)
 
     def test_a_badly_hurt_bot_rests_even_when_the_path_says_smith(self):
-        # Act 3 at 6 of 109 HP, the boss next: the path values come out small
-        # here, so the flat Smith bonus used to beat healing and the bot walked
-        # into the boss at 6 HP.
-        opts = [{"index": 0, "id": "REST", "is_enabled": True}, {"index": 1, "id": "SMITH", "is_enabled": True}]
-        s = self.base("rest_site", hp=6, rest_site={"options": opts})
-        s["player"]["max_hp"], s["run"]["act"] = 109, 3
-        mem = Memory(boss_next=True)
-        mem.map_nodes = {(1, 13): {"col": 1, "row": 13, "type": "RestSite", "children": [[3, 14]]},
-                         (3, 14): {"col": 3, "row": 14, "type": "Boss", "children": []}}
-        mem.map_at = (1, 13)
-        saved, learn.KNOB["upgrade_worth"] = learn.KNOB["upgrade_worth"], 2.5  # the setting the learner usually picks
-        try:
-            self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 0)
-        finally:
-            learn.KNOB["upgrade_worth"] = saved
+        # Act 3 at 6 of 109 HP, the boss next: the path values came out small, so the flat Smith bonus beat healing.
+        with mock.patch.dict(learn.KNOB, {"upgrade_worth": 2.5}):  # the setting the learner usually picks
+            self.assertEqual(strategy.rest_site(self.rest(6, max_hp=109, act=3), boss_after(1, 13, 3))[0][1]["index"], 0)
 
     def test_an_upgrade_counts_the_same_in_act_one_whatever_the_setting(self):
-        # Act 1 lost 20 runs in 86 with the upgrade at 2.5 and 16 in 143 at 4.0; from act 2 on the lower
-        # worth got past the boss oftener. So the setting only speaks from act 2.
-        rooms = [("RestSite", 9), ("Monster", 10), ("Boss", 16)]
-        values = {}
-        for act in (1, 2):
-            for worth in (2.5, 4.0):
-                with mock.patch.dict(learn.KNOB, {"upgrade_worth": worth}):
-                    values[act, worth] = strategy.path_value(rooms, 76.0, 80, 100, act)  # too healthy to rest: the upgrade is taken
-        self.assertEqual(values[1, 2.5], values[1, 4.0])
-        self.assertAlmostEqual(values[2, 4.0] - values[2, 2.5], 1.5)
+        # Act 1 lost 20 runs in 86 with the upgrade at 2.5 and 16 in 143 at 4.0; from act 2 on the lower worth got past the
+        # boss oftener. So the setting only speaks from act 2.
+        def value(act, worth):
+            with mock.patch.dict(learn.KNOB, {"upgrade_worth": worth}):  # (too healthy to rest: the upgrade is taken)
+                return strategy.path_value([("RestSite", 9), ("Monster", 10), ("Boss", 16)], 76.0, 80, 100, act)
+
+        self.assertEqual(value(1, 2.5), value(1, 4.0))
+        self.assertAlmostEqual(value(2, 4.0) - value(2, 2.5), 1.5)
 
     def test_heals_before_a_boss_when_below_ninety_percent(self):
-        # Act 2 at 61 of 75 HP, the boss next: a flat upgrade bonus used to beat the heal
-        # (the 19% of HP a rest gives is worth little to the path model), and the bot
-        # entered the boss at 81%. Before a boss, rest.
-        opts = [{"index": 0, "id": "REST", "is_enabled": True}, {"index": 1, "id": "SMITH", "is_enabled": True}]
-        s = self.base("rest_site", hp=61, rest_site={"options": opts})
-        s["player"]["max_hp"], s["run"]["act"] = 75, 2
-        mem = Memory(boss_next=True)
-        mem.map_nodes = {(0, 14): {"col": 0, "row": 14, "type": "RestSite", "children": [[3, 15]]},
-                         (3, 15): {"col": 3, "row": 15, "type": "Boss", "children": []}}
-        mem.map_at = (0, 14)
-        saved, learn.KNOB["upgrade_worth"] = learn.KNOB["upgrade_worth"], 2.5
-        try:
+        # Act 2 at 61 of 75 HP, the boss next: a flat upgrade bonus beat the heal (the 19% of HP a rest gives is worth
+        # little to the path model), and the bot entered the boss at 81%. Before a boss, rest.
+        s, mem = self.rest(61, max_hp=75, act=2), boss_after(0, 14, 3)
+        with mock.patch.dict(learn.KNOB, {"upgrade_worth": 2.5}):
             self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 0)
             # From 85% HP up the act 1 boss is beaten as often as from full: upgrade then.
             s["player"]["hp"], s["run"]["act"] = 66, 1
             self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 1)
-            # ... but not before the act 2 boss (since 2026-11-22: 85-97% HP won 0.88 as often as 97%+) or the last.
+            # ... but not before the act 2 boss (85-97% HP won 0.88 as often as 97%+) or the last.
             for act in (2, 3):
                 s["run"]["act"] = act
                 self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 0, act)
             s["player"]["hp"], s["run"]["act"] = 72, 2  # 96%: upgrade
             self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 1)
-        finally:
-            learn.KNOB["upgrade_worth"] = saved
-
-    def test_rest_heals_when_low_and_smiths_when_healthy(self):
-        rs = {"options": [{"index": 0, "id": "rest", "is_enabled": True}, {"index": 1, "id": "smith", "is_enabled": True}]}
-        self.assertEqual(strategy.rest_site(self.base("rest_site", hp=30, rest_site=rs), Memory())[0][1], {"index": 0})
-        self.assertEqual(strategy.rest_site(self.base("rest_site", hp=78, rest_site=rs), Memory())[0][1], {"index": 1})
 
     def test_event_avoids_fatal_and_cursed_options(self):
-        ev = {
-            "options": [
-                {"index": 0, "title": "Grab", "description": "Obtain a relic. Lose 50 HP."},
-                {"index": 1, "title": "Pray", "description": "Gain 30 gold."},
-                {"index": 2, "title": "Take", "description": "Obtain a relic. Gain a Curse.", "is_locked": True},
-            ]
-        }
+        ev = {"options": [{"index": 0, "title": "Grab", "description": "Obtain a relic. Lose 50 HP."}, {"index": 1, "title": "Pray", "description": "Gain 30 gold."},
+                          {"index": 2, "title": "Take", "description": "Obtain a relic. Gain a Curse.", "is_locked": True}]}
         acts = strategy.event(self.base("event", hp=20, event=ev), Memory())
         self.assertEqual(acts[0][1], {"index": 1})
         self.assertNotIn(("choose_event_option", {"index": 2}), acts)
 
     def test_the_card_made_free_for_the_fight_is_the_dearest(self):
-        cards_ = [
-            card(0, "ASTRAL_PULSE", "Astral Pulse+", "Attack", 0, "Deal 18 damage to ALL enemies.", rarity="Rare"),
-            card(1, "BULWARK", "Bulwark+", "Skill", 2, "Gain 15 Block."),
-            card(2, "STRIKE_R", "Strike", "Attack", 1, "Deal 6 damage.", rarity="Basic"),
-        ]
-        hs = {"prompt": "Choose a card to make free.", "cards": cards_}
-        acts = strategy.hand_select(self.base("hand_select", hand_select=hs), Memory())
+        cards_ = [card(0, "ASTRAL_PULSE", "Astral Pulse+", "Attack", 0, "Deal 18 damage to ALL enemies.", rarity="Rare"),
+                  card(1, "BULWARK", "Bulwark+", "Skill", 2, "Gain 15 Block."), card(2, "STRIKE_R", "Strike", "Attack", 1, "Deal 6 damage.", rarity="Basic")]
+        acts = strategy.hand_select(self.base("hand_select", hand_select={"prompt": "Choose a card to make free.", "cards": cards_}), Memory())
         self.assertEqual(acts[0], ("combat_select_card", {"card_index": 1}))
 
     def test_removal_picks_curse_then_basics(self):
-        cs = {
-            "screen_type": "select",
-            "prompt": "Choose a card to Remove.",
-            "cards": [
-                card(0, "UPPERCUT", "Uppercut", "Attack", 2, "Deal 13 damage.", rarity="Uncommon"),
-                card(1, "STRIKE_R", "Strike", "Attack", 1, "Deal 6 damage.", rarity="Basic"),
-                card(2, "REGRET", "Regret", "Curse", 0, "Unplayable."),
-            ],
-        }
-        acts = strategy.card_select(self.base("card_select", card_select=cs), Memory())
+        cards_ = [card(0, "UPPERCUT", "Uppercut", "Attack", 2, "Deal 13 damage.", rarity="Uncommon"), card(1, "STRIKE_R", "Strike", "Attack", 1, "Deal 6 damage.", rarity="Basic"),
+                  card(2, "REGRET", "Regret", "Curse", 0, "Unplayable.")]
+        acts = strategy.card_select(self.base("card_select", card_select={"screen_type": "select", "prompt": "Choose a card to Remove.", "cards": cards_}), Memory())
         self.assertEqual([a[1].get("index") for a in acts[:3]], [2, 1, 0])
 
     def test_choose_a_card_is_offered_again_after_an_ignored_click(self):
@@ -498,16 +429,14 @@ class Strategy(unittest.TestCase):
         self.assertEqual(strategy.card_select(s, mem), first)
 
     def test_grid_selection_starts_over_when_clicks_did_not_register(self):
-        cards = [STRIKE(0), DEFEND(1)]
-        s = self.base("card_select", card_select={"screen_type": "select", "prompt": "Choose 2 cards.", "cards": cards})
+        s = self.base("card_select", card_select={"screen_type": "select", "prompt": "Choose 2 cards.", "cards": [STRIKE(0), DEFEND(1)]})
         mem = Memory()
         strategy.card_select(s, mem)
         mem.selected.update({0, 1})
         self.assertIn(("select_card", {"index": 0}), strategy.card_select(s, mem))
 
     def test_stops_ticking_cards_once_enough_are_chosen(self):
-        cards = [STRIKE(i) for i in range(5)]
-        s = self.base("card_select", card_select={"screen_type": "enchant", "prompt": "Choose 3 cards to Enchant.", "cards": cards})
+        s = self.base("card_select", card_select={"screen_type": "enchant", "prompt": "Choose 3 cards to Enchant.", "cards": [STRIKE(i) for i in range(5)]})
         mem = Memory()
         for _ in range(3):
             action, params = strategy.card_select(s, mem)[0]
@@ -516,19 +445,12 @@ class Strategy(unittest.TestCase):
         self.assertEqual(strategy.card_select(s, mem)[0], ("confirm_selection", {}))
 
     def test_shop_buys_removal_and_relic_but_not_weak_cards(self):
-        shop = {
-            "items": [
-                {"index": 0, "category": "card", "price": 50, "is_stocked": True, "can_afford": True, "card_id": "STRIKE_R", "card_type": "Attack", "card_cost": "1", "card_rarity": "Basic", "card_description": "Deal 6 damage."},
-                {"index": 1, "category": "relic", "price": 150, "is_stocked": True, "can_afford": True},
-                {"index": 2, "category": "card_removal", "price": 75, "is_stocked": True, "can_afford": True},
-                {"index": 3, "category": "relic", "price": 300, "is_stocked": True, "can_afford": False},
-            ],
-            "can_proceed": True,
-        }
+        strike = item(0, "card", 50, card_id="STRIKE_R", card_type="Attack", card_cost="1", card_rarity="Basic", card_description="Deal 6 damage.")
+        shelf = [strike, item(1, "relic", 150), item(2, "card_removal", 75), item(3, "relic", 300, can_afford=False)]
         mem = Memory()
         with self.assertLogs("sts2bot.strategy", level="DEBUG") as seen:
-            acts = strategy.shop(self.base("shop", gold=250, shop=shop), mem)
-            strategy.shop(self.base("shop", gold=250, shop=shop), mem)  # (looked at again: the shelf is written down once)
+            acts = strategy.shop(self.shop(250, *shelf), mem)
+            strategy.shop(self.shop(250, *shelf), mem)  # (looked at again: the shelf is written down once)
         self.assertEqual(acts, [("shop_purchase", {"index": 2}), ("shop_purchase", {"index": 1}), ("proceed", {})])
         # The log has the whole shelf: what each thing cost, what we made of it, and what we could not pay for.
         (line,) = [m for m in seen.output if "shop (gold 250, potions 0 of 3)" in m]
@@ -536,17 +458,14 @@ class Strategy(unittest.TestCase):
         self.assertIn("relic 300! [6.5]", line)
         self.assertRegex(line, r"card \S* ?50 \[-?\d")
         # Ascension 6: the second removal costs 150, and the relic at the same price comes first.
-        shop["items"][2]["price"] = 150
-        self.assertEqual(strategy.shop(self.base("shop", gold=250, shop=shop), Memory())[0], ("shop_purchase", {"index": 1}))
+        shelf[2]["price"] = 150
+        self.assertEqual(strategy.shop(self.shop(250, *shelf), Memory())[0], ("shop_purchase", {"index": 1}))
 
     def test_early_in_a_run_good_cards_come_before_the_removal_under_the_setting(self):
-        from sts2bot import learn
-
-        good = {"index": 0, "category": "card", "price": 24, "is_stocked": True, "can_afford": True, "card_id": "SHRUG_IT_OFF", "card_name": "Shrug It Off",
-                "card_type": "Skill", "card_cost": "1", "card_rarity": "Common", "card_description": "Gain 8 Block. Draw 1 card."}
-        removal = {"index": 1, "category": "card_removal", "price": 100, "is_stocked": True, "can_afford": True}
-        state = self.base("shop", gold=113, shop={"items": [good, removal], "can_proceed": True})
-        with mock.patch.object(strategy, "deck_value", lambda c: 7.7):  # (a card the ratings think well of, as on the shelf seen)
+        good = item(0, "card", 24, card_id="SHRUG_IT_OFF", card_name="Shrug It Off", card_type="Skill", card_cost="1", card_rarity="Common",
+                    card_description="Gain 8 Block. Draw 1 card.")
+        state = self.shop(113, good, item(1, "card_removal", 100))
+        with mock.patch.object(strategy, "deck_value", lambda x: 7.7):  # (a card the ratings think well of, as on the shelf seen)
             self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 1}))  # as it was: the removal first
             with mock.patch.dict(learn.KNOB, {"cards_first": 1.0}):
                 self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 0}))
@@ -554,11 +473,11 @@ class Strategy(unittest.TestCase):
                 self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 1}))
         with mock.patch.dict(learn.KNOB, {"cards_first": 1.0}):
             state["run"]["act"] = 1
-            with mock.patch.object(strategy, "deck_value", lambda c: 5.0):  # a middling card still waits for the removal
+            with mock.patch.object(strategy, "deck_value", lambda x: 5.0):  # a middling card still waits for the removal
                 self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 1}))
 
     def test_the_fake_merchants_snecko_eye_is_left_on_the_shelf(self):
-        fake = lambda i, rid, price: {"index": i, "category": "relic", "price": price, "is_stocked": True, "can_afford": True, "relic_id": rid, "relic_name": rid}
+        fake = lambda i, rid, price: item(i, "relic", price, relic_id=rid, relic_name=rid)
         shelf = {"items": [fake(0, "FAKE_STRIKE_DUMMY", 43), fake(1, "FAKE_SNECKO_EYE", 57), fake(2, "FAKE_ANCHOR", 57)], "can_proceed": True}
         state = self.base("fake_merchant", gold=319, fake_merchant={"shop": shelf})
         # "Start each combat Confused" with nothing for it is never bought; the others go by what they do, not by price.
@@ -569,8 +488,7 @@ class Strategy(unittest.TestCase):
 
     def test_with_lords_parasol_the_shelf_empties_itself_and_nothing_is_bought(self):
         # The relic buys everything in turn; a purchase of ours in the middle crashed the game three times.
-        item = lambda i, stocked: {"index": i, "category": "relic", "price": 150, "is_stocked": stocked, "can_afford": True}
-        state = self.base("shop", gold=250, shop={"items": [item(0, True), item(1, False)], "can_proceed": True})
+        state = self.shop(250, item(0, "relic", 150), item(1, "relic", 150, stocked=False))
         state["player"]["relics"] = [{"id": "LORDS_PARASOL", "description": "When you encounter the Merchant, immediately obtain EVERYTHING he sells."}]
         mem = Memory()
         self.assertEqual(strategy.shop(state, mem), [])  # it is still at it: wait
@@ -583,18 +501,14 @@ class Strategy(unittest.TestCase):
         self.assertTrue(all(a == [] or a == [("proceed", {})] for a in looks))
 
     def test_a_shop_before_the_boss_fills_the_potion_belt(self):
-        items = [
-            {"index": 0, "category": "potion", "price": 60, "is_stocked": True, "can_afford": True},
-            {"index": 1, "category": "relic", "price": 250, "is_stocked": True, "can_afford": True},
-        ]
-        state = self.base("shop", gold=100, shop={"items": items, "can_proceed": True})
+        state = self.shop(100, item(0, "potion", 60), item(1, "relic", 250))
         state["player"]["max_potion_slots"] = 3
         # Mid-act the last gold is kept; two rooms from the boss it is not, and the potion comes first.
         self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 1}))
         state["run"]["floor"] = 31
         self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 0}))
         # ... before a card removal too, until the belt holds two.
-        removal = {"index": 2, "category": "card_removal", "price": 100, "is_stocked": True, "can_afford": True}
+        removal = item(2, "card_removal", 100)
         state["shop"]["items"].append(removal)
         self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 0}))
         state["player"]["potions"] = [{}, {}]
@@ -621,31 +535,25 @@ class Strategy(unittest.TestCase):
         self.assertEqual(strategy.rewards(state, Memory()), [("claim_reward", {"index": 0}), ("proceed", {})])
 
     def test_no_potion_is_bought_with_a_relic_that_forbids_them(self):
-        items = [{"index": 0, "category": "potion", "price": 60, "is_stocked": True, "can_afford": True}]
-        state = self.base("shop", gold=100, shop={"items": items, "can_proceed": True})
+        state = self.shop(100, item(0, "potion", 60))
         state["run"]["floor"] = 31
         state["player"]["relics"] = [{"id": "SOZU", "description": "Gain energy at the start of each turn. You can no longer obtain Potions."}]
         self.assertEqual(strategy.shop(state, Memory()), [("proceed", {})])
 
     def test_auto_plays_the_character_with_the_lowest_ascension(self):
-        unlocked = ["IRONCLAD", "SILENT", "DEFECT"]
-        pick = lambda asc: strategy.choose_character("auto", unlocked, 0, asc)
+        pick = lambda asc: strategy.choose_character("auto", ["IRONCLAD", "SILENT", "DEFECT"], 0, asc)
         self.assertEqual(pick({"IRONCLAD": 2, "SILENT": 1, "DEFECT": 2}), "SILENT")
         self.assertIn(pick({"IRONCLAD": 1}), ("SILENT", "DEFECT"))  # never played counts as 0
 
     def test_embarks_at_the_highest_unlocked_ascension(self):
-        chars = [{"id": "IRONCLAD", "locked": False}, {"id": "SILENT", "locked": False}, {"id": "DEFECT", "locked": True}]
-        s = {"state_type": "menu", "menu_screen": "character_select", "characters": chars,
-             "options": [{"name": "IRONCLAD", "enabled": True}, {"name": "SILENT", "enabled": True}, {"name": "confirm", "enabled": True}],
-             "ascension": 0, "max_ascension": 3}
+        s = character_select({"IRONCLAD": False, "SILENT": False, "DEFECT": True})
         mem = Memory(max_ascension={"IRONCLAD": 4, "SILENT": 3})
         self.assertEqual(strategy.menu(s, mem, "auto")[0], ("menu_select", {"option": "SILENT"}))
         mem.character_selected = True
         self.assertEqual(strategy.menu(s, mem, "auto")[0], ("set_ascension", {"level": 3}))
         s["ascension"] = 3
         self.assertEqual(strategy.menu(s, mem, "auto")[0], ("menu_select", {"option": "confirm"}))
-        # The levels are not on screen yet (it happens just after picking the
-        # character): hold off, do not embark at ascension 0.
+        # The levels are not on screen yet (just after picking the character): hold off, do not embark at ascension 0.
         s["ascension"], s["max_ascension"] = 0, 0
         mem.ascension_waits = 0
         self.assertEqual(strategy.menu(s, mem, "auto")[0], ("menu_select", {"option": "SILENT"}))
@@ -672,40 +580,31 @@ class Strategy(unittest.TestCase):
             # The menu asks on every poll: the answer must not change during one run.
             self.assertEqual(len({strategy.choose_character(setting, who, 7, levels) for _ in range(20)}), 1)
             # The game's "Random" tile is not a character, whatever level it shows.
-            with_tile = who + ["RANDOM_CHARACTER"]
-            self.assertNotIn("RANDOM_CHARACTER", {strategy.choose_character(setting, with_tile, run, levels) for run in range(60)})
-            levels_one_behind = dict(levels, REGENT=0)
-            self.assertEqual({strategy.choose_character(setting, who, run, levels_one_behind) for run in range(20)}, {"REGENT"})
+            self.assertNotIn("RANDOM_CHARACTER", {strategy.choose_character(setting, who + ["RANDOM_CHARACTER"], run, levels) for run in range(60)})
+            self.assertEqual({strategy.choose_character(setting, who, run, dict(levels, REGENT=0)) for run in range(20)}, {"REGENT"})
 
     def test_a_run_is_played_at_the_top_level_even_with_epochs_left(self):
-        chars = [{"id": "IRONCLAD", "locked": False}]
-        s = {"state_type": "menu", "menu_screen": "character_select", "characters": chars,
-             "options": [{"name": "IRONCLAD", "enabled": True}, {"name": "confirm", "enabled": True}],
-             "ascension": 0, "max_ascension": 3}
         epochs = {"IRONCLAD4_EPOCH": "Revealed", "IRONCLAD7_EPOCH": "NotObtained"}
         mem = Memory(max_ascension={"IRONCLAD": 3}, epochs=dict(epochs), character_selected=True)
-        self.assertEqual(strategy.menu(s, mem, "IRONCLAD")[0], ("set_ascension", {"level": 3}))
+        self.assertEqual(strategy.menu(character_select({"IRONCLAD": False}), mem, "IRONCLAD")[0], ("set_ascension", {"level": 3}))
 
     def test_auto_plays_the_characters_that_still_owe_an_epoch(self):
         who = ["IRONCLAD", "SILENT", "REGENT", "NECROBINDER", "DEFECT"]
-        epochs = {f"{c}7_EPOCH": "Revealed" for c in who}
+        epochs = {f"{x}7_EPOCH": "Revealed" for x in who}
         epochs.update(DEFECT7_EPOCH="NotObtained", NECROBINDER7_EPOCH="NotObtained", RELIC1_EPOCH="NotObtained")
         # The Ironclad is a level behind, but has nothing of its own left to earn.
         levels = {"IRONCLAD": 1, "SILENT": 2, "REGENT": 2, "NECROBINDER": 2, "DEFECT": 2}
-        seen = {strategy.choose_character("auto", who, run, levels, epochs) for run in range(60)}
-        self.assertEqual(seen, {"NECROBINDER", "DEFECT"})
+        self.assertEqual({strategy.choose_character("auto", who, run, levels, epochs) for run in range(60)}, {"NECROBINDER", "DEFECT"})
         # Among those that owe one, the lowest ascension still goes first.
         levels["DEFECT"] = 1
         self.assertEqual({strategy.choose_character("auto", who, run, levels, epochs) for run in range(20)}, {"DEFECT"})
         # All earned: back to evening out the levels.
-        done = {k: "Revealed" for k in epochs}
         levels["DEFECT"] = 2
-        self.assertEqual({strategy.choose_character("auto", who, run, levels, done) for run in range(20)}, {"IRONCLAD"})
+        self.assertEqual({strategy.choose_character("auto", who, run, levels, {k: "Revealed" for k in epochs}) for run in range(20)}, {"IRONCLAD"})
 
     def test_one_character_can_be_put_first(self):
         epochs = {"IRONCLAD7_EPOCH": "NotObtained", "REGENT4_EPOCH": "NotObtained"}
-        who = ["IRONCLAD", "REGENT"]
-        levels = {"IRONCLAD": 1}
+        who, levels = ["IRONCLAD", "REGENT"], {"IRONCLAD": 1}
         self.assertEqual(strategy.choose_character("auto", who, 0, levels, epochs), "REGENT")
         self.assertEqual(strategy.choose_character("auto:ironclad", who, 0, levels, epochs), "IRONCLAD")
         epochs["IRONCLAD7_EPOCH"] = "Revealed"  # done: back to the usual order
@@ -722,10 +621,8 @@ class Afflictions(unittest.TestCase):
     def offer(self, hp, turns=None, status=()):  # as the game sends it: no enemies on this screen
         waste = card(0, "WASTE_AWAY", "Waste Away", "Status", 0, "Gain 1 less [energy_icon.png] per turn.")
         burn = card(1, "DISINTEGRATION", "Disintegration", "Status", 0, "At the end of your turn, take 8 damage.")
-        state = {
-            "state_type": "card_select", "run": {"act": 2, "floor": 33}, "player": {"hp": hp, "max_hp": 80, "status": list(status)},
-            "card_select": {"screen_type": "choose", "prompt": "Choose a card.", "cards": [waste, burn]}, "_turns": turns,
-        }
+        state = {"state_type": "card_select", "run": {"act": 2, "floor": 33}, "player": {"hp": hp, "max_hp": 80, "status": list(status)},
+                 "card_select": {"screen_type": "choose", "prompt": "Choose a card.", "cards": [waste, burn]}, "_turns": turns}
         return strategy.card_select(state, Memory())[0][1]["index"]
 
     def test_damage_is_taken_over_lost_energy(self):
@@ -734,12 +631,11 @@ class Afflictions(unittest.TestCase):
         self.assertEqual(self.offer(hp=16), 0)  # two burns from dead: keep the HP
 
     def test_an_energy_that_was_not_being_spent_is_the_one_given_up(self):
-        # Seen: a Necrobinder on 5 to 7 energy under Sloth, three cards a turn and 1 to 5 energy over every
-        # turn, took 8 damage a turn on 21 HP rather than lose an energy it had no card for.
-        spent = [(4, 0), (3, 0), (3, 0), (3, 0), (3, 0), (3, 0), (3, 0), (3, 0), (3, 0)]
-        over = spent[:5] + [(3, 4), (3, 1), (3, 5), (3, 4)]
+        # A Necrobinder on 5 to 7 energy under Sloth, three cards a turn and 1 to 5 energy over every turn, took 8 damage a turn on
+        # 21 HP rather than lose an energy it had no card for.
+        spent = [(4, 0)] + [(3, 0)] * 8
         self.assertEqual(self.offer(hp=60, turns=spent), 1)
-        self.assertEqual(self.offer(hp=60, turns=over), 0)
+        self.assertEqual(self.offer(hp=60, turns=spent[:5] + [(3, 4), (3, 1), (3, 5), (3, 4)]), 0)
         self.assertEqual(self.offer(hp=60, turns=spent[:5] + [(3, 0), (3, 1), (3, 0), (3, 2)]), 0)  # (two turns in four is enough)
         self.assertEqual(self.offer(hp=60, turns=spent[:5] + [(3, 0), (3, 0), (3, 0), (3, 2)]), 1)
         # ... and a second burn on top of the first is 15 a turn: the energy goes instead.
@@ -748,10 +644,8 @@ class Afflictions(unittest.TestCase):
     def sloth(self, hp, turns):
         burn = card(0, "DISINTEGRATION", "Disintegration", "Status", 0, "At the end of your turn, take 7 damage.")
         sloth = card(1, "SLOTH", "Sloth", "Status", 0, "You cannot play more than 3 cards each turn.")
-        state = {
-            "state_type": "card_select", "run": {"act": 2, "floor": 33}, "player": {"hp": hp, "max_hp": 90}, "_turns": turns,
-            "card_select": {"screen_type": "choose", "prompt": "Choose a card.", "cards": [burn, sloth]},
-        }
+        state = {"state_type": "card_select", "run": {"act": 2, "floor": 33}, "player": {"hp": hp, "max_hp": 90}, "_turns": turns,
+                 "card_select": {"screen_type": "choose", "prompt": "Choose a card.", "cards": [burn, sloth]}}
         return strategy.card_select(state, Memory())[0][1]["index"]
 
     def test_three_cards_a_turn_is_dear_for_a_deck_that_plays_six(self):
@@ -770,76 +664,56 @@ class Afflictions(unittest.TestCase):
 
 class HandSelections(unittest.TestCase):
     def test_a_sly_card_is_the_one_discarded(self):
-        flick = card(1, "FLICK_FLACK", "Flick-Flack", "Attack", 1, "Deal 7 damage to ALL enemies.", "AllEnemies")
-        flick["keywords"] = [{"name": "Sly", "description": "If this card is discarded from your Hand before the end of your turn, play it for free."}]
-        state = {
-            "state_type": "hand_select",
-            "hand_select": {"prompt": "Choose a card to Discard.", "can_confirm": False, "cards": [STRIKE(0), flick, DEFEND(2)]},
-            "player": {"energy": 1},
-        }
-        picks = [a[1]["card_index"] for a in strategy.hand_select(state, Memory()) if a[0] == "combat_select_card"]
-        self.assertEqual(picks[0], 1)
+        flick = card(1, "FLICK_FLACK", "Flick-Flack", "Attack", 1, "Deal 7 damage to ALL enemies.", "AllEnemies",
+                     keywords=[{"name": "Sly", "description": "If this card is discarded from your Hand before the end of your turn, play it for free."}])
+        state = {"state_type": "hand_select", "hand_select": {"prompt": "Choose a card to Discard.", "can_confirm": False, "cards": [STRIKE(0), flick, DEFEND(2)]},
+                 "player": {"energy": 1}}
+        self.assertEqual(picks(state)[0], 1)
         state["hand_select"]["prompt"] = "Choose a card to Exhaust."
-        picks = [a[1]["card_index"] for a in strategy.hand_select(state, Memory()) if a[0] == "combat_select_card"]
-        self.assertNotEqual(picks[0], 1)
+        self.assertNotEqual(picks(state)[0], 1)
 
     def insatiable(self, prompt):
         """A Silent on 9 HP, the Insatiable on 59 with 36 Poison and Serpent Form up: two Strikes and any third card kill it."""
-        escape = card(0, "FRANTIC_ESCAPE", "Frantic Escape", "Status", 3, "Move 1 space away from the Sandpit.", "Self")
-        snake = card(3, "SNAKEBITE", "Snakebite", "Skill", 2, "Retain. Apply 7 Poison.", "AnyEnemy")
-        hand = [escape, STRIKE(1), STRIKE(2), snake, DEFEND(4)]
-        for c in hand:  # the selection screen leaves these two out
-            c.pop("target_type", None), c.pop("can_play", None)
+        hand = [card(0, "FRANTIC_ESCAPE", "Frantic Escape", "Status", 3, "Move 1 space away from the Sandpit.", "Self"), STRIKE(1), STRIKE(2),
+                card(3, "SNAKEBITE", "Snakebite", "Skill", 2, "Retain. Apply 7 Poison.", "AnyEnemy"), DEFEND(4)]
+        for x in hand:  # the selection screen leaves these two out
+            x.pop("target_type", None), x.pop("can_play", None)
         boss = {"entity_id": "THE_INSATIABLE_0", "hp": 59, "max_hp": 321, "block": 0, "intents": [{"type": "Attack", "label": "12x2"}],
                 "status": [{"id": "POISON_POWER", "amount": 36}, {"id": "SANDPIT_POWER", "amount": 3}]}
-        return {
-            "state_type": "hand_select", "_fight": "boss",
-            "hand_select": {"prompt": prompt, "can_confirm": False, "cards": hand},
-            "battle": {"round": 9, "turn": "player", "is_play_phase": True, "enemies": [boss]},
-            "player": {"hp": 9, "max_hp": 79, "block": 0, "energy": 3, "hand": [], "status": [{"id": "SERPENT_FORM_POWER", "amount": 4}]},
-            "run": {"act": 2, "floor": 33},
-        }
+        return {"state_type": "hand_select", "_fight": "boss", "hand_select": {"prompt": prompt, "can_confirm": False, "cards": hand},
+                "battle": {"round": 9, "turn": "player", "is_play_phase": True, "enemies": [boss]},
+                "player": {"hp": 9, "max_hp": 79, "block": 0, "energy": 3, "hand": [], "status": [{"id": "SERPENT_FORM_POWER", "amount": 4}]},
+                "run": {"act": 2, "floor": 33}}
 
     def test_the_discard_is_a_card_the_turn_does_not_need(self):
         # By rating alone a Strike went: without it the 24 damage that leaves the boss to its Poison is not there.
-        picks = [a[1]["card_index"] for a in strategy.hand_select(self.insatiable("Choose a card to Discard."), Memory()) if a[0] == "combat_select_card"]
-        self.assertNotIn(picks[0], (1, 2))
-        self.assertEqual(picks[-1], 0)  # and never the way out of the Sandpit
+        discards = picks(self.insatiable("Choose a card to Discard."))
+        self.assertNotIn(discards[0], (1, 2))
+        self.assertEqual(discards[-1], 0)  # and never the way out of the Sandpit
 
     def test_a_card_is_not_exhausted_when_that_loses_the_kill(self):
-        picks = [a[1]["card_index"] for a in strategy.hand_select(self.insatiable("Choose a card to Exhaust."), Memory()) if a[0] == "combat_select_card"]
-        self.assertNotIn(picks[0], (1, 2))
+        self.assertNotIn(picks(self.insatiable("Choose a card to Exhaust."))[0], (1, 2))
 
     def test_an_escape_is_exhausted_when_every_other_card_is_the_kill(self):
         """The Insatiable on 59 HP, the bot on 7 before 12x2: three attacks and the Bone Shards make 60 once the Mittens' Strength is in."""
-        escape = card(0, "FRANTIC_ESCAPE", "Frantic Escape", "Status", 2, "Get farther away. Increase Sandpit by 1. Increase the cost of this card by 1.", "Self")
-        hand = [
-            escape,
-            card(1, "DEBILITATE", "Debilitate", "Attack", 1, "Deal 19 damage. Vulnerable and Weak are twice as effective against the enemy for the next 2 turns.", "AnyEnemy"),
-            card(2, "VEILPIERCER", "Veilpiercer", "Attack", 1, "Deal 19 damage.", "AnyEnemy"),
-            card(3, "BONE_SHARDS", "Bone Shards", "Attack", 1, "If Osty is alive, he deals 9 damage to ALL enemies and you gain 9 Block. Osty dies.", "AllEnemies"),
-            card(4, "STRIKE_NECROBINDER", "Strike", "Attack", 1, "Deal 10 damage.", "AnyEnemy"),
-        ]
-        for c in hand:
-            c.pop("target_type", None), c.pop("can_play", None)
-        boss = {"entity_id": "THE_INSATIABLE_0", "hp": 59, "max_hp": 321, "block": 0, "intents": [{"type": "Attack", "label": "12x2"}],
-                "status": [{"id": "SANDPIT_POWER", "amount": 2}]}
-        state = {
-            "state_type": "hand_select", "_fight": "boss",
-            "hand_select": {"prompt": "Choose a card to Exhaust.", "can_confirm": False, "cards": hand},
-            "battle": {"round": 10, "turn": "player", "is_play_phase": True, "enemies": [boss]},
-            "player": {"hp": 7, "max_hp": 66, "block": 0, "energy": 5, "hand": [], "pets": [{"name": "Osty", "hp": 2, "alive": True}],
-                       "relics": [{"id": "TOASTY_MITTENS", "description": "At the start of your turn, Exhaust 1 card from your Hand and gain 1 Strength."}]},
-            "run": {"act": 2, "floor": 33},
-        }
-        first = lambda: [a[1]["card_index"] for a in strategy.hand_select(state, Memory()) if a[0] == "combat_select_card"][0]
-        self.assertEqual(first(), 0)  # 20 + 20 + 9 + 11 = 60: the Escape is the card nothing is lost with
+        hand = [card(0, "FRANTIC_ESCAPE", "Frantic Escape", "Status", 2, "Get farther away. Increase Sandpit by 1. Increase the cost of this card by 1.", "Self"),
+                card(1, "DEBILITATE", "Debilitate", "Attack", 1, "Deal 19 damage. Vulnerable and Weak are twice as effective against the enemy for the next 2 turns.", "AnyEnemy"),
+                card(2, "VEILPIERCER", "Veilpiercer", "Attack", 1, "Deal 19 damage.", "AnyEnemy"),
+                card(3, "BONE_SHARDS", "Bone Shards", "Attack", 1, "If Osty is alive, he deals 9 damage to ALL enemies and you gain 9 Block. Osty dies.", "AllEnemies"),
+                card(4, "STRIKE_NECROBINDER", "Strike", "Attack", 1, "Deal 10 damage.", "AnyEnemy")]
+        for x in hand:
+            x.pop("target_type", None), x.pop("can_play", None)
+        boss = {"entity_id": "THE_INSATIABLE_0", "hp": 59, "max_hp": 321, "block": 0, "intents": [{"type": "Attack", "label": "12x2"}], "status": [{"id": "SANDPIT_POWER", "amount": 2}]}
+        mittens = {"id": "TOASTY_MITTENS", "description": "At the start of your turn, Exhaust 1 card from your Hand and gain 1 Strength."}
+        state = {"state_type": "hand_select", "_fight": "boss", "hand_select": {"prompt": "Choose a card to Exhaust.", "can_confirm": False, "cards": hand},
+                 "battle": {"round": 10, "turn": "player", "is_play_phase": True, "enemies": [boss]}, "run": {"act": 2, "floor": 33},
+                 "player": {"hp": 7, "max_hp": 66, "block": 0, "energy": 5, "hand": [], "pets": [{"name": "Osty", "hp": 2, "alive": True}], "relics": [mittens]}}
+        self.assertEqual(picks(state)[0], 0)  # 20 + 20 + 9 + 11 = 60: the Escape is the card nothing is lost with
         # With the boss out of reach the Escape is kept as before, and the lowest-rated card goes.
         boss["hp"] = 200
-        self.assertNotEqual(first(), 0)
+        self.assertNotEqual(picks(state)[0], 0)
 
     def test_out_of_a_fight_the_rating_decides_as_before(self):
-        from sts2bot.fight import handpick
         state = self.insatiable("Choose a card to Discard.")
         state["battle"]["enemies"] = []
         self.assertIsNone(handpick.turn_costs(state, state["hand_select"]["cards"]))
@@ -848,30 +722,24 @@ class HandSelections(unittest.TestCase):
         comet = card(0, "COMET", "Comet", "Attack", 3, "Deal 33 damage.", "AnyEnemy", rarity="Rare")
         pulse = card(1, "ASTRAL_PULSE", "Astral Pulse", "Attack", 0, "Deal 8 damage to ALL enemies twice.", "AllEnemies")
         wound = card(3, "WOUND", "Wound", "Status", 0, "Unplayable.")
-        state = {
-            "state_type": "hand_select",
-            "player": {"energy": 1},
-            "hand_select": {"prompt": "Choose a card to put on top of your Draw Pile.", "can_confirm": False,
-                            "cards": [comet, pulse, DEFEND(2), wound]},
-        }
-        picks = lambda: [a[1]["card_index"] for a in strategy.hand_select(state, Memory()) if a[0] == "combat_select_card"]
-        self.assertEqual(picks()[0], 0)  # 3 energy it does not have: Comet waits a turn, at no cost
+        state = {"state_type": "hand_select", "player": {"energy": 1},
+                 "hand_select": {"prompt": "Choose a card to put on top of your Draw Pile.", "can_confirm": False, "cards": [comet, pulse, DEFEND(2), wound]}}
+        self.assertEqual(picks(state)[0], 0)  # 3 energy it does not have: Comet waits a turn, at no cost
         # With energy for everything, the dead card goes back before a card it would play.
         state["player"]["energy"] = 4
-        self.assertEqual(picks()[0], 3)
+        self.assertEqual(picks(state)[0], 3)
         # Energy for one card of two: the weaker one is the one left over.
         state["player"]["energy"] = 1
         state["hand_select"]["cards"] = [STRIKE(0), card(1, "POMMEL_STRIKE", "Pommel Strike", "Attack", 1, "Deal 9 damage. Draw 1 card.", "AnyEnemy")]
-        self.assertEqual(picks()[0], 0)
+        self.assertEqual(picks(state)[0], 0)
 
     def big_hand(self):
-        """Ten cards in hand, six of them copies, in a fight the plan can be made for."""
+        """Ten cards in hand, six of them copies, in a fight the plan can be made for, and nothing planned yet."""
         hand = [STRIKE(0), STRIKE(1), STRIKE(2), DEFEND(3), DEFEND(4), DEFEND(5), DEFEND(6), DEFEND(7),
-                card(8, "BASH", "Bash", "Attack", 2, "Deal 8 damage. Apply 2 Vulnerable.", "AnyEnemy"),
-                card(9, "SHRUG", "Shrug It Off", "Skill", 1, "Gain 8 Block. Draw 1 card.", "Self")]
-        state = combat_state(hand, [enemy("A_0", 60, 12), enemy("B_1", 40, 9)], energy=3, hp=60, max_hp=80)
-        state["state_type"] = "hand_select"
+                card(8, "BASH", "Bash", "Attack", 2, "Deal 8 damage. Apply 2 Vulnerable.", "AnyEnemy"), card(9, "SHRUG", "Shrug It Off", "Skill", 1, "Gain 8 Block. Draw 1 card.", "Self")]
+        state = combat_state(hand, [enemy("A_0", 60, 12), enemy("B_1", 40, 9)], energy=3, hp=60, max_hp=80, kind="hand_select")
         state["hand_select"] = {"prompt": "Choose a card to Discard.", "can_confirm": False, "cards": hand}
+        handpick._answers.clear()
         return state
 
     def test_a_confirmation_does_not_wait_for_the_plan(self):
@@ -884,44 +752,29 @@ class HandSelections(unittest.TestCase):
         self.assertIn("combat_select_card", [a[0] for a in acts])  # (the fall-back stays, by rating)
 
     def test_each_kind_of_card_is_planned_once(self):
-        from sts2bot.fight import handpick
-
         state = self.big_hand()
-        handpick._answers.clear()
-        real = combat.choose_card
-        with mock.patch.object(combat, "choose_card", side_effect=real) as spy:
+        with mock.patch.object(combat, "choose_card", wraps=combat.choose_card) as spy:
             costs = handpick.turn_costs(state, state["hand_select"]["cards"], tolerance=-1e9)  # (never stopping early)
         self.assertEqual(spy.call_count, 5)  # the whole hand, then Strike, Defend, Bash, Shrug It Off: not ten
         self.assertEqual({costs[i] for i in (0, 1, 2)}, {costs[0]})  # (copies cost the same)
         self.assertEqual({costs[i] for i in (3, 4, 5, 6, 7)}, {costs[3]})
 
     def test_planning_stops_at_a_card_the_turn_does_not_miss(self):
-        from sts2bot.fight import handpick
-
         state = self.big_hand()
-        handpick._answers.clear()
-        real = combat.choose_card
-        with mock.patch.object(combat, "choose_card", side_effect=real) as spy:
+        with mock.patch.object(combat, "choose_card", wraps=combat.choose_card) as spy:
             costs = handpick.turn_costs(state, state["hand_select"]["cards"])
         self.assertEqual(spy.call_count, 2)  # the whole hand and the hand without the first card: nothing lost
         self.assertEqual(costs[0], 0.0)
         self.assertEqual(costs[9], handpick.UNPLANNED)  # (the rest keep their order, after it)
 
     def test_a_card_that_weighs_on_the_hand_is_always_planned_for(self):
-        from sts2bot.fight import handpick
-
         state = self.big_hand()
-        burn = card(10, "BURN", "Burn", "Status", 0, "Unplayable. At the end of your turn, take 2 damage.")
-        state["hand_select"]["cards"] = state["hand_select"]["cards"] + [burn]
-        handpick._answers.clear()
+        state["hand_select"]["cards"] = state["hand_select"]["cards"] + [card(10, "BURN", "Burn", "Status", 0, "Unplayable. At the end of your turn, take 2 damage.")]
         costs = handpick.turn_costs(state, state["hand_select"]["cards"])
         self.assertNotEqual(costs[10], handpick.UNPLANNED)  # (a Status card may be a burn: it is never skipped over)
 
     def test_the_same_selection_is_not_planned_again(self):
-        from sts2bot.fight import handpick
-
         state = self.big_hand()
-        handpick._answers.clear()
         first = handpick.turn_costs(state, state["hand_select"]["cards"])
         with mock.patch.object(combat, "choose_card", side_effect=AssertionError("planned again")):
             again = handpick.turn_costs(state, state["hand_select"]["cards"])
@@ -955,8 +808,6 @@ class Crowd(unittest.TestCase):
     DEFY = card(1, "DEFY", "Defy", "Skill", 1, "Gain 6 Block. Apply 1 Weak.", "AnyEnemy")
 
     def test_every_card_in_the_tables_gets_a_rating(self):
-        from sts2bot.run import crowd
-
         self.assertEqual(len(crowd.RATING), 5 * 80 + 33)
         self.assertTrue(all(1.5 <= v <= 8.0 for v in crowd.RATING.values()))
         self.assertGreater(crowd.rating("AFTERIMAGE"), crowd.rating("DAGGER_SPRAY") + 3.0)
@@ -965,8 +816,6 @@ class Crowd(unittest.TestCase):
         self.assertIsNone(crowd.rating("STRIKE_NECROBINDER"))
 
     def test_the_crowd_moves_a_rating_only_as_far_as_the_setting_says(self):
-        from unittest import mock
-
         with mock.patch.dict(learn.KNOB, {"crowd": 0.0}):
             ours = deck_value(self.SOW)
             self.assertGreater(ours, deck_value(self.DEFY))  # our own table: the attack first
@@ -990,10 +839,6 @@ class Crowd(unittest.TestCase):
         self.assertIsNotNone(combat.choose_card({**state, "_plays_this_turn": 5}))
 
     def test_snecko_eye_is_bought_like_any_relic(self):
-        items = [{"index": 0, "category": "relic", "price": 150, "is_stocked": True, "can_afford": True, "relic_id": "SNECKO_EYE"}]
-        state = {"state_type": "shop", "run": {"act": 1, "floor": 5}, "player": {"hp": 80, "max_hp": 80, "gold": 250, "potions": []}, "shop": {"items": items, "can_proceed": True}}
+        state = {"state_type": "shop", "run": {"act": 1, "floor": 5}, "player": {"hp": 80, "max_hp": 80, "gold": 250, "potions": []},
+                 "shop": {"items": [item(0, "relic", 150, relic_id="SNECKO_EYE")], "can_proceed": True}}
         self.assertEqual(strategy.shop(state, Memory())[0], ("shop_purchase", {"index": 0}))
-
-
-if __name__ == "__main__":
-    unittest.main()
