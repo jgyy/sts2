@@ -1,23 +1,7 @@
-"""What the Ancients' relics have done in our own runs.
-
-events._ANCIENT rates each relic an Ancient offers with one number, set by hand. This keeps score, as
-learn.CardStats does for cards: every run that held one of them, how much further did it get than runs of
-the same character and ascension usually get from the floor the relic is taken on? Relics that keep
-beating the usual drift up, the others down (`shift`), and the next Ancient is answered with the new numbers.
-
-Why (2026-11-21, 1,064 runs with their relics on record): the table and the record disagreed more than
-chance allows. Runs holding Seal of Gold (rated 8.0, taken only when nothing else was on offer) ended 5.7
-floors over the usual (15 runs) and Prismatic Gem 3.6 over (16), the two every-turn energy relics of act 2
-that come without a second Ancient to confuse the count; Pael's Flesh (12.5) 2.2 under (51), Alchemical
-Coffer (9.5) 4.0 under (38), and of Neow's the Stone Humidifier 5.1 over (56) where the Booming Conch was
-4.1 under (56). Taking chance out, relics of one Ancient truly differ by about 2 floors a run (the means
-spread 3 floors, of which 2 to 2.5 is chance): a run is 8 to 11 floors either way, so a record counts for
-half after about 25 runs.
-
-Nothing is kept on disk: the record is rebuilt from runs.jsonl when the bot starts, and each finished run
-is added to it. When a relic was taken is read off the relic itself (each Ancient has its own, and each act
-opens with one Ancient).
-"""
+"""What the Ancients' relics have done in our own runs, kept as learn.CardStats keeps cards: how much further the runs that
+held a relic got than runs of the same character and ascension usually get from the floor it was taken on moves its
+events._ANCIENT rating (`shift`). Nothing is kept on disk: the record is rebuilt from runs.jsonl at start, and each
+finished run is added. When a relic was taken is read off the relic itself (each act opens with one Ancient)."""
 
 from __future__ import annotations
 
@@ -36,8 +20,7 @@ MAX_SHIFT = 3.0  # a rating never moves further than this
 FEW = 5  # runs of a character on an ascension band before "the usual" means anything
 BAND = 2  # ascension levels taken together for "the usual"
 
-# The relics of the Ancients that open act 2 (Orobas, Pael, Tezcatara) and act 3 (Nonupeipe, Tanx, Vakuu), and
-# Darv's, who was met 13 times in act 2 and 4 in act 3. Any other relic an Ancient offers is Neow's, on floor 1.
+# The relics of the Ancients that open act 2 (Orobas, Pael, Tezcatara) and act 3 (Nonupeipe, Tanx, Vakuu), and Darv's (either); any other is Neow's.
 ACT2 = {
     "ALCHEMICAL_COFFER", "ARCHAIC_TOOTH", "DRIFTWOOD", "ELECTRIC_SHRYMP", "GEAR_GLASS", "GLASS_EYE", "LICH_GLASS", "NOBLE_GLASS",
     "VENOM_GLASS", "PRISMATIC_GEM", "RADIANT_PEARL", "SAND_CASTLE", "PAELS_BLOOD", "PAELS_CLAW", "PAELS_EYE", "PAELS_FLESH",
@@ -100,7 +83,7 @@ def note(run: dict, rebuild: bool = True) -> None:
     if not run.get("character") or relics is None or not isinstance(floor, int):
         return  # (the first hundred runs were written down without their relics)
     final = floor + (WIN_BONUS if run.get("result") == "win" else 0)
-    # (Only the relics the record is about are kept, one shared copy of each name: a run holds a dozen or more.)
+    # (Only the relics the record is about are kept, one shared copy of each name.)
     held = frozenset(sys.intern(str(r)) for r in relics if str(r) in _known or str(r) in ACT2)
     _runs.append((sys.intern(str(run["character"])), int(run.get("ascension") or 0) // BAND, final, held))
     if rebuild:

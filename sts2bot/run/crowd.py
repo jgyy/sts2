@@ -1,22 +1,7 @@
-"""What other people's runs say about each card.
-
-tierspire.com publishes, per character, how often runs holding a card were
-won and how often the card was taken when offered, from run files players
-upload (read on 2026-11-20: game v0.113.1, 507,000 to 662,000 runs a
-character; colorless cards come from a far smaller sample and are left with
-their win rate only where the page gave no tier). The bot's own record
-(learn.py) is a few hundred runs a character, and its hand-made ratings in
-cards.py were one guess: they put the plain attacks first (Sow, Defile,
-Drain Power, Blight Strike and Reave were five of the Necrobinder's seven
-most taken cards) where these numbers put them last.
-
-Two things the numbers cannot say, so they are a second opinion and not the
-rating: how *this bot* plays a card (it plans one turn at a time), and how
-much of a card's win rate is only when it is picked (a rare taken in act 3
-is only ever in runs that got to act 3).
-
-Each entry is `Name win% pick%`.
-"""
+"""What other people's runs say about each card: tierspire.com's win rate of runs holding it and how often it was taken when
+offered, per character (507,000 to 662,000 runs each). A second opinion, not the rating: the numbers cannot say how *this
+bot* plays a card, nor how much of a win rate is only when the card is picked (a rare taken in act 3 is only in runs that
+got there). Each entry is `Name win% pick%`."""
 
 from __future__ import annotations
 
@@ -117,9 +102,8 @@ Sic 'Em 33.3 20.2, Afterlife 34.2 17.0, Scourge 33.4 19.8, Negative Pulse 30.8 2
 Bone Shards 32.9 17.6, Sculpting Strike 35.0 7.8, Pull Aggro 32.0 15.6, Flatten 30.8 19.6, Poke 30.9 19.3,
 Reave 29.8 12.8, Drain Power 29.5 13.5, Blight Strike 28.7 13.3, Reap 29.6 9.0, Defile 29.1 10.0, Sow 25.2 10.4
 """,
-    # (Colorless cards are offered rarely and mostly late, so their win rates run 10 points above
-    # the characters' cards: they are scored among themselves. Cards seen in under one run in a
-    # hundred are left out: Gold Axe 65.6% on 0.8% and the like say who gets that far, not what the card does.)
+    # (Colorless cards are offered rarely and late, so their win rates run high: they are scored among themselves, and
+    # those seen in under one run in a hundred are left out.)
     "COLORLESS": """
 Finesse 48.2 9.3, Dark Shackles 49.2 8.2, Production 48.0 8.9, Hidden Gem 52.7 1.1, Flash of Steel 48.9 7.7,
 Prowess 47.0 8.5, Automation 49.2 6.7, Shockwave 48.3 6.6, Ultimate Defend 47.0 5.3, Purity 53.0 4.1,
@@ -132,12 +116,7 @@ Thrumming Hatchet 34.6 2.6, Volley 46.0 1.8
 }
 
 SPREAD = 1.5  # rating points for one standard deviation of a character's cards
-# The rating of a card that is average on both counts. Set so that the common cards keep the level our own
-# table gives them (3.9 on average; ours has no slope by rarity at all, rares 4.0): the crowd's numbers are
-# for which card to take, and a lower level all round only meant more rewards skipped in act 2 (the bar is
-# 4.0 there), which cost damage at the last boss when it was tried on 2026-11-18. Commons come to 3.7,
-# uncommons to 4.8, rares to 6.3.
-MIDDLE = 5.0
+MIDDLE = 5.0  # the rating of a card average on both counts: commons then keep the level our own table gives them
 
 
 def _key(name: str) -> str:
@@ -162,12 +141,8 @@ def _ratings() -> dict:
 
 RATING = _ratings()
 
-# The Fool has no table on tierspire.com (checked 2026-11-23), so its cards have only a writer's tiers: gamerblurb.com's
-# "The Fool tier list" (14 Nov 2026, the first week of the beta, 79 cards: S 9, A 25, B 31, C 14). One opinion, not
-# runs, so the tiers are drawn in a little (S 7.2 to C 3.3; the means come to the same 5.0 as above). What they fix is
-# what cards.parse cannot read: it gave Cho Ready, Song Path and Violent Chord 1.7-2.8 (Aim and Melodies are no damage
-# and no Block) and Quick Shot, Heavy Shot, Rain Shot and Nail 5-9, though a Fool holds one Arrow; before this, 137
-# of 314 Fool picks were below the best tier on the screen. Tiers cross rarity (S: 1 Common, 5 Uncommon, 3 Rare).
+# The Fool has no table on tierspire.com, so its cards have one writer's tiers (gamerblurb.com, the first week of the
+# beta), drawn in a little. They fix what cards.parse cannot read: Aim and Melodies are no damage and no Block.
 _FOOL_TIERS = {
     7.2: "Wah Cho Ki, Motif, Song Path, Wrest, Cho Ready, Wah Cho, Quiver, Violent Chord, Mythic Form",
     5.8: """Archery, Bow Smack, Cho Firm, Cho Ki, Coda, Explosive Arrows, Harmonic Shield, Hidden Roots, Ki Hop, Ki Rest,
@@ -195,10 +170,8 @@ def rating(key: str) -> float | None:
     return FOOL_RATING.get(key) if got is None else got
 
 
-# Which cards win together. The same site groups runs by how alike their final decks are and names each group
-# after the cards that set it apart (read 2026-11-21: 40 groups of 1,000 runs or more). Only the groups won more
-# often than a character's runs are on the whole are kept: the others are mostly decks that never came together
-# (Crescent Spear + Solar Strike 5%, Hotfix + Hailstorm 6%). Each entry: share of the group's runs won, its cards.
+# Which cards win together: the same site's groups of runs with alike final decks (1,000 runs or more), named after the
+# cards that set them apart, kept only when won more often than their character's runs on the whole. Each: share won, cards.
 _BUILDS = [
     (59.5, "Maul, Tear Asunder, Not Yet"), (56.8, "Feel No Pain, Dark Embrace, Stoke"), (47.4, "Mad Science, Juggernaut, Body Slam"),
     (67.6, "Maul, Ultimate Strike, Mad Science"), (63.6, "Phantom Blades, Blade of Ink, Accuracy"),
@@ -216,11 +189,8 @@ PARTNER_MOST = 1.5
 
 
 def partner(key: str, held: set) -> float:
-    """What a card is worth on top of its own rating for going with cards the deck already holds.
-
-    The ratings above judge a card alone; this is the one place that says Dark Embrace belongs
-    with Feel No Pain. From 0.3 for a group won 45% of the time to 1.5 at 63% and beyond.
-    """
+    """What a card is worth on top of its own rating for going with cards the deck already holds (Dark Embrace with Feel
+    No Pain): from 0.3 for a group won 45% of the time to 1.5 at 63% and beyond."""
     best = 0.0
     for won, cards in BUILDS:
         if key in cards and (cards - {key}) & held:
