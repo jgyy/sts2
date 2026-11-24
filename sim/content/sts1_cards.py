@@ -86,6 +86,16 @@ def _to_hand(key, n=1, up=False, where="hand"):
     return add
 
 
+def _gain(key, base, up):
+    """A handler that adds `base` (`up` once upgraded) to one of our powers."""
+    return lambda f, c, *_: f.pw.__setitem__(key, f.pw.get(key, 0) + (up if c.up else base))
+
+
+def _more(attr, base, up):
+    """... and one that adds it to a counter of the fight's (Double Tap, Burst)."""
+    return lambda f, c, *_: setattr(f, attr, getattr(f, attr) + (up if c.up else base))
+
+
 def _power(key, base, up):
     return lambda f, c: f.pw.__setitem__(key, f.pw.get(key, 0) + (up if c.up else base))
 
@@ -462,10 +472,6 @@ def _conjure(f, c, foe, x, dealt):
     f.add_card(blade, "draw")
 
 
-def _wish(f, c, foe, x, dealt):
-    f.pw["STRENGTH"] = f.pw.get("STRENGTH", 0) + (4 if c.up else 3)
-
-
 def _vault(f, c, foe, x, dealt):
     f.pw["EXTRA_TURN"] = 1
     f.pw["TURN_OVER"] = 1
@@ -547,10 +553,6 @@ def _talk(f, c, foe, x, dealt):
         foe.mem["block_return"] = foe.mem.get("block_return", 0) + (3 if c.up else 2)
 
 
-def _wave(f, c, foe, x, dealt):
-    f.pw["WAVE_OF_THE_HAND"] = f.pw.get("WAVE_OF_THE_HAND", 0) + (2 if c.up else 1)
-
-
 def _swivel(f, c, foe, x, dealt):
     f.free_attack = True
 
@@ -560,42 +562,14 @@ def _simmering(f, c, foe, x, dealt):
     f.pw["DRAW_CARDS_NEXT_TURN"] = f.pw.get("DRAW_CARDS_NEXT_TURN", 0) + (3 if c.up else 2)
 
 
-def _wreath(f, c, foe, x, dealt):
-    f.pw["VIGOR"] = f.pw.get("VIGOR", 0) + (8 if c.up else 5)
-
-
 def _flame_barrier(f, c, foe, x, dealt):
     f.temp["FLAME_BARRIER"] = f.temp.get("FLAME_BARRIER", 0) + (6 if c.up else 4)
-
-
-def _rage(f, c, foe, x, dealt):
-    f.pw["RAGE"] = f.pw.get("RAGE", 0) + (5 if c.up else 3)
-
-
-def _double_tap(f, c, foe, x, dealt):
-    f.double_next += 2 if c.up else 1
-
-
-def _burst(f, c, foe, x, dealt):
-    f.burst += 2 if c.up else 1
-
-
-def _blur(f, c, foe, x, dealt):
-    f.pw["BLUR"] = f.pw.get("BLUR", 0) + 1
-
-
-def _phantasmal(f, c, foe, x, dealt):
-    f.pw["DOUBLE_DAMAGE_NEXT"] = 1
 
 
 def _equilibrium(f, c, foe, x, dealt):
     for h in f.hand:
         h.retained = -1  # (kept by the end of turn below)
     f.pw["KEEP_HAND"] = 1
-
-
-def _amplify(f, c, foe, x, dealt):
-    f.pw["AMPLIFY"] = f.pw.get("AMPLIFY", 0) + (2 if c.up else 1)
 
 
 def _berserk(f, c):
@@ -699,23 +673,23 @@ AFTER = {
     "ANGER": lambda f, c, foe, x, d: f.add_card(c.copy(), "discard"), "ARMAMENTS": lambda f, c, foe, x, d: _armaments(f, c),
     "HAVOC": _havoc, "HEADBUTT": _headbutt, "TRUE_GRIT": _true_grit, "WARCRY": _warcry, "WILD_STRIKE": _to_hand("WOUND", where="draw"),
     "BATTLE_TRANCE": lambda f, c, foe, x, d: setattr(f, "no_draw", True), "DUAL_WIELD": _dual_wield, "ENTRENCH": _entrench,
-    "FLAME_BARRIER": _flame_barrier, "INFERNAL_BLADE": _random_card("Attack"), "POWER_THROUGH": _to_hand("WOUND", 2), "RAGE": _rage,
+    "FLAME_BARRIER": _flame_barrier, "INFERNAL_BLADE": _random_card("Attack"), "POWER_THROUGH": _to_hand("WOUND", 2), "RAGE": _gain("RAGE", 3, 5),
     "RAMPAGE": _rampage, "RECKLESS_CHARGE": _to_hand("DAZED", where="draw"), "SECOND_WIND": _second_wind,
-    "SEVER_SOUL": _exhaust_where(lambda h: h.type != "Attack"), "DOUBLE_TAP": _double_tap, "EXHUME": _exhume, "FEED": _feed,
+    "SEVER_SOUL": _exhaust_where(lambda h: h.type != "Attack"), "DOUBLE_TAP": _more("double_next", 1, 2), "EXHUME": _exhume, "FEED": _feed,
     "IMMOLATE": _to_hand("BURN", where="discard"), "LIMIT_BREAK": _limit_break, "REAPER": _reaper,
     "SURVIVOR": _discard(1), "ACROBATICS": _discard(1), "DAGGER_THROW": _discard(1), "PREPARED": lambda f, c, foe, x, d: fx.discard_from_hand(f, 2 if c.up else 1),
-    "BANE": _bane, "ALL_OUT_ATTACK": lambda f, c, foe, x, d: _random_discard(f), "BLUR": _blur, "CALCULATED_GAMBLE": _calculated_gamble,
+    "BANE": _bane, "ALL_OUT_ATTACK": lambda f, c, foe, x, d: _random_discard(f), "BLUR": _gain("BLUR", 1, 1), "CALCULATED_GAMBLE": _calculated_gamble,
     "CATALYST": _catalyst, "CHOKE": _choke, "CONCENTRATE": lambda f, c, foe, x, d: fx.discard_from_hand(f, 2 if c.up else 3),
-    "DISTRACTION": _random_card("Skill"), "EXPERTISE": _expertise, "SETUP": _setup, "BULLET_TIME": _bullet_time, "BURST": _burst,
+    "DISTRACTION": _random_card("Skill"), "EXPERTISE": _expertise, "SETUP": _setup, "BULLET_TIME": _bullet_time, "BURST": _more("burst", 1, 2),
     "CORPSE_EXPLOSION": _corpse, "DOPPELGANGER": _doppelganger, "GLASS_KNIFE": lambda f, c, foe, x, d: setattr(c, "bonus", c.bonus - 2),
-    "PHANTASMAL_KILLER": _phantasmal, "STORM_OF_STEEL": _storm_of_steel, "UNLOAD": _unload, "ALCHEMIZE": _alchemize,
+    "PHANTASMAL_KILLER": _gain("DOUBLE_DAMAGE_NEXT", 1, 1), "STORM_OF_STEEL": _storm_of_steel, "UNLOAD": _unload, "ALCHEMIZE": _alchemize,
     "CLAW": lambda f, c, foe, x, d: f.pw.__setitem__("CLAW_BONUS", f.pw.get("CLAW_BONUS", 0) + 2), "RECURSION": _recursion,
     "STACK": _stack, "STEAM_BARRIER": lambda f, c, foe, x, d: setattr(c, "bonus", c.bonus - 1),
     "STREAMLINE": lambda f, c, foe, x, d: setattr(c, "cost_fight", max(0, c.cost() - 1)), "TURBO": _to_hand("VOID", where="discard"),
     "AUTO_SHIELDS": _auto_shields, "CHAOS": _chaos, "CHILL": _chill, "CONSUME": _consume, "DOUBLE_ENERGY": _double_energy,
     "EQUILIBRIUM": _equilibrium, "GENETIC_ALGORITHM": lambda f, c, foe, x, d: setattr(c, "bonus", c.bonus + (3 if c.up else 2)),
     "OVERCLOCK": _to_hand("BURN", where="discard"), "RECYCLE": _recycle, "REPROGRAM": _reprogram, "SCRAPE": _scrape, "SUNDER": _sunder,
-    "WHITE_NOISE": _random_card("Power"), "ALL_FOR_ONE": _all_for_one, "AMPLIFY": _amplify, "CORE_SURGE": lambda f, c, foe, x, d: f.pw.__setitem__("ARTIFACT", f.pw.get("ARTIFACT", 0) + 1),
+    "WHITE_NOISE": _random_card("Power"), "ALL_FOR_ONE": _all_for_one, "AMPLIFY": _gain("AMPLIFY", 1, 2), "CORE_SURGE": lambda f, c, foe, x, d: f.pw.__setitem__("ARTIFACT", f.pw.get("ARTIFACT", 0) + 1),
     "FISSION": _fission, "HYPERBEAM": lambda f, c, foe, x, d: f.pw.__setitem__("FOCUS", f.pw.get("FOCUS", 0) - 3), "MULTI_CAST": _multi_cast,
     "RAINBOW": _rainbow, "REBOOT": _reboot, "SEEK": _seek, "HOLOGRAM": _hologram,
     "PROSTRATE": _mantra(2, 3), "PRAY": lambda f, c, foe, x, d: (f.gain_mantra(4 if c.up else 3), f.add_card(f.game.make("INSIGHT"), "draw")),
@@ -723,8 +697,8 @@ AFTER = {
     "CUT_THROUGH_FATE": _scry(2, 3), "MEDITATE": _meditate, "SPIRIT_SHIELD": _spirit_shield, "CONJURE_BLADE": _conjure,
     "DECEIVE_REALITY": _to_hand("SAFETY"), "EVALUATE": _to_hand("INSIGHT", where="draw"), "CARVE_REALITY": _to_hand("SMITE"),
     "REACH_HEAVEN": _to_hand("THROUGH_VIOLENCE", where="draw"), "ALPHA": _to_hand("BETA", where="draw"), "BETA": _to_hand("OMEGA", where="draw"),
-    "WALLOP": _wallop, "JUDGMENT": _judgment, "PRESSURE_POINTS": _pressure_points, "TALK_TO_THE_HAND": _talk, "WAVE_OF_THE_HAND": _wave,
-    "SWIVEL": _swivel, "SIMMERING_FURY": _simmering, "WREATH_OF_FLAME": _wreath, "WISH": _wish, "VAULT": _vault, "SCRAWL": _scrawl,
+    "WALLOP": _wallop, "JUDGMENT": _judgment, "PRESSURE_POINTS": _pressure_points, "TALK_TO_THE_HAND": _talk, "WAVE_OF_THE_HAND": _gain("WAVE_OF_THE_HAND", 1, 2),
+    "SWIVEL": _swivel, "SIMMERING_FURY": _simmering, "WREATH_OF_FLAME": _gain("VIGOR", 5, 8), "WISH": _gain("STRENGTH", 3, 4), "VAULT": _vault, "SCRAWL": _scrawl,
     "BLASPHEMY": lambda f, c, foe, x, d: f.pw.__setitem__("BLASPHEMY_DUE", 1),
     "CONCLUDE": lambda f, c, foe, x, d: f.pw.__setitem__("TURN_OVER", 1),
     "APOTHEOSIS": _apotheosis, "PANIC_BUTTON": _panic, "ENLIGHTENMENT": _enlightenment, "DEEP_BREATH": _deep_breath,
