@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
-"""Work the bot's card record (card_stats.json) out again from runs.jsonl.
+"""Work the bot's card record (card_stats.json) out again from runs.jsonl, after a change to learn.CardStats.record.
 
     python3 scripts/relearn.py              each kind of card's record, and the cards whose rating moves most
-    python3 scripts/relearn.py --write      ... and put the new record in place (the old one is kept beside
-                                            it as card_stats.json.old)
+    python3 scripts/relearn.py --write      ... and put the new record in place (the old one is kept as card_stats.json.old)
 
-For when the rule that makes the record changes (learn.CardStats.record): every run in runs.jsonl goes
-through it again, oldest first. What kind each card is (cards.kind) comes from wiki.json, which
-`scripts/fightlog.py wiki` writes. Stop the bot before --write: it holds the record in memory and saves
-its own after every run.
+Card kinds (cards.kind) come from wiki.json (`scripts/fightlog.py wiki`). Stop the bot before --write: it saves its own.
 """
 
 from __future__ import annotations
@@ -28,8 +24,7 @@ LOGS = Path(os.path.expanduser(os.environ.get("STS2BOT_STATE", "~/.local/state/s
 def rebuilt() -> learn.CardStats:
     stats = learn.CardStats(None)
     with open(LOGS / "runs.jsonl") as f:
-        for line in f:
-            r = json.loads(line)
+        for r in map(json.loads, f):
             stats.record(str(r.get("character") or ""), r.get("floor"), r.get("result") == "win", r.get("picks") or [])
     try:
         wiki = json.loads((LOGS / "wiki.json").read_text())["cards"]

@@ -6,27 +6,22 @@
     ... NAME=VALUE                                    with a constant of combat.py or closing.py, or a setting
                                                       of learn.py, set to that (caution=1.35, HP_BASE=2.0)
 
-demonfight.py asks how often the planner wins a boss fight; an ordinary fight is nearly always won, and
-what counts is the HP it leaves for the rest of the act. So here the best play is the one with the most
-HP expected at the end, a death counted as DEATH HP below nothing, and the planner is measured by the HP
-it gives away a fight. The enemies are three of act 2 as the logs show them on Ascension 7 (HP, and what
-they hit for round by round); the decks and the drawing are demonfight's (every hand afresh from the whole
-deck), so a position is the round, our HP and the enemy's. Read a trace before believing a table.
+The best play is the one with the most HP expected at the end (a death counts DEATH below nothing); the planner is measured
+by the HP it gives away. The enemies are three of act 2 on Ascension 7 (FOES); the decks and the drawing are demonfight's.
 """
 
 import logging
-import multiprocessing
 import os
 import random
 import sys
 
 import numpy as np
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import demonfight as demon
 from demonfight import Deck, hands, plays
+from modelfight import on_all_cores, turn
 from sts2bot.fight import closing, combat
 from sts2bot import learn
 
@@ -93,8 +88,7 @@ def value(V, r, rl, hp, foe_hp, dmg, blk):
 
 def state(deck, foe, r, rl, hp, foe_hp, hand, energy, block, played):
     st = demon.state(deck, r, rl, hp, foe_hp, hand, energy, block, played)
-    st["state_type"] = "monster"
-    st["run"]["floor"] = 24
+    st["state_type"], st["run"]["floor"] = "monster", 24
     enemy = st["battle"]["enemies"][0]
     enemy["entity_id"], enemy["max_hp"] = "MODEL_FOE_0", FOES[foe][0]
     return st
@@ -109,20 +103,14 @@ def fight(deck, foe, hp, V, rng, trace=False):
         counts = tuple(hand.count(k) for k in demon.KINDS)
         energy, block, dealt, played = deck.energy, 0, 0, 0
         shown = "".join(sorted(hand))
-        for _ in range(12):
-            if foe_hp - dealt <= 0:
-                break
-            act = combat.choose_card(state(deck, foe, r, rl, hp, foe_hp - dealt, hand, energy, block, played))
-            if act is None:
-                break
-            c = hand.pop(act[1]["card_index"])
+        for i, c, _act in turn(lambda: state(deck, foe, r, rl, hp, foe_hp - dealt, hand, energy, block, played), hand, lambda: foe_hp - dealt <= 0):
+            hand.pop(i)
             played += 1
             if c == "B":
                 block += deck.db
-                energy -= 1
             else:
                 dealt += deck.hit(c, 0)
-                energy -= {"A": 1, "H": 2, "Z": 0}[c]
+            energy -= {"A": 1, "H": 2, "Z": 0, "B": 1}[c]
         ours = value(V, r, rl, hp, foe_hp, dealt, block)
         best = max((value(V, r, rl, hp, foe_hp, d, b), d, b) for d, b, _n in plays(deck, counts, deck.energy, rl["limit"]))
         given.append((r, max(0.0, best[0] - ours), dealt - best[1], block - best[2], rl["inc"], hp / deck.maxhp))
@@ -169,9 +157,7 @@ def job(args):
 
 
 def run(n, values=None):
-    jobs = [(d, foe, n, 500 + 31 * d + i, values if values is not None else PATCH) for d in range(len(DECKS)) for i, foe in enumerate(FOES)]
-    with multiprocessing.Pool(min(8, os.cpu_count() or 2)) as pool:
-        return pool.map(job, jobs)
+    return on_all_cores(job, [(d, foe, n, 500 + 31 * d + i, values if values is not None else PATCH) for d in range(len(DECKS)) for i, foe in enumerate(FOES)], most=8)
 
 
 def table(out):
@@ -181,19 +167,13 @@ def table(out):
         print(f"entered on {share:.0%} of Max HP")
         for d, deck in enumerate(DECKS):
             cells = []
-            for dd, foe, res in out:
-                if dd != d:
-                    continue
+            for _d, foe, res in [o for o in out if o[0] == d]:
                 best, hp, fights = res[share]
                 lost = sum(hp - (f[0] if f[0] is not None else -DEATH) for f in fights) / len(fights)
                 dead = sum(f[0] is None for f in fights)
                 cells.append(f"{foe} {lost:5.1f}/{hp - best:5.1f} †{100 * dead / len(fights):3.0f}")
-                t = tot[share]
-                t[0] += lost * len(fights)
-                t[1] += (hp - best) * len(fights)
-                t[2] += dead
-                t[3] += len(fights)
-                t[4] += sum(f[1] for f in fights)
+                for j, x in enumerate((lost * len(fights), (hp - best) * len(fights), dead, len(fights), sum(f[1] for f in fights))):
+                    tot[share][j] += x
             print(f"  {str(deck):44} " + "   ".join(cells))
     for share, (lost, best, dead, n, rounds) in tot.items():
         print(f"all, entered on {share:.0%}: planner lost {lost / n:.2f} a fight, the best play {best / n:.2f}; deaths {100 * dead / n:.1f}%; rounds {rounds / n:.2f}")
@@ -201,9 +181,7 @@ def table(out):
 
 if __name__ == "__main__":
     logging.disable(logging.CRITICAL)
-    for arg in [a for a in sys.argv[1:] if "=" in a]:
-        PATCH[arg.split("=")[0]] = float(arg.split("=")[1])
-        sys.argv.remove(arg)
+    demon.take_patches(PATCH)
     if sys.argv[1:2] == ["trace"]:
         patch(PATCH)
         seed, foe, d, share = (sys.argv[2:] + [1, "toad", 0, 1.0][len(sys.argv) - 2 :])[:4]

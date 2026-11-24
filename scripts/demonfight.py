@@ -7,31 +7,21 @@
     python3 scripts/demonfight.py cards [FIGHTS]       one more card of each sort, an energy-a-turn Power among them (decks.ENERGY_POWER)
     ... NAME=VALUE                                     with a constant of combat.py or closing.py set to that (CLOSE_REACH=0)
 
-The game side is the Demon as the logs show it on Ascension 7: 379 HP; Debuff, 17, 8x3, 11 and
-heal 30 and 2 Strength, round and round; the three afflictions as settings of the fight (Mind Rot
-or a burn of 6 from round 2, Sloth or 7 from round 6, Waste Away or 8 from round 10; a burn is
-damage at the end of our turn that Block stops). The deck is Strikes, two-cost attacks, free
-attacks, Defends and dead cards, and every hand is drawn afresh from the whole deck, so that what
-is left of the fight depends on the round, our HP and the Demon's and nothing else. That makes the
-best play computable exactly (`solve`: the chance of winning from every such position, worked
-backwards from the last round), and the planner's every turn can be priced by the chance it gave
-away. Like crabfight.py: read a trace before believing a table.
+The Demon is the Ascension 7 logs' (`rules`; its three afflictions are settings of the fight). Every hand is drawn afresh
+from the whole deck, so a position is the round, our HP and the Demon's: `solve` works out perfect play exactly, and each
+of the planner's turns is priced by the chance of winning it gave away.
 """
 
 import itertools
 import logging
 import math
-import multiprocessing
-import os
 import random
 import sys
 
 import numpy as np
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-
+from modelfight import game_state, hand_cards, on_all_cores, piles, status, turn
 from sts2bot.fight import closing, combat
-from tests.fake_game import card
 
 BOSS = 379
 ROUNDS = 24
@@ -45,9 +35,7 @@ class Deck:
         self.da, self.db, self.dz, self.dh = da, db, dz, int(2.2 * da)
         self.maxhp, self.energy = maxhp, energy
         self.powers = self.counts["P"]
-        # What a Power in play gives: `ps` Strength on every attack card (Inflame: 3) and `pe` energy at the start
-        # of each turn (Friendship: 1 energy and -2 Strength; Demesne, Pyre: 1 energy and nothing off).
-        self.pe, self.ps = pe, ps
+        self.pe, self.ps = pe, ps  # a Power in play: `ps` Strength on every attack card (Inflame: 3), `pe` energy a turn (Demesne: 1)
 
     def turn_energy(self, s, drain=0):
         """Energy a turn starts with, `s` Powers in play."""
@@ -68,15 +56,11 @@ class Deck:
 
 def rules(r, burns):
     """Round `r` under the afflictions taken (`burns`: for each of the three offers, whether the burn was taken)."""
-    s = 2 * ((r - 1) // 4)
-    kind = (r - 1) % 4
-    inc = (0, 17 + s, 3 * (8 + s), 11 + s)[kind]
-    hits = (0, 1, 3, 1)[kind]
+    s, kind = 2 * ((r - 1) // 4), (r - 1) % 4
+    inc, hits = (0, 17 + s, 3 * (8 + s), 11 + s)[kind], (0, 1, 3, 1)[kind]
     burn = (6 if burns[0] and r >= 2 else 0) + (7 if burns[1] and r >= 6 else 0) + (8 if burns[2] and r >= 10 else 0)
-    return dict(
-        kind=kind, inc=inc, hits=hits, per=inc // max(1, hits), strength=s, heal=30 if kind == 3 else 0, burn=burn,
-        draw=5 - (1 if not burns[0] and r >= 2 else 0), limit=3 if not burns[1] and r >= 6 else 99, drain=1 if not burns[2] and r >= 10 else 0,
-    )
+    return dict(kind=kind, inc=inc, hits=hits, per=inc // max(1, hits), strength=s, heal=30 if kind == 3 else 0, burn=burn,
+                draw=5 - (1 if not burns[0] and r >= 2 else 0), limit=3 if not burns[1] and r >= 6 else 99, drain=1 if not burns[2] and r >= 10 else 0)
 
 
 def hands(deck, n, s=0):
@@ -98,15 +82,11 @@ def plays(deck, hand, energy, limit, s=0):
     (A Power played counts for the attacks of later turns, not of this one: the order within a turn is left out.)"""
     a, h, z, b, _f, pw = hand
     seen = set()
-    for n in range(min(pw, deck.powers - s) + 1):  # (a Power drawn beyond those the deck has left is a dead card)
-        for i in range(a + 1):
-            for j in range(h + 1):
-                for k in range(b + 1):
-                    if n + i + 2 * j + k > energy:
-                        continue
-                    for zz in range(z + 1):
-                        if n + i + j + k + zz <= limit:
-                            seen.add((i * deck.hit("A", s + n) + j * deck.hit("H", s + n) + zz * deck.hit("Z", s + n), k * deck.db, n))
+    for n, i, j, k in itertools.product(range(min(pw, deck.powers - s) + 1), range(a + 1), range(h + 1), range(b + 1)):  # (a Power beyond the deck's is dead)
+        if n + i + 2 * j + k <= energy:
+            for zz in range(z + 1):
+                if n + i + j + k + zz <= limit:
+                    seen.add((i * deck.hit("A", s + n) + j * deck.hit("H", s + n) + zz * deck.hit("Z", s + n), k * deck.db, n))
     return [p for p in seen if not any(q != p and q[2] == p[2] and q[0] >= p[0] and q[1] >= p[1] for q in seen)]
 
 
@@ -130,9 +110,7 @@ def solve(deck, burns):
     V = [None] * (ROUNDS + 2)
     V[ROUNDS + 1] = [np.zeros((deck.maxhp + 1, BOSS + 1)) for _ in range(deck.powers + 1)]
     for r in range(ROUNDS, 0, -1):
-        rl = rules(r, burns)
-        cache = {}
-        V[r] = []
+        rl, cache, V[r] = rules(r, burns), {}, []
         for s in range(deck.powers + 1):
             total = np.zeros_like(V[r + 1][0])
             for hand, p in hands(deck, rl["draw"], s):
@@ -163,33 +141,17 @@ def state(deck, r, rl, hp, boss, hand, energy, block, played, s=0):
     text = {"A": ("STRIKE_R", "Strike", "Attack", 1, f"Deal {deck.hit('A', s)} damage.", "AnyEnemy"), "H": ("HEAVY", "Heavy Blow", "Attack", 2, f"Deal {deck.hit('H', s)} damage.", "AnyEnemy"),
             "Z": ("FLICK", "Flick", "Attack", 0, f"Deal {deck.hit('Z', s)} damage.", "AnyEnemy"), "B": ("DEFEND_R", "Defend", "Skill", 1, f"Gain {deck.db} Block.", "Self"),
             "P": ("INFLAME", "Inflame", "Power", 1, f"Gain {deck.ps} Strength.", "Self") if not deck.pe else
-                 ("FRIENDSHIP", "Friendship", "Power", 1, (f"Lose {-deck.ps} Strength. " if deck.ps < 0 else "") + "Gain [necrobinder_energy_icon.png] at the start of each turn.", "Self")}
-    cards = []
-    for i, c in enumerate(hand):
-        if c == "F":
-            cards.append(card(i, "CLUMSY", "Clumsy", "Curse", -1, "Unplayable.", "None", can_play=False, unplayable_reason="HasUnplayableKeyword"))
-        else:
-            cards.append(card(i, *text[c]))
+                 ("FRIENDSHIP", "Friendship", "Power", 1, (f"Lose {-deck.ps} Strength. " if deck.ps < 0 else "") + "Gain [necrobinder_energy_icon.png] at the start of each turn.", "Self"),
+            "F": ("CLUMSY", "Clumsy", "Curse", -1, "Unplayable.", "None")}
     intents = [{"type": "Debuff", "label": ""}] if not rl["inc"] else [{"type": "Attack", "label": f"{rl['per']}x{rl['hits']}" if rl["hits"] > 1 else str(rl["inc"])}]
     if rl["heal"]:
         intents += [{"type": "Heal", "label": ""}, {"type": "Buff", "label": ""}]
-    est = [{"id": "STRENGTH_POWER", "amount": rl["strength"]}] if rl["strength"] else []
-    pst = [{"id": "STRENGTH_POWER", "amount": deck.ps * s}] if s and deck.ps else []
-    if s and deck.pe:
-        pst.append({"id": "FRIENDSHIP_POWER", "amount": s})
-    if rl["burn"]:
-        pst.append({"id": "DISINTEGRATION_POWER", "amount": rl["burn"]})
-    if rl["limit"] < 99:
-        pst.append({"id": "SLOTH_POWER", "amount": played})
-    pile = [{"name": text[k][1], "cost": str(text[k][3]), "description": text[k][4]} for k, n in deck.counts.items() if k != "F" for _ in range(n - (s if k == "P" else 0))]
-    return {
-        "state_type": "boss", "run": {"act": 2, "floor": 33, "ascension": 7},
-        "battle": {"round": r, "turn": "player", "is_play_phase": True,
-                   "enemies": [{"entity_id": "KNOWLEDGE_DEMON_0", "hp": boss, "max_hp": BOSS, "block": 0, "status": est, "intents": intents}]},
-        "player": {"hp": hp, "max_hp": deck.maxhp, "block": block, "energy": energy, "hand": cards, "potions": [], "status": pst,
-                   "draw_pile": pile, "discard_pile": [], "draw_pile_count": len(pile), "discard_pile_count": 0, "exhaust_pile_count": 0},
-        "_plays_this_turn": played,
-    }
+    pst = status(("STRENGTH_POWER", deck.ps * s), ("FRIENDSHIP_POWER", s if deck.pe else 0), ("DISINTEGRATION_POWER", rl["burn"]))
+    pst += [{"id": "SLOTH_POWER", "amount": played}] if rl["limit"] < 99 else []
+    pile = [k for k, n in deck.counts.items() if k != "F" for _ in range(n - (s if k == "P" else 0))]
+    enemies = [{"entity_id": "KNOWLEDGE_DEMON_0", "hp": boss, "max_hp": BOSS, "block": 0, "status": status(("STRENGTH_POWER", rl["strength"])), "intents": intents}]
+    return game_state("boss", {"act": 2, "floor": 33, "ascension": 7}, r, enemies, hand_cards(hand, text.get), piles(text.get), pile, [], hp=hp, maxhp=deck.maxhp,
+                      block=block, energy=energy, status=pst, _plays_this_turn=played)
 
 
 def fight(deck, burns, V, rng, trace=False):
@@ -204,27 +166,19 @@ def fight(deck, burns, V, rng, trace=False):
         counts = tuple(hand.count(k) for k in KINDS)
         energy, block, dealt, played, s0 = deck.turn_energy(s, rl["drain"]), 0, 0, 0, s
         shown = "".join(sorted(hand))
-        for _ in range(12):
-            if boss - dealt <= 0:
-                break
-            act = combat.choose_card(state(deck, r, rl, hp, boss - dealt, hand, energy, block, played, s))
-            if act is None:
-                break
-            c = hand.pop(act[1]["card_index"])
+        for i, c, _act in turn(lambda: state(deck, r, rl, hp, boss - dealt, hand, energy, block, played, s), hand, lambda: boss - dealt <= 0):
+            hand.pop(i)
             played += 1
             if c == "B":
                 block += deck.db
-                energy -= 1
             elif c == "P":
                 s += 1
-                energy -= 1
             else:
                 dealt += deck.hit(c, s)
-                energy -= {"A": 1, "H": 2, "Z": 0}[c]
+            energy -= {"A": 1, "H": 2, "Z": 0, "B": 1, "P": 1}[c]
         ours = value(V, r, rl, hp, boss, dealt, block, s)
         # (The planner may play its Power before its attacks and so do a little better than any play listed: no chance given away then.)
-        options = [(value(V, r, rl, hp, boss, d, b, s0 + n), d, b, n) for d, b, n in plays(deck, counts, deck.turn_energy(s0, rl["drain"]), rl["limit"], s0)]
-        best = max(options)
+        best = max((value(V, r, rl, hp, boss, d, b, s0 + n), d, b, n) for d, b, n in plays(deck, counts, deck.turn_energy(s0, rl["drain"]), rl["limit"], s0))
         turns.append((r, rl["kind"], hp / deck.maxhp, boss, max(0.0, best[0] - ours), dealt - best[1], block - best[2], rl["inc"] + rl["burn"], (s - s0) - best[3], counts[5]))
         if trace:
             print(f"r{r:2} hp {hp:3} demon {boss:3} coming {rl['inc'] + rl['burn']:2} hand {shown:5} | ours {dealt:2} dmg {block:2} blk {s - s0} P ({ours:.3f})  best {best[1]:2} dmg {best[2]:2} blk {best[3]} P ({best[0]:.3f})")
@@ -250,29 +204,36 @@ OFFERS = [(False, False, False), (False, False, True)]  # the burn taken at each
 PATCH = {}  # name -> value set on sts2bot.combat in every worker (to try a planner constant)
 
 
+def take_patches(into: dict) -> None:
+    """Move each NAME=VALUE of the command line into `into`."""
+    for arg in [a for a in sys.argv[1:] if "=" in a]:
+        into[arg.split("=")[0]] = float(arg.split("=")[1])
+        sys.argv.remove(arg)
+
+
+def set_constants(values: dict) -> None:
+    for k, v in values.items():
+        setattr(closing if hasattr(closing, k) else combat, k, v)
+
+
 def job(args):
     d, burns, n, seed, patch = args
-    for k, v in patch.items():
-        setattr(closing if hasattr(closing, k) else combat, k, v)
+    set_constants(patch)
     deck = DECKS[d]
     V = solve(deck, burns)
     rng = random.Random(seed)
-    out = [fight(deck, burns, V, rng) for _ in range(n)]
-    return d, burns, float(V[1][0][deck.maxhp, BOSS]), out
+    return d, burns, float(V[1][0][deck.maxhp, BOSS]), [fight(deck, burns, V, rng) for _ in range(n)]
 
 
 def run(n, offers=OFFERS, patch=None):
-    jobs = [(d, burns, n, 900 + 17 * d + i, patch or PATCH) for d in range(len(DECKS)) for i, burns in enumerate(offers)]
-    with multiprocessing.Pool(min(8, os.cpu_count() or 2)) as pool:
-        return pool.map(job, jobs)
+    return on_all_cores(job, [(d, burns, n, 900 + 17 * d + i, patch or PATCH) for d in range(len(DECKS)) for i, burns in enumerate(offers)], most=8)
 
 
 def table(out, n):
     name = lambda burns: "".join("b" if x else w for x, w in zip(burns, "MSW"))
     print("afflictions: M Mind Rot, S Sloth, W Waste Away, b the burn instead; each cell: planner won / perfect play wins")
     for d, deck in enumerate(DECKS):
-        cells = [f"{name(b)} {sum(f[0] for f in fights) / n:.2f}/{best:.2f}" for dd, b, best, fights in out if dd == d]
-        print(f"{str(deck):48} " + "  ".join(cells))
+        print(f"{str(deck):48} " + "  ".join(f"{name(b)} {sum(f[0] for f in fights) / n:.2f}/{best:.2f}" for dd, b, best, fights in out if dd == d))
     won = sum(f[0] for _d, _b, _best, fights in out for f in fights) / sum(len(fights) for *_x, fights in out)
     given = sum(t[4] for *_x, fights in out for _w, _r, turns in fights for t in turns) / sum(len(fights) for *_x, fights in out)
     print(f"all: planner {won:.3f}, perfect play {sum(best for _d, _b, best, _f in out) / len(out):.3f}, chance given away a fight {given:.4f}")
@@ -313,10 +274,7 @@ def energy_table(n):
 
 
 def card_worth(n):
-    """What one more card of each sort is worth at the Demon, by perfect play (and the planner beside it on `n` fights).
-
-    The question behind decks.ENERGY_POWER: a Power that gives an energy every turn against one more attack, Block
-    card or Strength Power, in decks that hold no Power yet."""
+    """One more card of each sort at the Demon, by perfect play (and the planner on `n` fights), in decks with no Power yet."""
     offers = OFFERS[0]
     bases = [((6, 4, 2, 6, 2, 0), dict(da=15, db=11)), ((6, 3, 3, 6, 2, 0), dict(da=19, db=12)), ((7, 3, 2, 7, 3, 0), dict(da=17, db=12, maxhp=66))]
     extra = [("nothing", (0, 0, 0, 0, 0, 0), {}), ("Strike-like attack", (1, 0, 0, 0, 0, 0), {}), ("two-cost attack", (0, 1, 0, 0, 0, 0), {}),
@@ -335,22 +293,20 @@ def card_worth(n):
 
 if __name__ == "__main__":
     logging.disable(logging.CRITICAL)
-    for arg in [a for a in sys.argv[1:] if "=" in a]:
-        PATCH[arg.split("=")[0]] = float(arg.split("=")[1])
-        sys.argv.remove(arg)
+    take_patches(PATCH)
+    count = lambda default: int(sys.argv[2]) if len(sys.argv) > 2 else default
     if sys.argv[1:2] == ["trace"]:
-        for k, v in PATCH.items():
-            setattr(closing if hasattr(closing, k) else combat, k, v)
+        set_constants(PATCH)
         deck, burns = DECKS[int(sys.argv[3]) if len(sys.argv) > 3 else 0], OFFERS[0]
         V = solve(deck, burns)
         print(deck, "perfect play wins", round(float(V[1][0][deck.maxhp, BOSS]), 3))
-        print(fight(deck, burns, V, random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 1), trace=True)[:2])
+        print(fight(deck, burns, V, random.Random(count(1)), trace=True)[:2])
     elif sys.argv[1:2] == ["regret"]:
-        regret(run(int(sys.argv[2]) if len(sys.argv) > 2 else 100))
+        regret(run(count(100)))
     elif sys.argv[1:2] == ["cards"]:
-        card_worth(int(sys.argv[2]) if len(sys.argv) > 2 else 0)
+        card_worth(count(0))
     elif sys.argv[1:2] == ["energy"]:
-        energy_table(int(sys.argv[2]) if len(sys.argv) > 2 else 400)
+        energy_table(count(400))
     else:
         n = int(sys.argv[1]) if len(sys.argv) > 1 else 100
         table(run(n), n)

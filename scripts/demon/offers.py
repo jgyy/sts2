@@ -2,15 +2,9 @@
 
     python3 scripts/demon/offers.py [2|3]
 
-Offer 2 (default) compares Sloth with the burn after Mind Rot; offer 3 compares Waste Away with the burn after
-Mind Rot and Sloth. Each deck is solved exactly by scripts/demonfight.py's `solve` (about a second a solve), for
-energy 3 to 7, hands 1 to 3 cards bigger than the model's five (the Necrobinder's Souls and draws), four mixes of
-cards and six damage levels; decks that perfect play wins under 4% or over 97% either way are left out. Next to
-each is the statistic the bot itself measures, `afflictions.lost_to_sloth`: cards a turn beyond three, here worked
-out for a hand of Mind Rot's size by the play that gives most damage + Block with no limit.
-
-Result (2026-11-22, offer 2, 207 decks): Sloth is better up to 1.75 (48 decks of 49 from 1.25, 7 points a deck), they
-tie to 2.0, the burn is better from 2.0 (+2 points, +10 from 2.25), at any energy. Offer 3: Waste Away is better in 129 of 134 decks.
+Offer 2 (default) sets Sloth against the burn after Mind Rot; offer 3 Waste Away against the burn after Mind Rot and
+Sloth. Decks perfect play wins under 4% or over 97% either way are left out; beside each is the bot's own measure,
+`afflictions.lost_to_sloth`: cards a turn beyond three the best play with no limit would use.
 """
 
 import itertools
@@ -20,7 +14,6 @@ import sys
 from multiprocessing import Pool
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 logging.disable(logging.CRITICAL)
 import demonfight as d  # noqa: E402
 
@@ -77,8 +70,7 @@ if __name__ == "__main__":
     rows = []
     for i, (mix, e, bonus, da, deck) in enumerate(meta):
         a, b = res[i][base], res[i][other]
-        if max(a, b) < 0.04 or min(a, b) > 0.97:
-            continue
-        rows.append((lost(deck, 4 + bonus), mix, e, bonus, da, a, b))
+        if not (max(a, b) < 0.04 or min(a, b) > 0.97):
+            rows.append((lost(deck, 4 + bonus), mix, e, bonus, da, a, b))
     for l, mix, e, bonus, da, a, b in sorted(rows):
         print(f"{l:5.2f}  {''.join(map(str, mix))} e{e} +{bonus} da{da:2d} | MSW {a:.3f}  {'MbW' if OFFER == 2 else 'MSb'} {b:.3f}")

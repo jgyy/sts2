@@ -2,16 +2,9 @@
 
     python3 scripts/audit/noeffect.py ['YYYY-MM-DD HH:MM']
 
-A play that changed nothing the log shows (our HP, Block, energy, powers, orbs, Stars, Osty; every enemy's HP, Block,
-powers and intent; the hand beyond the card itself) is listed by card with the share of its plays that did so. Use it
-beside parse_vs_text.py after a game patch: a card the parser misreads is one the planner believes in, so the planner
-scans (fightlog.py idle, surprises, unplayed) cannot see it (Bubble Bubble, edit 175, was found by hand this way).
-
-Expected on the list, not misplays: Status cards that are played to be rid of them (Beckon, Toxic, Debris), energy
-cards whose energy is spent at once (Wisp, TURBO, Supercritical, Luminesce). Powers can show when the state before the
-next action was read before the power appeared (Panache, Subroutine): read the examples. First run (2026-11-22, 4.5 h
-of logs): Purity (11 of 12 plays; "Exhaust up to 3 cards" confirmed with none chosen) and Restlessness (8 of 8; played
-with cards still in hand, so "if your Hand is empty" never held), both rare.
+A play that changed nothing the log shows (our side, every enemy, the hand beyond the card itself) is listed by card with
+the share of its plays that did so: often a card the parser misreads, which the planner scans cannot see. Status cards
+played to be rid of them, and energy spent at once, are expected on the list.
 """
 import collections
 import re
@@ -40,15 +33,13 @@ def scan(since: str = "") -> dict:
         for line in f.read_text(errors="replace").splitlines():
             if since and line[:16] < since:
                 continue
-            m = STATE.search(line)
-            if m:
+            if m := STATE.search(line):
                 last = (int(m.group(1)), m.group(2), line[:19])
                 continue
             if "->" not in line or not any(k in line for k in ("play_card", "end_turn", "use_potion")):
                 continue
             if last and pending and prev and last[0] == prev[0]:
-                me0, foes0, hand0 = split(prev[1])
-                me1, foes1, hand1 = split(last[1])
+                (me0, foes0, hand0), (me1, foes1, hand1) = split(prev[1]), split(last[1])
                 rest = list(hand0)
                 if pending in rest:
                     rest.remove(pending)
@@ -58,10 +49,7 @@ def scan(since: str = "") -> dict:
                     row[1] += 1
                     if len(row[2]) < 2:
                         row[2].append(f"{prev[2]} | {prev[1][:230]}")
-            prev, pending = last, None
-            m = PLAY.search(line)
-            if m:
-                pending = m.group(1)
+            prev, pending = last, (m.group(1) if (m := PLAY.search(line)) else None)
     return stats
 
 

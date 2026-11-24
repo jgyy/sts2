@@ -1,63 +1,27 @@
 #!/usr/bin/env python3
 """Read the bot's logs fight by fight (needs the bot to have run with -v).
 
-    python3 scripts/fightlog.py bosses [ASCENSION]      win/loss per boss and character
-    python3 scripts/fightlog.py costs                   HP cost and deaths per ordinary encounter
-    python3 scripts/fightlog.py show 'YYYY-MM-DD HH:MM' [boss,elite,monster]
-                                                        the first such fight from that time on: one
-                                                        line per round (what was in hand), then the plays
-    python3 scripts/fightlog.py deaths ['YYYY-MM-DD HH:MM']
-                                                        the fight each run ended in, from that time on
-    python3 scripts/fightlog.py knobs ['YYYY-MM-DDTHH:MM']
-                                                        how runs went under each value of each setting
-                                                        (runs.jsonl only, so it reaches back past the logs)
-    python3 scripts/fightlog.py pace ['YYYY-MM-DD HH:MM']
-                                                        rounds and enemy HP removed a round in ordinary
-                                                        fights, by act: the first thing a planner change moves
-    python3 scripts/fightlog.py reads                   per card: the damage and Block the planner read
-                                                        against what the play did (finds misread cards)
-    python3 scripts/fightlog.py unplayed [boss,elite,monster]
-                                                        per card: played against left in the hand at the end
-                                                        of a turn that could have paid for it at its start
+    python3 scripts/fightlog.py bosses [ASCENSION]            win/loss per boss and character
+    python3 scripts/fightlog.py costs                         HP cost and deaths per ordinary encounter
+    python3 scripts/fightlog.py show 'YYYY-MM-DD HH:MM' [boss,elite,monster]   the first such fight from then on: a line per round, then the plays
+    python3 scripts/fightlog.py deaths ['YYYY-MM-DD HH:MM']   the fight each run ended in, from then on
+    python3 scripts/fightlog.py knobs ['YYYY-MM-DDTHH:MM']    how runs went under each value of each setting (runs.jsonl only)
+    python3 scripts/fightlog.py pace ['YYYY-MM-DD HH:MM']     rounds and enemy HP removed a round in ordinary fights, by act
+    python3 scripts/fightlog.py reads                         per card: the damage and Block the planner read against what the play did
+    python3 scripts/fightlog.py unplayed [boss,elite,monster] per card: played against left in hand at the end of a turn that could pay for it
+    python3 scripts/fightlog.py rooms SETTING ['YYYY-MM-DD HH:MM']   ordinary fights under each value of one setting, by character and act
+    python3 scripts/fightlog.py surprises ['YYYY-MM-DD']      turns that cost 3 HP or more beyond the plan, by enemy
+    python3 scripts/fightlog.py idle ['YYYY-MM-DD']           turns ended with energy and a payable card while 8 HP or more was about to go
+    python3 scripts/fightlog.py pit ['YYYY-MM-DD HH:MM']      the Insatiable's fights, and the Sandpit round by round (E: a Frantic Escape in hand)
+    python3 scripts/fightlog.py artifact ['YYYY-MM-DD HH:MM'] [boss,elite,monster]   Artifact charges on the enemies each round, and when gone
+    python3 scripts/fightlog.py crabs ['YYYY-MM-DD HH:MM']    Crusher and Rocket: which died first and when, then both crabs' HP by round
+    python3 scripts/fightlog.py bosspace ['YYYY-MM-DD HH:MM'] boss HP lost a round, won against lost, and under each value of each setting
+    python3 scripts/fightlog.py powers                        powers no module of the bot names, with their rules text
+    python3 scripts/fightlog.py events                        every event met: how often each option was taken, with the last scores
+    python3 scripts/fightlog.py ancients                      the Ancients' relics: rating, how the runs that held them went, the shift
+    python3 scripts/fightlog.py wiki                          save the game's text for every discovered card and relic to wiki.json
 
-    python3 scripts/fightlog.py rooms SETTING ['YYYY-MM-DD HH:MM']
-                                                        ordinary fights under each value of one setting, by
-                                                        character and act: rounds, enemy HP a round, HP cost
-                                                        (what a deck-building setting does long before the
-                                                        bosses say anything)
-    python3 scripts/fightlog.py surprises ['YYYY-MM-DD']
-                                                        turns that cost 3 HP or more beyond what the plan
-                                                        expected, by enemy: mechanics the planner does not model
-    python3 scripts/fightlog.py idle ['YYYY-MM-DD']     turns ended with energy and a card it could pay for
-                                                        while 8 HP or more was about to be lost: a penalty
-                                                        that stops the planner playing at all
-    python3 scripts/fightlog.py pit ['YYYY-MM-DD HH:MM']
-                                                        the Insatiable's fights: won, lost on HP or eaten by the
-                                                        Sandpit, the boss's HP at the end, and the Sandpit round
-                                                        by round (E: a Frantic Escape was in that hand)
-    python3 scripts/fightlog.py artifact ['YYYY-MM-DD HH:MM'] [boss,elite,monster]
-                                                        fights against Artifact: the charges on the enemies as each
-                                                        round began, and the round the last one was gone by
-    python3 scripts/fightlog.py crabs ['YYYY-MM-DD HH:MM']
-                                                        Crusher and Rocket: which crab died first, in which round and
-                                                        with the other on how much, then both crabs' HP round by round
-    python3 scripts/fightlog.py bosspace ['YYYY-MM-DD HH:MM']
-                                                        boss fights by how much HP the boss lost a round (what
-                                                        separates won from lost), then that under each value of
-                                                        each setting, next to what the character usually deals
-                                                        to that boss: says in 30 fights what `knobs` needs 300 runs for
-    python3 scripts/fightlog.py powers                  powers seen on enemies (and on us) that no module of the
-                                                        bot names, with their rules text: mechanics nobody modelled
-    python3 scripts/fightlog.py events                  every event met: how often each option was taken, with
-                                                        the scores of the last time (to spot a choice never made)
-    python3 scripts/fightlog.py ancients                the Ancients' relics: each one's rating, how the runs that
-                                                        held it went against the usual, and where that moves it
-    python3 scripts/fightlog.py wiki                    save the game's text for every discovered card and relic
-                                                        to wiki.json next to the logs (one request at a time: a
-                                                        pool of them stalls the game while the bot is playing)
-
-`load()` returns one record per fight (act, floor, kind, enemies, HP in and out, rounds, every
-logged combat state) joined to its run in runs.jsonl, for one-off questions from a Python prompt.
+`load()` returns one record per fight joined to its run in runs.jsonl, for one-off questions from a Python prompt.
 """
 
 from __future__ import annotations
@@ -73,6 +37,9 @@ LOGS = os.path.expanduser(os.environ.get("STS2BOT_STATE", "~/.local/state/sts2bo
 ACT = re.compile(r"^(\S+ \S+) INFO act (\d) floor (\d+)  (\w+)  hp (\d+)/(\d+)  gold (\d+)")
 OVER = re.compile(r"^(\S+ \S+) INFO run \d+ over: (\w+) on act (\d) floor (\d+)")
 COMBAT = re.compile(r"^(\S+ \S+) DEBUG combat r(\d+) hp (\d+)/(\d+) blk (\d+) en (\d+)(.*?) \| (.*?) \| hand (.*)$")
+PLAYED = re.compile(r"DEBUG play_card (\{.*?\}) -> Playing '(.+?)'(?: targeting .*)?$")
+IN_HAND = re.compile(r"(\d+):(.+?)\((\w+)(!?)((?: [db]\d+(?:x\d+)?)*)\)(?:, |$)")
+ENDING = re.compile(r"^(\S+ \S+) DEBUG ending r(\d+) on (\d+) HP, expecting to lose (\d+)")
 
 
 def lines():
@@ -84,6 +51,33 @@ def lines():
                 yield line.rstrip("\n")
 
 
+def _names(enemies: str) -> str:
+    """The enemies of a combat line by name, e.g. CRUSHER+ROCKET."""
+    return "+".join(sorted({re.sub(r"_\d+$", "", e.split(" ")[0]) for e in enemies.split(" ; ")}))
+
+
+def _knobs(f: dict) -> dict:
+    return (f.get("run") or {}).get("knobs") or {}
+
+
+def _enemy_hp(enemies: str) -> int:
+    """HP of everything on the other side (an enemy "on 999999999" is one already beaten)."""
+    return sum(int(x) for x in re.findall(r" (\d+)hp/", enemies) if int(x) < 100_000)
+
+
+def _dealt(f: dict) -> int:
+    """Enemy HP removed in a fight: all of it, unless it was our death."""
+    return _enemy_hp(f["turns"][0][5]) - (_enemy_hp(f["turns"][-1][5]) if f["died"] else 0)
+
+
+def _by_round(f: dict, read) -> list:
+    """read(enemies) at the first look of each round of a fight, in round order."""
+    first = {}
+    for t in f["turns"]:
+        first.setdefault(t[0], read(t[5]))
+    return [first[r] for r in sorted(first)]
+
+
 def load():
     """(fights, runs). A fight that was still going when the log ends has no "died" key."""
     with open(os.path.join(LOGS, "runs.jsonl")) as f:
@@ -91,8 +85,7 @@ def load():
     by_time = {r["time"][:19].replace("T", " "): r for r in runs}
     fights, cur, in_run = [], None, []
     for line in lines():
-        m = ACT.match(line)
-        if m:
+        if m := ACT.match(line):
             t, act, floor, kind, hp, mx, _gold = m.groups()
             if cur and (int(floor), int(act)) != (cur["floor"], cur["act"]):
                 cur["hp_out"], cur["died"] = int(hp), False
@@ -101,20 +94,14 @@ def load():
                 cur = dict(t=t, act=int(act), floor=int(floor), kind=kind, hp_in=int(hp), max_hp=int(mx), enemies=None, rounds=0, turns=[])
                 fights.append(cur)
                 in_run.append(cur)
-            continue
-        m = COMBAT.match(line)
-        if m and cur:
+        elif (m := COMBAT.match(line)) and cur:
             t, rnd, hp, _mx, blk, en, powers, enemies, hand = m.groups()
             if cur["enemies"] is None:
-                cur["enemies"] = "+".join(sorted({re.sub(r"_\d+$", "", e.split(" ")[0]) for e in enemies.split(" ; ")}))
-                cur["hp_in"] = int(hp)
+                cur["enemies"], cur["hp_in"] = _names(enemies), int(hp)
             cur["rounds"] = max(cur["rounds"], int(rnd))
             cur["turns"].append((int(rnd), int(hp), int(blk), int(en), powers, enemies, hand, t))
-            continue
-        m = OVER.match(line)
-        if m:
-            t, result = m.group(1), m.group(2)
-            at = datetime.datetime.strptime(t, "%Y-%m-%d %H:%M:%S")
+        elif m := OVER.match(line):
+            result, at = m.group(2), datetime.datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S")
             run = next((by_time[k] for d in range(-2, 8) if (k := (at + datetime.timedelta(seconds=d)).strftime("%Y-%m-%d %H:%M:%S")) in by_time), None)
             if cur:
                 cur["died"], cur["hp_out"] = result == "loss", 0 if result == "loss" else None
@@ -140,14 +127,13 @@ def bosses(min_ascension: int = 0) -> None:
 def costs() -> None:
     table = collections.defaultdict(lambda: [0, 0, [], []])
     for f in load()[0]:
-        if "died" not in f or not f["enemies"] or f["kind"] == "boss":
-            continue
-        row = table[(f["act"], f["kind"], f["enemies"][:56])]
-        row[0] += 1
-        row[1] += f["died"]
-        row[3].append(f["rounds"])
-        if not f["died"] and f["hp_out"] is not None:
-            row[2].append((f["hp_in"] - f["hp_out"]) / f["max_hp"])
+        if "died" in f and f["enemies"] and f["kind"] != "boss":
+            row = table[(f["act"], f["kind"], f["enemies"][:56])]
+            row[0] += 1
+            row[1] += f["died"]
+            row[3].append(f["rounds"])
+            if not f["died"] and f["hp_out"] is not None:
+                row[2].append((f["hp_in"] - f["hp_out"]) / f["max_hp"])
     rows = [(k, v, sum(v[2]) / max(1, len(v[2]))) for k, v in table.items() if v[0] >= 4]
     for (act, kind, name), v, cost in sorted(rows, key=lambda r: (r[0][0], -r[2])):
         print(f"act {act} {kind:7} {name:56} fights {v[0]:3}  deaths {v[1]}  cost {100 * cost:3.0f}% of Max HP  rounds {sum(v[3]) / len(v[3]):.1f}")
@@ -163,25 +149,20 @@ def show(start: str, kinds: tuple = ("boss",)) -> None:
 
     for line in lines():
         if not on:
-            m = ACT.match(line)
-            if m and line[: len(start)] >= start and m.group(4) in kinds:
+            if (m := ACT.match(line)) and line[: len(start)] >= start and m.group(4) in kinds:
                 on = True
                 out.append(line[11:])
-            continue
-        if ACT.match(line) or OVER.match(line) or "boss fight over" in line:
+        elif ACT.match(line) or OVER.match(line) or "boss fight over" in line:
             flush()
             out.append(line[11:])
-            if "boss fight over" in line:
-                continue
-            break
-        m = COMBAT.match(line)
-        if m:
+            if "boss fight over" not in line:
+                break
+        elif m := COMBAT.match(line):
             if m.group(2) != rnd:
                 flush()
                 rnd = m.group(2)
                 out.append(f"r{rnd} hp {m.group(3)}/{m.group(4)} blk {m.group(5)} en {m.group(6)}{m.group(7)} | {m.group(8)} | {m.group(9)}")
-            continue
-        if m := re.search(r"DEBUG play_card .*-> Playing '([^']+)'", line):
+        elif m := re.search(r"DEBUG play_card .*-> Playing '([^']+)'", line):
             plays.append(m.group(1))
         elif m := re.search(r"Using potion '([^']+)'", line):
             plays.append("POTION " + m.group(1))
@@ -198,22 +179,16 @@ def show(start: str, kinds: tuple = ("boss",)) -> None:
 def deaths(since: str = "") -> None:
     for f in load()[0]:
         if f.get("died") and f["t"] >= since:
-            knobs = (f.get("run") or {}).get("knobs") or {}
-            settings = " ".join(f"{k}={v}" for k, v in knobs.items())
+            settings = " ".join(f"{k}={v}" for k, v in _knobs(f).items())
             print(f"{f['t'][5:16]} {str(f.get('char'))[:11]:11} a{f.get('asc')} act {f['act']} floor {f['floor']:2} {f['kind']:7} "
                   f"{str(f['enemies'])[:34]:34} rounds {f['rounds']:2}  entered on {f['hp_in']}/{f['max_hp']}  {settings}")
 
 
 def knobs(since: str = "") -> None:
-    """Per setting and value: runs, where they ended, and the bosses they got past.
-
-    A run that died at a boss met it; one that ended later got past it. Runs in
-    progress at a restart have no settings recorded and are left out.
-    """
+    """Per setting and value: runs, where they ended, and the bosses they got past (a run that died at a boss met it)."""
     with open(os.path.join(LOGS, "runs.jsonl")) as f:
         runs = [r for r in map(json.loads, f) if r.get("knobs") and r["time"] >= since]
-    names = sorted({k for r in runs for k in r["knobs"]})
-    for name in names:
+    for name in sorted({k for r in runs for k in r["knobs"]}):
         table = collections.defaultdict(list)
         for r in runs:
             if name in r["knobs"]:
@@ -226,45 +201,30 @@ def knobs(since: str = "") -> None:
                   f"  past the act 2 boss {sum(r['act'] >= 3 for r in rs):2}/{met2:<2}  last boss {won}/{met3}")
 
 
-PLAYED = re.compile(r"DEBUG play_card (\{.*?\}) -> Playing '(.+?)'(?: targeting .*)?$")
-IN_HAND = re.compile(r"(\d+):(.+?)\((\w+)(!?)((?: [db]\d+(?:x\d+)?)*)\)(?:, |$)")
-
-
-def _enemy_hp(enemies: str) -> int:
-    """HP of everything on the other side (an enemy "on 999999999" is one already beaten)."""
-    return sum(int(x) for x in re.findall(r" (\d+)hp/", enemies) if int(x) < 100_000)
-
-
 def pace(since: str = "") -> None:
     table = collections.defaultdict(list)
     for f in load()[0]:
         if f["kind"] == "monster" and f["turns"] and "died" in f and f["t"] >= since:
-            dealt = _enemy_hp(f["turns"][0][5]) - (_enemy_hp(f["turns"][-1][5]) if f["died"] else 0)
-            table[f["act"]].append((f["rounds"], dealt / max(1, f["rounds"]), f["died"]))
+            table[f["act"]].append((f["rounds"], _dealt(f) / max(1, f["rounds"]), f["died"]))
     for act, rows in sorted(table.items()):
         print(f"act {act}: ordinary fights {len(rows):4}  rounds {sum(r[0] for r in rows) / len(rows):.2f}  enemy HP removed a round {sum(r[1] for r in rows) / len(rows):.1f}  deaths {sum(r[2] for r in rows)}")
 
 
 def _turns():
     """(kind of fight, first state of a turn, [(state before a play, card name, state after)], last state) for every turn ended."""
-    kind = first = last = None
-    plays, pending = [], None
+    kind = first = last = pending = None
+    plays = []
     for line in lines():
-        m = ACT.match(line)
-        if m:
+        if m := ACT.match(line):
             kind, first, last, plays, pending = m.group(4), None, None, [], None
-            continue
-        m = COMBAT.match(line)
-        if m:
+        elif m := COMBAT.match(line):
             if first is None or first.group(2) != m.group(2):
                 first, plays = m, []
             if pending is not None:
-                plays.append((pending[0], pending[1], m))
+                plays.append((*pending, m))
                 pending = None
             last = m
-            continue
-        m = PLAYED.search(line)
-        if m and last is not None:
+        elif (m := PLAYED.search(line)) and last is not None:
             pending = (last, m.group(2))
         elif "DEBUG end_turn" in line and "->" in line and first is not None:
             yield kind, first, plays, last
@@ -272,16 +232,11 @@ def _turns():
 
 
 def reads() -> None:
-    """Single-enemy plays only, with nothing on the enemy that bends damage: read against done.
-
-    X-cost cards are left out: the hand shows their damage for one energy (Heavenly Drill "d9", did 46 for
-    five), and the planner scales it by the energy it spends, so every one of them read as a misread.
-    (Stardust costs X *Stars*, shows as cost 0, and still reads low for the same reason.)
-    Orb cards still show "read 0" (Dualcast, Glacier, Refract): their damage and Block come from the orbs,
-    which the planner works out in `combat.simulate`, not from the card's text.
-    """
+    """Single-enemy plays with nothing on the enemy that bends damage, read against done. X-cost cards are left out (the hand
+    shows their damage for one energy); orb cards read 0 (their damage and Block come from the orbs, in `combat.simulate`)."""
     odd = ("SLIPPERY", "INTANGIBLE", "HARD_TO_KILL", "FLUTTER", "SOAR", "SKITTISH", "BURROWED", "PLATING", "ASLEEP", "ADAPTABLE", "SLOW", "VULNERABLE", "HANG")
     table = collections.defaultdict(list)
+    took = lambda g: _enemy_hp(g.group(8)) + sum(int(x) for x in re.findall(r"hp/(\d+)blk", g.group(8)))
     for _kind, _first, plays, _last in _turns():
         for before, name, after in plays:
             if " ; " in before.group(8) or any(o in before.group(8) for o in odd) or _enemy_hp(after.group(8)) == 0:
@@ -291,7 +246,6 @@ def reads() -> None:
                 continue
             d = re.search(r"d(\d+)(?:x(\d+))?", card.group(5))
             b = re.search(r"b(\d+)", card.group(5))
-            took = lambda g: _enemy_hp(g.group(8)) + sum(int(x) for x in re.findall(r"hp/(\d+)blk", g.group(8)))
             table[name.rstrip("+")].append((int(d.group(1)) * int(d.group(2) or 1) if d else 0, took(before) - took(after), int(b.group(1)) if b else 0, int(after.group(5)) - int(before.group(5))))
     rows = [(n, len(v), *(sum(x[i] for x in v) / len(v) for i in range(4))) for n, v in table.items() if len(v) >= 5]
     for n, k, rd, dd, rb, gb in sorted(rows, key=lambda r: -(abs(r[2] - r[3]) + abs(r[4] - r[5])))[:50]:
@@ -301,13 +255,12 @@ def reads() -> None:
 def unplayed(kinds: tuple = ("boss", "elite")) -> None:
     played, left = collections.Counter(), collections.Counter()
     for kind, first, plays, last in _turns():
-        if kind not in kinds:
-            continue
-        played.update(name.rstrip("+") for _before, name, _after in plays)
-        energy = int(first.group(6))
-        for c in IN_HAND.finditer(last.group(9)):
-            if not c.group(4) and c.group(3).isdigit() and int(c.group(3)) <= energy:
-                left[c.group(2).strip().rstrip("+")] += 1
+        if kind in kinds:
+            played.update(name.rstrip("+") for _before, name, _after in plays)
+            energy = int(first.group(6))
+            for c in IN_HAND.finditer(last.group(9)):
+                if not c.group(4) and c.group(3).isdigit() and int(c.group(3)) <= energy:
+                    left[c.group(2).strip().rstrip("+")] += 1
     rows = [(left[n] / (left[n] + played[n]), n) for n in set(left) | set(played) if left[n] + played[n] >= 12]
     for share, n in sorted(rows, reverse=True)[:45]:
         print(f"{n:24} played {played[n]:4}  left {left[n]:4}  ({100 * share:.0f}% left)")
@@ -316,45 +269,34 @@ def unplayed(kinds: tuple = ("boss", "elite")) -> None:
 def rooms(name: str, since: str = "") -> None:
     table = collections.defaultdict(list)
     for f in load()[0]:
-        value = ((f.get("run") or {}).get("knobs") or {}).get(name)
+        value = _knobs(f).get(name)
         if f["kind"] != "monster" or not f["turns"] or "died" not in f or value is None or f["t"] < since:
             continue
         out = 0 if f["died"] else f["hp_out"]
-        if out is None:
-            continue
-        dealt = _enemy_hp(f["turns"][0][5]) - (_enemy_hp(f["turns"][-1][5]) if f["died"] else 0)
-        for who in (f["char"], "all"):
-            table[(who, f["act"], value)].append((f["rounds"], dealt / max(1, f["rounds"]), (f["hp_in"] - out) / f["max_hp"], f["died"]))
+        if out is not None:
+            for who in (f["char"], "all"):
+                table[(who, f["act"], value)].append((f["rounds"], _dealt(f) / max(1, f["rounds"]), (f["hp_in"] - out) / f["max_hp"], f["died"]))
     for (who, act, value), v in sorted(table.items(), key=lambda kv: (kv[0][0] == "all", str(kv[0][0]), kv[0][1], kv[0][2])):
         if len(v) >= 8:
             print(f"{who:12} act {act} {name} {value:4}: fights {len(v):3}  rounds {sum(x[0] for x in v) / len(v):.2f}  enemy HP a round {sum(x[1] for x in v) / len(v):5.1f}"
                   f"  cost {100 * sum(x[2] for x in v) / len(v):4.1f}% of Max HP  deaths {sum(x[3] for x in v)}")
 
 
-ENDING = re.compile(r"^(\S+ \S+) DEBUG ending r(\d+) on (\d+) HP, expecting to lose (\d+)")
-
-
 def _endings():
     """(time, kind of fight, enemy names, the last combat state of the turn, HP expected to be lost, HP the next round began on or None)."""
-    kind, last, pending = None, None, None
+    kind = last = pending = None
     for line in lines():
-        m = ACT.match(line)
-        if m or OVER.match(line):
+        if (m := ACT.match(line)) or OVER.match(line):
             if pending:
                 yield (*pending, None)
             kind, last, pending = (m.group(4) if m else kind), None, None
-            continue
-        m = COMBAT.match(line)
-        if m:
+        elif m := COMBAT.match(line):
             if pending and int(m.group(2)) == int(pending[3].group(2)) + 1:
                 yield (*pending, int(m.group(3)))
                 pending = None
             last = m
-            continue
-        m = ENDING.match(line)
-        if m and last is not None:
-            names = "+".join(sorted({re.sub(r"_\d+$", "", e.split(" ")[0]) for e in last.group(8).split(" ; ")}))
-            pending = (m.group(1), kind, names, last, int(m.group(4)))
+        elif (m := ENDING.match(line)) and last is not None:
+            pending = (m.group(1), kind, _names(last.group(8)), last, int(m.group(4)))
 
 
 def surprises(since: str = "") -> None:
@@ -373,8 +315,7 @@ def idle(since: str = "") -> None:
     for t, kind, names, last, expected, _after in _endings():
         energy = int(last.group(6))
         spare = [c.group(2).strip() for c in IN_HAND.finditer(last.group(9)) if not c.group(4) and c.group(3).isdigit() and int(c.group(3)) <= energy and c.group(5).strip()]
-        # Under Vital Spark (Infested Prism) every Skill played makes each hit on us harder by the power's amount
-        # (combat.py's taint): a Defend's 5 Block can cost more than it saves, so holding it is no idle turn.
+        # (Under Vital Spark every Skill played makes each hit on us harder: holding a Defend there is no idle turn.)
         if t >= since and energy >= 1 and spare and expected >= 8 and "VITAL_SPARK" not in last.group(8):
             rows.append((t, kind, names, last, expected))
     print(collections.Counter(r[2][:40] for r in rows).most_common(15))
@@ -397,21 +338,17 @@ def pit(since: str = "") -> None:
             expect = int(re.search(r"expecting to lose (\d+)", end[0]).group(1)) if end else 0
             how = "won" if " won;" in line else "eaten" if sand and int(sand.group(1)) <= 1 and hp > expect else "lost"
             fight = []
-            if line[:16] < since:
-                continue
-            tally[how] += 1
-            boss = re.search(r"boss hp \d+ -> (\d+)", line).group(1)
-            print(f"{line[5:16]} {how:5} rounds {len(shown):2}  boss left {boss:>3}  hp {hp:2}  Sandpit at the end {sand.group(1) if sand else '-'}  | {' '.join(shown.values())}")
+            if line[:16] >= since:
+                tally[how] += 1
+                boss = re.search(r"boss hp \d+ -> (\d+)", line).group(1)
+                print(f"{line[5:16]} {how:5} rounds {len(shown):2}  boss left {boss:>3}  hp {hp:2}  Sandpit at the end {sand.group(1) if sand else '-'}  | {' '.join(shown.values())}")
     print(dict(tally))
 
 
 def artifact(since: str = "", kinds: tuple = ("boss", "elite")) -> None:
     gone = collections.defaultdict(list)
     for f in load()[0]:
-        rounds = {}
-        for t in f["turns"]:
-            rounds.setdefault(t[0], sum(map(int, re.findall(r"ARTIFACT:(\d+)", t[5]))))
-        left = [rounds[r] for r in sorted(rounds)]
+        left = _by_round(f, lambda e: sum(map(int, re.findall(r"ARTIFACT:(\d+)", e))))
         if "died" not in f or not left or not left[0] or f["t"] < since:
             continue
         by = next((n + 1 for n, a in enumerate(left) if not a), None)
@@ -427,11 +364,7 @@ def crabs(since: str = "") -> None:
     for f in load()[0]:
         if f["enemies"] != "CRUSHER+ROCKET" or "died" not in f or f["t"] < since:
             continue
-        rounds = {}
-        for t in f["turns"]:
-            hp = {m.group(1): int(m.group(2)) for m in re.finditer(r"(CRUSHER|ROCKET)_\d+ (\d+)hp", t[5])}
-            rounds.setdefault(t[0], (hp.get("CRUSHER", 0), hp.get("ROCKET", 0)))
-        path = [rounds[r] for r in sorted(rounds)]
+        path = _by_round(f, lambda e: tuple(int(dict(re.findall(r"(CRUSHER|ROCKET)_\d+ (\d+)hp", e)).get(k, 0)) for k in ("CRUSHER", "ROCKET")))
         at = next((n for n, (c, r) in enumerate(path) if not c or not r), None)
         first = "neither" if at is None else "Crusher" if not path[at][0] else "Rocket"
         tally[(first, "lost" if f["died"] else "won")] += 1
@@ -445,8 +378,7 @@ def powers() -> None:
     code = "".join(open(os.path.join(d, n)).read() for d, _dirs, names in sorted(os.walk(root)) for n in sorted(names) if n.endswith(".py"))
     seen: dict = {}
     for line in lines():
-        m = re.search(r" INFO power (\w+?)(?:_POWER)? \(on (.+?)\): (.*)$", line)
-        if m and f'"{m.group(1)}"' not in code:
+        if (m := re.search(r" INFO power (\w+?)(?:_POWER)? \(on (.+?)\): (.*)$", line)) and f'"{m.group(1)}"' not in code:
             ours = m.group(2).startswith("The ") and m.group(2).split()[-1] in ("Ironclad", "Silent", "Regent", "Necrobinder", "Defect", "Fool")
             seen.setdefault((ours, m.group(1)), (m.group(2), m.group(3)))
     for (ours, name), (who, text) in sorted(seen.items()):
@@ -457,12 +389,9 @@ def events() -> None:
     met: dict = {}
     last = None
     for line in lines():
-        m = re.search(r" DEBUG event (\w+): (.*)$", line)
-        if m:
+        if m := re.search(r" DEBUG event (\w+): (.*)$", line):
             last = m.groups()
-            continue
-        m = re.search(r"Choosing event option: (.*)$", line)
-        if m and last and m.group(1).strip() != "Proceed":
+        elif (m := re.search(r"Choosing event option: (.*)$", line)) and last and m.group(1).strip() != "Proceed":
             entry = met.setdefault(last[0], [collections.Counter(), ""])
             entry[0][m.group(1).strip()[:40]] += 1
             entry[1], last = last[1], None
@@ -485,7 +414,7 @@ def wiki() -> None:
             key = item if isinstance(item, str) else item.get("id")
             found = get(f"/wiki?q={urllib.parse.quote(str(key))}&type={kind}").get("results") or []
             out[kind + "s"].update({key: hit for hit in found if hit.get("id") == key})
-            time.sleep(0.05)
+            time.sleep(0.05)  # one request at a time: a pool of them stalls the game while the bot plays
     with open(os.path.join(LOGS, "wiki.json"), "w") as f:
         json.dump(out, f)
     print(len(out["cards"]), "cards and", len(out["relics"]), "relics in", os.path.join(LOGS, "wiki.json"))
@@ -510,10 +439,7 @@ def ancients() -> None:
 
 def boss_pace(f: dict) -> float:
     """HP the other side lost a round in this fight, from one round's first look to the next (a heal or a new form is not a loss)."""
-    first = {}
-    for turn in f["turns"]:
-        first.setdefault(turn[0], _enemy_hp(turn[5]))
-    hp = [first[r] for r in sorted(first)]
+    hp = _by_round(f, _enemy_hp)
     return sum(max(0, a - b) for a, b in zip(hp, hp[1:])) / max(1, len(hp) - 1)
 
 
@@ -528,12 +454,10 @@ def bosspace(since: str = "") -> None:
         for f, p in sub:
             usual[f["char"], f["enemies"]].append(p)
         usual = {k: sum(v) / len(v) for k, v in usual.items()}
-        names = sorted({k for f, _ in sub for k in ((f["run"] or {}).get("knobs") or {})})
-        for name in names:
+        for name in sorted({k for f, _ in sub for k in _knobs(f)}):
             arms = collections.defaultdict(list)
             for f, p in sub:
-                value = ((f["run"] or {}).get("knobs") or {}).get(name)
-                if value is not None:
+                if (value := _knobs(f).get(name)) is not None:
                     arms[value].append((p - usual[f["char"], f["enemies"]], not f["died"]))
             if len(arms) < 2:
                 continue
@@ -547,37 +471,16 @@ def bosspace(since: str = "") -> None:
 
 if __name__ == "__main__":
     args = sys.argv[1:]
-    if args[:1] == ["bosses"]:
-        bosses(int(args[1]) if len(args) > 1 else 0)
-    elif args[:1] == ["costs"]:
-        costs()
-    elif args[:1] == ["deaths"]:
-        deaths(args[1] if len(args) > 1 else "")
-    elif args[:1] == ["knobs"]:
-        knobs(args[1] if len(args) > 1 else "")
-    elif args[:1] == ["pace"]:
-        pace(args[1] if len(args) > 1 else "")
-    elif args[:1] == ["reads"]:
-        reads()
-    elif args[:1] == ["unplayed"]:
-        unplayed(tuple(args[1].split(",")) if len(args) > 1 else ("boss", "elite"))
-    elif args[:1] == ["rooms"] and len(args) > 1:
-        rooms(args[1], args[2] if len(args) > 2 else "")
-    elif args[:1] == ["surprises"]:
-        surprises(args[1] if len(args) > 1 else "")
-    elif args[:1] == ["idle"]:
-        idle(args[1] if len(args) > 1 else "")
-    elif args[:1] == ["pit"]:
-        pit(args[1] if len(args) > 1 else "")
-    elif args[:1] == ["bosspace"]:
-        bosspace(args[1] if len(args) > 1 else "")
-    elif args[:1] == ["crabs"]:
-        crabs(args[1] if len(args) > 1 else "")
-    elif args[:1] == ["artifact"]:
-        artifact(args[1] if len(args) > 1 else "", tuple(args[2].split(",")) if len(args) > 2 else ("boss", "elite"))
-    elif args[:1] in (["powers"], ["events"], ["wiki"], ["ancients"]):
-        {"powers": powers, "events": events, "wiki": wiki, "ancients": ancients}[args[0]]()
-    elif args[:1] == ["show"] and len(args) > 1:
-        show(args[1], tuple(args[2].split(",")) if len(args) > 2 else ("boss",))
-    else:
-        print(__doc__)
+    rest = args[1:]
+    since = rest[0] if rest else ""
+    kinds = lambda i, default: tuple(rest[i].split(",")) if len(rest) > i else default
+    commands = {
+        "bosses": lambda: bosses(int(rest[0]) if rest else 0),
+        "unplayed": lambda: unplayed(kinds(0, ("boss", "elite"))),
+        "artifact": lambda: artifact(since, kinds(1, ("boss", "elite"))),
+        "rooms": lambda: rooms(rest[0], rest[1] if len(rest) > 1 else "") if rest else print(__doc__),
+        "show": lambda: show(rest[0], kinds(1, ("boss",))) if rest else print(__doc__),
+        **{f.__name__: f for f in (costs, reads, powers, events, wiki, ancients)},
+        **{f.__name__: lambda f=f: f(since) for f in (deaths, knobs, pace, surprises, idle, pit, bosspace, crabs)},
+    }
+    commands.get(args[0] if args else "", lambda: print(__doc__))()
