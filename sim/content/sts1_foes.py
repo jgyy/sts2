@@ -328,7 +328,7 @@ spec("THE_GUARDIAN", "The Guardian", (240, 240), {"charge_up": M(block=9), "fier
 
 spec("SPHERIC_GUARDIAN", "Spheric Guardian", (20, 20), {"activate": M(block=25), "attack_frail": M(10, fx=(("frail", 5),)), "slam": M(10, hits=2),
                                                         "harden": M(10, block=15)},
-     lambda f, r: opening("activate", "attack_frail", then=cycle("slam", "harden"))(f, r), powers={"BARRICADE": 1, "ARTIFACT": 3}, block=40)
+     opening("activate", "attack_frail", then=cycle("slam", "harden")), powers={"BARRICADE": 1, "ARTIFACT": 3}, block=40)
 spec("CHOSEN", "Chosen", (95, 99), {"poke": M(5, hits=2), "hex": M(fx=(("hex",),)), "debilitate": M(10, fx=(("vuln", 2),)), "drain": M(fx=(("weak", 3), ("str", 3))), "zap": M(18)}, _chosen)
 spec("SHELLED_PARASITE", "Shelled Parasite", (68, 72), {"double": M(6, hits=2), "suck": M(10, fx=(("heal", 10),)), "fell": M(18, fx=(("frail", 2),))},
      weighted({"double": 40, "suck": 40, "fell": 20}, {"double": 2, "suck": 2, "fell": 1}), powers={"PLATING": 14},
