@@ -547,10 +547,6 @@ class Fight:
         self.free_attack = False
         for c in self.hand + self.draw + self.discard:
             c.cost_turn = None
-        for f in self.foes:
-            back = f.mem.pop("str_back", 0)
-            if back:
-                f.powers["STRENGTH"] = f.powers.get("STRENGTH", 0) + back
 
     def enemies_turn(self) -> None:
         for f in list(self.foes):
@@ -579,6 +575,8 @@ class Fight:
         self.end_of_round()
 
     def end_of_round(self) -> None:
+        for f in self.foes:  # Strength lost "this turn" (Piercing Wail, Shifting) is back once the enemies have acted
+            f.powers["STRENGTH"] = f.powers.get("STRENGTH", 0) + f.mem.pop("str_back", 0)
         for k in DEBUFFS:
             if self.pw.get(k):
                 self.pw[k] -= 1
