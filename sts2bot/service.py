@@ -1,8 +1,4 @@
-"""`python3 -m sts2bot service ...`: turn the systemd user service that runs the bot on or off.
-
-The unit restarts the bot whenever it exits (Restart=always), so killing the
-process does not turn the bot off. These commands go through systemctl.
-"""
+"""`python3 -m sts2bot service ...`: turn the bot's systemd user service on or off (killing the bot does not: the unit restarts it)."""
 
 from __future__ import annotations
 
@@ -12,16 +8,8 @@ import sys
 
 UNIT = "sts2bot"  # systemd/sts2bot.service, installed as the user unit of the same name
 
-# What each action asks systemctl to do. `stop` is a manual stop: the unit comes
-# back at the next login. `disable` also keeps it from starting at login.
-ACTIONS = {
-    "status": ["status", "--no-pager", "--lines=0"],
-    "start": ["start"],
-    "stop": ["stop"],
-    "enable": ["enable", "--now"],
-    "disable": ["disable", "--now"],
-}
-
+# What each action asks systemctl to do (`stop` lasts until the next login; `disable` also keeps it from starting then).
+ACTIONS = {"status": ["status", "--no-pager", "--lines=0"], "start": ["start"], "stop": ["stop"], "enable": ["enable", "--now"], "disable": ["disable", "--now"]}
 NOTE = {
     "stop": "The bot is stopped until you start it again or log in next time.",
     "disable": "The bot is stopped and will not start at login. Start it again with: python3 -m sts2bot service enable",

@@ -1,10 +1,5 @@
-"""The bot's client for the first game: the same calls as sts2bot.client.Client, over the relay.
-
-`state()` is the game's state in the bot's words (screens.py) and `act(action, **params)` takes the
-bot's actions ("play_card", "choose_map_node", "shop_purchase" ...) and sends the CommunicationMod
-command that does the same ("play 2 0", "choose 1", "choose purge" ...). A few things the bot asks
-for are done here without the game: the menu before a run (CommunicationMod only has "start").
-"""
+"""The bot's client for the first game, over the relay: `state()` in the bot's words (screens.py), and `act()` sends the
+CommunicationMod command for the bot's action ("play_card" -> "play 2 0" ...). The menu before a run is played here."""
 
 from __future__ import annotations
 
@@ -32,11 +27,9 @@ def _intents_pending(msg: dict | None) -> bool:
 
 class Sts1Client(Client):
     def __init__(self, host: str = "127.0.0.1", port: int = DEFAULT_PORT, timeout: float = 30.0, prefs=None):
-        """`prefs`: what the save files say (host.read_prefs's dict), or a function that reads them again: then each
-        profile() asks it afresh, so a win's next ascension and a newly unlocked character are seen without a restart."""
+        """`prefs`: host.read_prefs's dict, or a function each profile() calls again (to see a new ascension or character)."""
         super().__init__(host, port, timeout)
-        self.screens = Screens()
-        self._shops_opened: set = set()
+        self.screens, self._shops_opened = Screens(), set()
         self._read_prefs = prefs if callable(prefs) else None
         self._refused: set = set()  # characters the game would not start
         self._take_prefs(self._read_prefs() if self._read_prefs else (prefs or {}))
@@ -45,8 +38,6 @@ class Sts1Client(Client):
         self.screens.max_ascension = {k: int(v) for k, v in (prefs.get("max_ascension") or {}).items()}
         self.screens.wins = max(self.screens.wins, int(prefs.get("wins") or 0))
         self.screens.locked = set(prefs.get("locked") or ()) | self._refused
-
-    # ------------------------------------------------------------ transport
 
     def ping(self) -> bool:
         try:
@@ -62,14 +53,10 @@ class Sts1Client(Client):
         """One CommunicationMod command, answered with the game's next state (or its error)."""
         return self._request(self.base + "/command", {"command": command})
 
-    # ------------------------------------------------------------ the Client calls the bot makes
-
     def state(self) -> dict[str, Any]:
         msg = self._message()
         for _ in range(INTENT_WAITS):
-            # The first message of a fight comes before the monsters' intents are set (they read "DEBUG"), and the
-            # planner then played its first card blind (Strike into a Jaw Worm's 11, the first live runs). A few
-            # frames later they are there.
+            # A fight's first message comes before the monsters' intents are set: wait a few frames for them.
             if not _intents_pending(msg):
                 break
             answer = self.send(f"wait {INTENT_WAIT_FRAMES}")
@@ -89,9 +76,7 @@ class Sts1Client(Client):
         return st
 
     def _scry(self, msg: dict | None) -> dict | None:
-        """The Watcher's Scry: the top cards of the draw pile in a grid, any number of them to discard. Done here: Status and
-        Curse cards go, the rest stay, then confirm. (As a card select the bot clicked the three cards on and off for good:
-        the grid's confirm never showed as ready, 2026-11-24 21:52, the Watcher's first run.)"""
+        """The Watcher's Scry grid, done here: Status and Curse cards go, the rest stay, then confirm."""
         for _ in range(SCRY_STEPS):
             g = (msg or {}).get("game_state") or {}
             if str(g.get("screen_type")) != "GRID" or str(g.get("current_action")) != "ScryAction":
@@ -109,10 +94,8 @@ class Sts1Client(Client):
         """What the save files say, and the wins seen since: enough for the bot to pick a character."""
         if self._read_prefs and not self.screens.raw.get("in_game"):
             self._take_prefs(self._read_prefs())
-        return {
-            "total_wins": self.screens.wins,
-            "characters": [{"id": c, "max_ascension": self.screens.max_ascension.get(c, 0)} for c in CHARACTERS if c not in self.screens.locked],
-        }
+        return {"total_wins": self.screens.wins,
+                "characters": [{"id": c, "max_ascension": self.screens.max_ascension.get(c, 0)} for c in CHARACTERS if c not in self.screens.locked]}
 
     def card(self, card_id: str) -> dict[str, Any] | None:
         key = text.card_key(card_id)
@@ -141,8 +124,6 @@ class Sts1Client(Client):
         if isinstance(answer.get("message"), dict):
             self.screens.translate(answer["message"])
         return {"status": "ok", "message": command}
-
-    # ------------------------------------------------------------ the way back
 
     def _local(self, action: str, params: dict) -> dict | None:
         """Menu clicks: the menu before a run is the bot's own (screens.Screens.menu)."""
@@ -199,12 +180,9 @@ class Sts1Client(Client):
             target = p.get("target")
             tail = f" {sc.targets[str(target)]}" if verb == "use" and target is not None and str(target) in sc.targets else ""
             return f"potion {verb} {int(p.get('slot', 0))}{tail}"
-        if action in ("choose_map_node", "claim_reward", "select_card_reward", "choose_rest_option", "choose_event_option",
-                      "select_card", "combat_select_card", "select_relic"):
+        if action in ("choose_map_node", "claim_reward", "select_card_reward", "choose_rest_option", "choose_event_option", "select_card", "combat_select_card", "select_relic"):
             return choose(p.get("index", p.get("card_index", 0)))
-        if action == "claim_treasure_relic":
-            return choose(0)
-        if action == "advance_dialogue":
+        if action in ("claim_treasure_relic", "advance_dialogue"):
             return choose(0)
         if action == "shop_purchase":
             name = sc.shop_names.get(int(p.get("index", -1)))

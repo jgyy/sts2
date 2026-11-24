@@ -1,14 +1,5 @@
-"""One record per fight, kept for good (fights.jsonl next to the logs).
-
-The log holds about four hours of play before it rotates away, and the run
-history only has the deck a run ended with. So what a fight cost could be set
-against the deck that fought it for 130 runs at a time and no more: enough to
-see that a Block card held at the act 1 boss makes every act 2 fight 2.6% of
-Max HP cheaper, not enough to say which cards and relics do it. Each line here
-is a fight as it began (deck, relics, potions, HP) and as it ended.
-
-    python3 scripts/fightlog.py decks      reads it
-"""
+"""One record per fight, kept for good in fights.jsonl (the log rotates away, and the run history only has a run's last deck): the
+fight as it began (deck, relics, potions, HP) and as it ended. `python3 scripts/fightlog.py decks` reads it."""
 
 from __future__ import annotations
 
@@ -58,23 +49,12 @@ class FightWatch:
             if not foes:
                 return  # nothing on the field yet
             self.fight = {
-                "where": where,
-                "time": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                "character": player.get("character"),
-                "ascension": run.get("ascension"),
-                "act": where[0],
-                "floor": where[1],
-                "kind": kind,
-                "enemies": foes,
-                "count": len(battle.get("enemies") or []),
+                "where": where, "time": time.strftime("%Y-%m-%dT%H:%M:%S"), "character": player.get("character"), "ascension": run.get("ascension"),
+                "act": where[0], "floor": where[1], "kind": kind, "enemies": foes, "count": len(battle.get("enemies") or []),
                 # False for a fight the bot came into half way (a restart): its HP and piles are not the fight's own.
                 "whole": rnd <= 1 and not player.get("discard_pile") and not player.get("exhaust_pile"),
-                "hp_in": int(player.get("hp") or 0),
-                "max_hp": int(player.get("max_hp") or 0),
-                "relics": _names(player, "relics", "id"),
-                "potions": _names(player, "potions"),
-                "deck": sorted(n for pile in _PILES for n in _names(player, pile)),
-                "rounds": 0,
+                "hp_in": int(player.get("hp") or 0), "max_hp": int(player.get("max_hp") or 0), "relics": _names(player, "relics", "id"),
+                "potions": _names(player, "potions"), "deck": sorted(n for pile in _PILES for n in _names(player, pile)), "rounds": 0,
             }
         f = self.fight
         f["enemies"] = sorted(set(f["enemies"]) | set(foes))

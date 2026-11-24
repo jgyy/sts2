@@ -1,15 +1,7 @@
-"""The Watcher's stances (the first game), as a line of cards the planner tries plays out.
-
-Wrath: Attacks deal double damage and she takes double from attacks. Calm: leaving it gives 2 energy. Divinity: Attacks
-deal triple, entering it gives 3 energy (it ends when her next turn starts). The bot's mod puts her stance in the state
-(speedmod.py); a card in hand already shows its damage in the stance she is in, and the enemies' intents what they will
-deal to her in it, so only a change of stance inside the line needs working out here: the Attacks after it, the energy,
-and the hit she takes when the turn ends. (Until 2026-11-24 the planner knew nothing of stances: the Watcher entered
-Wrath for a card's own damage and took double the next hit.)
-
-What a turn ending in Wrath does for the next one (double damage again) is not counted, so the planner leaves Wrath when
-it can; a turn ending in Calm counts some of the energy that leaving it next turn gives.
-"""
+"""The Watcher's stances along a line of cards the planner tries. Wrath: Attacks deal and take double. Calm: leaving it
+gives 2 energy. Divinity: Attacks deal triple, entering it gives 3 energy. Cards and intents show the stance the turn began
+in, so only a change inside the line is worked out. A turn ending in Wrath is not charged for the next (so the planner
+leaves it when it can); one ending in Calm counts some of the energy that leaving it gives."""
 
 from __future__ import annotations
 

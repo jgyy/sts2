@@ -1,17 +1,5 @@
-"""Which game the bot is playing: Slay the Spire 2 (the default) or the first Slay the Spire.
-
-The planner, the map and reward logic, the learning and the supervisor are the same for both. What
-differs is how the bot talks to the game and a few tables that only fit one of them:
-
-- sts2: the STS2_MCP bridge mod answers HTTP on localhost (sts2bot.client.Client).
-- sts1: CommunicationMod starts a small relay (games/sts1/relay.py) that the bot reaches over
-  localhost; games/sts1/client.py turns that game's state into the shape the bot already reads,
-  and the bot's actions back into CommunicationMod commands.
-
-A bot process plays one game, so the choice is a process-wide setting made once at start-up
-(`select`); `--game both` plays the two at once with a process for each (games/both.py). Code that
-holds a table for one game only asks `uses_sts2_tables()`.
-"""
+"""Which game the bot plays: Slay the Spire 2 (the default) or the first Slay the Spire (games/sts1: CommunicationMod and a relay).
+A process-wide choice made once at start-up (`select`; `--game both` runs a process for each); one game's tables ask `uses_sts2_tables()`."""
 
 from __future__ import annotations
 
@@ -37,7 +25,5 @@ def active() -> str:
 
 
 def uses_sts2_tables() -> bool:
-    """True while playing Slay the Spire 2: the hand-made card ratings, the crowd's win rates and the
-    Ancients' relic ratings were all made for its cards. The first game's cards share many names
-    (Strike, Bash, Inflame ...) with different numbers, so there they are judged from their text."""
+    """True while playing Slay the Spire 2, whose cards the hand-made ratings, crowd win rates and relic ratings were made for."""
     return _active == "sts2"

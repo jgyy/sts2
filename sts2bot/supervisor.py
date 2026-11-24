@@ -1,13 +1,5 @@
-"""Keeps the game and the bot alive around the clock.
-
-The supervisor itself is the same for both games; what is particular to one
-(how to start and stop it, its bridge mod, its session settings) is its host:
-`Sts2Host` here, `games.sts1.host.Sts1Host` for the first game.
-
-Launches Slay the Spire 2 when it is not running, waits for the bridge mod to
-answer, plays, and restarts the game if it crashes, freezes, or the bot gets
-stuck. A run that hangs twice in the same place is abandoned.
-"""
+"""Keeps the game and the bot alive around the clock: launches the game, waits for its bridge mod, plays, and restarts it
+when it crashes, freezes or the bot gets stuck. What is particular to a game is its host (`Sts2Host` here, `games.sts1.host.Sts1Host`)."""
 
 from __future__ import annotations
 
@@ -27,14 +19,9 @@ log = logging.getLogger("sts2bot.supervisor")
 
 STEAM_APP_ID = 2868840
 STEAM_LAUNCH = f"steam -applaunch {STEAM_APP_ID}"
+STEAM_SETTLE = 10.0  # after Steam's UI is up: logging in takes a moment longer
 PROCESS_NAME = "SlayTheSpire2"
-
-# SteamAppId lets the directly started game attach to Steam (cloud saves etc.).
-#
-# The game used to be started with STS2_DEV_SKIP=1, its own switch for
-# skipping the Timeline screen. That also kept everything the Timeline unlocks
-# (ascension levels, new characters, cards) locked for good, so the game now
-# runs the normal way and the bot clicks through the Timeline itself.
+# SteamAppId lets the directly started game attach to Steam. (No STS2_DEV_SKIP: it kept what the Timeline unlocks locked.)
 GAME_ENV = {"SteamAppId": str(STEAM_APP_ID), "SteamGameId": str(STEAM_APP_ID)}
 
 
@@ -42,21 +29,7 @@ def game_dir() -> Path:
     return Path(os.environ.get("STS2_GAME_DIR") or Path.home() / ".local/share/Steam/steamapps/common/Slay the Spire 2")
 
 
-def game_binary() -> Path | None:
-    exe = game_dir() / PROCESS_NAME
-    return exe if os.access(exe, os.X_OK) else None
-
-
-# ----------------------------------------------------------- bridge mod upkeep
-#
-# The game updates itself through Steam, and an update regularly breaks the
-# bridge mod: it is compiled against the game's own code, so when a class it
-# touches is renamed or removed the game refuses to load it ("Loaded 0 mods
-# WITH ERRORS") and the bot has nothing to talk to. Rebuilding the mod against
-# the new game files fixes most of these, so the supervisor does that itself:
-# before a launch when the game files changed, and after a launch when the
-# game's log says the mod failed to load.
-
+# The bridge mod is built against the game's code: rebuilt when a game update changed it, or the game's log says it failed to load.
 MOD_NAME = "STS2_MCP"
 INSTALL_SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "install_mod.sh"
 MOD_STAMP = INSTALL_SCRIPT.parent.parent / ".build" / "mod_built_for"
@@ -65,11 +38,8 @@ GAME_LOG = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share")
 
 def game_fingerprint() -> str | None:
     """Changes whenever a game update replaces the code the mod is built against."""
-    parts = []
-    for dll in sorted(game_dir().glob("data_sts2_*/sts2.dll")):
-        st = dll.stat()
-        parts.append(f"{dll.parent.name}:{st.st_size}:{st.st_mtime_ns}")
-    return ";".join(parts) or None
+    stats = [(dll.parent.name, dll.stat()) for dll in sorted(game_dir().glob("data_sts2_*/sts2.dll"))]
+    return ";".join(f"{name}:{st.st_size}:{st.st_mtime_ns}" for name, st in stats) or None
 
 
 def mod_is_stale() -> bool:
@@ -92,10 +62,7 @@ def _game_log(since: float) -> str:
 
 
 def mod_load_error(since: float = 0.0) -> str | None:
-    """Why the game refused to load the mod, read from the game's log (None if it did not).
-
-    `since` (a time.time() value) skips a log left over from an earlier launch.
-    """
+    """Why the game refused to load the mod, from its log (None if it did not). `since` (a time.time()) skips an older log."""
     text = _game_log(since)
     at = text.find(f"Exception thrown while loading mod {MOD_NAME}")
     if at < 0:
@@ -105,11 +72,6 @@ def mod_load_error(since: float = 0.0) -> str | None:
         if line and not line.startswith("at "):
             return line
     return "the game log does not say why"
-
-
-def started_without_steam(since: float = 0.0) -> bool:
-    """True if the game's log says it came up with no Steam client to talk to."""
-    return "Steam is probably not running" in _game_log(since)
 
 
 def rebuild_mod() -> bool:
@@ -127,11 +89,8 @@ def rebuild_mod() -> bool:
     if done.returncode != 0:
         output = (done.stdout + "\n" + done.stderr).splitlines()
         errors = sorted({re.sub(r"\s*\[/.*?\]$", "", ln.strip()) for ln in output if "error" in ln.lower()})
-        log.error(
-            "the bridge mod does not build against this game version; scripts/mod_patches needs a fix "
-            "for the game's changed code. Compiler said:\n  %s",
-            "\n  ".join((errors or output[-15:])[:15]),
-        )
+        log.error("the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  %s",
+                  "\n  ".join((errors or output[-15:])[:15]))
         return False
     if fingerprint:
         try:
@@ -145,26 +104,25 @@ def rebuild_mod() -> bool:
 
 def default_launch() -> str:
     """Start the game binary directly when we can find it, else go through Steam."""
-    exe = game_binary()
-    return shlex.quote(str(exe)) if exe else STEAM_LAUNCH
+    exe = game_dir() / PROCESS_NAME
+    return shlex.quote(str(exe)) if os.access(exe, os.X_OK) else STEAM_LAUNCH
 
 
 DEFAULT_LAUNCH = default_launch()
 
-
 _children: list[subprocess.Popen] = []  # games we started; must be reaped when they die
 
 
-def game_running() -> bool:
-    """True if a live game process exists.
-
-    A game we launched that then crashes stays in the process table as a
-    zombie until we collect it. Counting that as "running" made the bot wait
-    forever for a dead game instead of starting a new one.
-    """
+def _reap() -> None:
+    """Collect the children that have exited (a crashed game stays a zombie until then, and would count as running)."""
     for proc in list(_children):
-        if proc.poll() is not None:  # reaps it if it has exited
+        if proc.poll() is not None:
             _children.remove(proc)
+
+
+def game_running() -> bool:
+    """True if a live game process exists."""
+    _reap()
     return _process_running(PROCESS_NAME)
 
 
@@ -191,17 +149,9 @@ FAST_MODES = ("instant", "fast", "normal")
 
 
 def set_fast_mode(client: Client, mode: str) -> bool:
-    """Ask the game for an animation speed ("instant" is the fastest).
-
-    Goes through the bridge mod (scripts/mod_patches/sts2bot.patch) and
-    lasts until the game exits, so it is sent after every launch. Editing the
-    game's prefs.save instead does not work: Steam cloud sync restores the old
-    file when the game starts.
-    """
+    """Ask the game for an animation speed through the mod, until it exits (Steam cloud sync restores an edited prefs.save)."""
     result = client.act("set_fast_mode", mode=mode)
-    # Straight after a launch the game has not read its preferences yet and
-    # says so. Giving up there left a whole session playing at normal speed,
-    # four times slower; it is ready a few seconds later.
+    # Straight after a launch the game has not read its preferences yet; it is ready a few seconds later.
     for _ in range(20):
         if "not loaded" not in str(result.get("error") or ""):
             break
@@ -215,15 +165,7 @@ def set_fast_mode(client: Client, mode: str) -> bool:
 
 
 def set_light_graphics(client: Client, width: int = 960, height: int = 540, maximize: bool = True, fullscreen: bool = False) -> bool:
-    """Full screen (or a maximised window), no anti-aliasing, uncapped frame rate, for this session only.
-
-    The mod answers each request once per rendered frame, so cheaper frames
-    make the whole bot faster. The saved graphics settings are left alone, so
-    the game looks normal when it is started by hand. With `maximize` off the
-    window is shrunk to `width` x `height` instead (the old default; the user
-    asked for the full window on 2026-11-19, the machine has frames to spare,
-    and for full screen on 2026-11-24).
-    """
+    """Full screen (or a maximised or `width` x `height` window), no anti-aliasing, uncapped frame rate, for this session (cheaper frames, faster answers)."""
     result = client.act("set_light_graphics", width=width, height=height, maximize=maximize, fullscreen=fullscreen)
     if _failed(result):
         log.warning("could not switch to light graphics (%s); re-run scripts/install_mod.sh", result.get("error"))
@@ -238,12 +180,7 @@ def set_light_graphics(client: Client, width: int = 960, height: int = 540, maxi
 
 
 def set_time_scale(client: Client, scale: float) -> bool:
-    """Run the game's own clock `scale` times faster, for this session only.
-
-    Instant mode skips the card animations; what is left is the game waiting
-    on its timers (between enemy moves, room changes, reward screens). Those
-    all run on the engine clock, which the mod can speed up.
-    """
+    """Run the game's own clock (its timers between moves, rooms and rewards) `scale` times faster, for this session."""
     result = client.act("set_time_scale", scale=scale)
     if _failed(result):
         log.warning("could not set the time scale (%s); re-run scripts/install_mod.sh to update the mod", result.get("error"))
@@ -253,12 +190,7 @@ def set_time_scale(client: Client, scale: float) -> bool:
 
 
 def _detached(argv: list[str]) -> list[str]:
-    """Under systemd, start Steam and the game in a scope of their own.
-
-    A service's children live in its control group and are killed with it, so
-    restarting the bot's service (to pick up new code, say) would take the
-    game and Steam down too. In their own scope they keep running.
-    """
+    """Under systemd, Steam and the game get a scope of their own: restarting the bot's service leaves them running."""
     if os.environ.get("INVOCATION_ID") and shutil.which("systemd-run"):
         return ["systemd-run", "--user", "--scope", "--quiet", "--collect", "--", *argv]
     return argv
@@ -271,18 +203,9 @@ def _spawn(argv: list[str], **kw) -> None:
     _children.append(subprocess.Popen(_detached(argv), start_new_session=True, **quiet))
 
 
-def steam_running() -> bool:
-    return _process_running("steam")
-
-
 def ensure_steam(timeout: float = 180.0) -> bool:
-    """Start the Steam client if it is not running, and wait until it is ready.
-
-    The game started directly needs a running Steam client: without one its
-    Steamworks start-up fails ("Steam is probably not running") and it never
-    gets as far as loading the bridge mod.
-    """
-    if steam_running():
+    """Start the Steam client if it is not running and wait until it is ready (without it the game never loads the mod)."""
+    if _process_running("steam"):
         return True
     steam = shutil.which("steam")
     if not steam:
@@ -294,20 +217,15 @@ def ensure_steam(timeout: float = 180.0) -> bool:
     except OSError as e:
         log.error("could not start Steam: %s", e)
         return False
-    # The client is usable once its web helper (the UI process) is up; it
-    # updates itself first, which can take a while.
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        if steam_running() and _process_running("steamwebhelper"):
-            time.sleep(STEAM_SETTLE)  # logging in takes a moment longer
+        if _process_running("steam") and _process_running("steamwebhelper"):  # (its UI: up once Steam has updated itself)
+            time.sleep(STEAM_SETTLE)
             log.info("Steam is up")
             return True
         time.sleep(2.0)
     log.error("Steam did not come up within %.0fs (is it logged in?)", timeout)
     return False
-
-
-STEAM_SETTLE = 10.0
 
 
 def launch_game(cmd: str) -> None:
@@ -322,9 +240,7 @@ def launch_game(cmd: str) -> None:
 
 
 class Sts2Host:
-    """What the supervisor needs to know about Slay the Spire 2: how to start, find and stop it, how to keep
-    its bridge mod built, and the session settings sent through the mod. (Each call looks the module's
-    function up when it is made, so tests can stand in for them.) games/sts1/host.py is the first game's."""
+    """What the supervisor needs to know about Slay the Spire 2 (calls look the module's functions up, so tests can replace them)."""
 
     name = "Slay the Spire 2"
     heals_mod = True  # the bridge mod can be rebuilt by the supervisor
@@ -348,8 +264,8 @@ class Sts2Host:
         return mod_load_error(since)
 
     def missing_steam(self, since: float = 0.0) -> bool:
-        """True if the game came up without the Steam client it needs."""
-        return not steam_running() and started_without_steam(since)
+        """True if the game came up without the Steam client it needs (its log says so)."""
+        return not _process_running("steam") and "Steam is probably not running" in _game_log(since)
 
     def no_api_hint(self) -> str:
         return "Is the STS2_MCP mod installed and are mods enabled in the game's settings?"
@@ -365,35 +281,13 @@ class Sts2Host:
 
 
 class Supervisor:
-    def __init__(
-        self,
-        bot: Bot,
-        client: Client,
-        *,
-        host=None,
-        launch_cmd: str = DEFAULT_LAUNCH,
-        manage_game: bool = True,
-        fast_mode: str | None = "instant",
-        light_graphics: bool = True,
-        small_window: bool = False,
-        fullscreen: bool = True,
-        time_scale: float = 1.0,
-        boot_timeout: float = 240.0,
-        outage_grace: float = 45.0,
-        heal_mod: bool = True,
-    ):
-        self.bot = bot
-        self.client = client
-        self.host = host or Sts2Host()
-        self.launch_cmd = launch_cmd
-        self.manage_game = manage_game
-        self.fast_mode = fast_mode
-        self.light_graphics = light_graphics
-        self.small_window = small_window
-        self.fullscreen = fullscreen
-        self.time_scale = time_scale
-        self.boot_timeout = boot_timeout
-        self.outage_grace = outage_grace
+    def __init__(self, bot: Bot, client: Client, *, host=None, launch_cmd: str = DEFAULT_LAUNCH, manage_game: bool = True, fast_mode: str | None = "instant",
+                 light_graphics: bool = True, small_window: bool = False, fullscreen: bool = True, time_scale: float = 1.0, boot_timeout: float = 240.0,
+                 outage_grace: float = 45.0, heal_mod: bool = True):
+        self.bot, self.client, self.host = bot, client, host or Sts2Host()
+        self.launch_cmd, self.manage_game, self.fast_mode, self.light_graphics = launch_cmd, manage_game, fast_mode, light_graphics
+        self.small_window, self.fullscreen, self.time_scale = small_window, fullscreen, time_scale
+        self.boot_timeout, self.outage_grace = boot_timeout, outage_grace
         self.heal_mod = heal_mod and manage_game and self.host.heals_mod
         self.restarts = 0
         self._last_stuck_at: tuple | None = None
@@ -403,8 +297,7 @@ class Supervisor:
         self._mod_backoff = 300.0
 
     def _wait_for_api(self, timeout: float, launched_at: float | None = None) -> bool:
-        """Wait for the mod to answer. With `launched_at`, give up as soon as the
-        game's log shows that it refused to load the mod."""
+        """Wait for the mod to answer. With `launched_at`, give up as soon as the game's log shows it refused the mod."""
         started = time.monotonic()
         deadline = started + timeout
         while time.monotonic() < deadline:
@@ -475,16 +368,8 @@ class Supervisor:
             backoff = min(backoff * 2, 300.0)
 
     def _note_crash(self) -> None:
-        """Break a crash loop.
-
-        The game saves at the start of each room, so after a crash the bot
-        comes back to the same room and does the same things. If that is what
-        crashed the game, it crashes again, for ever. So the bot is told what it
-        had asked for last, and does something else there (another card, another
-        option, another room, nothing bought). The second time it also plays that
-        room slowly. The run is given up at the third crash only when there was
-        nothing left to do differently, and at the fifth whatever was tried.
-        """
+        """Break a crash loop: the game reloads the room it crashed in, so the bot avoids what it asked last (slowly, the second time),
+        and the run is abandoned at the third crash in one place with nothing else to try, at the fifth in any case."""
         where = self.bot.progress()
         self._crash_repeats = self._crash_repeats + 1 if where == self._crash_at else 0
         self._crash_at = where

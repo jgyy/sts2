@@ -1,31 +1,7 @@
-"""A ModTheSpire mod of our own for the first game: its clock run faster (its "time scale"), and its character unlocks.
-
-Slay the Spire 2 has one through the bridge mod (`set_time_scale`); the first game has only its Fast Mode setting,
-under which an enemy turn still took 2.6 s and a card 0.5 s (first live runs, 2026-11-24). Everything the game
-animates or waits on is counted down by libGDX's frame time, so the mod multiplies what `getDeltaTime()` and
-`getRawDeltaTime()` answer by the factor in the environment variable STS2BOT_TIME_SCALE (set by the bot when it
-launches the game; unset, nothing changes, so the game started by hand plays as usual).
-
-The death screen unlocks the next character (the Silent after any run, the Defect after a Silent run, the Watcher once the
-Defect is unlocked and an act 3 boss has been beaten; the game counts that by achievements, which it grants only unmodded, so
-here a win does) only when its button is clicked, through the "unlock" screen that
-follows; CommunicationMod's "proceed" goes straight to the menu, so on a new profile (2026-11-24) four runs went by with the
-Silent still locked. The mod grants the same unlock when the death screen is built, by the game's own rules and calls
-(UnlockTracker.hardUnlockOverride, read from desktop-1.0.jar's DeathScreen.update).
-
-The same click does three more things that "proceed" skipped (found 2026-11-24): the next ascension level after a win
-(DeathScreen.updateAscensionProgress), the CLASS_WIN flag that opens act 4 once the Ironclad, the Silent and the Defect
-all have it (CardCrawlGame.doorUnlockScreenCheck; Settings.setFinalActAvailability reads them), and the cards and relics
-the unlock bar has earned (the game grants those only at its next launch otherwise). The mod does all three when the
-death screen (or the Heart's victory screen) is built.
-
-It also adds to CommunicationMod's state what that mod leaves out: each card's damage and Block as the game works them
-out (with Strength, Weak, Dexterity, Frail, stances: the card text the bot keeps is the printed one), the three keys and
-whether act 4 is open, the elite that carries the Emerald Key, the Watcher's stance, and each power's text.
-
-`ensure(game_dir)` compiles it with the system's javac against the game's own jars (Java 8 bytecode, the game's
-JRE) and puts `sts2botspeed.jar` in the game's mods folder, again only when the source has changed.
-"""
+"""A ModTheSpire mod of our own for the first game (Fast Mode alone left an enemy turn at 2.6 s). It multiplies libGDX's
+frame time by STS2BOT_TIME_SCALE (set when the bot launches the game), does what the death screen's button would and
+CommunicationMod's "proceed" skips (unlocks, ascension, act 4), and adds card numbers, keys, the stance and power text to
+CommunicationMod's state. `ensure` builds it with javac against the game's jars when the source has changed."""
 
 from __future__ import annotations
 
@@ -280,13 +256,9 @@ def _stamp() -> str:
     return hashlib.sha256((JAVA + MANIFEST).encode()).hexdigest()[:16]
 
 
-def jar_path(game_dir: Path) -> Path:
-    return Path(game_dir) / "mods" / f"{MOD_ID}.jar"
-
-
 def ensure(game_dir: Path, mts_jar: Path | None) -> bool:
     """Build and install the mod if it is missing or out of date. True if it is in place."""
-    target = jar_path(game_dir)
+    target = Path(game_dir) / "mods" / f"{MOD_ID}.jar"
     stamp = target.with_suffix(".stamp")
     if target.is_file() and stamp.is_file() and stamp.read_text().strip() == _stamp():
         return True

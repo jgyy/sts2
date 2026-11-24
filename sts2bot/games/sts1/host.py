@@ -1,9 +1,5 @@
-"""What the supervisor needs to know about the first Slay the Spire (see supervisor.Sts2Host for the second).
-
-The game is started through ModTheSpire with BaseMod and CommunicationMod; CommunicationMod starts
-relay.py, which is what the bot talks to. Nothing is built: the mods come from the Steam Workshop.
-`write_comm_config` points CommunicationMod at the relay (`python3 -m sts2bot sts1-setup`).
-"""
+"""What the supervisor needs to know about the first Slay the Spire: ModTheSpire with BaseMod and CommunicationMod (from the
+Workshop), which starts relay.py for the bot (`write_comm_config`, from `python3 -m sts2bot sts1-setup`)."""
 
 from __future__ import annotations
 
@@ -40,8 +36,7 @@ def game_dir() -> Path:
 
 
 def mts_jar() -> Path | None:
-    for p in (os.environ.get("STS1_MTS_JAR"), steam_root() / "workshop/content" / str(STEAM_APP_ID) / str(MTS_WORKSHOP_ID) / "ModTheSpire.jar",
-              game_dir() / "ModTheSpire.jar"):
+    for p in (os.environ.get("STS1_MTS_JAR"), steam_root() / "workshop/content" / str(STEAM_APP_ID) / str(MTS_WORKSHOP_ID) / "ModTheSpire.jar", game_dir() / "ModTheSpire.jar"):
         if p and Path(p).is_file():
             return Path(p)
     return None
@@ -55,9 +50,7 @@ def java() -> str:
 def default_launch() -> str:
     """ModTheSpire straight into the game with the two mods, else Steam (which shows ModTheSpire's launcher)."""
     jar = mts_jar()
-    if jar is None:
-        return STEAM_LAUNCH
-    return " ".join(shlex.quote(a) for a in (java(), "-jar", str(jar), "--skip-launcher", "--skip-intro", "--mods", MODS))
+    return STEAM_LAUNCH if jar is None else " ".join(shlex.quote(a) for a in (java(), "-jar", str(jar), "--skip-launcher", "--skip-intro", "--mods", MODS))
 
 
 def prefs_dir() -> Path:
@@ -79,11 +72,7 @@ def _json(path: Path) -> dict | None:
 
 
 def read_prefs(folder: Path | None = None) -> dict:
-    """Each character's highest ascension, the wins so far and who is still locked, from the game's own save files (first slot).
-
-    The files are JSON with string values ("ASCENSION_LEVEL": "5"). Ascension only opens once a
-    character has won; before that a run is played on 0. (Until 2026-11-24 this read files named after
-    the characters, which the game does not write: every character stayed on Ascension 0 for good.)"""
+    """Each character's highest ascension (open once it has won), the wins and who is locked, from the game's save files."""
     folder = folder or prefs_dir()
     out: dict = {"max_ascension": {}, "wins": 0, "locked": []}
     for who in CHARACTERS:
@@ -92,8 +81,7 @@ def read_prefs(folder: Path | None = None) -> dict:
             continue
         try:
             wins = int(data.get("WIN_COUNT") or 0)
-            # Once a character has won, the game reads a missing ASCENSION_LEVEL as 1 (Prefs.getInteger(..., 1)): after the
-            # first win (2026-11-24 21:39) the bot still read the Ironclad as on 0 and went on playing Ascension 0.
+            # After a win the game reads a missing ASCENSION_LEVEL as 1 (Prefs.getInteger(..., 1)).
             level = int(data.get("ASCENSION_LEVEL") or (1 if wins > 0 else 0))
         except (TypeError, ValueError):
             continue
@@ -109,31 +97,20 @@ def read_prefs(folder: Path | None = None) -> dict:
     return out
 
 
-# What a game started by the bot is set to before it opens (asked for on 2026-11-24: full screen, and faster). The game
-# reads these files at start-up. `info.displayconfig` is six lines: width, height, frame cap, full screen, windowed full
-# screen (borderless at the desktop's size), vsync. A higher frame cap shortens every wait the game measures in frames.
+# What a game started by the bot is set to. A higher frame cap shortens every wait the game measures in frames.
 FRAME_CAP = 240
-# Sound at full while the game has the focus, and none while it is behind another window (asked for on 2026-11-24: "max out all
-# volumes", then "only play if i focus on the screen": the game's own Mute in Bg setting).
+# Sound at full while the game has the focus, none while it is behind another window (the game's own Mute in Bg).
 SOUND = {"Master Volume": "1.0", "Music Volume": "1.0", "Sound Volume": "1.0", "Ambience On": "true", "Mute in Bg": "true"}
-# The first-run tips, all marked seen, and NO_FTUE (the game's own "no tutorial" switch): a tip's pop-up waits for a click
-# CommunicationMod cannot give (the Card Reward tip held a fresh profile's first reward screen, 2026-11-24 20:43; the keys are
-# TipTracker's, read from desktop-1.0.jar, and the old profile's).
-TIPS_SEEN = ("NO_FTUE", "NEOW_SKIP", "NEOW_INTRO", "COMBAT_TIP", "SHUFFLE_TIP", "POWER_TIP", "M_POWER_TIP", "INTENT_TIP", "POTION_TIP",
-             "RELIC_TIP", "CARD_REWARD_TIP", "ENERGY_USE_TIP")
-# A profile for the first save slot when there is none: the game makes one only through its name screen, which CommunicationMod
-# never shows, so after the old profile was deleted (2026-11-24) the game played on with no profile listed ("All slots deleted,
-# DEFAULT_SLOT is now -1"). The game keeps COMPLETION and PLAYTIME up to date itself.
+# The first-run tips marked seen, and NO_FTUE (no tutorial): a tip's pop-up waits for a click CommunicationMod cannot give.
+TIPS_SEEN = ("NO_FTUE", "NEOW_SKIP", "NEOW_INTRO", "COMBAT_TIP", "SHUFFLE_TIP", "POWER_TIP", "M_POWER_TIP", "INTENT_TIP", "POTION_TIP", "RELIC_TIP", "CARD_REWARD_TIP", "ENERGY_USE_TIP")
+# A profile for the first save slot when there is none (the game makes one only on a name screen CommunicationMod never shows).
 PROFILE_NAME = "sts2bot"
 
 
 def prepare_game(fullscreen: bool = True, folder: Path | None = None, game: Path | None = None) -> list[str]:
-    """Set the display (borderless full screen or a window), Fast Mode on, the sound at full, and on a new profile the first-run tips as seen
-    (their pop-ups wait for a click CommunicationMod does not give). Returns what was changed."""
-    game = game or game_dir()
-    folder = folder or prefs_dir()
-    changed = []
-    display = game / "info.displayconfig"
+    """Set the display, Fast Mode, the sound, and on a new profile the first-run tips as seen. Returns what was changed."""
+    game, folder, changed = game or game_dir(), folder or prefs_dir(), []
+    display = game / "info.displayconfig"  # width, height, frame cap, full screen, windowed full screen (borderless), vsync
     try:
         lines = display.read_text().split()
     except OSError:
@@ -151,7 +128,7 @@ def prepare_game(fullscreen: bool = True, folder: Path | None = None, game: Path
         settings_file = folder / "STSGameplaySettings"
         settings = _json(settings_file) or {}
         if settings.get("Fast Mode") != "true" or settings.get("Particle Effects") != "false":
-            # (Particle effects off: less to draw in a frame, so the frame cap is kept through busy fights; the old profile had them off.)
+            # (Particle effects off: less to draw, so busy fights keep the frame cap.)
             settings.update({"Fast Mode": "true", "Particle Effects": "false", "LANGUAGE": settings.get("LANGUAGE", "ENG")})
             settings_file.write_text(json.dumps(settings, indent=2))
             changed.append("Fast Mode on, particle effects off")
@@ -186,9 +163,7 @@ def write_comm_config(port: int, path: Path | None = None) -> Path:
     path = path or comm_config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     command = f"{sys.executable} {RELAY} --port {port}"
-    # (Java's properties format: backslashes and colons would need escaping; a POSIX path has neither.)
-    # (verbose=false: with it on CommunicationMod writes every message both ways to the game's output, some 40 MB an
-    # hour into game.log; errors and the game's own lines are kept either way.)
+    # (Java properties: a POSIX path needs no escaping. verbose=false, or every message both ways goes to game.log, 40 MB an hour.)
     path.write_text(f"command={command}\nrunAtGameStart=true\nverbose=false\n")
     return path
 
@@ -199,17 +174,11 @@ def comm_command(path: Path | None = None) -> str | None:
         text = (path or comm_config_path()).read_text()
     except OSError:
         return None
-    for line in text.splitlines():
-        if line.startswith("command="):
-            return line[len("command="):].strip()
-    return None
+    return next((line[len("command="):].strip() for line in text.splitlines() if line.startswith("command=")), None)
 
 
 def comm_config_problem(port: int, path: Path | None = None) -> str | None:
-    """Why CommunicationMod will not start the relay this bot listens to on `port` (None when it will).
-
-    Without the relay a launched game never answers: the bot would wait it out, kill it and launch it again
-    for ever, and whatever CommunicationMod starts instead (another bot, say) would be killed with it."""
+    """Why CommunicationMod will not start the relay this bot listens to on `port` (None when it will): without it the game never answers."""
     command = comm_command(path)
     if command is None:
         return f"CommunicationMod has no command to start ({path or comm_config_path()})"
@@ -223,13 +192,8 @@ def comm_config_problem(port: int, path: Path | None = None) -> str | None:
 
 
 def _game_processes() -> list[str]:
-    out = subprocess.run(["ps", "-eo", "pid=,stat=,args="], capture_output=True, text=True).stdout
-    found = []
-    for line in out.splitlines():
-        parts = line.split(None, 2)
-        if len(parts) == 3 and not parts[1].startswith("Z") and any(m in parts[2] for m in PROCESS_MARKS) and "relay.py" not in parts[2]:
-            found.append(parts[0])
-    return found
+    rows = [line.split(None, 2) for line in subprocess.run(["ps", "-eo", "pid=,stat=,args="], capture_output=True, text=True).stdout.splitlines()]
+    return [p[0] for p in rows if len(p) == 3 and not p[1].startswith("Z") and any(m in p[2] for m in PROCESS_MARKS) and "relay.py" not in p[2]]
 
 
 class Sts1Host:
@@ -237,14 +201,11 @@ class Sts1Host:
     heals_mod = False  # CommunicationMod comes built from the Workshop
 
     def __init__(self, log_dir: Path | None = None, fullscreen: bool = True, time_scale: float = 1.0):
-        self.log_dir = log_dir  # the game's own output goes to game.log there (the one before to game.log.1)
-        self.fullscreen = fullscreen
-        self.time_scale = time_scale  # the game clock's speed, through our own mod (speedmod.py); 1 leaves it alone
+        # The game's output goes to game.log in log_dir (the one before to game.log.1); time_scale is its clock's speed (speedmod.py).
+        self.log_dir, self.fullscreen, self.time_scale = log_dir, fullscreen, time_scale
 
     def running(self) -> bool:
-        for proc in list(supervisor._children):
-            if proc.poll() is not None:
-                supervisor._children.remove(proc)
+        supervisor._reap()
         return bool(_game_processes())
 
     def launch(self, cmd: str) -> None:
@@ -253,16 +214,14 @@ class Sts1Host:
             log.info("game settings: %s", ", ".join(changed))
         env = None
         if f"--mods {MODS}" in cmd and speedmod.ensure(game_dir(), mts_jar()):
-            # Our own mod: the game clock (Fast Mode alone left an enemy turn at 2.6 s and a card at 0.5 s, a run 12-15 minutes
-            # to Slay the Spire 2's 2) and the character unlocks CommunicationMod's way past the death screen skips.
+            # Our own mod: the faster game clock (Fast Mode alone left a run at 12-15 minutes), the unlocks and more state.
             cmd = cmd.replace(f"--mods {MODS}", f"--mods {MODS},{speedmod.MOD_ID}")
             env = {**os.environ, speedmod.ENV: f"{self.time_scale or 1.0:g}"}
             log.info("game clock: x%g", self.time_scale or 1.0)
         log.info("launching game: %s", cmd)
         cwd = game_dir() if game_dir().is_dir() else None
         out = None
-        if self.log_dir is not None:
-            # (Until 2026-11-24 the game's output went nowhere, and a crash in the first live run left no trace.)
+        if self.log_dir is not None:  # (so that a crash leaves a trace)
             path = Path(self.log_dir) / "game.log"
             try:
                 if path.exists():
@@ -299,8 +258,7 @@ class Sts1Host:
         return False
 
     def no_api_hint(self) -> str:
-        return ("Are BaseMod and CommunicationMod enabled in ModTheSpire, and does CommunicationMod start the relay "
-                "(run `python3 -m sts2bot sts1-setup`)?")
+        return "Are BaseMod and CommunicationMod enabled in ModTheSpire, and does CommunicationMod start the relay (run `python3 -m sts2bot sts1-setup`)?"
 
     def configure(self, sup) -> None:
         """Nothing to set: the first game has no bridge for animation speed or graphics (its own Fast Mode setting is the one)."""

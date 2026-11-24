@@ -1,16 +1,6 @@
-"""The three keys that open the first game's act 4 (the Heart), and when the bot goes for each.
-
-Act 4 is there once the Ironclad, the Silent and the Defect have each won a run (CLASS_WIN in the player's prefs; the
-bot's mod sets them, as the victory screen's button would: speedmod.py). From then on a run can carry the Ruby Key (a
-rest site's "Recall", in place of resting or smithing), the Emerald Key (from the elite that burns on the map, one an
-act until it is taken) and the Sapphire Key (in a chest, in place of its relic); with all three, beating the act 3 boss
-leads on to act 4: a rest site, a shop, the Spire Shield and Spear, and the Corrupt Heart. The user's goal since
-2026-11-24: unlock act 4 and play it.
-
-The mod adds `keys` ({"ruby", "emerald", "sapphire": bool}) and `final_act_available` to CommunicationMod's game state
-and `emerald_key` to the burning elite's map node; screens.py asks here which key to go for and shows the bot only that
-choice (the planner and the route model know nothing of keys).
-"""
+"""The keys to the first game's act 4 (open once three characters have won: speedmod.py sets CLASS_WIN), and when the bot
+goes for each: Ruby (a rest site's Recall), Emerald (the burning elite), Sapphire (a chest, instead of its relic). The mod
+adds them to CommunicationMod's state; screens.py shows the bot only the choice wanted."""
 
 from __future__ import annotations
 
@@ -29,8 +19,7 @@ def missing(game: dict) -> set[str]:
 
 
 def wants_ruby(game: dict) -> bool:
-    """Recall at this rest site. Only in act 3, where it is the last chance, and only with HP to spare: a key is no use to
-    a run that dies at the act 3 boss for want of the heal."""
+    """Recall at this rest site: only in act 3 (the last chance), and only with HP to spare for the act 3 boss."""
     if "ruby" not in missing(game) or game.get("act") != 3:
         return False
     hp, top = float(game.get("current_hp") or 0), float(game.get("max_hp") or 1)
@@ -39,8 +28,7 @@ def wants_ruby(game: dict) -> bool:
 
 
 def wants_sapphire(game: dict) -> bool:
-    """The key over the chest's relic. Act 3's middle row is a treasure room on every road, so its chest is a sure
-    chance; earlier chests keep their relics."""
+    """The key over the chest's relic, in act 3 only (its middle row is a treasure room on every road: a sure chance)."""
     return "sapphire" in missing(game) and game.get("act") == 3
 
 
