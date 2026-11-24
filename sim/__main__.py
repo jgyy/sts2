@@ -62,10 +62,23 @@ def knobs_for(seed: int, vary: bool) -> dict:
     return {k: rng.choice(v) for k, v in GRID.items()}
 
 
+def fixed(a, character: str) -> dict:
+    """Settings given on the command line (--set NAME=VALUE) and, per character, in a JSON file (--settings)."""
+    out = {}
+    if a.settings:
+        with open(a.settings) as f:
+            out.update(json.load(f).get(character, {}))
+    for item in a.set or []:
+        name, value = item.split("=", 1)
+        out[name] = float(value)
+    return out
+
+
 def cmd_run(a) -> int:
     mod = content(a.game)
     chars = list(mod.CHARACTERS) if a.character == "all" else [c.strip().upper() for c in a.character.split(",")]
-    jobs = [(a.game, ch, a.seed + n, knobs_for(a.seed + n, a.vary), a.ascension) for n in range(a.runs) for ch in chars]  # (interleaved: every character's numbers grow together)
+    # (Interleaved, so that every character's numbers grow together; seeds are shared by characters and arms.)
+    jobs = [(a.game, ch, a.seed + n, {**knobs_for(a.seed + n, a.vary), **fixed(a, ch)}, a.ascension) for n in range(a.runs) for ch in chars]
     out = open(a.out, "a") if a.out else sys.stdout
     t0, done, errors = time.time(), 0, 0
     with multiprocessing.Pool(a.jobs) as pool:
@@ -115,6 +128,8 @@ def main(argv=None) -> int:
     r.add_argument("--seed", type=int, default=1)
     r.add_argument("--ascension", type=int, default=0)
     r.add_argument("--vary", action="store_true", help="each run draws its own value of every setting in GRID")
+    r.add_argument("--set", action="append", metavar="NAME=VALUE", help="play every run with this setting (repeatable)")
+    r.add_argument("--settings", metavar="FILE", help="JSON {character: {setting: value}} to play each character with")
     r.add_argument("--jobs", type=int, default=os.cpu_count() or 2)
     r.add_argument("--out", default=None)
     t = sub.add_parser("trace", help="hash every decision of a few seeded runs (a refactor must leave these unchanged)")

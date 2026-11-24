@@ -1,402 +1,159 @@
 # sts2
 
-A bot that plays Slay the Spire 2 around the clock: it starts a run, plays it
-to the end, returns to the menu and starts the next one. If the game crashes or
-freezes, it restarts the game and carries on.
+A bot that plays **Slay the Spire 2** around the clock: it starts a run, plays it to the end, starts the next one,
+and restarts the game when it crashes or freezes. The same bot plays the first **Slay the Spire** (`--game sts1`,
+through CommunicationMod) or both games at once (`--game both`).
 
-The same bot also plays the first **Slay the Spire** (`--game sts1`, through
-CommunicationMod), or both games at the same time (`--game both`): see
-[Slay the Spire 1](#slay-the-spire-1) and [Both games at once](#both-games-at-once).
+It is heuristic, not an LLM, so it costs nothing to run nonstop. Status (2026-11-21, live): plays v0.111 with all
+five characters; 30 wins in about 770 runs, every character has won on Ascension 5; most runs end at the act 2 boss
+or the last one.
 
 ## How it works
 
 ```
-Slay the Spire 2  <-- STS2_MCP mod (HTTP on localhost:15526) -->  sts2bot (Python)
+Slay the Spire 2  <-- STS2_MCP mod (HTTP, localhost:15526) -->  sts2bot
+Slay the Spire    <-- CommunicationMod (stdin/stdout) --> relay.py <-- HTTP, localhost:15527 -->  sts2bot --game sts1
 ```
 
-- **Bridge mod.** [STS2_MCP](https://github.com/Gennadiyev/STS2MCP) (MIT) runs
-  inside the game and exposes the game state and actions on localhost.
-  `scripts/install_mod.sh` builds it from source at a pinned commit.
-- **Bot** (`sts2bot/`, standard library only). Polls the state, decides, acts.
+| Part | What it does |
+|---|---|
+| [STS2_MCP](https://github.com/Gennadiyev/STS2MCP) (MIT) | runs inside the game and serves its state and actions; `scripts/install_mod.sh` builds it at a pinned commit with the bot's patch |
+| `sts2bot/fight/` | the combat planner: `battle.py` reads the fight (enemies, intents, powers), `combat.py` scores every affordable line of cards with a small simulation (damage, kills, Block against intents, lethal checks), plays its first card and plans again |
+| `sts2bot/run/` | everything between fights: whole-route map planning against the HP the bot would reach the boss with, rewards, shops, rest sites, events, potions; `decks.py` rates a card for the deck that would take it |
+| `sts2bot/cards.py` | reads what a card does from its text (so new and rebalanced cards work), plus hand-made ratings |
+| `sts2bot/run/crowd.py` | other players' win and pick rates per card (tierspire.com), mixed into the ratings |
+| `sts2bot/learn.py` | learns from its own runs: shifts card ratings by how far runs that took them got, and tunes a dozen settings by Thompson sampling (`tuning.json`; `--no-tuning` turns it off) |
+| `sts2bot/supervisor.py` | starts Steam and the game, restarts it when it hangs, rebuilds the mod after a game update, and after a crash does something different in the room it crashed in |
+| `sts2bot/games/sts1/` | the first game: translates CommunicationMod's state into the bot's and the bot's actions back, holds every card's text (CommunicationMod sends none), the Watcher's stances and the act 4 keys |
+| `sim/` | model runs of both games played by the bot's own code (see [Model runs](#model-runs)) |
 
-### Fights (`sts2bot/fight/`)
+## Setup (Slay the Spire 2)
 
-- `battle.py` reads a fight from the game state (enemies, intents, powers,
-  cards that hurt while held); `potions.py` decides when to drink.
-- `combat.py` scores every affordable set of cards in hand with a small
-  simulation (damage, kills, block against enemy intents, lethal checks),
-  plays the first card of the best line, then plans again. Lines that can only
-  play out the same way (copies of one card, or nothing aimed at an enemy) are
-  simulated once, so big hands full of Strikes and Defends stay quick.
-
-### Between fights (`sts2bot/run/`)
-
-- `strategy.py` handles the map, rewards, shops, rest sites and card
-  selections (`decks.py`: what a card is worth in the deck that would take
-  it); `events.py` rates event options. The map is planned a whole route at a
-  time: every way to the boss is scored by what it gives (relics, cards,
-  upgrades) against the health the bot would arrive with, because the run
-  history shows the boss is rarely beaten from below 75% HP. Rest sites use the
-  same sums to choose between resting and upgrading.
-- `cards.py` reads card effects from the text on the card, so it keeps
-  working when cards are added or rebalanced. For deck building it also has
-  a hand-made rating of the cards met so far; cards it has no rating for are
-  judged from their text.
-- `crowd.py` rates the same cards from other players' runs: how often runs
-  were won with each card and how often it was taken (tierspire.com, about
-  half a million runs a character). A rating is a mix of the two tables; how
-  much of it comes from this one (0.3 or 0.6) is one of the settings
-  `learn.py` tunes. Refresh the tables after a game patch.
-
-### Learning from its own runs
-
-- `learn.py` corrects those ratings from the bot's own results: for every
-  card taken from a card reward it records how much further that run got
-  than runs of that character that left the same floor alive, and shifts
-  the card's rating up or down accordingly (kept in `card_stats.json`). One
-  run says little, so a card's own record only counts after some hundreds of
-  picks. Until then a card stands where its kind does (`cards.kind`: attacks
-  that cost nothing, cards that give energy, cards that cost energy and mostly
-  draw), all characters together. `scripts/relearn.py` works the whole record
-  out again from `runs.jsonl`.
-- It also tunes a few of the bot's own settings the same way (how much HP is
-  worth against damage, how eagerly to fight elites, when to upgrade instead
-  of rest, how picky to be with card rewards, how much other players' results
-  count, how hard a deck short of damage leans to attacks): every run plays
-  with one value of each, chosen more and more often from the values whose
-  runs went furthest (kept in `tuning.json`; `--no-tuning` turns this off).
-- `relics.py` does the same for the relics the Ancients offer at the start
-  of each act: `events.py` holds a rating for each, and every run that held
-  one moves it by how much further than usual that run got from the floor
-  the relic is taken on (up to 3 points, half of it after 25 runs). Nothing
-  is kept for this: it is worked out from `runs.jsonl` when the bot starts.
-
-### Keeping the game running
-
-- `supervisor.py` starts Steam if it is not running, launches the game,
-  restarts it when it stops answering or nothing changes for 5 minutes,
-  abandons a run that hangs twice in the same place, and rebuilds the bridge
-  mod after a game update (see below).
-- After a crash the bot comes back to the room the save was made in and does
-  something else there than what it had last asked for (another card, another
-  option, another room, nothing bought); from the second crash in one room it
-  also plays that room slowly. The run is only abandoned at the third crash
-  with nothing left to do differently, or the fifth in any case.
-
-The bot is heuristic, not an LLM: it costs nothing to run nonstop. It plays
-simple, sensible Spire (kill when it can, block when it must) and will lose
-plenty of runs.
-
-Status (2026-11-21): plays the real game (v0.111) with all five characters.
-30 wins in about 770 runs; every character has won on Ascension 5 (5 wins in
-127 runs there) and plays on Ascension 6 now. Most runs end at the act 2 boss
-or the last one.
-
-## Setup
-
-Needs Linux, Python 3.11+, git, the .NET SDK, and the game installed via Steam.
-
-1. Build and install the bridge mod:
-
-   ```sh
-   scripts/install_mod.sh
-   ```
-
-   Set `STS2_GAME_DIR` if the game is not in the default Steam library.
-
-2. Start the game once, accept the mod consent dialog (or enable mods under
-   Settings → Mods), and restart the game. Then check the mod answers:
-
-   ```sh
-   curl -s http://localhost:15526/
-   ```
-
-   With mods enabled the game uses a separate modded save profile, so the bot
-   does not touch your normal progress. A fresh profile starts with only the
-   first character unlocked.
-
-3. Run the bot:
-
-   ```sh
-   python3 -m sts2bot                 # plays forever, launches the game if needed
-   python3 -m sts2bot --runs 1 -v     # one run, logging every action
-   python3 -m sts2bot --no-launch     # only play; never start or kill the game
-   python3 -m sts2bot --character cycle
-   ```
-
-Stop it with Ctrl+C. The game keeps running; the run in progress is saved by
-the game and the bot resumes it next time.
-
-## Running 24/7
-
-`systemd/sts2bot.service` is a user service that restarts the bot if it exits
-and blocks idle sleep while it plays. Install instructions are at the top of
-that file. The bot starts Steam itself when it is not running; Steam must
-be able to log in without asking for a password.
-
-Turn the service on or off with these commands (they call `systemctl --user`):
+Needs Linux, Python 3.11+, git, the .NET SDK and the game from Steam.
 
 ```sh
-python3 -m sts2bot service status    # is it running?
-python3 -m sts2bot service stop      # stop it now; it starts again at the next login
-python3 -m sts2bot service disable   # stop it now and do not start it at login
-python3 -m sts2bot service start     # start it now
-python3 -m sts2bot service enable    # start it now and at every login
+scripts/install_mod.sh              # build and install the bridge mod (STS2_GAME_DIR if the game is elsewhere)
+# start the game once, accept the mod dialog (or Settings -> Mods), restart it, then check:
+curl -s http://localhost:15526/
+python3 -m sts2bot                  # plays forever, launching the game if needed
+python3 -m sts2bot --runs 1 -v      # one run, logging every action
 ```
 
-Do not just kill the bot's process: the service restarts it after 15 seconds.
-Stopping the service does not close the game; close the game from the game
-or Steam if you want it gone too.
+With mods enabled the game uses a separate save profile (a fresh one has only the first character). Stop with
+Ctrl+C; the game saves the run and the bot resumes it next time.
 
-## Game updates
+**Game updates** often break the mod ("Loaded 0 mods WITH ERRORS"). The bot rebuilds it before launching when the
+game files changed, and when the game's log says the mod failed; if the build fails it logs the compiler errors and
+retries later (5 minutes, then up to hourly). Fixing such a break means updating `scripts/mod_patches/sts2bot.patch`.
 
-Steam updates the game on its own, and an update often breaks the bridge mod:
-the game then starts with "Loaded 0 mods WITH ERRORS" and the bot has nothing
-to talk to. The bot handles this itself:
-
-- Before launching the game it checks whether the game files changed since the
-  mod was last built, and rebuilds the mod if so.
-- If the game's log says the mod failed to load, it stops the game, rebuilds
-  the mod and starts the game again.
-
-A rebuild is `scripts/install_mod.sh`, so it needs git and the .NET SDK. When
-the update changed code the mod uses, the build fails; the bot then logs the
-compiler errors and tries again later (after 5 minutes, then less often, up to
-hourly). Fixing that needs a change to `scripts/mod_patches/sts2bot.patch`,
-which holds the bot's additions to the mod and its fixes for newer game
-versions.
+**Unlocks.** Epochs only take effect once revealed on the Timeline, so the bot reveals them from the main menu. With
+`--character auto` (the default) it plays characters that still have epochs of their own to earn, then the one with
+the lowest ascension (rotating among equals), always at its highest unlocked ascension. It clicks through the
+end-of-run summary because that is where score epochs are earned.
 
 ## Slay the Spire 1
 
-`python3 -m sts2bot --game sts1` plays the first game with the same planner,
-map, reward, shop and rest-site logic, learning and supervisor. Only the way
-the bot talks to the game is different:
-
-```
-Slay the Spire  <-- CommunicationMod (stdin/stdout) -->  relay.py  <-- HTTP on localhost:15527 -->  sts2bot --game sts1
+```sh
+python3 -m sts2bot sts1-setup                 # once: point CommunicationMod at the bot's relay
+python3 -m sts2bot --game sts1                # launches ModTheSpire with BaseMod and CommunicationMod
+python3 -m sts2bot --game sts1 --character WATCHER --runs 1 -v
 ```
 
-- **CommunicationMod** runs one program and talks to it over that program's
-  stdin and stdout. The bot is a long-running service with its own supervisor,
-  so CommunicationMod starts a small relay instead (`sts2bot/games/sts1/relay.py`,
-  standard library only), which the bot reaches on localhost.
-- **Translation** (`sts2bot/games/sts1/`): `screens.py` turns the first game's
-  state (screen types `MAP`, `COMBAT_REWARD`, `GRID` ...) into the state the
-  bot already reads, and `client.py` turns the bot's actions back into
-  CommunicationMod commands (`play 2 0`, `choose 1`, `choose purge` ...).
-- **Card text** (`sts2bot/games/sts1/text/`): CommunicationMod sends no card
-  text, and the planner reads what a card does from its text, so every card
-  and potion of the first game is written out there (base and upgraded).
-- **Ratings**: the hand-made card ratings, the crowd's win rates and the
-  Ancients' relic ratings are Slay the Spire 2's, so they are switched off for
-  the first game (`sts2bot/games/__init__.py`); its cards are judged from their
-  text, and `learn.py` corrects that from the bot's own runs as usual. Logs,
-  run history and what is learned go to `~/.local/state/sts2bot/sts1/`, apart
-  from the second game's.
+Subscribe to ModTheSpire, BaseMod and CommunicationMod on the Workshop first (or set `STS1_GAME_DIR`, `STS1_MTS_JAR`
+or `--launch-cmd`). Characters are `IRONCLAD`, `THE_SILENT`, `DEFECT`, `WATCHER`; each plays at its highest unlocked
+ascension (read from the save's `preferences/`, `STS1_PREFS_DIR` for another).
 
-### Setup
-
-1. Subscribe to **ModTheSpire**, **BaseMod** and **CommunicationMod** on the
-   Steam Workshop (or put the jars where ModTheSpire finds them).
-2. Point CommunicationMod at the relay:
-
-   ```sh
-   python3 -m sts2bot sts1-setup      # writes ~/.config/ModTheSpire/CommunicationMod/config.properties
-   ```
-
-3. Run the bot:
-
-   ```sh
-   python3 -m sts2bot --game sts1                  # launches the game through ModTheSpire if needed
-   python3 -m sts2bot --game sts1 --runs 1 -v
-   python3 -m sts2bot --game sts1 --character WATCHER
-   python3 -m sts2bot --game sts1 --no-launch      # you start the game (with BaseMod and CommunicationMod enabled)
-   ```
-
-The game is launched as `java -jar ModTheSpire.jar --skip-launcher --mods
-basemod,CommunicationMod` from the game folder (with the game's own Java),
-or through Steam if ModTheSpire is not found. Set `STS1_GAME_DIR`,
-`STS1_MTS_JAR` or `--launch-cmd` if yours live elsewhere.
-
-Characters are `IRONCLAD`, `THE_SILENT`, `DEFECT` and `WATCHER`. Each run is
-played at the highest ascension that character has open, read from the game's
-save files (`preferences/` in the game folder, first save slot; set
-`STS1_PREFS_DIR` for another).
-
-Differences from the second game:
-
-- Speed: the bot turns the game's own **Fast Mode** on and runs its clock
-  `--sts1-time-scale` times faster (default 8) through a small ModTheSpire mod of
-  its own; `--fast-mode`, `--time-scale` and the graphics options only apply to
-  Slay the Spire 2. Before each launch it also sets borderless full screen
-  (`--windowed` for a window), a 240 fps cap, full volume, the first-run tips off,
-  and a profile in the first save slot if there is none.
-- CommunicationMod cannot continue a saved run, so a run interrupted by a crash
-  is not resumed: the bot starts a new one.
-- The planner knows nothing of the Watcher's Stances or of Mantra, and plays
-  her cards for what they do outright. Defect orbs are planned as in the second
-  game.
-- The bot takes no Keys on purpose, so a won run ends after the act 3 boss.
+- The bot's own ModTheSpire mod turns Fast Mode on, runs the clock `--sts1-time-scale` times faster (default 8) and
+  adds what CommunicationMod leaves out: live card numbers, the Watcher's stance, the act 4 keys.
+- The card ratings and crowd tables are Slay the Spire 2's, so here cards are judged from their text and corrected
+  by `learn.py`. Logs and learning live in `~/.local/state/sts2bot/sts1/`.
+- The planner knows stances; it does not plan Mantra or Scry. Once the first three characters have each won, it goes
+  for the three keys and act 4 (`games/sts1/keys.py`).
+- CommunicationMod cannot continue a saved run: after a crash the bot starts a new one.
 
 ## Both games at once
 
 ```sh
-python3 -m sts2bot sts1-setup        # once: CommunicationMod starts the bot's relay with the first game
-python3 -m sts2bot --game both       # plays Slay the Spire 2 and Slay the Spire side by side
-python3 -m sts2bot --game both -v --runs 3
+python3 -m sts2bot --game both [-v] [--runs N]
 ```
 
-`--game both` starts one bot process per game (`--game sts2` and `--game sts1`)
-and passes every other option on to both. The two share nothing that could
-clash: each talks to its own port (15526 and 15527), keeps its logs, run history
-and what it learns in its own folder (`~/.local/state/sts2bot/` and its `sts1/`),
-and its supervisor only starts, finds and kills its own game. A bot that stops
-with an error is started again after 15 seconds (less often if it keeps
-failing); Ctrl+C or stopping the service stops both, and the games stay open.
+One bot process per game; every other option is passed to both (`--port`, `--log-dir` and `--launch-cmd` are refused
+because each game needs its own). Each has its own port, logs and supervisor, and a bot that exits with an error is
+restarted after 15 seconds. Terminal lines name their game. The first game is only launched while CommunicationMod
+is set up for the relay (`sts1-setup` fixes it).
 
-- Lines on the terminal (and in the journal) name their game:
-  `2026-11-24 10:00:00 sts1 INFO ...`. `bot.log` in each folder is unchanged.
-- `--port`, `--log-dir` and `--launch-cmd` each belong to one game, so they are
-  refused with `--game both`: run the two bots separately to change them.
-- `--runs N` plays N runs in each game.
-- For the service, add `--game both` at the end of `ExecStart` in the installed
-  unit, then `systemctl --user daemon-reload` and restart it.
+## Running 24/7
 
-The first game is only launched while CommunicationMod's config starts the
-bot's relay. If it starts something else (another bot, say), the bot says so and
-does not start, instead of waiting for a relay that never comes up and
-restarting the game for ever; `sts1-setup` fixes it.
+`systemd/sts2bot.service` is a user service that restarts the bot and blocks idle sleep (install steps are at the top
+of the file; Steam must log in without a password). Add `--game both` to `ExecStart` to run both games.
 
-## Unlocks and the Timeline
+```sh
+python3 -m sts2bot service status|start|stop|enable|disable
+```
 
-The game awards unlocks ("epochs") as runs are played: ascension levels, new
-characters, cards, relics. None of them take effect until they are revealed on
-the Timeline screen, and until then the game may not offer Singleplayer at
-all. The bot does this itself: when unlocks are waiting and no run is in
-progress, it opens the Timeline from the main menu, reveals each one, confirms
-the unlock screens and goes back. (This needs the mod built by
-`scripts/install_mod.sh`; the stock mod refuses to reveal epochs.)
-
-With `--character auto` (the default) the bot works on the Timeline first and evens out the ascension levels second:
-
-- While any character still has an epoch of its own to earn (beat acts 1, 2
-  and 3, kill 15 elites and 15 bosses, win on Ascension 1), only those
-  characters are played. The other epochs come with playing: about eighteen
-  by score, and the rest by wins and by meeting the Ancients. The game has 57
-  epochs that can be earned (v0.111; eleven more ids in its files are
-  placeholders titled "TODO").
-- Among those (or among everyone, once no such epoch is left) the character
-  with the lowest ascension unlocked is played first, at its
-  highest unlocked level (a win there unlocks the next one).
-- Among characters on the same level, the bot draws one at random for each
-  run. `--first CHARACTER` puts one character ahead of that while it has
-  epochs of its own left.
-- About eighteen more epochs unlock "by accumulating score". The game only
-  adds a run's score in the end-of-run summary, so the bot clicks through it
-  instead of going straight to the main menu (this needs the mod built by
-  `scripts/install_mod.sh`).
-
-## Logs
-
-In `~/.local/state/sts2bot/` (change with `--log-dir`):
-
-| File | Contents |
-|---|---|
-| `bot.log` | what the bot is doing (rotated at 5 MB) |
-| `runs.jsonl` | one line per finished run: character, result, act, floor, HP, relics, the deck and the card rewards taken (with the floor of each) |
-| `card_stats.json` | what the bot has learned about each card (see `learn.py`) |
-| `tuning.json` | how runs went with each value of the settings it tunes |
-| `fights.jsonl` | one line per fight: the deck, relics and potions it began with, the enemies, the rounds it took and the HP before and after (kept past the four hours `bot.log` reaches back; set aside at 64 MB) |
-
-## Analysis scripts
-
-`scripts/fightlog.py COMMAND` reads the logs fight by fight (the bot has to run
-with `-v`). Run it without arguments, or read its docstring, for every option.
-
-| Command | Shows |
-|---|---|
-| `bosses` | the record against each boss |
-| `costs` | what each ordinary encounter costs in HP |
-| `show 'YYYY-MM-DD HH:MM'` | one fight round by round, with the cards in hand and what was played |
-| `knobs` | how runs went under each value of each tuned setting |
-| `deaths` | the fight every run ended in |
-| `pace` | rounds and damage a round in ordinary fights, by act |
-| `rooms SETTING` | what ordinary fights cost under each value of one setting |
-| `bosspace` | HP a boss lost a round (what separates won from lost), under each setting |
-| `reads` | what the planner read on each card against what playing it did |
-| `unplayed` | cards left in hand on turns that could have paid for them |
-| `surprises` | turns that cost more HP than the plan expected, by enemy |
-| `idle` | turns ended with energy and a playable card while HP was about to be lost |
-| `powers` | powers no module of the bot names, with their rules text |
-| `events` | every event met, with how often each option was taken |
-| `pit`, `crabs`, `artifact` | the Insatiable, Crusher and Rocket, and Artifact fights round by round |
-| `ancients` | the Ancients' relics: rating, how runs that held them went, where that moves the rating |
-| `wiki` | saves the game's text for every discovered card and relic to `wiki.json` |
-
-`scripts/decklog.py` reads `fights.jsonl`: what an ordinary fight costs against
-how many cards of each sort the deck held, with the character taken out, then
-the cards and relics themselves; `decklog.py bosses` does the same for boss
-fights won and lost.
-
-Model fights play a boss or room with the bot's real planner, so a change can
-be tried on a few thousand fights in a minute. Most take `NAME=VALUE` to try a
-planner constant or tuned setting.
-
-| Script | Fight |
-|---|---|
-| `scripts/demonfight.py` | the Knowledge Demon, next to the best play there is (`regret`: the turns the planner gives fights away) |
-| `scripts/crabfight.py` | Crusher and Rocket |
-| `scripts/kinfight.py` | the Kin (act 1 boss) |
-| `scripts/knightfight.py` | the act 3 knights, with and without the kill order in `battle.KNOWN_THREAT` (`flips`: fights two arms disagree on) |
-| `scripts/roomfight.py` | an ordinary act 2 fight: HP lost next to the least any play could lose |
-| `scripts/bosses/bowlfight.py` | Bowlbug Rock and Nectar |
-| `scripts/bosses/subjectfight.py` | the Test Subject |
-| `scripts/modelfight.py` | what the model fights above share: drawing, the combat state, patching a constant, the process pool |
-| `scripts/demon/*.py` | relics, afflictions and Powers at the Knowledge Demon, priced by perfect play |
-| `scripts/audit/*.py` | cards played for nothing, and card text `cards.parse` misread |
+`stop` lasts until the next login, `disable` until you `enable` it again. Killing the process is not enough: the
+service restarts it.
 
 ## Options
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--game` | `sts2` | `sts2`, or `sts1` for the first Slay the Spire (see above) |
-| `--character` | `auto` | `auto` (and `random`) plays a character with the lowest ascension, drawn at random among those on that level; or a character id, or `cycle` over unlocked characters. Every run uses the highest ascension that character has unlocked |
-| `--runs N` | forever | Stop after N runs |
-| `--first CHARACTER` | none | With `--character auto`: play this character until it has earned all of its own epochs, then carry on in the usual order |
-| `--no-tuning` | off | Always play with the default settings instead of trying variations from run to run |
-| `--no-launch` | off | Never start or kill the game |
-| `--launch-cmd` | the game binary, else `steam -applaunch 2868840` | Command that starts the game |
-| `--fast-mode` | `instant` | Game animation speed (`instant`, `fast`, `normal`), set through the mod each time the bot connects (not saved to your settings); `keep` leaves it alone |
-| `--time-scale` | `3` | How many times faster the game's own clock runs (timers, pauses between enemy moves), set through the mod for the session; `1` leaves it alone |
-| `--sts1-time-scale` | `8` | The same for the first Slay the Spire, through the bot's own ModTheSpire mod (`sts2bot/games/sts1/speedmod.py`, built with the system's `javac` and loaded only when the bot starts the game) |
-| `--full-graphics` | off | Keep the game's normal window and graphics. By default the bot maximises the window and turns anti-aliasing and the frame cap off for the session (not saved to your settings) |
-| `--small-window` | off | Shrink the game window to 960x540 instead of full screen (a little faster on a slow machine) |
-| `--windowed` | off | A maximised window instead of full screen, in both games |
-| `--stuck-timeout` | `300` | Seconds without change before the game is restarted |
-| `--host`, `--port` | `127.0.0.1`, `15526` (`15527` with `--game sts1`) | Where the bridge mod (or the first game's relay) listens |
-| `-v` | off | Log every action |
+| `--game` | `sts2` | `sts2`, `sts1` or `both` |
+| `--character` | `auto` | `auto`/`random` (lowest ascension first), a character id, or `cycle` |
+| `--first CHARACTER` | - | with `auto`: this character until its own epochs are earned |
+| `--runs N` | forever | stop after N runs (per game with `both`) |
+| `--no-tuning` | off | always play the default settings |
+| `--no-launch` | off | never start or kill the game |
+| `--launch-cmd` | the game binary, else `steam -applaunch 2868840` | how to start the game |
+| `--fast-mode` | `instant` | animation speed (`instant`, `fast`, `normal`, `keep`) |
+| `--time-scale` / `--sts1-time-scale` | `3` / `8` | how much faster the game clock runs (`1`: leave it) |
+| `--full-graphics` | off | keep the normal window and graphics (default: maximised, no AA, uncapped fps) |
+| `--small-window` / `--windowed` | off | a 960x540 window / a maximised window instead of full screen |
+| `--stuck-timeout` | `300` | seconds without change before the game is restarted |
+| `--host`, `--port` | `127.0.0.1`, `15526` (`15527` for sts1) | where the mod or relay listens |
+| `--log-dir` | `~/.local/state/sts2bot` (`sts1/` below it) | logs and what is learned |
+| `-v` | off | log every action (the analysis scripts need it) |
+
+## Logs and analysis
+
+`bot.log` (rotated at 5 MB), `runs.jsonl` (one line per run: character, result, floor, relics, deck, picks, settings),
+`fights.jsonl` (every fight: deck, enemies, rounds, HP before and after), `card_stats.json`, `tuning.json`.
+
+| Script | Shows |
+|---|---|
+| `scripts/fightlog.py COMMAND` | read `bot.log` fight by fight: `bosses`, `costs`, `show 'YYYY-MM-DD HH:MM'`, `knobs`, `deaths`, `pace`, `rooms SETTING`, `bosspace`, `reads`, `unplayed`, `surprises`, `idle`, `powers`, `events`, `pit`, `crabs`, `artifact`, `ancients`, `wiki` |
+| `scripts/decklog.py [bosses]` | what a fight costs against what the deck holds (`fights.jsonl`) |
+| `scripts/relearn.py` | rebuild `card_stats.json` from `runs.jsonl` |
+| `scripts/demonfight.py`, `crabfight.py`, `kinfight.py`, `knightfight.py`, `roomfight.py`, `bosses/*.py` | model fights: one boss or room played by the real planner thousands of times (most take `NAME=VALUE` to try a constant); `demonfight.py` also solves the Knowledge Demon exactly |
+| `scripts/demon/*.py`, `scripts/audit/*.py` | relic and affliction prices at the Demon; cards played for nothing and text the parser misreads |
+
+## Model runs
+
+`sim/` plays whole runs of either game with every decision made by the bot's own code: the combat planner, the
+map, reward, shop, rest-site, event and selection handlers, and the tuned settings. The engine knows cards by their
+text (the first game's from the bot's tables, Slay the Spire 2's from `sim/content/sts2_data.json`, extracted from
+the game by Spire Codex), monsters by their move tables, and a common subset of relics and potions.
+
+```sh
+python3 -m sim run --game sts1 --character all --runs 1000 --vary --out runs.jsonl   # --vary: random settings per run
+python3 -m sim run --game sts2 --character NECROBINDER --runs 200 --ascension 5
+python3 -m sim report runs.jsonl                                                     # by character, setting, card
+python3 -m sim trace                                                                 # one hash per character
+```
+
+`trace` hashes every decision of seeded runs: a change that should not alter behaviour must leave the hashes as they
+were. Results and limits: [docs/strategy/simulation.md](docs/strategy/simulation.md).
 
 ## Development
 
 ```sh
-python3 -m unittest discover -s tests -t .   # the tests
-ruff check .                                  # lint (settings in pyproject.toml)
+python3 -m unittest discover -s tests -t .   # against fake games: the bot loop, the StS1 relay, the planner
+ruff check .
+PYTHONHASHSEED=0 python3 -m sim trace         # unchanged hashes = unchanged decisions
 ```
 
-The tests run the bot against a small simulated game (`tests/fake_game.py`)
-that speaks the same state and action format as the mod, and the first game's
-path against a stand-in for CommunicationMod (`tests/sts1/fake_comm.py`),
-through the real relay. They do not need either game. `tests/test_size.py` also keeps the code base in shape:
-
-- no script is longer than 1000 lines (split it);
-- no directory holds more than 10 files (move the rest into a new directory);
-- no table in `sts2bot/` lists the same key twice.
-
-## Strategy notes
-
-`docs/strategy/` holds community strategy collected for the bot to consider (general play, and each character),
-with a list of what the bot already does and what is worth trying next. The notes themselves are not wired into
-the code; the card and relic win rates in `sts2bot/run/crowd.py` and `sts2bot/run/events.py` are.
+`tests/test_size.py` keeps files under 1000 lines, directories under 10 files and dict literals free of repeated keys.
+Strategy notes for both games are in [docs/strategy/](docs/strategy/).
 
 ## Uninstall
 

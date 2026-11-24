@@ -307,11 +307,7 @@ OWN_POWER = {
     "BUFFER": lambda f, c: None,
     "ACCURACY": lambda f, c: None,
     "ENVENOM": lambda f, c: f.pw.__setitem__("ENVENOM", 1),
-    "FEEL_NO_PAIN": lambda f, c: None,
-    "DARK_EMBRACE": lambda f, c: None,
-    "JUGGERNAUT": lambda f, c: None,
     "AFTERIMAGE": lambda f, c: f.pw.__setitem__("AFTER_IMAGE", f.pw.get("AFTER_IMAGE", 0) + 1),
-    "STORM": lambda f, c: None,
     "WELL_LAID_PLANS": lambda f, c: f.pw.__setitem__("KEEP_HAND_ALWAYS", 1),
     "VOID_FORM": _void_form,
     "CAPACITOR": lambda f, c: setattr(f, "orb_slots", f.orb_slots + (3 if c.up else 2)),
@@ -327,7 +323,6 @@ OWN_POWER = {
     "ABRASIVE": lambda f, c: f.pw.__setitem__("THORNS", f.pw.get("THORNS", 0) + (6 if c.up else 4)),
     "STONE_ARMOR": lambda f, c: f.pw.__setitem__("PLATING", f.pw.get("PLATING", 0) + (6 if c.up else 4)),
     "NEUTRON_AEGIS": lambda f, c: f.pw.__setitem__("PLATING", f.pw.get("PLATING", 0) + (11 if c.up else 8)),
-    "INFINITE_BLADES": lambda f, c: f.triggers.append(("start", "Add 1 Shiv into your Hand.", c.key)),
     "NEUROSURGE": lambda f, c: (setattr(f, "energy", f.energy + 3), f.draw_cards(2), f.pw.__setitem__("NEUROSURGE", 3)),
 }
 for _k, _d in CARDS.items():

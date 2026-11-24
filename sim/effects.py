@@ -23,6 +23,11 @@ def content(f):
     return f.game
 
 
+def by_text(f, key: str) -> bool:
+    """A Power whose effect Slay the Spire 2's text triggers carry out (so the first game's handler for its name stays out)."""
+    return any(k == key for _w, _t, k in f.triggers)
+
+
 def base_damage(f, c: Card) -> int | None:
     """A card's damage a hit before Strength, or None if it deals none."""
     rule = content(f).DAMAGE.get(c.key)
@@ -75,7 +80,7 @@ def resolve(f, c: Card, foe, x: int) -> None:
         if i.weak:
             debuff(f, v, "WEAK", i.weak * xs)
         if i.enemy_strength_loss and not v.powers.get("ARTIFACT"):
-            n = i.enemy_strength_loss * xs + (1 if c.up and c.key in g.X_PLUS and c.printed_cost == -1 else 0) * 0
+            n = i.enemy_strength_loss * xs
             v.powers["STRENGTH"] = v.powers.get("STRENGTH", 0) - n
             if not i.enemy_strength_lasts:
                 v.mem["str_back"] = v.mem.get("str_back", 0) + n
@@ -259,10 +264,10 @@ def played(f, c: Card) -> None:
         for foe in f.alive():
             if foe.powers.get("CURIOSITY"):
                 foe.powers["STRENGTH"] = foe.powers.get("STRENGTH", 0) + foe.powers["CURIOSITY"]
-        if pw.get("STORM"):
+        if pw.get("STORM") and not by_text(f, "STORM"):
             for _ in range(pw["STORM"]):
                 f.channel("LIGHTNING")
-        if pw.get("HEATSINKS"):
+        if pw.get("HEATSINKS") and not by_text(f, "HEATSINKS"):
             f.draw_cards(pw["HEATSINKS"])
     if run.has("NUNCHAKU") and c.type == "Attack":
         n = run.counters["NUNCHAKU"] = run.counters.get("NUNCHAKU", 0) + 1
@@ -520,9 +525,9 @@ def turn_start(f) -> None:
         if n % 6 == 0:
             pw["INTANGIBLE"] = pw.get("INTANGIBLE", 0) + 1
     f.energy += sum(1 for o in f.orbs if o[0] == "PLASMA")
-    if pw.get("DEMON_FORM"):
+    if pw.get("DEMON_FORM") and not by_text(f, "DEMON_FORM"):
         pw["STRENGTH"] = pw.get("STRENGTH", 0) + pw["DEMON_FORM"]
-    if pw.get("NOXIOUS_FUMES"):
+    if pw.get("NOXIOUS_FUMES") and not by_text(f, "NOXIOUS_FUMES"):
         for foe in f.alive():
             debuff(f, foe, "POISON", pw["NOXIOUS_FUMES"])
     if pw.get("BRUTALITY"):
@@ -530,7 +535,7 @@ def turn_start(f) -> None:
         f.draw_cards(pw["BRUTALITY"])
     if pw.get("BERSERK"):
         f.energy += pw["BERSERK"]
-    if pw.get("INFINITE_BLADES"):
+    if pw.get("INFINITE_BLADES") and not by_text(f, "INFINITE_BLADES"):
         for _ in range(pw["INFINITE_BLADES"]):
             f.add_card(content(f).make("SHIV"))
     if pw.get("WRAITH_FORM"):
@@ -557,7 +562,7 @@ def turn_start(f) -> None:
 
 def after_draw(f) -> None:
     pw = f.pw
-    if pw.get("TOOLS_OF_THE_TRADE"):
+    if pw.get("TOOLS_OF_THE_TRADE") and not by_text(f, "TOOLS_OF_THE_TRADE"):
         f.draw_cards(pw["TOOLS_OF_THE_TRADE"])
         discard_from_hand(f, pw["TOOLS_OF_THE_TRADE"])
     if pw.get("FORESIGHT"):
