@@ -56,11 +56,9 @@ class Foe:
 
     @property
     def move(self) -> Move:
-        m = self.spec.moves.get(self.move_name)
-        if m is None:  # (a state machine that names a move the table lacks: its first move stands in)
+        if self.move_name not in self.spec.moves:  # (a state machine that names a move the table lacks: its first move stands in)
             self.move_name = next(iter(self.spec.moves))
-            m = self.spec.moves[self.move_name]
-        return m
+        return self.spec.moves[self.move_name]
 
     def choose(self, rng) -> None:
         self.move_name = self.spec.pattern(self, rng)
@@ -68,11 +66,16 @@ class Foe:
     def last(self, n: int = 1) -> list[str]:
         return self.history[-n:]
 
+    def stun(self) -> None:
+        """Its next move is its Stun move, if it has one."""
+        self.move_name = next((m for m, mv in self.spec.moves.items() if mv.kind == "Stun"), self.move_name)
+
 
 # ----------------------------------------------------------------- patterns
 
 
-def _counter(f: Foe, key, start: int = 0) -> int:
+def counter(f: Foe, key, start: int = 0) -> int:
+    """A count kept in the monster's memory: its value before this call adds one."""
     i = f.mem.get(key, start)
     f.mem[key] = i + 1
     return i
@@ -81,7 +84,7 @@ def _counter(f: Foe, key, start: int = 0) -> int:
 def cycle(*names: str, start: int = 0) -> Callable:
     """The moves in turn, round and round."""
     key = object()
-    return lambda f, rng: names[_counter(f, key, start) % len(names)]
+    return lambda f, rng: names[counter(f, key, start) % len(names)]
 
 
 def opening(*names: str, then: Callable) -> Callable:
@@ -114,19 +117,4 @@ def weighted(weights: dict[str, float], most: dict[str, int] | None = None) -> C
 
 
 def _run_length(history: list[str], move: str) -> int:
-    n = 0
-    for m in reversed(history):
-        if m != move:
-            break
-        n += 1
-    return n
-
-
-def alternate(a: str, b: str, start_with: str | None = None) -> Callable:
-    """a, b, a, b ... (or starting with b)."""
-    return cycle(a, b, start=0 if start_with in (None, a) else 1)
-
-
-def by_hp(below: float, low: Callable, high: Callable) -> Callable:
-    """`low` once its HP is under that share of its Max HP, `high` before."""
-    return lambda f, rng: (low if f.hp < below * f.max_hp else high)(f, rng)
+    return next((i for i, m in enumerate(reversed(history)) if m != move), len(history))

@@ -11,9 +11,6 @@ from sts2bot.run import strategy
 from .cards import Card
 from .engine import Fight
 
-ROWS = 15  # rows of rooms in an act; the boss is above the last
-COLS = 7
-
 
 class Potion:
     def __init__(self, key: str, name: str, text: str, rarity: str = "Common"):
@@ -94,9 +91,6 @@ class Run:
     def screen(self, kind: str, **body) -> dict:
         return {"state_type": kind, "run": self.where(), "player": self.player(), **body}
 
-    def deck_views(self) -> list[dict]:
-        return [c.view(i) for i, c in enumerate(self.deck)]
-
     def _upgrade_gain(self, card: dict):
         d = self.game.CARDS.get(str(card.get("id") or ""))
         if d is None:
@@ -119,9 +113,8 @@ class Run:
         self.game.relic_pickup(self, rid)
 
     def add_card(self, c: Card) -> None:
-        if c.type in ("Attack", "Skill", "Power"):
-            if self.has("MOLTEN_EGG") and c.type == "Attack" or self.has("TOXIC_EGG") and c.type == "Skill" or self.has("FROZEN_EGG") and c.type == "Power":
-                c.up = True
+        if self.has({"Attack": "MOLTEN_EGG", "Skill": "TOXIC_EGG", "Power": "FROZEN_EGG"}.get(c.type, "")):
+            c.up = True
         self.deck.append(c)
 
     def remove_card(self, c: Card) -> None:
@@ -135,7 +128,7 @@ class Run:
     # ------------------------------------------------------------------ the bot's choices
 
     def choose_from_deck(self, screen_type: str, prompt: str, pool: list[Card] | None = None) -> Card | None:
-        pool = [c for c in (pool if pool is not None else self.deck)]
+        pool = list(self.deck if pool is None else pool)
         if not pool:
             return None
         state = self.screen("card_select", card_select={"screen_type": screen_type, "prompt": prompt, "cards": [c.view(i) for i, c in enumerate(pool)],
@@ -222,7 +215,8 @@ class Run:
             if not self.room(kind):
                 return False
             if kind == "Boss":
-                return self.boss_rewards()
+                self.game.boss_won(self)
+                return True
 
     def next_options(self, nodes: dict, at) -> list[dict]:
         if at is None:
@@ -247,30 +241,20 @@ class Run:
         if kind == "Unknown":
             kind = self.unknown_room()
         if kind in ("Monster", "Elite", "Boss"):
-            return self.fight(kind.lower() if kind != "Monster" else "monster")
-        if kind == "RestSite":
-            self.rest_site()
-        elif kind == "Shop":
-            self.shop()
-        elif kind == "Treasure":
-            self.treasure()
-        elif kind == "Event":
-            self.event()
-            return self.hp > 0
-        return True
+            return self.fight(kind.lower())
+        {"RestSite": self.rest_site, "Shop": self.shop, "Treasure": self.treasure, "Event": self.event}.get(kind, lambda: None)()
+        return kind != "Event" or self.hp > 0
 
     def unknown_room(self) -> str:
-        r = self.rng.random()
-        odds = self.unknown_odds
+        r, odds, base, pick = self.rng.random(), self.unknown_odds, self.game.UNKNOWN_ODDS, "Event"
         for kind in ("Monster", "Shop", "Treasure"):
             if r < odds[kind]:
-                for k in odds:
-                    odds[k] = self.game.UNKNOWN_ODDS[k] if k == kind else odds[k] + self.game.UNKNOWN_ODDS[k]
-                return kind
+                pick = kind
+                break
             r -= odds[kind]
-        for k in odds:
-            odds[k] += self.game.UNKNOWN_ODDS[k]
-        return "Event"
+        for k in odds:  # (the odds of the room met go back to the start, the others grow)
+            odds[k] = base[k] if k == pick else odds[k] + base[k]
+        return pick
 
     # ------------------------------------------------------------------ fights
 
@@ -284,15 +268,12 @@ class Run:
         self.digest.append("F" + "".join(f.digest))
         self.log["fights"].append({"act": self.act, "floor": self.floor, "kind": kind, "foes": sorted({x.key for x in foes}), "hp0": hp0,
                                    "hp1": max(0, self.hp), "max_hp": self.max_hp, "rounds": f.round, "won": won})
-        if kind == "elite":
-            self.log["elites"] += 1
-        if not won:
-            return False
-        self.game.fight_won(self, f)
-        if f.escaped:
-            return True
-        self.rewards(kind, f)
-        return True
+        self.log["elites"] += kind == "elite"
+        if won:
+            self.game.fight_won(self, f)
+            if not f.escaped:
+                self.rewards(kind, f)
+        return won
 
     def rewards(self, kind: str, f: Fight) -> None:
         g = self.game
@@ -317,13 +298,11 @@ class Run:
         for _ in range(12):
             left = [i for i in items if i["index"] not in taken]
             state = self.screen("rewards", rewards={"items": [{k: v for k, v in i.items() if not k.startswith("_")} for i in left], "can_proceed": True})
-            acted = False
             for action, params in strategy.rewards(state, self.mem):
                 if action == "proceed":
                     return
                 if action == "discard_potion":
                     self.drop_potion(int(params["slot"]))
-                    acted = True
                     break
                 if action == "claim_reward":
                     it = items[params["index"]]
@@ -337,14 +316,9 @@ class Run:
                         self.gain_relic(it["_relic"])
                     elif it["type"] == "card":
                         self.card_reward(g.card_choices(self, kind))
-                    acted = True
                     break
-            if not acted:
+            else:
                 return
-
-    def boss_rewards(self) -> bool:
-        self.game.boss_won(self)
-        return True
 
     # ------------------------------------------------------------------ other rooms
 
@@ -399,7 +373,6 @@ class Run:
             shown = [{k: v for k, v in it.items() if not k.startswith("_")} | {"can_afford": it["price"] <= self.gold, "is_stocked": True}
                      for it in stock]
             state = self.screen("shop", shop={"items": shown, "can_proceed": True})
-            bought = False
             for action, params in strategy.shop(state, self.mem):
                 if action == "proceed":
                     return
@@ -427,11 +400,6 @@ class Run:
                 stock.remove(it)
                 self.log["bought"].append(it["category"])
                 self.digest.append(f"B{it['category'][:2]}")
-                bought = True
                 break
-            if not bought:
+            else:
                 return
-
-
-def play_one(game, character: str, seed: int, knobs: dict, ascension: int = 0) -> dict:
-    return Run(game, character, seed, knobs, ascension).play()

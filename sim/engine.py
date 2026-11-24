@@ -15,13 +15,13 @@ from sts2bot.run import strategy
 
 from . import effects
 from .cards import Card
+from .effects import add
 from .monsters import Foe
 
 HAND_MAX = 10
 MAX_ROUNDS = 45  # a fight still going then is lost (a stalemate the planner cannot break)
 MAX_ACTIONS = 80  # actions in one turn before the engine ends it for the bot
 ORB_BASE = {"LIGHTNING": (3, 8), "FROST": (2, 5), "DARK": (6, 6), "PLASMA": (1, 2)}
-DEBUFFS = ("WEAK", "VULNERABLE", "FRAIL")
 # Counters the engine keeps among our powers that the game would not show as powers.
 INTERNAL = {"DRAWN_TURN", "OSTY_MAX", "FORGE", "TURN_ENERGY", "VOID_FREE", "KEEP_HAND_ALWAYS", "SURCHARGE", "MANTRA_GAINED", "CLAW_BONUS",
             "EXPUNGER_X", "DISCARDED_TURN", "BLASPHEMY_DUE", "SIMMERING", "DEVA_ENERGY", "KEEP_HAND", "KEEP_BLOCK", "TURN_OVER", "EXTRA_TURN",
@@ -39,28 +39,21 @@ class Fight:
         self.hand: list[Card] = []
         self.discard: list[Card] = []
         self.exhausted: list[Card] = []
-        self.block = 0
-        self.energy = 0
+        self.block = self.energy = 0
         self.pw: dict[str, int] = {}  # our powers
         self.temp: dict[str, int] = {}  # Strength and Dexterity that go at the end of this turn
         self.orbs: list[list] = []  # [kind, Dark's stored damage], oldest first
         self.orb_slots = run.orb_slots
-        self.stance = ""
-        self.mantra = 0
-        self.stars = 0
+        self.stance, self.mantra, self.stars = "", 0, 0
         self.osty = 0 if run.character == "NECROBINDER" else -1
-        self.round = 0
+        self.round = self.attacks_turn = self.skills_turn = 0
         self.turn_cards: list[str] = []
-        self.attacks_turn = self.skills_turn = 0
         self.last_type = ""
-        self.no_draw = False
         self.double_next = 0  # Double Tap: Attacks to play twice
         self.burst = 0  # Burst: Skills to play twice
-        self.free_attack = False
+        self.no_draw = self.free_attack = self.won = self.lost = self.escaped = False
         self.threat: dict[str, list] = {}
         self.facing: str | None = None
-        self.won = self.lost = False
-        self.escaped = False
         self.plays = 0  # cards the planner has played (for the trace)
         self.digest: list[str] = []
         self.triggers: list[tuple] = []  # Slay the Spire 2's Powers, read from their text: (when, what, card key)
@@ -123,15 +116,8 @@ class Fight:
 
     def playable(self, c: Card) -> bool:
         cost = self.cost_of(c)
-        if cost == -2 or not effects.can_play(self, c):
-            return False
-        if self.pw.get("ENTANGLED") and c.type == "Attack":
-            return False
-        if self.pw.get("SMOGGY") and c.type == "Skill" and self.skills_turn:
-            return False
-        if self.limit_left() == 0:
-            return False
-        if c.star_cost is not None and c.star_cost > self.stars:
+        if (cost == -2 or not effects.can_play(self, c) or self.pw.get("ENTANGLED") and c.type == "Attack" or self.pw.get("SMOGGY") and c.type == "Skill" and self.skills_turn
+                or self.limit_left() == 0 or c.star_cost is not None and c.star_cost > self.stars):
             return False
         return cost < 0 or cost <= self.energy
 
@@ -144,11 +130,7 @@ class Fight:
         cost = c.cost()
         if cost < 0:
             return cost
-        if c.type == "Skill" and self.pw.get("CORRUPTION"):
-            return 0
-        if c.type == "Attack" and self.free_attack:
-            return 0
-        if self.pw.get("VOID_FREE"):
+        if c.type == "Skill" and self.pw.get("CORRUPTION") or c.type == "Attack" and self.free_attack or self.pw.get("VOID_FREE"):
             return 0
         return cost + self.pw.get("SURCHARGE", 0)
 
@@ -156,9 +138,9 @@ class Fight:
         hand = []
         for n, c in enumerate(self.hand):
             dmg, blk = self.live(c)
-            view = c.view(n, dmg, blk, playable=self.playable(c))
-            view["cost"] = "X" if self.cost_of(c) == -1 else str(max(0, self.cost_of(c)))
-            if not view["can_play"] and self.game.SHORT_REASON and self.cost_of(c) > self.energy and effects.can_play(self, c):
+            view, cost = c.view(n, dmg, blk, playable=self.playable(c)), self.cost_of(c)
+            view["cost"] = "X" if cost == -1 else str(max(0, cost))
+            if not view["can_play"] and self.game.SHORT_REASON and cost > self.energy and effects.can_play(self, c):
                 view["unplayable_reason"] = "EnergyCostTooHigh"
             hand.append(view)
         status = [{"id": f"{k}_POWER", "amount": v, "description": ""} for k, v in {**self.pw, **self.temp_view()}.items() if v and k not in INTERNAL]
@@ -188,24 +170,17 @@ class Fight:
     def foe_view(self, f: Foe) -> dict:
         m = f.move
         intents = []
-        if self.run.has("RUNIC_DOME"):
-            intents = [{"type": "Unknown", "label": ""}]
-        elif m.kind:
-            intents = [{"type": m.kind, "label": ""}]
+        if self.run.has("RUNIC_DOME") or m.kind:
+            intents = [{"type": "Unknown" if self.run.has("RUNIC_DOME") else m.kind, "label": ""}]
         else:
             if m.dmg:
-                d = self.foe_hit(f, effects.move_damage(self, f, m))
-                hits = effects.move_hits(self, f, m)
+                d, hits = self.foe_hit(f, effects.move_damage(self, f, m)), effects.move_hits(self, f, m)
                 intents.append({"type": "Attack", "label": f"{d}x{hits}" if hits > 1 else str(d)})
             words = {fx[0] for fx in m.fx}
-            if words & effects.DEBUFF_FX:
-                intents.append({"type": "Debuff", "label": ""})
-            if words & effects.BUFF_FX:
-                intents.append({"type": "Buff", "label": ""})
-            if m.block and not m.dmg:
-                intents.append({"type": "Defend", "label": ""})
-            if not intents:
-                intents.append({"type": "Unknown", "label": ""})
+            for kind, shown in (("Debuff", words & effects.DEBUFF_FX), ("Buff", words & effects.BUFF_FX), ("Defend", m.block and not m.dmg)):
+                if shown:
+                    intents.append({"type": kind, "label": ""})
+            intents = intents or [{"type": "Unknown", "label": ""}]
         status = [{"id": f"{k}_POWER", "amount": v, "description": ""} for k, v in f.powers.items() if v]
         return {"entity_id": f.eid, "name": f.name, "hp": 0 if f.half_dead else f.hp, "max_hp": f.max_hp, "block": f.block,
                 "status": status, "intents": intents}
@@ -215,15 +190,18 @@ class Fight:
         return base if o[0] == "PLASMA" else max(0, base + self.pw.get("FOCUS", 0))
 
     def orb_evoke(self, o: list) -> int:
-        if o[0] == "DARK":
-            return o[1]
         base = ORB_BASE.get(o[0], (0, 0))[1]
-        return base if o[0] == "PLASMA" else max(0, base + self.pw.get("FOCUS", 0))
+        return o[1] if o[0] == "DARK" else base if o[0] == "PLASMA" else max(0, base + self.pw.get("FOCUS", 0))
 
     # ------------------------------------------------------------------ hurting
 
     def alive(self) -> list[Foe]:
         return [f for f in self.foes if f.alive]
+
+    def hurt_all(self, amount: int) -> None:
+        """Damage, not an attack, on every enemy alive."""
+        for f in self.alive():
+            self.hurt(f, amount, attack=False)
 
     def hurt(self, foe: Foe, amount: int, attack: bool = True) -> int:
         """Damage on an enemy; the HP it lost."""
@@ -237,8 +215,7 @@ class Fight:
         if foe.powers.get("HARD_TO_KILL"):
             amount = min(amount, foe.block + foe.powers["HARD_TO_KILL"])
         if foe.powers.get("HARDENED_SHELL"):
-            room = max(0, foe.powers["HARDENED_SHELL"] - foe.mem.get("shell", 0))
-            amount = min(amount, foe.block + room)
+            amount = min(amount, foe.block + max(0, foe.powers["HARDENED_SHELL"] - foe.mem.get("shell", 0)))
         if attack and self.run.has("THE_BOOT") and 0 < amount < 5:
             amount = 5
         took = min(foe.block, amount)
@@ -251,12 +228,10 @@ class Fight:
             foe.block += foe.powers["SKITTISH"]
         if took and foe.block == 0 and foe.powers.get("BURROWED"):
             foe.powers.pop("BURROWED")
-            stun = next((m for m in foe.spec.moves if foe.spec.moves[m].kind == "Stun"), None)
-            if stun:
-                foe.move_name = stun
+            foe.stun()
         if rest > 0:
             foe.hp -= rest
-            foe.mem["shell"] = foe.mem.get("shell", 0) + rest
+            add(foe.mem, "shell", rest)
             effects.foe_hurt(self, foe, rest, attack)
         if foe.hp <= 0:
             self.kill(foe)
@@ -264,17 +239,15 @@ class Fight:
 
     def kill(self, foe: Foe) -> None:
         foe.hp = 0
-        hook = foe.spec.hooks.get("death")
-        if hook and hook(self, foe):
+        if effects.foe_hook(foe, "death", self, foe):
             return  # it is not gone (a Darkling waiting to rise, the Awakened One reborn)
         foe.gone = True
         for ally in self.foes:
             if ally.alive and ally.powers.get("CRAB_RAGE"):
-                ally.powers["STRENGTH"] = ally.powers.get("STRENGTH", 0) + 6
+                add(ally.powers, "STRENGTH", 6)
                 ally.block += 99
         if foe.mem.get("corpse"):
-            for x in self.alive():
-                self.hurt(x, foe.max_hp, attack=False)
+            self.hurt_all(foe.max_hp)
         if self.run.has("GREMLIN_HORN"):
             self.energy += 1
             self.draw_cards(1)
@@ -319,7 +292,7 @@ class Fight:
         n = min(n, self.run.hp)
         self.run.hp -= n
         if from_card and self.pw.get("RUPTURE"):
-            self.pw["STRENGTH"] = self.strength() - self.temp.get("STRENGTH", 0) + self.pw["RUPTURE"]
+            add(self.pw, "STRENGTH", self.pw["RUPTURE"])
         if self.run.hp <= 0:
             effects.on_death(self)
         return n
@@ -342,15 +315,19 @@ class Fight:
         for _ in range(n):
             if len(self.hand) >= HAND_MAX:
                 return
+            self.refill()
             if not self.draw:
-                if not self.discard:
-                    return
-                self.draw, self.discard = self.discard, []
-                self.rng.shuffle(self.draw)
+                return
             c = self.draw.pop()
             self.hand.append(c)
-            self.pw["DRAWN_TURN"] = self.pw.get("DRAWN_TURN", 0) + 1
+            add(self.pw, "DRAWN_TURN", 1)
             effects.drawn(self, c)
+
+    def refill(self) -> None:
+        """An empty draw pile takes the discard pile, shuffled."""
+        if not self.draw and self.discard:
+            self.draw, self.discard = self.discard, []
+            self.rng.shuffle(self.draw)
 
     def add_card(self, c: Card, where: str = "hand") -> None:
         if where == "hand" and len(self.hand) < HAND_MAX:
@@ -361,6 +338,11 @@ class Fight:
             self.draw.append(c)
         else:
             self.discard.append(c)
+
+    def add_new(self, key: str, n: int = 1, where: str = "hand", up: bool = False) -> None:
+        """n new copies of a card (Shivs, statuses ...) into a pile."""
+        for _ in range(n):
+            self.add_card(self.game.make(key, up=up), where)
 
     def exhaust(self, c: Card) -> None:
         self.exhausted.append(c)
@@ -402,7 +384,7 @@ class Fight:
         if new == self.stance:
             return
         if self.stance == "CALM":
-            self.energy += 2 + (1 if self.run.has("VIOLET_LOTUS") else 0)
+            self.energy += 2 + self.run.has("VIOLET_LOTUS")
         if new == "DIVINITY":
             self.energy += 3
         self.stance = new
@@ -410,7 +392,7 @@ class Fight:
 
     def gain_mantra(self, n: int) -> None:
         self.mantra += n
-        self.pw["MANTRA_GAINED"] = self.pw.get("MANTRA_GAINED", 0) + n
+        add(self.pw, "MANTRA_GAINED", n)
         if self.mantra >= 10:
             self.mantra -= 10
             self.enter("DIVINITY")
@@ -463,10 +445,8 @@ class Fight:
             if self.won or self.lost:
                 break
             effects.resolve(self, c, foe if foe is None or foe.alive else (self.alive() or [None])[0], x)
-        if c.type == "Attack":
-            self.attacks_turn += 1
-        elif c.type == "Skill":
-            self.skills_turn += 1
+        self.attacks_turn += c.type == "Attack"
+        self.skills_turn += c.type == "Skill"
         self.last_type = c.type
         effects.played(self, c)
         self.put_away(c)
@@ -488,7 +468,7 @@ class Fight:
             return False
         foe = next((f for f in self.foes if f.eid == target and f.alive), None) or (self.alive() or [None])[0]
         self.run.drop_potion(slot)
-        self.run.log["potions"] = self.run.log.get("potions", 0) + 1
+        add(self.run.log, "potions", 1)
         effects.drink(self, pot, foe)
         if self.run.has("TOY_ORNITHOPTER"):
             self.heal(5)
@@ -539,11 +519,10 @@ class Fight:
                 self.exhaust(c)
             else:
                 self.discard.append(c)
-        for k in ("STRENGTH", "DEXTERITY"):
+        for k in ("STRENGTH", "DEXTERITY", "FLAME_BARRIER"):
             self.temp.pop(k, None)
-        self.temp.pop("FLAME_BARRIER", None)
-        self.pw.pop("RAGE", None)
-        self.pw.pop("ENTANGLED", None)
+        for k in ("RAGE", "ENTANGLED"):
+            self.pw.pop(k, None)
         self.free_attack = False
         for c in self.hand + self.draw + self.discard:
             c.cost_turn = None
@@ -559,7 +538,7 @@ class Fight:
             if f.powers.get("POISON"):
                 dose = f.powers["POISON"]
                 f.powers["POISON"] = dose - 1
-                self.hurt(f, dose, attack=False) if not f.powers.get("INTANGIBLE") else self.hurt(f, 1, attack=False)
+                self.hurt(f, 1 if f.powers.get("INTANGIBLE") else dose, attack=False)
                 if not f.alive:
                     continue
             m = f.move
@@ -577,10 +556,7 @@ class Fight:
     def end_of_round(self) -> None:
         for f in self.foes:  # Strength lost "this turn" (Piercing Wail, Shifting) is back once the enemies have acted
             f.powers["STRENGTH"] = f.powers.get("STRENGTH", 0) + f.mem.pop("str_back", 0)
-        for k in DEBUFFS:
-            if self.pw.get(k):
-                self.pw[k] -= 1
-        for k in ("INTANGIBLE",):
+        for k in ("WEAK", "VULNERABLE", "FRAIL", "INTANGIBLE"):
             if self.pw.get(k):
                 self.pw[k] -= 1
         if self.pw.get("REGEN"):
@@ -611,23 +587,18 @@ class Fight:
         for _ in range(MAX_ACTIONS):
             if self.won or self.lost or self.pw.pop("TURN_OVER", 0):
                 return
-            state = self.state()
-            todo = combat.actions(state)
-            done = False
-            for action, params in todo:
+            for action, params in combat.actions(self.state()):
                 if action == "end_turn":
                     self.digest.append("E")
                     return
                 if action == "play_card" and self.play(int(params.get("card_index", -1)), params.get("target")):
                     self.digest.append(f"P{params.get('card_index')}{params.get('target') or ''}")
                     self.plays += 1
-                    done = True
                     break
                 if action == "use_potion" and self.use_potion(int(params.get("slot", -1)), params.get("target")):
                     self.digest.append(f"Q{params.get('slot')}")
-                    done = True
                     break
-            if not done:
+            else:
                 return
 
     def run_fight(self) -> bool:
@@ -637,20 +608,13 @@ class Fight:
             if self.round >= MAX_ROUNDS:
                 self.lost = True
                 break
-            self.player_turn_start()
-            if self.won or self.lost:
-                break
-            if self.kind == "monster":
-                self.note_threat()
-            self.bot_turn()
-            if self.won or self.lost:
-                break
-            self.player_turn_end()
-            if self.won or self.lost:
-                break
-            if self.pw.pop("EXTRA_TURN", 0):
-                continue
-            self.enemies_turn()
+            for step in (self.player_turn_start, self.note_threat if self.kind == "monster" else lambda: None, self.bot_turn, self.player_turn_end):
+                step()
+                if self.won or self.lost:
+                    break
+            else:
+                if not self.pw.pop("EXTRA_TURN", 0):
+                    self.enemies_turn()
         return self.won and not self.lost
 
     def hand_pick(self, prompt: str, n: int, cards: list[Card] | None = None) -> list[Card]:
@@ -662,11 +626,7 @@ class Fight:
         state.update(state_type="hand_select", _fight=self.kind,
                      hand_select={"prompt": prompt, "cards": [c.view(i) for i, c in enumerate(pool)], "can_confirm": False, "mode": "simple_select"})
         order = [p["card_index"] for a, p in strategy.hand_select(state, self.run.mem) if a == "combat_select_card"]
-        seen: list[int] = []
-        for i in order:
-            if 0 <= i < len(pool) and i not in seen:
-                seen.append(i)
-        return [pool[i] for i in seen[:n]]
+        return [pool[i] for i in list(dict.fromkeys(i for i in order if 0 <= i < len(pool)))[:n]]
 
     def pile_pick(self, prompt: str, pool: list[Card], n: int = 1) -> list[Card]:
         """Cards from a pile for a "choose" screen (Headbutt, Exhume, Seek): the bot's card_select handler orders them."""

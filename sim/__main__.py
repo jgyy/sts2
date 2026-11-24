@@ -46,10 +46,10 @@ def content(game: str):
 
 def _job(args: tuple) -> dict:
     game, character, seed, knobs, asc = args
-    from .run import play_one
+    from .run import Run
     logging.disable(logging.CRITICAL)
     try:
-        return play_one(content(game), character, seed, knobs, asc)
+        return Run(content(game), character, seed, knobs, asc).play()
     except Exception as e:  # a model bug must not end a thousand-run batch: it is counted and reported instead
         import traceback
         return {"game": game, "character": character, "seed": seed, "knobs": knobs, "error": f"{type(e).__name__}: {e}", "trace": traceback.format_exc()[-1500:]}

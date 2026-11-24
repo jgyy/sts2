@@ -86,12 +86,7 @@ class Card:
 
     def cost(self) -> int:
         base = self.printed_cost
-        if base < 0:
-            return base
-        for c in (self.cost_turn, self.cost_fight):
-            if c is not None:
-                return c
-        return base
+        return base if base < 0 else next((c for c in (self.cost_turn, self.cost_fight) if c is not None), base)
 
     @property
     def star_cost(self) -> int | None:

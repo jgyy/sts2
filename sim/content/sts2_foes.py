@@ -11,7 +11,6 @@ import re
 from ..monsters import Foe, Move, Spec
 
 PLAYER_DEBUFF = {"WEAK": "weak", "FRAIL": "frail", "VULNERABLE": "vuln"}
-PLAYER_POWER = {"RINGING", "SMOGGY", "TENDER", "CONSTRICT", "TANGLED", "SHRINK", "DAMPEN", "CHAINS_OF_BINDING"}
 INTENT_KIND = {"stun": "Stun", "sleep": "Sleep", "escape": "Escape"}
 
 
@@ -203,7 +202,7 @@ def _plow_hit(f, foe, amount, attack):
 def _shriek_hit(f, foe, amount, attack):
     if foe.powers.get("SHRIEK") and foe.hp <= foe.powers["SHRIEK"]:
         foe.powers.pop("SHRIEK")
-        foe.move_name = next((m for m in foe.spec.moves if foe.spec.moves[m].kind == "Stun"), foe.move_name)
+        foe.stun()
 
 
 def _adaptable_death(f, foe):
@@ -229,16 +228,6 @@ def _giant_death(f, foe):
     foe.move_name = "EXPLODE"
     foe.mem["state"] = "EXPLODE"
     return True
-
-
-def _giant_acted(f, foe):
-    if foe.mem.get("exploded") and foe.move_name == "EXPLODE":
-        f.kill(foe)
-
-
-def _toad_acted(f, foe):
-    if foe.move_name == "SPIKE_EXPLOSION":
-        foe.powers.pop("THORNS", None)
 
 
 def _stock_death(f, foe):
@@ -267,8 +256,8 @@ def _reattach_death(f, foe):
 
 HOOKS = {
     "CEREMONIAL_BEAST": {"hit": _plow_hit},
-    "WATERFALL_GIANT": {"death": _giant_death, "acted": _giant_acted},
-    "SPINY_TOAD": {"acted": _toad_acted},
+    "WATERFALL_GIANT": {"death": _giant_death, "acted": lambda f, foe: f.kill(foe) if foe.mem.get("exploded") and foe.move_name == "EXPLODE" else None},
+    "SPINY_TOAD": {"acted": lambda f, foe: foe.powers.pop("THORNS", None) if foe.move_name == "SPIKE_EXPLOSION" else None},
     "TERROR_EEL": {"hit": _shriek_hit},
     "TEST_SUBJECT": {"death": _adaptable_death},
     "AXEBOT": {"death": _stock_death},
