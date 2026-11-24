@@ -219,7 +219,24 @@ def immediate_text(text: str) -> str:
     return " ".join(keep)
 
 
+_PARSED: dict = {}
+
+
 def parse(card: dict) -> CardInfo:
+    """What a card does, read from its text (memoised: the planner reads the same hand thousands of times a turn)."""
+    kws = card.get("keywords")
+    key = (card.get("index", 0), card.get("id"), card.get("name"), card.get("type"), card.get("cost"), card.get("star_cost"), card.get("description"),
+           card.get("target_type"), card.get("can_play", True), card.get("unplayable_reason"),
+           tuple((k.get("name"), k.get("description")) if isinstance(k, dict) else k for k in kws) if isinstance(kws, list) else kws)
+    info = _PARSED.get(key)
+    if info is None:
+        if len(_PARSED) > 100_000:
+            _PARSED.clear()
+        info = _PARSED[key] = _parse(card)
+    return info
+
+
+def _parse(card: dict) -> CardInfo:
     full_text = str(card.get("description") or "")
     ctype = str(card.get("type") or "")
     target = str(card.get("target_type") or "")
