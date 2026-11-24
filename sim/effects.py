@@ -760,7 +760,7 @@ def do(f, foe, fx: tuple) -> None:
 
 
 def potion_usable(f, pot) -> bool:
-    return pot.key not in ("FAIRY_IN_A_BOTTLE", "SMOKE_BOMB") and not (pot.key == "FRUIT_JUICE" and False)
+    return pot.key not in ("FAIRY_IN_A_BOTTLE", "SMOKE_BOMB")
 
 
 def drink(f, pot, foe) -> None:

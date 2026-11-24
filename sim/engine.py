@@ -20,20 +20,18 @@ from .monsters import Foe
 HAND_MAX = 10
 MAX_ROUNDS = 45  # a fight still going then is lost (a stalemate the planner cannot break)
 MAX_ACTIONS = 80  # actions in one turn before the engine ends it for the bot
-NOT_OURS = {"DAZED", "WOUND", "BURN", "SLIMED", "VOID"}
 ORB_BASE = {"LIGHTNING": (3, 8), "FROST": (2, 5), "DARK": (6, 6), "PLASMA": (1, 2)}
 DEBUFFS = ("WEAK", "VULNERABLE", "FRAIL")
 # Counters the engine keeps among our powers that the game would not show as powers.
-INTERNAL = {"DRAWN_TURN", "OSTY_MAX", "FORGE", "TURN_ENERGY", "VOID_FREE", "KEEP_HAND_ALWAYS", "SURCHARGE", "GLASS_CHANNELED", "LIGHTNING_CHANNELED", "FROST_CHANNELED", "DARK_CHANNELED", "PLASMA_CHANNELED", "MANTRA_GAINED", "CLAW_BONUS", "EXPUNGER_X",
-            "DISCARDED_TURN", "BLASPHEMY_DUE", "SIMMERING", "DEVA_ENERGY", "KEEP_HAND", "KEEP_BLOCK", "TURN_OVER", "EXTRA_TURN", "COMBUST_HP",
-            "DOUBLE_DAMAGE_NEXT", "AMPLIFY", "CONFUSED", "BLUR", "COMBUST_HP", "WELL_LAID_PLANS"}
+INTERNAL = {"DRAWN_TURN", "OSTY_MAX", "FORGE", "TURN_ENERGY", "VOID_FREE", "KEEP_HAND_ALWAYS", "SURCHARGE", "MANTRA_GAINED", "CLAW_BONUS",
+            "EXPUNGER_X", "DISCARDED_TURN", "BLASPHEMY_DUE", "SIMMERING", "DEVA_ENERGY", "KEEP_HAND", "KEEP_BLOCK", "TURN_OVER", "EXTRA_TURN",
+            "COMBUST_HP", "DOUBLE_DAMAGE_NEXT", "AMPLIFY", "CONFUSED", "BLUR", "WELL_LAID_PLANS"} | {f"{o}_CHANNELED" for o in ("LIGHTNING", "FROST", "DARK", "PLASMA", "GLASS")}
 
 
 class Fight:
     def __init__(self, run, foes: list[Foe], kind: str):
         self.run, self.game, self.rng, self.kind = run, run.game, run.rng, kind
         self.foes = foes
-        self.hp_start = run.hp
         deck = [c.copy() for c in run.deck]
         self.rng.shuffle(deck)
         innate = [c for c in deck if c.has("Innate")]
@@ -55,7 +53,6 @@ class Fight:
         self.turn_cards: list[str] = []
         self.attacks_turn = self.skills_turn = 0
         self.last_type = ""
-        self.cards_played = 0
         self.no_draw = False
         self.double_next = 0  # Double Tap: Attacks to play twice
         self.burst = 0  # Burst: Skills to play twice
@@ -448,7 +445,6 @@ class Fight:
             self.facing = foe.eid
         self.hand.pop(index)
         self.turn_cards.append(c.name)
-        self.cards_played += 1
         times = 1
         if c.type == "Attack" and self.double_next:
             self.double_next, times = self.double_next - 1, 2
