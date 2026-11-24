@@ -1,6 +1,4 @@
-"""Tests of the turn planner and what it reads from cards and enemies.
-
-The builders below are shared with tests/bosses (here, as a module of their own would be an eleventh file in this directory)."""
+"""Tests of the turn planner and what it reads from cards and enemies; the builders below are shared with tests/bosses (a module of their own would be an eleventh file here)."""
 
 import re
 
@@ -64,8 +62,7 @@ def aimed(state):
 
 
 def play_turn(state, limit=3, block=False, after=None, choose=None):
-    """Play the planner's cards as the game would, at most `limit`: each leaves the hand and costs its energy, block=True adds
-    its "Gain N Block", and after(card, params) does whatever else it did (true: stop). Returns the cards played."""
+    """Play the planner's cards as the game would, at most `limit`: each leaves the hand and costs its energy, block=True adds its "Gain N Block", after(card, params) does the rest (true: stop); returns the cards played."""
     played = []
     while len(played) < limit and (act := (choose or combat.choose_card)(state)) and act[0] == "play_card":
         c = next(h for h in state["player"]["hand"] if h["index"] == act[1]["card_index"])
