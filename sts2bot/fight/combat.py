@@ -865,6 +865,9 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
     # Bound cards: one per turn. Once one has been played the game marks the
     # rest unplayable, so any still playable means the allowance is unused.
     bound_left = 1 if any(c.bound for c in playable) else None
+    # Smoggy (the Living Fog's: "You can only play 1 Skill per turn") the same way: the game greys the other Skills
+    # out once one is played, but a turn's first plan counted on two Defends and spent the energy elsewhere first.
+    skill_left = 1 if _has_power(state.get("player") or {}, "SMOGGY") else None
     # Copies of a card that differ only in their place in the hand play out alike, and so does a line with nothing
     # aimed at every aim: each is simulated once and its result reused (the first such line still wins any tie).
     burning, sorts = {b[0] for b in ctx["burns"]}, {}
@@ -890,6 +893,8 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
         for line in combinations(playable, size):  # keeps order_key order
             if bound_left is not None and sum(c.bound for c in line) > bound_left:
                 continue  # "Only 1 Bound card can be played each turn."
+            if skill_left is not None and sum(c.type == "Skill" for c in line) > skill_left:
+                continue
             orders = [line]
             if 1 < size <= 4:
                 orders = permutations(line)  # starts with `line` itself

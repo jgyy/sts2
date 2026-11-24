@@ -214,22 +214,25 @@ def set_fast_mode(client: Client, mode: str) -> bool:
     return True
 
 
-def set_light_graphics(client: Client, width: int = 960, height: int = 540, maximize: bool = True) -> bool:
-    """Maximised window, no anti-aliasing, uncapped frame rate, for this session only.
+def set_light_graphics(client: Client, width: int = 960, height: int = 540, maximize: bool = True, fullscreen: bool = False) -> bool:
+    """Full screen (or a maximised window), no anti-aliasing, uncapped frame rate, for this session only.
 
     The mod answers each request once per rendered frame, so cheaper frames
     make the whole bot faster. The saved graphics settings are left alone, so
     the game looks normal when it is started by hand. With `maximize` off the
     window is shrunk to `width` x `height` instead (the old default; the user
-    asked for the full window on 2026-11-19, the machine has frames to spare).
+    asked for the full window on 2026-11-19, the machine has frames to spare,
+    and for full screen on 2026-11-24).
     """
-    result = client.act("set_light_graphics", width=width, height=height, maximize=maximize)
+    result = client.act("set_light_graphics", width=width, height=height, maximize=maximize, fullscreen=fullscreen)
     if _failed(result):
         log.warning("could not switch to light graphics (%s); re-run scripts/install_mod.sh", result.get("error"))
         return False
-    if maximize and not result.get("maximized"):
+    if fullscreen and not result.get("fullscreen"):
+        log.warning("the installed mod cannot go full screen; re-run scripts/install_mod.sh")
+    elif maximize and not result.get("maximized"):
         log.warning("the installed mod cannot maximise the window; re-run scripts/install_mod.sh")
-    size = "maximised window" if maximize else f"{width}x{height}"
+    size = "full screen" if fullscreen and result.get("fullscreen") else "maximised window" if maximize else f"{width}x{height}"
     log.info("light graphics: %s (was %.0f fps)", size, float(result.get("fps_before") or 0))
     return True
 
@@ -264,7 +267,8 @@ def _detached(argv: list[str]) -> list[str]:
 def _spawn(argv: list[str], **kw) -> None:
     """Start a process of its own (Steam, the game) and remember it, to reap it when it dies."""
     quiet = dict(stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    _children.append(subprocess.Popen(_detached(argv), **quiet, start_new_session=True, **kw))
+    quiet.update(kw)  # (a caller may keep the output: the first game's goes to its game.log)
+    _children.append(subprocess.Popen(_detached(argv), start_new_session=True, **quiet))
 
 
 def steam_running() -> bool:
@@ -355,7 +359,7 @@ class Sts2Host:
         if sup.fast_mode:
             set_fast_mode(sup.client, sup.fast_mode)
         if sup.light_graphics:
-            set_light_graphics(sup.client, maximize=not sup.small_window)
+            set_light_graphics(sup.client, maximize=not sup.small_window, fullscreen=sup.fullscreen and not sup.small_window)
         if sup.time_scale and sup.time_scale != 1.0 and set_time_scale(sup.client, sup.time_scale):
             sup.bot.time_scale = sup.time_scale  # the bot keeps it set: the game resets it
 
@@ -372,6 +376,7 @@ class Supervisor:
         fast_mode: str | None = "instant",
         light_graphics: bool = True,
         small_window: bool = False,
+        fullscreen: bool = True,
         time_scale: float = 1.0,
         boot_timeout: float = 240.0,
         outage_grace: float = 45.0,
@@ -385,6 +390,7 @@ class Supervisor:
         self.fast_mode = fast_mode
         self.light_graphics = light_graphics
         self.small_window = small_window
+        self.fullscreen = fullscreen
         self.time_scale = time_scale
         self.boot_timeout = boot_timeout
         self.outage_grace = outage_grace

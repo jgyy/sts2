@@ -654,6 +654,15 @@ class Strategy(unittest.TestCase):
         first = [strategy.menu(s, mem, "auto")[0] for _ in range(25)]
         self.assertEqual(first[-1], ("menu_select", {"option": "confirm"}))
 
+    def test_auto_rotates_among_the_lowest_by_who_played_longest_ago(self):
+        ids = ["IRONCLAD", "THE_SILENT", "DEFECT"]
+        levels = {"IRONCLAD": 0, "THE_SILENT": 0, "DEFECT": 3}
+        recent = ["The Silent", "The Ironclad", "The Defect", "The Silent"]
+        self.assertEqual(strategy.choose_character("auto", ids, 7, levels, recent=recent), "IRONCLAD")  # (the Silent played last)
+        self.assertEqual(strategy.choose_character("auto", ids, 7, levels, recent=recent + ["The Ironclad"]), "THE_SILENT")
+        self.assertEqual(strategy.choose_character("auto", ids + ["WATCHER"], 7, levels, recent=recent), "WATCHER")  # never played: first
+        self.assertEqual(strategy.choose_character("auto", ids, 7, {**levels, "IRONCLAD": 2}, recent=recent), "THE_SILENT")  # lowest still first
+
     def test_auto_and_random_draw_among_the_lowest_ascension_only(self):
         who = ["IRONCLAD", "SILENT", "REGENT", "NECROBINDER"]
         levels = {"IRONCLAD": 1, "SILENT": 2, "REGENT": 1, "NECROBINDER": 1}

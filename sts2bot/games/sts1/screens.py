@@ -269,7 +269,9 @@ class Screens:
     def _combat_reward(self) -> dict:
         items = []
         for i, r in enumerate((self.game.get("screen_state") or {}).get("rewards") or []):
-            kind = str(r.get("type") or "").upper()
+            # (CommunicationMod names it "reward_type"; read as "type" every reward came through untyped, and a card
+            # reward skipped on the real game was claimed again at once, for ever: 2026-11-24, the first live run.)
+            kind = str(r.get("reward_type") or r.get("type") or "").upper()
             if kind == "SAPPHIRE_KEY":
                 continue  # (taking it gives up the relic beside it)
             item = {"index": i, "type": {"STOLEN_GOLD": "gold"}.get(kind, kind.lower())}

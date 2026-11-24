@@ -41,6 +41,16 @@ class FiendFire(unittest.TestCase):
         self.assertEqual(combat.choose_card(s)[1]["card_index"], 0)  # with a Strike in its place: yes
 
 
+class Smoggy(unittest.TestCase):
+    def test_one_skill_a_turn_is_planned_as_one(self):
+        # The Living Fog's "You can only play 1 Skill per turn": a plan of two Defends cannot happen, so the Strike goes too.
+        shrug = card(0, "SHRUG_IT_OFF", "Shrug It Off", "Skill", 1, "Gain 8 Block.", "Self")
+        s = combat_state([shrug, DEFEND(1), STRIKE(2)], [enemy("LIVING_FOG_0", 40, attack=13)], energy=2)
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 0)  # free to: 13 Block for the 13
+        s["player"]["status"] = [{"id": "SMOGGY_POWER", "amount": 1}]
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 2)  # one Skill: the Strike, then Shrug It Off
+
+
 class Flechettes(unittest.TestCase):
     def test_a_hit_for_each_skill_in_the_hand(self):
         darts = card(0, "FLECHETTES", "Flechettes", "Attack", 1, "Deal 5 damage for each Skill in your Hand.", "AnyEnemy")
