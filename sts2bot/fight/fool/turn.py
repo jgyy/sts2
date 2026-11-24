@@ -1,20 +1,8 @@
 """The Fool's Arrows, Aim, Stretch and Melodies, as a line of cards the planner tries plays out.
 
-Arrows. A card that Shoots puts our Arrow in its target (the enemy shows IMPALED 3), and the Arrow stays there until
-three more hits land on that enemy (Block or not: the Tunneler's Burrowed Block took the count from 3 to 2) or it dies.
-The shot's own hits do not count (Rapid Shot, 3 hits, left 3 to go). With no Arrow to hand a Shot is paid for and does
-nothing: in the Fool's first ten runs on the beta 40-odd Shots went into enemies already holding our only Arrow (an
-Infested Prism fight lost five cards that way), and none of those runs got past floor 33.
-Aim ("Your next Arrow deals more damage") is in every Shot's text and goes with the first one; it counts on each hit
-(Rapid Shot 9 x 3 at Aim 6), and twice on Heavy Shot. Stretch ("the next time you gain Block from a card") is in every
-Block card's text too, and only the first one gets it.
-Melodies: playing a Wah, Cho or Ki card (the words of its name) gives that Melody for the rest of the turn.
-The powers that pay out "whenever you gain a Melody" do so once a Melody a turn, when it is new (read live, 23 Nov
-22:20, Song Path+ and Motif+ up: Wah Cho+ as the first Cho card of the turn gave its 14 Block and 7 more, the Wah Cho
-and Cho Ready+ after it only their own; Motif drew a card on Wah Touch, Ki Whip and Wah Cho+, the turn's first Wah,
-Ki and Cho, and none on the Cho cards after). Yah!'s energy comes the first time each turn an Arrow comes out of an
-enemy, whatever takes it out: the third hit on it (Ki Whip, energy 5 -> 7 under Yah!+), its death (Bow Smack's kill,
-+1 of its own and +2), or a card that Dislodges.
+A Shot puts our Arrow in its target (IMPALED 3) until three more hits land on it or it dies; with no Arrow to hand it does nothing.
+Aim and Stretch show in every Shot's and Block card's text, and only the first such card gets them. A Wah, Cho or Ki card gives that
+Melody for the turn; powers "whenever you gain a Melody" pay once a Melody a turn. Yah! pays the first time an Arrow comes out.
 """
 
 from __future__ import annotations
@@ -45,8 +33,7 @@ def played_melodies(names) -> frozenset:
 
 
 def fool_powers(player: dict, dislodged: bool = False) -> tuple:
-    """(Song Path's Block, Motif's draw, Lullaby's Block, Ki Verse's cards, Yah!'s energy) as the powers on us show them,
-    () with none of them up. Yah! counts for nothing once an Arrow has come out this turn (`dislodged`)."""
+    """(Song Path's Block, Motif's draw, Lullaby's Block, Ki Verse's cards, Yah!'s energy), () with none up (Yah!: 0 once `dislodged`)."""
     got = tuple(_stacks(player, p) for p in ("SONG_PATH", "MOTIF", "LULLABY", "KI_VERSE")) + (0 if dislodged else _stacks(player, "YAH"),)
     return got if any(got) else ()
 
@@ -74,8 +61,7 @@ class FoolTurn:
         self.chord = chord  # Violent Chord: damage to ALL enemies whenever we gain a Wah Melody
         self.boom = boom  # Explosive Arrows: damage to ALL enemies whenever we Impale one
         self.live = False  # the card being played Shoots an Arrow it has
-        # Song Path (Block on a new Cho Melody), Motif (cards drawn on each new Melody), Lullaby (Block once all three are
-        # in), Ki Verse (Wah, Cho and Ki cards still to be played an additional time), Yah! (energy, until an Arrow comes out)
+        # Song Path (Block on a new Cho Melody), Motif (draws on each new Melody), Lullaby (Block once all three are in), Ki Verse (cards to play again), Yah! (energy)
         self.song, self.motif, self.lullaby, self.verse, self.yah = powers or (0, 0, 0, 0, 0)
         self.stuck = sum(1 for e in foes if e.alive and e.impaled > 0) if self.yah else 0  # enemies holding one of our Arrows
         self.got = (0, 0, 0)  # (Block, cards drawn, energy) the last card booked set off through those powers
@@ -96,7 +82,7 @@ class FoolTurn:
             c = replace(c, damage=max(0, c.damage + (self.aim - self.aim0) * c.aim_times))
         if c.impaled_only or c.on_impaled or c.impaled_double:
             stuck = [e for e in foes if e.alive and e.impaled > 0 and (aimed_at is None or e.entity_id == aimed_at)]
-            if not stuck and c.impaled_only:  # (Wrest's draw too: left in, 69 of 106 Wrests drew nothing, played before the Shot)
+            if not stuck and c.impaled_only:  # (its draw and energy too)
                 c = replace(c, damage=0, weak=0, vulnerable=0, draw=0, energy_gain=0, dislodge=False)
             elif stuck and c.on_impaled:
                 c = replace(c, energy_gain=c.energy_gain + c.on_impaled[0], draw=c.draw + c.on_impaled[1])
@@ -115,13 +101,11 @@ class FoolTurn:
         return c
 
     def after(self, c: CardInfo, target, xs: int = 1, dealt: int = 0, foes=()) -> int:
-        """Book what the card did; the damage to ALL enemies it sets off (Violent Chord, Explosive Arrows), if any.
-        `dealt` is the damage the card's hits did to its target (Blossom Shot gains that much Stretch). `foes` are all
-        the enemies; what the card sets off through Song Path, Motif, Lullaby and Yah! is left in `got`."""
+        """Book what the card did (`dealt`: what its hits did to the target); return the damage to ALL it sets off, leave the rest in `got`."""
         boom = energy = 0
-        if self.yah:  # (the third hit on the Impaled enemy and its death are counted by now; a Dislodge is about to be)
-            if sum(1 for e in foes if e.alive and e.impaled > 0) < self.stuck or (c.dislodge and target is not None and target.alive and target.impaled > 0):
-                energy, self.yah = self.yah, 0
+        # (Yah!: the third hit on the Impaled enemy and its death are counted by now; a Dislodge is about to be.)
+        if self.yah and (sum(1 for e in foes if e.alive and e.impaled > 0) < self.stuck or (c.dislodge and target is not None and target.alive and target.impaled > 0)):
+            energy, self.yah = self.yah, 0
         if self.live and target is not None and target.alive:
             target.impaled, boom = IMPALE_HITS, self.boom
         if c.dislodge and target is not None:
@@ -138,7 +122,7 @@ class FoolTurn:
         self.tune |= new
         self.verse += c.verse
         self.got = (self.song * ("CHO" in new) + self.lullaby * full, self.motif * len(new), energy)
-        self.live = False  # (left on, the Strike after a Shot put the Arrow back in at 3 hits to go)
+        self.live = False  # (only this card Shoots)
         return (self.chord if "WAH" in new else 0) + boom
 
     def books(self, c: CardInfo) -> bool:

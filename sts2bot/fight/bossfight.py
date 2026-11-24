@@ -1,10 +1,4 @@
-"""One log line per boss fight, written when the fight is over.
-
-Working out which boss fights were won from the floor log alone is
-error-prone: a win leaves no "run over" line, so every fight looked lost.
-This watches the states as they come in and says, when a boss fight ends,
-what it was, how it went and how the boss and the player were doing.
-"""
+"""One log line per boss fight, written when it is over (a won fight leaves no "run over" line in the floor log)."""
 
 from __future__ import annotations
 
@@ -12,17 +6,12 @@ import re
 
 from . import combat
 
-
-# Screens the game opens in the middle of a fight, like the card a Survivor
-# makes us discard. They do not end the fight (one did, and the watch logged
-# a win at 87 of the boss's 240 HP).
+# Screens the game opens in the middle of a fight (a discard, a choice): they do not end it.
 _IN_FIGHT_SCREENS = {"hand_select", "card_select", "bundle_select", "overlay"}
 
 
 def mid_fight(state: dict, kind: str | None) -> bool:
-    """A screen that opens inside a fight. The first game's card choices from a potion or a card (Attack Potion,
-    Discovery) come as a card reward marked `in_combat`: each one closed the fight record and opened a new one, so every
-    such boss fight logged a "won" after round 1 (2026-11-24)."""
+    """A screen that opens inside a fight (the first game's card choices from a potion or a card are a card reward `in_combat`)."""
     return kind in _IN_FIGHT_SCREENS or (kind == "card_reward" and bool((state.get("card_reward") or {}).get("in_combat")))
 
 
@@ -55,25 +44,17 @@ class BossWatch:
         run = state.get("run") or {}
         if self.fight is None:
             self.fight = {
-                "where": (run.get("act"), run.get("floor")),
-                "names": sorted({_base_name(e.entity_id) for e in enemies}),
-                "boss_hp0": boss_hp,
-                "hp0": int(player.get("hp") or 0),
-                "max_hp": int(player.get("max_hp") or 0),
-                "rounds": set(),
-                # What the bot brought to the fight (to tell later what wins them).
-                "relics": len(player.get("relics") or []),
-                "potions": len(player.get("potions") or []),
+                "where": (run.get("act"), run.get("floor")), "names": sorted({_base_name(e.entity_id) for e in enemies}), "boss_hp0": boss_hp,
+                "hp0": int(player.get("hp") or 0), "max_hp": int(player.get("max_hp") or 0), "rounds": set(),
+                # What the bot brought to the fight, to tell later what wins them.
+                "relics": len(player.get("relics") or []), "potions": len(player.get("potions") or []),
                 "deck": sum(len(player.get(pile) or []) for pile in ("hand", "draw_pile", "discard_pile")),
             }
-            # ... and by name, since a run that wins leaves no record of its deck at this boss: the run history
-            # only has the deck a run ended with, so decks that beat a boss could never be set against ones that lost.
+            # ... and by name: the run history only has the deck a run ended with.
             names = lambda key, field: [str(x.get(field) or x.get("name") or "?") for x in player.get(key) or []]
             cards = sorted(n for pile in ("hand", "draw_pile", "discard_pile") for n in names(pile, "name"))
-            self.brought = (
-                f"boss fight begins: act {run.get('act')} floor {run.get('floor')} {'+'.join(self.fight['names']) or '?'}; "
-                f"relics {' '.join(names('relics', 'id'))}; potions {', '.join(names('potions', 'name'))}; cards {', '.join(cards)}"
-            )
+            self.brought = (f"boss fight begins: act {run.get('act')} floor {run.get('floor')} {'+'.join(self.fight['names']) or '?'}; "
+                            f"relics {' '.join(names('relics', 'id'))}; potions {', '.join(names('potions', 'name'))}; cards {', '.join(cards)}")
         f = self.fight
         f["boss_hp"] = boss_hp
         f["hp"] = int(player.get("hp") or 0)
@@ -84,9 +65,5 @@ class BossWatch:
     @staticmethod
     def _summary(f: dict, lost: bool) -> str:
         act, floor = f["where"]
-        return (
-            f"boss fight over: act {act} floor {floor} {'+'.join(f['names']) or '?'} "
-            f"{'lost' if lost else 'won'}; boss hp {f['boss_hp0']} -> {f.get('boss_hp', f['boss_hp0'])}; "
-            f"player hp {f['hp0']} -> {f.get('hp', f['hp0'])}/{f['max_hp']}; rounds {len(f['rounds'])}; "
-            f"brought relics {f.get('relics', 0)}, potions {f.get('potions', 0)}, deck {f.get('deck', 0)}"
-        )
+        return (f"boss fight over: act {act} floor {floor} {'+'.join(f['names']) or '?'} {'lost' if lost else 'won'}; boss hp {f['boss_hp0']} -> {f.get('boss_hp', f['boss_hp0'])}; "
+                f"player hp {f['hp0']} -> {f.get('hp', f['hp0'])}/{f['max_hp']}; rounds {len(f['rounds'])}; brought relics {f.get('relics', 0)}, potions {f.get('potions', 0)}, deck {f.get('deck', 0)}")
