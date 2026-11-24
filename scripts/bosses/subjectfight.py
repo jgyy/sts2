@@ -6,44 +6,22 @@
     python3 scripts/bosses/subjectfight.py trace [SEED] [DECK] [ARM]   one fight, play by play
     python3 scripts/bosses/subjectfight.py flips DECK ARM [ARM]        the fights one arm wins and the other loses
 
-100 fights a deck (600 an arm) take about 11 s an arm. What it said on 2026-11-22 (600 fights an arm, baseline 19.3%,
-nearly every loss in form 3 after forms 1-2 cost about 30 HP): the planner is at its best on every Test Subject
-constant: battle.STAB_SCAR 0 -> 14.3%, 4 16.5%, 12-40 19.3-21.0%; combat.FORM_WORTH 0 or 100 and combat.ENRAGE_PRICE
-0.5 or 4 within a point; counting form 2's extra hit a round as growth (`grows`, so damage on it is worth up to 2.5x)
-9.5-10.8%, so racing form 2 harder loses. `caution` 0.75 14.7%, 1.5 and 2.0 19.8-20.3%. What a deck change is worth
-there (three decks of 27-33%, 150 fights each): one energy a turn +36 points, one card a hand +23, a dead card out
-+12, Weak card +8, Defend +6, two-cost attack +5, Bash +1, one more Strike -4: the deck is the limit, as at the Demon.
-
-The game side is the boss as the logs show it on Ascension 9 (2026-11-22, nine fights; Ascension 8 in brackets):
-- form 1, 111 HP, Enrage 3 [2] (Strength for every Skill we play): Attack 22 [20], then Attack 16 [14] and
-  Vulnerable on us for the next round (so the 22 lands as 33 + 1.5 x Strength), round and round;
-- form 2, 212 HP, Painful Stabs (a Wound into our discard pile for each hit that gets through): 11x3 [10x3]
-  and one hit more every round;
-- form 3, 313 HP, Nemesis (Intangible on its 1st, 3rd, 5th ... round: every hit does 1): 11x3, 45, five [three]
-  Burns into the discard pile and 3 [2] Strength, round and round.
-A form killed leaves for the rest of the turn (its attack does not come); the next form starts the round after,
-with its own Strength and debuffs at nothing. The deck is Strikes, Defends, two-cost attacks, a Bash (8 and 2
-Vulnerable), Weak cards (half a Strike and 2 Weak) and dead cards, with energy and hand size set per deck (act 3
-decks hit far harder than a Strike; see DECKS); each fight has its own seed, so every arm plays the same shuffles. Trace a fight and read it before believing a table (crabfight.py's lesson).
+The fight is the Ascension 9 logs' (`intent`): form 1 (111 HP) Enrage, form 2 (212) Painful Stabs (a Wound for each hit
+that gets through), form 3 (313) Nemesis (Intangible every other round) and Burns. A form killed does not attack; the
+next starts the round after, with its Strength and debuffs at nothing.
 """
 
 import logging
 import os
 import random
 import sys
-from contextlib import ExitStack
-from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-import modelfight
-from modelfight import deal, game_state, hand_cards, on_all_cores
-from sts2bot import learn
-from sts2bot.fight import combat
+from modelfight import attack, deal, flips, game_state, hand_cards, mean, patched, piles, played, shuffled, status, table, through, trace_args, turn
 
 FORM_HP = (111, 212, 313)
 ENRAGE, HIT, BURNS, BUFF = 3, 11, 5, 3  # Ascension 9
-BURN_TEXT = "Unplayable. At the end of your turn, if this is in your Hand, take 2 damage."
 
 
 def intent(form, k, st):
@@ -63,24 +41,20 @@ CARDS = {  # kind: (id, name, type, cost, text, target)
     "B": lambda b: ("DEFEND_R", "Defend", "Skill", 1, f"Gain {b} Block.", "Self"),
     "F": lambda _: ("CLUMSY", "Clumsy", "Curse", -1, "Unplayable.", "None"),
     "U": lambda _: ("WOUND", "Wound", "Status", 0, "Unplayable.", "None"),
-    "R": lambda _: ("BURN", "Burn", "Status", 0, BURN_TEXT, "Self"),
+    "R": lambda _: ("BURN", "Burn", "Status", 0, "Unplayable. At the end of your turn, if this is in your Hand, take 2 damage.", "Self"),
 }
-DEAD = "FUR"  # cards that cannot be played
 
 
 def fight(spec, rng, maxhp=75, trace=False):
-    da, db, natk, nblk, nheavy, nbash, nweak, nfill, energy, size = spec
-    deck = ["A"] * natk + ["B"] * nblk + ["H"] * nheavy + ["V"] * nbash + ["W"] * nweak + ["F"] * nfill
-    rng.shuffle(deck)
-    draw, disc = deck[:], []
-    hp = maxhp
+    da, db, energy, size = spec[0], spec[1], spec[8], spec[9]
+    draw, disc, hp = shuffled(rng, "ABHVWF", spec[2:]), [], maxhp
     form, k = 1, 0  # form, and rounds it has had
     e = dict(hp=FORM_HP[0], st=0, vuln=0, weak=0)
     our_vuln = 0  # rounds of Vulnerable on us
     lost_in = {1: 0, 2: 0, 3: 0}
+    face = lambda c: CARDS[c](db if c == "B" else da)
     for r in range(1, 40):
-        hand = deal(draw, disc, rng, size)
-        en, block = energy, 0
+        hand, en, block = deal(draw, disc, rng, size), energy, 0
         intangible = form == 3 and k % 2 == 0
         if trace:
             print(f"r{r} F{form} hand {''.join(hand)} hp {hp} boss {e['hp']} intent {intent(form, k, e['st'])[:2]}{' INTANGIBLE' if intangible else ''}")
@@ -89,49 +63,31 @@ def fight(spec, rng, maxhp=75, trace=False):
             d, h, burns, _, kind = intent(form, k, e["st"])
             if not d:
                 return [{"type": "StatusCard", "label": str(burns)}, {"type": "Buff", "label": ""}]
-            d = int(d * (0.75 if e["weak"] else 1.0) * (1.5 if our_vuln else 1.0))
-            out = [{"type": "Attack", "label": f"{d}x{h}" if h > 1 else str(d)}]
-            return out + ([{"type": "Debuff", "label": ""}] if "Debuff" in kind else [])
+            return [attack(int(d * (0.75 if e["weak"] else 1.0) * (1.5 if our_vuln else 1.0)), h)] + ([{"type": "Debuff", "label": ""}] if "Debuff" in kind else [])
 
         def state():
-            st = [{"id": "ADAPTABLE_POWER", "amount": 1}] if form < 3 else []
-            st += [{"id": ("ENRAGE_POWER", "PAINFUL_STABS_POWER", "NEMESIS_POWER")[form - 1], "amount": ENRAGE if form == 1 else 1}]
-            st += [{"id": "INTANGIBLE_POWER", "amount": 1}] if intangible else []
-            st += [{"id": "STRENGTH_POWER", "amount": e["st"]}] if e["st"] else []
-            st += [{"id": "VULNERABLE_POWER", "amount": e["vuln"]}] if e["vuln"] else []
-            st += [{"id": "WEAK_POWER", "amount": e["weak"]}] if e["weak"] else []
+            st = status(("ADAPTABLE_POWER", int(form < 3)), (("ENRAGE_POWER", "PAINFUL_STABS_POWER", "NEMESIS_POWER")[form - 1], ENRAGE if form == 1 else 1),
+                        ("INTANGIBLE_POWER", int(intangible)), ("STRENGTH_POWER", e["st"]), ("VULNERABLE_POWER", e["vuln"]), ("WEAK_POWER", e["weak"]))
             enemies = [{"entity_id": "TEST_SUBJECT_0", "hp": e["hp"], "max_hp": FORM_HP[form - 1], "block": 0, "status": st, "intents": label()}]
-            cards = hand_cards(hand, lambda c: CARDS[c](db if c == "B" else da), dead=DEAD)
-            pile = lambda cs: [{"name": CARDS[c](da)[1], "cost": str(CARDS[c](da)[3]), "description": CARDS[c](db if c == "B" else da)[4]} for c in cs]
-            return game_state("boss", {"act": 3, "floor": 48, "ascension": 9}, r, enemies, cards, pile, draw, disc, hp=hp, maxhp=maxhp, block=block, energy=en,
-                              status=[{"id": "VULNERABLE_POWER", "amount": our_vuln}] if our_vuln else [])
+            return game_state("boss", {"act": 3, "floor": 48, "ascension": 9}, r, enemies, hand_cards(hand, face, dead="FUR"), piles(face), draw, disc, hp=hp, maxhp=maxhp,
+                              block=block, energy=en, status=status(("VULNERABLE_POWER", our_vuln)))
 
-        killed = False
-        for _ in range(15):
-            act = combat.choose_card(state())
-            if act is None:
-                break
-            i = act[1]["card_index"]
-            c = hand[i]
+        for i, c, act in turn(state, hand, most=15):
             en -= CARDS[c](da)[3]
             if c in "AHVW":
                 d = {"A": da, "H": int(2.2 * da), "V": 8, "W": da // 2}[c]
-                d = int(d * 1.5) if e["vuln"] else d
-                e["hp"] = max(0, e["hp"] - (1 if intangible else d))
-                if c == "V":
-                    e["vuln"] += 2
-                if c == "W":
-                    e["weak"] += 2
+                e["hp"] = max(0, e["hp"] - (1 if intangible else int(d * 1.5) if e["vuln"] else d))
+                if c in "VW":
+                    e["vuln" if c == "V" else "weak"] += 2
             elif c == "B":
                 block += db
-                if form == 1:
-                    e["st"] += ENRAGE
+                e["st"] += ENRAGE if form == 1 else 0
             disc.append(hand.pop(i))
             if trace:
                 print(f"   play {c}  F{form} {e['hp']}hp st {e['st']} en {en} blk {block}")
             if e["hp"] <= 0:
-                killed = True
                 break
+        killed = e["hp"] <= 0
         if killed and form == 3:
             return True, hp, r, 3, lost_in
         disc += hand
@@ -144,17 +100,14 @@ def fight(spec, rng, maxhp=75, trace=False):
                 print(f"r{r} form {form - 1} killed: no attack | hp {hp}")
             continue
         # End of our turn: each Burn in the hand burns (Block takes it first), then the boss acts.
-        burnt = 2 * sum(1 for c in hand if c == "R")
-        soak = min(block, burnt)
-        block -= soak
-        hp -= burnt - soak
+        block, burnt = through(block, 2 * hand.count("R"))
+        hp -= burnt
         d, h, burns, gain, kind = intent(form, k, e["st"])
         d = int(d * (0.75 if e["weak"] else 1.0) * (1.5 if our_vuln else 1.0))
         for _ in range(h):
-            soak = min(block, d)
-            block -= soak
-            hp -= d - soak
-            if form == 2 and d - soak > 0:
+            block, lost = through(block, d)
+            hp -= lost
+            if form == 2 and lost > 0:
                 disc.append("U")
         disc += ["R"] * burns
         e["st"] += gain
@@ -163,50 +116,21 @@ def fight(spec, rng, maxhp=75, trace=False):
             print(f"r{r} F{form} took {before - hp} hp {hp} | boss {e['hp']} st {e['st']} | deck {len(draw) + len(disc)} wounds {(draw + disc).count('U')} burns {(draw + disc).count('R')}")
         if hp <= 0:
             return False, 0, r, form, lost_in
-        our_vuln = max(0, our_vuln - 1)
-        if "Debuff" in kind:
-            our_vuln = 1
+        our_vuln = 1 if "Debuff" in kind else max(0, our_vuln - 1)
         e["vuln"], e["weak"] = max(0, e["vuln"] - 1), max(0, e["weak"] - 1)
         k += 1
     return False, 0, 40, form, lost_in
 
 
-KNOBS = {"debuff_worth": 2.0}  # the live sampler's arms are 2.0 and 3.0 (learn.CHOICES); the default 1.0 is never played
-
-
-def setting(name: str, value: float):
-    """Patch one constant of battle.py, combat.py or triggers.py (NAME=VALUE), or a setting (K.name=VALUE)."""
-    return mock.patch.dict(learn.KNOB, {name[2:]: value}) if name.startswith("K.") else modelfight.setting(name, value)
-
-
-def patched(arm: str) -> ExitStack:
-    """Every patch an arm asks for, entered (leave the stack to undo them)."""
-    stack = ExitStack()
-    for p in [mock.patch.dict(learn.KNOB, KNOBS)] + [setting(p.split("=")[0], float(p.split("=")[1])) for p in arm.split("+") if "=" in p]:
-        stack.enter_context(p)
-    return stack
-
-
 def run(args):
     arm, spec, n, seed = args
-    logging.disable(logging.CRITICAL)
     with patched(arm):
-        wins = hpl = rounds = 0
-        reached = {1: 0, 2: 0, 3: 0}
-        lost = {1: 0, 2: 0, 3: 0}
-        for j in range(n):
-            ok, hp, r, form, lost_in = fight(spec, random.Random(seed * 10007 + j))  # (a seed per fight: every arm plays the same shuffles)
-            wins += ok
-            hpl += hp
-            rounds += r
-            reached[form] += not ok
-            for f in lost:
-                lost[f] += lost_in[f]
-    return arm, spec, wins / n, hpl / n, rounds / n, reached, {f: v / n for f, v in lost.items()}
+        res = played(fight, spec, n, seed)
+    return (arm, spec, mean(res, 0), mean(res, 1), mean(res, 2), {f: sum(not o[0] and o[3] == f for o in res) for f in (1, 2, 3)},
+            {f: sum(o[4][f] for o in res) / n for f in (1, 2, 3)})
 
 
-DECKS = [  # damage, Block, Strikes, Defends, heavy, Bash, Weak, dead, energy, hand size (tuned until the planner wins
-    # 0-60%: the weaker ones die in form 2 as most live fights do, the stronger in form 3)
+DECKS = [  # damage, Block, Strikes, Defends, heavy, Bash, Weak, dead, energy, hand size (tuned until the planner wins 0-60%)
     (24, 15, 6, 5, 2, 1, 1, 2, 4, 6), (20, 14, 6, 6, 2, 1, 2, 2, 5, 6), (28, 18, 6, 6, 2, 1, 2, 2, 4, 6),
     (30, 18, 6, 6, 2, 1, 1, 2, 4, 6), (24, 16, 6, 6, 2, 1, 2, 2, 5, 6), (28, 16, 6, 6, 2, 1, 2, 2, 5, 5),
 ]
@@ -214,32 +138,19 @@ DECKS = [  # damage, Block, Strikes, Defends, heavy, Bash, Weak, dead, energy, h
 if __name__ == "__main__":
     logging.disable(logging.CRITICAL)
     if sys.argv[1:2] == ["trace"]:
-        seed = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-        dk = DECKS[int(sys.argv[3])] if len(sys.argv) > 3 else DECKS[1]
-        arm = sys.argv[4] if len(sys.argv) > 4 else "on"
+        seed, dk, arm = trace_args(DECKS)
         with patched(arm):
             print(fight(dk, random.Random(seed), trace=True))
-        sys.exit()
-    if sys.argv[1:2] == ["flips"]:
+    elif sys.argv[1:2] == ["flips"]:
         i, arms = int(sys.argv[2]), (sys.argv[3:] + ["on", "on"])[:2]
-        for j in range(200):
-            seed = (900 + i) * 10007 + j
-            res = {}
-            for arm in arms:
-                with patched(arm):
-                    res[arm] = fight(DECKS[i], random.Random(seed))[:4]
+        for seed, res in flips(fight, DECKS[i], i, arms, patched, keep=4):
             if len({v[0] for v in res.values()}) > 1:
                 print(seed, res)
-        sys.exit()
-    n = int(sys.argv[1]) if len(sys.argv) > 1 else 100
-    arms = sys.argv[2:] or ["on"]
-    jobs = [(arm, dk, n, 900 + i) for arm in arms for i, dk in enumerate(DECKS)]
-    out = on_all_cores(run, jobs)
-    for arm in arms:
-        rows = [o for o in out if o[0] == arm]
-        died = {f: sum(o[5][f] for o in rows) for f in (1, 2, 3)}
-        lost = {f: sum(o[6][f] for o in rows) / len(rows) for f in (1, 2, 3)}
-        print(f"{arm:28s}: won {sum(o[2] for o in rows) / len(rows):.3f}  hp left {sum(o[3] for o in rows) / len(rows):5.1f}  rounds {sum(o[4] for o in rows) / len(rows):4.1f}"
-              f"  died in form {died}  hp lost by form {' '.join(f'{v:.0f}' for v in lost.values())}")
-    for dk in DECKS:
-        print(dk, "  ".join(f"{o[0]}: won {o[2]:.2f} hp {o[3]:4.1f}" for o in out if o[1] == dk))
+    else:
+        out, arms = table(run, DECKS, ["on"])
+        for arm, rows in arms:
+            died = {f: sum(o[5][f] for o in rows) for f in (1, 2, 3)}
+            lost = ' '.join(f'{mean([o[6] for o in rows], f):.0f}' for f in (1, 2, 3))
+            print(f"{arm:28s}: won {mean(rows, 2):.3f}  hp left {mean(rows, 3):5.1f}  rounds {mean(rows, 4):4.1f}  died in form {died}  hp lost by form {lost}")
+        for dk in DECKS:
+            print(dk, "  ".join(f"{o[0]}: won {o[2]:.2f} hp {o[3]:4.1f}" for o in out if o[1] == dk))

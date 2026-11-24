@@ -1,28 +1,25 @@
 """The act 3 knights (Flail, Spectral and Magi Knight) as a model fight, played by the bot's own planner.
 
-    python3 scripts/knightfight.py [FIGHTS A DECK]      the planner with battle.KNOWN_THREAT and without it
-    python3 scripts/knightfight.py trace [SEED] [DECK] [off]   one fight, play by play (DECK: its place in DECKS)
-    python3 scripts/knightfight.py flips [DECK]         the fights one arm wins and the other loses
+    python3 scripts/knightfight.py [FIGHTS A DECK] [ARMS]          arms: "off" (without battle.KNOWN_THREAT), "on" (as the
+                                                                  bot plays), NAME=VALUE ("on" with that constant); default off on
+    python3 scripts/knightfight.py trace [SEED] [DECK] [off]       one fight, play by play (DECK: its place in DECKS)
+    python3 scripts/knightfight.py flips [DECK]                    the fights one arm wins and the other loses
 
-The game side is the elite as the logs show it on Ascension 8 (2026-11-21/22, nine fights): 106, 95 and 87 HP.
-Flail Knight 15, 9x2, 15, Buff (3 Strength), round and round. Spectral Knight Debuff on round 1 ("ALL your
-cards are Ethereal" while it lives: whatever is left in the hand is Exhausted when the turn ends), then 15,
-3x3, 15. Magi Knight 6 and 6 Block, Debuff (every card Downgraded while it lives: nothing here is upgraded,
-so nothing changes), then 10, 6 Block, 35. The deck is Strikes, Defends, two-cost attacks, a Bash (8 and 2
-Vulnerable) and dead cards on three energy; both arms play the same shuffles. Like crabfight.py: trace a
-fight and read it before believing a table.
+The fight is the Ascension 8 logs' (HP, `intent`): the Spectral Knight's Hex makes every card Ethereal while it lives.
 """
 
+import collections
 import logging
 import os
 import random
 import sys
+from contextlib import ExitStack
 from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from modelfight import count, deal, game_state, hand_cards, merged, on_all_cores, setting, target
-from sts2bot.fight import battle, combat
+from modelfight import attack, deal, firsts, flips, game_state, hand_cards, hit, mean, piles, played, setting, shuffled, status, table, target, turn
+from sts2bot.fight import battle
 
 HP = {"FLAIL_KNIGHT_0": 106, "SPECTRAL_KNIGHT_0": 95, "MAGI_KNIGHT_0": 87}
 
@@ -33,11 +30,7 @@ def intent(eid, r, st):
         return [(15 + st, 1, 0, 0, "Attack"), (9 + st, 2, 0, 0, "Attack"), (15 + st, 1, 0, 0, "Attack"), (0, 0, 0, 3, "Buff")][(r - 1) % 4]
     if eid == "SPECTRAL_KNIGHT_0":
         return (0, 0, 0, 0, "Debuff") if r == 1 else [(15, 1, 0, 0, "Attack"), (3, 3, 0, 0, "Attack"), (15, 1, 0, 0, "Attack")][(r - 2) % 3]
-    if r == 1:
-        return (6, 1, 6, 0, "Attack")
-    if r == 2:
-        return (0, 0, 0, 0, "Debuff")
-    return [(10, 1, 0, 0, "Attack"), (0, 0, 6, 0, "Defend"), (35, 1, 0, 0, "Attack")][(r - 3) % 3]
+    return (6, 1, 6, 0, "Attack") if r == 1 else (0, 0, 0, 0, "Debuff") if r == 2 else [(10, 1, 0, 0, "Attack"), (0, 0, 6, 0, "Defend"), (35, 1, 0, 0, "Attack")][(r - 3) % 3]
 
 
 CARDS = {  # kind: (id, name, type, cost, text, target)
@@ -50,71 +43,43 @@ CARDS = {  # kind: (id, name, type, cost, text, target)
 
 
 def fight(spec, rng, maxhp=75, trace=False):
-    da, db, natk, nblk, nheavy, nbash, nfill = spec
-    deck = ["A"] * natk + ["B"] * nblk + ["H"] * nheavy + ["V"] * nbash + ["F"] * nfill
-    rng.shuffle(deck)
-    draw, disc = deck[:], []
-    hp = maxhp
+    da, db = spec[:2]
+    draw, disc, hp, order = shuffled(rng, "ABHVF", spec[2:]), [], maxhp, []
     E = {k: dict(hp=v, block=0, st=0, vuln=0) for k, v in HP.items()}
-    order = []
+    face = lambda c: CARDS[c](db if c == "B" else da)
     hexed = False
     for r in range(1, 25):
-        hand = deal(draw, disc, rng)
-        en, block = 3, 0
+        hand, en, block = deal(draw, disc, rng), 3, 0
 
         def state():
             enemies = []
             for eid, e in E.items():
-                if e["hp"] <= 0:
-                    continue
-                d, h, _, _, kind = intent(eid, r, e["st"])
-                intents = [{"type": "Attack", "label": f"{d}x{h}" if h > 1 else str(d)}] if d else [{"type": kind, "label": ""}]
-                if eid == "MAGI_KNIGHT_0" and r == 1:
-                    intents.append({"type": "Defend", "label": ""})
-                st = [{"id": "STRENGTH_POWER", "amount": e["st"]}] if e["st"] else []
-                st += [{"id": "VULNERABLE_POWER", "amount": e["vuln"]}] if e["vuln"] else []
-                enemies.append({"entity_id": eid, "hp": e["hp"], "max_hp": HP[eid], "block": e["block"], "status": st, "intents": intents})
+                if e["hp"] > 0:
+                    d, h, _, _, kind = intent(eid, r, e["st"])
+                    intents = [attack(d, h) if d else {"type": kind, "label": ""}] + ([{"type": "Defend", "label": ""}] if eid == "MAGI_KNIGHT_0" and r == 1 else [])
+                    st = status(("STRENGTH_POWER", e["st"]), ("VULNERABLE_POWER", e["vuln"]))
+                    enemies.append({"entity_id": eid, "hp": e["hp"], "max_hp": HP[eid], "block": e["block"], "status": st, "intents": intents})
             hex_mark = {"keywords": [{"name": "Hexed", "description": "Add Ethereal to this card."}]} if hexed else {}
-            cards = hand_cards(hand, lambda c: CARDS[c](db if c == "B" else da), **hex_mark)
-            pile = lambda cs: [{"name": CARDS[c](da)[1], "cost": str(CARDS[c](da)[3]), "description": CARDS[c](db if c == "B" else da)[4]} for c in cs]
-            return game_state("elite", {"act": 3, "floor": 44, "ascension": 8}, r, enemies, cards, pile, draw, disc, hp=hp, maxhp=maxhp, block=block, energy=en,
-                              status=[{"id": "HEX_POWER", "amount": 2}] if hexed else [])
+            return game_state("elite", {"act": 3, "floor": 44, "ascension": 8}, r, enemies, hand_cards(hand, face, **hex_mark), piles(face), draw, disc,
+                              hp=hp, maxhp=maxhp, block=block, energy=en, status=[{"id": "HEX_POWER", "amount": 2}] if hexed else [])
 
-        for _ in range(12):
-            if all(e["hp"] <= 0 for e in E.values()):
-                break
-            act = combat.choose_card(state())
-            if act is None:
-                break
-            i = act[1]["card_index"]
-            c = hand[i]
-            cost = CARDS[c](da)[3]
+        for i, c, act in turn(state, hand, lambda: all(e["hp"] <= 0 for e in E.values())):
             if c in "AHV":
-                t = target(act, E)
-                e = E[t]
+                e = E[t := target(act, E)]
                 d = {"A": da, "H": int(2.2 * da), "V": 8}[c]
-                d = int(d * 1.5) if e["vuln"] else d
-                soak = min(e["block"], d)
-                e["block"] -= soak
-                e["hp"] = max(0, e["hp"] - (d - soak))
+                hit(e, int(d * 1.5) if e["vuln"] else d)
                 if c == "V" and e["hp"] > 0:
                     e["vuln"] += 2
                 if e["hp"] == 0:
                     order.append(t[:1])
-            elif c == "B":
-                block += db
-            en -= cost
+            block += db if c == "B" else 0
+            en -= CARDS[c](da)[3]
             disc.append(hand.pop(i))
             if trace:
                 print("   play", c, act[1].get("target"), {k[:1]: v["hp"] for k, v in E.items()})
         if all(e["hp"] <= 0 for e in E.values()):
             return True, hp, r, "".join(order)
-        inc = 0
-        for eid, e in E.items():
-            if e["hp"] > 0:
-                d, h, _, _, _ = intent(eid, r, e["st"])
-                inc += d * h
-        lost = max(0, inc - block)
+        lost = max(0, sum(d * h for d, h, *_ in (intent(eid, r, e["st"]) for eid, e in E.items() if e["hp"] > 0)) - block)
         hp -= lost
         if trace:
             print(f"r{r} took {lost} hp {hp} | " + " ".join(f"{k[:1]} {v['hp']}" for k, v in E.items()))
@@ -132,24 +97,20 @@ def fight(spec, rng, maxhp=75, trace=False):
     return False, 0, 24, "".join(order)
 
 
-def run(args):
-    arm, spec, n, seed = args
-    logging.disable(logging.CRITICAL)
+def arm_patch(arm):
+    stack = ExitStack()
     if "=" in arm:
         name, value = arm.split("=")
-        with setting(name, float(value)):
-            return (arm,) + run(("on", spec, n, seed))[1:]
-    table = {} if arm == "off" else dict(battle.KNOWN_THREAT)
-    wins = hpl = rounds = 0
-    firsts = {}
-    with mock.patch.dict(battle.KNOWN_THREAT, table, clear=True):
-        for j in range(n):
-            ok, hp, r, order = fight(spec, random.Random(seed * 10007 + j))  # (a seed per fight: both arms play the same shuffles)
-            wins += ok
-            hpl += hp
-            rounds += r
-            count(firsts, order[:1] or "-")
-    return arm, spec, wins / n, hpl / n, rounds / n, firsts
+        stack.enter_context(setting(name, float(value)))
+    stack.enter_context(mock.patch.dict(battle.KNOWN_THREAT, {} if arm == "off" else dict(battle.KNOWN_THREAT), clear=True))
+    return stack
+
+
+def run(args):
+    arm, spec, n, seed = args
+    with arm_patch(arm):
+        res = played(fight, spec, n, seed)
+    return arm, spec, mean(res, 0), mean(res, 1), mean(res, 2), collections.Counter(o[3][:1] or "-" for o in res)
 
 
 DECKS = [  # damage, Block, Strikes, Defends, heavy, Bash, dead (an act 3 deck: 35 to 55 a round against these three)
@@ -161,27 +122,16 @@ if __name__ == "__main__":
     if sys.argv[1:2] == ["trace"]:
         seed = int(sys.argv[2]) if len(sys.argv) > 2 else 1
         dk = DECKS[int(sys.argv[3])] if len(sys.argv) > 3 and sys.argv[3].isdigit() else DECKS[1]
-        with mock.patch.dict(battle.KNOWN_THREAT, {} if "off" in sys.argv[3:] else dict(battle.KNOWN_THREAT), clear=True):
+        with arm_patch("off" if "off" in sys.argv[3:] else "on"):
             print(fight(dk, random.Random(seed), trace=True))
-        sys.exit()
-    if sys.argv[1:2] == ["flips"]:
+    elif sys.argv[1:2] == ["flips"]:
         i = int(sys.argv[2]) if len(sys.argv) > 2 else 5
-        for j in range(200):
-            seed = (900 + i) * 10007 + j
-            res = {}
-            for arm in ("off", "on"):
-                with mock.patch.dict(battle.KNOWN_THREAT, {} if arm == "off" else dict(battle.KNOWN_THREAT), clear=True):
-                    res[arm] = fight(DECKS[i], random.Random(seed))
+        for seed, res in flips(fight, DECKS[i], i, ("off", "on"), arm_patch):
             if res["off"][0] != res["on"][0]:
                 print(seed, res)
-        sys.exit()
-    n = int(sys.argv[1]) if len(sys.argv) > 1 else 100
-    arms = sys.argv[2:] or ["off", "on"]  # "off": without KNOWN_THREAT; "on": as the bot plays; NAME=VALUE: "on" with that constant
-    jobs = [(arm, dk, n, 900 + i) for arm in arms for i, dk in enumerate(DECKS)]
-    out = on_all_cores(run, jobs)
-    for arm in arms:
-        rows = [o for o in out if o[0] == arm]
-        f = merged(o[5] for o in rows)
-        print(f"{arm:20s}: won {sum(o[2] for o in rows) / len(rows):.3f}  hp left {sum(o[3] for o in rows) / len(rows):5.1f}  rounds {sum(o[4] for o in rows) / len(rows):4.1f}  first to die {dict(sorted(f.items()))}")
-    for dk in DECKS:
-        print(dk, "  ".join(f"{o[0]}: won {o[2]:.2f} hp {o[3]:4.1f}" for o in out if o[1] == dk))
+    else:
+        out, arms = table(run, DECKS, ["off", "on"])
+        for arm, rows in arms:
+            print(f"{arm:20s}: won {mean(rows, 2):.3f}  hp left {mean(rows, 3):5.1f}  rounds {mean(rows, 4):4.1f}  first to die {firsts(rows, 5)}")
+        for dk in DECKS:
+            print(dk, "  ".join(f"{o[0]}: won {o[2]:.2f} hp {o[3]:4.1f}" for o in out if o[1] == dk))
