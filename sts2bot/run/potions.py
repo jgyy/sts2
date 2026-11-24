@@ -9,7 +9,6 @@ from .. import games
 from ..cards import parse
 
 Action = tuple[str, dict]
-
 BOSS_FLOORS = (17, 33, 48)
 STS1_BOSS_FLOORS = (16, 33, 50)  # the first game's acts are 17 floors each, the boss on the last
 
@@ -22,27 +21,19 @@ def boss_floors() -> tuple:
 # Floors before each act's boss from which a full belt is no longer a reason to drink (a slot emptied there seldom fills in time).
 SAVE_FLOORS = {1: 6, 2: 9, 3: 15}
 SPARE_BEYOND = 3  # potions a boss fight is kept: more than that on the belt are drunk on the way
-
 # (Dexterity for the whole fight, the Dexterity Potion's 2, is not one of these: it goes early, like Strength.)
 _DEFENSIVE_POTION = re.compile(r"gain \d+ block|gain \d+ dexterity\. at the end of your turn|apply \d+ weak|enem(y|ies) loses? \d+ strength", re.I)
 # Strength for one turn (Flex Potion: "Gain 5 Strength. At the end of your turn, lose 5 Strength."): its own "lose 5 Strength" is no defence.
 _ONE_TURN_STRENGTH = re.compile(r"gain \d+ strength\. at the end of your turn, lose", re.I)
 _ENEMY_DEBUFF = re.compile(r"apply \d+ (weak|vulnerable|poison|doom)|enem(y|ies) loses? \d+ (strength|hp at the end)|enemy's attacks deal \d+% less", re.I)
-
-
-# What a potion is worth in the boss fight it is carried to, in points of damage or Block there (ten rounds: what lasts counts
-# for all of them); the least of these is drunk on the way. A potion not listed is priced from its text.
+# What a potion is worth in the boss fight it is carried to, in damage or Block there (the least is drunk on the way; others priced from text).
 BOSS_WORTH = {
-    "fairy in a bottle": 60, "mazaleth's gift": 50, "strength potion": 45, "focus potion": 40, "fysh oil": 38, "powdered demise": 36,
-    "potion of doom": 33, "radiant tincture": 32, "king's courage": 30, "vulnerable potion": 30, "dexterity potion": 30, "orobic acid": 28,
-    "power potion": 26, "heart of iron": 25, "gigantification potion": 25, "soldier's stew": 24, "distilled chaos": 24, "beetle juice": 24,
-    "liquid bronze": 22, "blood potion": 20, "fire potion": 20, "poison potion": 20, "ship in a bottle": 20, "touch of insanity": 20,
-    "lucky tonic": 18, "cunning potion": 18, "energy potion": 16, "clarity extract": 16, "regen potion": 15, "weak potion": 15,
-    "potion of binding": 15, "bone brew": 15, "blessing of the forge": 15, "flex potion": 15, "potion-shaped rock": 15, "cure all": 14,
-    "block potion": 12, "attack potion": 12, "duplicator": 12, "shackling potion": 12, "star potion": 12, "explosive ampoule": 10,
-    "skill potion": 10, "colorless potion": 10, "liquid memories": 10, "speed potion": 10, "snecko oil": 10, "swift potion": 8,
-    "bottled potential": 8, "glowwater potion": 8, "pot of ghouls": 8, "fortifier": 8, "droplet of precognition": 6, "gambler's brew": 5,
-    "stable serum": 5, "foul potion": 4,
+    "fairy in a bottle": 60, "mazaleth's gift": 50, "strength potion": 45, "focus potion": 40, "fysh oil": 38, "powdered demise": 36, "potion of doom": 33, "radiant tincture": 32, "king's courage": 30, "vulnerable potion": 30,
+    "dexterity potion": 30, "orobic acid": 28, "power potion": 26, "heart of iron": 25, "gigantification potion": 25, "soldier's stew": 24, "distilled chaos": 24, "beetle juice": 24, "liquid bronze": 22, "blood potion": 20,
+    "fire potion": 20, "poison potion": 20, "ship in a bottle": 20, "touch of insanity": 20, "lucky tonic": 18, "cunning potion": 18, "energy potion": 16, "clarity extract": 16, "regen potion": 15, "weak potion": 15,
+    "potion of binding": 15, "bone brew": 15, "blessing of the forge": 15, "flex potion": 15, "potion-shaped rock": 15, "cure all": 14, "block potion": 12, "attack potion": 12, "duplicator": 12, "shackling potion": 12, "star potion": 12,
+    "explosive ampoule": 10, "skill potion": 10, "colorless potion": 10, "liquid memories": 10, "speed potion": 10, "snecko oil": 10, "swift potion": 8, "bottled potential": 8, "glowwater potion": 8, "pot of ghouls": 8, "fortifier": 8,
+    "droplet of precognition": 6, "gambler's brew": 5, "stable serum": 5, "foul potion": 4,
 }
 _FILLS_BELT = re.compile(r"fill all (?:your )?empty potion slots", re.I)
 

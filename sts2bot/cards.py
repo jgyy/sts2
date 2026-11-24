@@ -311,7 +311,6 @@ def _parse(card: dict) -> CardInfo:
     aim, stretch = _int(r"gain\s+(\d+)\s+aim", text), _int(r"gain\s+(\d+)\s+stretch", text)
     known = any((damage, block, vulnerable, weak, draw, energy_gain, strength, enemy_strength_loss, poison, doom, shivs, aim, stretch, melody_block, impaled_only)
                 + (star_gain, forge, summon, dexterity, len(channel), evoke, evoke_all, next_energy, next_draw, next_block, enemy_hp_loss, souls, heal))
-
     can_play = bool(card.get("can_play", True))
     return CardInfo(
         index=int(card.get("index", 0)), name=str(card.get("name") or card.get("id") or "?"), type=ctype, cost=_cost(card.get("cost")),
@@ -343,11 +342,8 @@ def _parse(card: dict) -> CardInfo:
 
 # A nudge, on the deck_value scale (+1 is about one rarity step), for cards _TIER does not rate whose text understates or overstates them.
 _KNOWN = {
-    "IMMOLATE": 3.0, "DISARM": 2.0, "REAPER": 2.0, "CARNAGE": 1.5, "SPOT_WEAKNESS": 1.5, "METALLICIZE": 1.5,
-    "CLEAVE": 1.0, "POWER_THROUGH": 1.0, "GHOSTLY_ARMOR": 1.0, "SEEING_RED": 1.0, "INTIMIDATE": 1.0, "COMBUST": 0.5,
-    "DOUBLE_TAP": 0.5, "ENTRENCH": -1.5, "CLASH": -1.0, "SEARING_BLOW": -1.0, "RECKLESS_CHARGE": -1.0,
-    "FIRE_BREATHING": -1.0, "EVOLVE": -1.0, "BERSERK": -0.5, "WARCRY": -0.5, "WILD_STRIKE": -0.5, "DUAL_WIELD": -0.5,
-    "LIMIT_BREAK": -0.5,
+    "IMMOLATE": 3.0, "DISARM": 2.0, "REAPER": 2.0, "CARNAGE": 1.5, "SPOT_WEAKNESS": 1.5, "METALLICIZE": 1.5, "CLEAVE": 1.0, "POWER_THROUGH": 1.0, "GHOSTLY_ARMOR": 1.0, "SEEING_RED": 1.0, "INTIMIDATE": 1.0, "COMBUST": 0.5, "DOUBLE_TAP": 0.5,
+    "ENTRENCH": -1.5, "CLASH": -1.0, "SEARING_BLOW": -1.0, "RECKLESS_CHARGE": -1.0, "FIRE_BREATHING": -1.0, "EVOLVE": -1.0, "BERSERK": -0.5, "WARCRY": -0.5, "WILD_STRIKE": -0.5, "DUAL_WIELD": -0.5, "LIMIT_BREAK": -0.5,
 }
 
 
@@ -357,95 +353,52 @@ def _known_nudge(card: dict) -> float:
     return next((_KNOWN[k] for k in (key_of(card.get("id")), key_of(card.get("name"))) if k in _KNOWN), 0.0)
 
 
-# What each card we have met is worth in the deck, on the deck_value scale (about 3 = fine early on, 5 = good, 7+ = take it
-# every time), judged by how the bot plays it: one turn at a time, so cards that need a deck built around them rate low.
-# Cards not listed fall back to the text-based estimate in deck_value.
+# What each card we have met is worth in the deck on the deck_value scale (3 = fine early, 5 = good, 7+ = always), judged by how the
+# bot plays it (one turn at a time: build-around cards rate low). Cards not listed fall back to the text estimate in deck_value.
 _TIER = {
     # commons
-    "SHRUG_IT_OFF": 5.5, "POMMEL_STRIKE": 5.0, "BREAKTHROUGH": 5.0, "THUNDERCLAP": 4.5, "TWIN_STRIKE": 4.0,
-    "ARMAMENTS": 3.0, "BLOOD_WALL": 4.0, "HEADBUTT": 3.5, "IRON_WAVE": 3.5, "CINDER": 4.0, "TRUE_GRIT": 3.5,
-    "TAUNT": 3.5, "ANGER": 3.0, "SETUP_STRIKE": 3.0, "SWORD_BOOMERANG": 3.0, "TREMBLE": 2.5,
-    "PERFECTED_STRIKE": 2.5, "BODY_SLAM": 1.5, "HAVOC": 1.0,
+    "SHRUG_IT_OFF": 5.5, "POMMEL_STRIKE": 5.0, "BREAKTHROUGH": 5.0, "THUNDERCLAP": 4.5, "TWIN_STRIKE": 4.0, "ARMAMENTS": 3.0, "BLOOD_WALL": 4.0, "HEADBUTT": 3.5, "IRON_WAVE": 3.5, "CINDER": 4.0, "TRUE_GRIT": 3.5, "TAUNT": 3.5, "ANGER": 3.0,
+    "SETUP_STRIKE": 3.0, "SWORD_BOOMERANG": 3.0, "TREMBLE": 2.5, "PERFECTED_STRIKE": 2.5, "BODY_SLAM": 1.5, "HAVOC": 1.0,
     # uncommons
-    "SHOCKWAVE": 7.5, "UPPERCUT": 6.0, "FLAME_BARRIER": 6.0, "INFLAME": 6.5, "HEMOKINESIS": 6.0,
-    "BATTLE_TRANCE": 5.5, "WHIRLWIND": 5.0, "ULTIMATE_STRIKE": 5.0, "ULTIMATE_DEFEND": 5.0,
-    "THRUMMING_HATCHET": 5.0, "STONE_ARMOR": 5.0, "DRAMATIC_ENTRANCE": 5.0, "THE_BOMB": 5.0, "BLUDGEON": 5.5,
-    "FIGHT_ME": 4.5, "OMNISLICE": 4.5, "DISMANTLE": 4.0, "RAMPAGE": 4.0, "FLASH_OF_STEEL": 4.0, "FINESSE": 4.0,
-    "SALVO": 4.0, "SEEKER_STRIKE": 4.0, "SPITE": 3.5, "UNRELENTING": 3.5, "EVIL_EYE": 3.5, "BURNING_PACT": 3.5,
-    "EQUILIBRIUM": 3.5, "DARK_SHACKLES": 3.5, "STOMP": 2.5, "HOWL_FROM_BEYOND": 3.5, "FISTICUFFS": 3.5,
-    "VOLLEY": 3.5, "BULLY": 3.0, "COLOSSUS": 3.0, "FASTEN": 3.0, "BLOODLETTING": 3.0, "PRODUCTION": 3.0,
-    "PILLAGE": 3.0, "VICIOUS": 2.5, "PANACHE": 2.5, "RAGE": 2.5, "INFERNAL_BLADE": 2.5, "FORGOTTEN_RITUAL": 2.5,
-    "DISCOVERY": 2.5, "THINKING_AHEAD": 2.5, "PANIC_BUTTON": 2.5, "ASHEN_STRIKE": 2.5, "MIND_BLAST": 2.5,
-    "SECOND_WIND": 2.5, "FEEL_NO_PAIN": 2.0, "JUGGLING": 2.0, "STRATAGEM": 2.0, "STAMPEDE": 2.0,
-    "EXPECT_A_FIGHT": 2.0, "JACK_OF_ALL_TRADES": 2.0, "IMPATIENCE": 2.0, "RUPTURE": 1.5, "RESTLESSNESS": 1.5,
-    "PURITY": 1.5, "PROLONG": 1.0,
+    "SHOCKWAVE": 7.5, "UPPERCUT": 6.0, "FLAME_BARRIER": 6.0, "INFLAME": 6.5, "HEMOKINESIS": 6.0, "BATTLE_TRANCE": 5.5, "WHIRLWIND": 5.0, "ULTIMATE_STRIKE": 5.0, "ULTIMATE_DEFEND": 5.0, "THRUMMING_HATCHET": 5.0, "STONE_ARMOR": 5.0,
+    "DRAMATIC_ENTRANCE": 5.0, "THE_BOMB": 5.0, "BLUDGEON": 5.5, "FIGHT_ME": 4.5, "OMNISLICE": 4.5, "DISMANTLE": 4.0, "RAMPAGE": 4.0, "FLASH_OF_STEEL": 4.0, "FINESSE": 4.0, "SALVO": 4.0, "SEEKER_STRIKE": 4.0, "SPITE": 3.5,
+    "UNRELENTING": 3.5, "EVIL_EYE": 3.5, "BURNING_PACT": 3.5, "EQUILIBRIUM": 3.5, "DARK_SHACKLES": 3.5, "STOMP": 2.5, "HOWL_FROM_BEYOND": 3.5, "FISTICUFFS": 3.5, "VOLLEY": 3.5, "BULLY": 3.0, "COLOSSUS": 3.0, "FASTEN": 3.0,
+    "BLOODLETTING": 3.0, "PRODUCTION": 3.0, "PILLAGE": 3.0, "VICIOUS": 2.5, "PANACHE": 2.5, "RAGE": 2.5, "INFERNAL_BLADE": 2.5, "FORGOTTEN_RITUAL": 2.5, "DISCOVERY": 2.5, "THINKING_AHEAD": 2.5, "PANIC_BUTTON": 2.5, "ASHEN_STRIKE": 2.5,
+    "MIND_BLAST": 2.5, "SECOND_WIND": 2.5, "FEEL_NO_PAIN": 2.0, "JUGGLING": 2.0, "STRATAGEM": 2.0, "STAMPEDE": 2.0, "EXPECT_A_FIGHT": 2.0, "JACK_OF_ALL_TRADES": 2.0, "IMPATIENCE": 2.0, "RUPTURE": 1.5, "RESTLESSNESS": 1.5, "PURITY": 1.5,
+    "PROLONG": 1.0,
     # rares and event cards
-    "IMPERVIOUS": 8.0, "OFFERING": 7.5, "DEMON_FORM": 8.0, "PYRE": 7.0, "EXTERMINATE": 7.0, "FEED": 6.5,
-    "CRIMSON_MANTLE": 6.0, "ROLLING_BOULDER": 6.0, "GIANT_ROCK": 6.0, "CONFLAGRATION": 5.5, "HAND_OF_GREED": 5.5,
-    "MASTER_OF_STRATEGY": 5.0, "MANGLE": 4.5, "AGGRESSION": 4.5, "MAYHEM": 4.5, "NOT_YET": 4.5, "BOLAS": 4.5,
-    "UNMOVABLE": 4.0, "BRAND": 4.0, "FIEND_FIRE": 4.0, "JUGGERNAUT": 3.5, "HELLRAISER": 3.5, "ONE_TWO_PUNCH": 3.5,
-    "THRASH": 3.5, "BARRICADE": 3.0, "DARK_EMBRACE": 3.0, "CASCADE": 3.0, "SECRET_WEAPON": 3.0,
-    "SECRET_TECHNIQUE": 3.0, "HIDDEN_GEM": 2.5, "GOLD_AXE": 2.5, "METAMORPHOSIS": 2.5, "PRIMAL_FORCE": 2.0,
-    "STOKE": 2.0, "THE_GAMBIT": -6.0,
+    "IMPERVIOUS": 8.0, "OFFERING": 7.5, "DEMON_FORM": 8.0, "PYRE": 7.0, "EXTERMINATE": 7.0, "FEED": 6.5, "CRIMSON_MANTLE": 6.0, "ROLLING_BOULDER": 6.0, "GIANT_ROCK": 6.0, "CONFLAGRATION": 5.5, "HAND_OF_GREED": 5.5,
+    "MASTER_OF_STRATEGY": 5.0, "MANGLE": 4.5, "AGGRESSION": 4.5, "MAYHEM": 4.5, "NOT_YET": 4.5, "BOLAS": 4.5, "UNMOVABLE": 4.0, "BRAND": 4.0, "FIEND_FIRE": 4.0, "JUGGERNAUT": 3.5, "HELLRAISER": 3.5, "ONE_TWO_PUNCH": 3.5, "THRASH": 3.5,
+    "BARRICADE": 3.0, "DARK_EMBRACE": 3.0, "CASCADE": 3.0, "SECRET_WEAPON": 3.0, "SECRET_TECHNIQUE": 3.0, "HIDDEN_GEM": 2.5, "GOLD_AXE": 2.5, "METAMORPHOSIS": 2.5, "PRIMAL_FORCE": 2.0, "STOKE": 2.0, "THE_GAMBIT": -6.0,
     # --- The Silent
-    "ADRENALINE": 7.0, "NOXIOUS_FUMES": 7.5, "FOOTWORK": 6.0, "AFTERIMAGE": 6.0, "LEG_SWEEP": 6.0, "BACKFLIP": 5.5,
-    "DASH": 5.5, "SERPENT_FORM": 5.5, "ASSASSINATE": 5.5, "DEADLY_POISON": 5.5, "BOUNCING_FLASK": 5.5,
-    "ACROBATICS": 5.0, "DAGGER_SPRAY": 5.0, "BLADE_DANCE": 5.5, "PIERCING_WAIL": 5.0, "MALAISE": 5.0,
-    "ECHOING_SLASH": 5.0, "NEUTRALIZE": 4.0, "SURVIVOR": 3.5, "POISONED_STAB": 4.5, "HAZE": 4.5,
-    "DAGGER_THROW": 4.5, "SUCKER_PUNCH": 4.5, "CLOAK_AND_DAGGER": 4.5, "DODGE_AND_ROLL": 4.5, "PREDATOR": 4.5,
-    "BACKSTAB": 4.5, "BLUR": 4.5, "SKEWER": 4.5, "FLICK_FLACK": 4.5, "WELL_LAID_PLANS": 4.5, "FAN_OF_KNIVES": 4.5,
-    "ACCURACY": 5.5, "INFINITE_BLADES": 5.5, "TOOLS_OF_THE_TRADE": 4.0, "ENVENOM": 4.0, "ABRASIVE": 4.0,
-    "SNAKEBITE": 4.0, "OUTBREAK": 4.0, "DEFLECT": 4.0, "THE_HUNT": 4.0, "POUNCE": 4.0, "UP_MY_SLEEVE": 4.0,
-    "EXPOSE": 4.0, "SPEEDSTER": 3.5, "BUBBLE_BUBBLE": 3.5, "ESCAPE_PLAN": 3.5, "EXPERTISE": 3.5, "BURST": 3.5,
-    "PRECISE_CUT": 3.5, "STRANGLE": 3.5, "RICOCHET": 3.5, "LEADING_STRIKE": 3.5, "ACCELERANT": 3.0,
-    "TRACKING": 3.0, "SLICE": 3.0, "FINISHER": 3.0, "BULLET_TIME": 3.0, "STORM_OF_STEEL": 3.0, "MEMENTO_MORI": 3.0,
-    "PINPOINT": 3.0, "UNTOUCHABLE": 3.0, "SHADOWMELD": 3.0, "CORROSIVE_WAVE": 3.0, "ANTICIPATE": 3.0,
-    "PREPARED": 2.5, "CALCULATED_GAMBLE": 2.5, "FLECHETTES": 2.5, "NIGHTMARE": 2.5, "MURDER": 2.5, "MIRAGE": 2.5,
-    "SIDESTEP": 2.5, "TACTICIAN": 2.0, "SHADOW_STEP": 2.0, "GRAND_FINALE": 1.0,
+    "ADRENALINE": 7.0, "NOXIOUS_FUMES": 7.5, "FOOTWORK": 6.0, "AFTERIMAGE": 6.0, "LEG_SWEEP": 6.0, "BACKFLIP": 5.5, "DASH": 5.5, "SERPENT_FORM": 5.5, "ASSASSINATE": 5.5, "DEADLY_POISON": 5.5, "BOUNCING_FLASK": 5.5, "ACROBATICS": 5.0,
+    "DAGGER_SPRAY": 5.0, "BLADE_DANCE": 5.5, "PIERCING_WAIL": 5.0, "MALAISE": 5.0, "ECHOING_SLASH": 5.0, "NEUTRALIZE": 4.0, "SURVIVOR": 3.5, "POISONED_STAB": 4.5, "HAZE": 4.5, "DAGGER_THROW": 4.5, "SUCKER_PUNCH": 4.5,
+    "CLOAK_AND_DAGGER": 4.5, "DODGE_AND_ROLL": 4.5, "PREDATOR": 4.5, "BACKSTAB": 4.5, "BLUR": 4.5, "SKEWER": 4.5, "FLICK_FLACK": 4.5, "WELL_LAID_PLANS": 4.5, "FAN_OF_KNIVES": 4.5, "ACCURACY": 5.5, "INFINITE_BLADES": 5.5,
+    "TOOLS_OF_THE_TRADE": 4.0, "ENVENOM": 4.0, "ABRASIVE": 4.0, "SNAKEBITE": 4.0, "OUTBREAK": 4.0, "DEFLECT": 4.0, "THE_HUNT": 4.0, "POUNCE": 4.0, "UP_MY_SLEEVE": 4.0, "EXPOSE": 4.0, "SPEEDSTER": 3.5, "BUBBLE_BUBBLE": 3.5,
+    "ESCAPE_PLAN": 3.5, "EXPERTISE": 3.5, "BURST": 3.5, "PRECISE_CUT": 3.5, "STRANGLE": 3.5, "RICOCHET": 3.5, "LEADING_STRIKE": 3.5, "ACCELERANT": 3.0, "TRACKING": 3.0, "SLICE": 3.0, "FINISHER": 3.0, "BULLET_TIME": 3.0,
+    "STORM_OF_STEEL": 3.0, "MEMENTO_MORI": 3.0, "PINPOINT": 3.0, "UNTOUCHABLE": 3.0, "SHADOWMELD": 3.0, "CORROSIVE_WAVE": 3.0, "ANTICIPATE": 3.0, "PREPARED": 2.5, "CALCULATED_GAMBLE": 2.5, "FLECHETTES": 2.5, "NIGHTMARE": 2.5, "MURDER": 2.5,
+    "MIRAGE": 2.5, "SIDESTEP": 2.5, "TACTICIAN": 2.0, "SHADOW_STEP": 2.0, "GRAND_FINALE": 1.0,
     # --- The Regent
-    "COMET": 6.0, "GAMMA_BLAST": 5.5, "DYING_STAR": 5.5, "ASTRAL_PULSE": 5.0, "CRUSH_UNDER": 5.0,
-    "GATHER_LIGHT": 5.0, "PROPHESIZE": 5.0, "PARTICLE_WALL": 5.0, "FALLING_STAR": 4.5, "VENERATE": 3.5,
-    "SOLAR_STRIKE": 4.5, "CELESTIAL_MIGHT": 4.5, "PHOTON_CUT": 4.5, "HEGEMONY": 4.5, "HEIRLOOM_HAMMER": 4.5,
-    "GLOW": 4.5, "CLOAK_OF_STARS": 4.5, "SPOILS_OF_BATTLE": 4.5, "GLITTERSTREAM": 4.5, "GLIMMER": 4.5,
-    "SEEKING_EDGE": 4.5, "WROUGHT_IN_WAR": 4.0, "KNOCKOUT_BLOW": 4.0, "KINGLY_PUNCH": 4.0, "SHINING_STRIKE": 4.0,
-    "BOMBARDMENT": 4.0, "HIDDEN_CACHE": 4.0, "KNOW_THY_PLACE": 4.0, "REFINE_BLADE": 4.0, "CHILD_OF_THE_STARS": 4.0,
-    "PARRY": 4.0, "KINGLY_KICK": 3.5, "STARDUST": 3.5, "MAKE_IT_SO": 3.5, "BEAT_INTO_SHAPE": 3.5,
-    "COSMIC_INDIFFERENCE": 3.5, "TERRAFORMING": 3.5, "SUMMON_FORTH": 3.5, "DECISIONS_DECISIONS": 3.5,
-    "TYRANNY": 3.5, "ORBIT": 3.5, "MONOLOGUE": 3.0, "ROYAL_GAMBLE": 3.0, "ROYALTIES": 3.0,
-    # (Crash Landing fills the hand with Debris: an AoE in ordinary fights, a liability in a boss fight.)
-    "CRASH_LANDING": 4.5, "SEVEN_STARS": 5.5,
-    "PILLAR_OF_CREATION": 3.0, "SPECTRUM_SHIFT": 3.0, "PALE_BLUE_DOT": 3.0,
+    "COMET": 6.0, "GAMMA_BLAST": 5.5, "DYING_STAR": 5.5, "ASTRAL_PULSE": 5.0, "CRUSH_UNDER": 5.0, "GATHER_LIGHT": 5.0, "PROPHESIZE": 5.0, "PARTICLE_WALL": 5.0, "FALLING_STAR": 4.5, "VENERATE": 3.5, "SOLAR_STRIKE": 4.5,
+    "CELESTIAL_MIGHT": 4.5, "PHOTON_CUT": 4.5, "HEGEMONY": 4.5, "HEIRLOOM_HAMMER": 4.5, "GLOW": 4.5, "CLOAK_OF_STARS": 4.5, "SPOILS_OF_BATTLE": 4.5, "GLITTERSTREAM": 4.5, "GLIMMER": 4.5, "SEEKING_EDGE": 4.5, "WROUGHT_IN_WAR": 4.0,
+    "KNOCKOUT_BLOW": 4.0, "KINGLY_PUNCH": 4.0, "SHINING_STRIKE": 4.0, "BOMBARDMENT": 4.0, "HIDDEN_CACHE": 4.0, "KNOW_THY_PLACE": 4.0, "REFINE_BLADE": 4.0, "CHILD_OF_THE_STARS": 4.0, "PARRY": 4.0, "KINGLY_KICK": 3.5, "STARDUST": 3.5,
+    "MAKE_IT_SO": 3.5, "BEAT_INTO_SHAPE": 3.5, "COSMIC_INDIFFERENCE": 3.5, "TERRAFORMING": 3.5, "SUMMON_FORTH": 3.5, "DECISIONS_DECISIONS": 3.5, "TYRANNY": 3.5, "ORBIT": 3.5, "MONOLOGUE": 3.0, "ROYAL_GAMBLE": 3.0, "ROYALTIES": 3.0,
+    "CRASH_LANDING": 4.5, "SEVEN_STARS": 5.5, "PILLAR_OF_CREATION": 3.0, "SPECTRUM_SHIFT": 3.0, "PALE_BLUE_DOT": 3.0,
     # --- The Necrobinder
-    "SOW": 5.0, "DEBILITATE": 5.0, "GRAVE_WARDEN": 6.0, "PUTREFY": 5.0, "DRAIN_POWER": 4.5, "DEFILE": 5.0,
-    "BLIGHT_STRIKE": 4.5, "REAVE": 4.5, "BURY": 3.5, "DEFY": 4.5, "NEGATIVE_PULSE": 4.0, "PARSE": 3.5,
-    "END_OF_DAYS": 5.5, "BODYGUARD": 3.5, "UNLEASH": 3.5, "FEAR": 4.0, "REAP": 3.0, "FLATTEN": 4.5,
-    "PULL_AGGRO": 3.5, "UNDEATH": 4.0, "ENFEEBLING_TOUCH": 4.0, "CAPTURE_SPIRIT": 5.0, "DEATHS_DOOR": 4.0,
-    "NO_ESCAPE": 4.0, "REANIMATE": 4.0, "SNAP": 3.0, "POKE": 4.0, "RATTLE": 3.5, "HANG": 3.5, "INVOKE": 3.5,
-    "WISP": 3.5, "DIRGE": 5.0, "LETHALITY": 3.5, "SHROUD": 3.5, "HAUNT": 3.5, "CALL_OF_THE_VOID": 3.5,
-    "ERADICATE": 5.5, "MISERY": 5.0, "NECRO_MASTERY": 5.5, "DEATHBRINGER": 5.5, "SEVERANCE": 4.5,
-    "SLEIGHT_OF_FLESH": 5.0, "HIGH_FIVE": 4.5,
-    "SIC_EM": 3.5, "GRAVEBLAST": 3.0, "DEATH_MARCH": 3.0, "PULL_FROM_BELOW": 2.5, "BORROWED_TIME": 2.5,
-    "SEANCE": 2.5,
+    "SOW": 5.0, "DEBILITATE": 5.0, "GRAVE_WARDEN": 6.0, "PUTREFY": 5.0, "DRAIN_POWER": 4.5, "DEFILE": 5.0, "BLIGHT_STRIKE": 4.5, "REAVE": 4.5, "BURY": 3.5, "DEFY": 4.5, "NEGATIVE_PULSE": 4.0, "PARSE": 3.5, "END_OF_DAYS": 5.5,
+    "BODYGUARD": 3.5, "UNLEASH": 3.5, "FEAR": 4.0, "REAP": 3.0, "FLATTEN": 4.5, "PULL_AGGRO": 3.5, "UNDEATH": 4.0, "ENFEEBLING_TOUCH": 4.0, "CAPTURE_SPIRIT": 5.0, "DEATHS_DOOR": 4.0, "NO_ESCAPE": 4.0, "REANIMATE": 4.0, "SNAP": 3.0,
+    "POKE": 4.0, "RATTLE": 3.5, "HANG": 3.5, "INVOKE": 3.5, "WISP": 3.5, "DIRGE": 5.0, "LETHALITY": 3.5, "SHROUD": 3.5, "HAUNT": 3.5, "CALL_OF_THE_VOID": 3.5, "ERADICATE": 5.5, "MISERY": 5.0, "NECRO_MASTERY": 5.5, "DEATHBRINGER": 5.5,
+    "SEVERANCE": 4.5, "SLEIGHT_OF_FLESH": 5.0, "HIGH_FIVE": 4.5, "SIC_EM": 3.5, "GRAVEBLAST": 3.0, "DEATH_MARCH": 3.0, "PULL_FROM_BELOW": 2.5, "BORROWED_TIME": 2.5, "SEANCE": 2.5,
     # --- The Defect
-    "COOLHEADED": 5.5, "COLD_SNAP": 5.0, "BALL_LIGHTNING": 5.0, "SWEEPING_BEAM": 5.0, "BOOT_SEQUENCE": 5.0,
-    "SHADOW_SHIELD": 5.0, "ZAP": 4.0, "DUALCAST": 3.5, "SUNDER": 4.5, "CHARGE_BATTERY": 4.5,
-    "LIGHTNING_ROD": 4.5, "FUSION": 4.5, "GLASSWORK": 4.5, "HAILSTORM": 4.5, "BULK_UP": 4.5, "CAPACITOR": 5.5,
-    "CREATIVE_AI": 4.5, "ICE_LANCE": 4.5, "FIGHT_THROUGH": 4.0, "GO_FOR_THE_EYES": 4.0, "FOCUSED_STRIKE": 4.0,
-    "BEAM_CELL": 4.0, "MOMENTUM_STRIKE": 4.0, "COMPILE_DRIVER": 4.0, "FTL": 4.0, "BOOST_AWAY": 4.0,
-    "DARKNESS": 4.0, "MODDED": 4.0, "GUNK_UP": 3.5, "UPROAR": 3.5, "COLLISION_COURSE": 3.5, "TESLA_COIL": 3.5,
-    "METEOR_STRIKE": 3.5, "HOLOGRAM": 3.5, "OVERCLOCK": 3.5, "COMPACT": 3.5, "WHITE_NOISE": 3.5,
-    "DOUBLE_ENERGY": 3.5, "STORM": 3.5, "THUNDER": 3.5, "SCRAPE": 3.0, "ALL_FOR_ONE": 3.0, "HOTFIX": 3.0,
-    "VOLTAIC": 3.0, "FERAL": 3.0, "TRASH_TO_TREASURE": 3.0, "ITERATION": 2.5,
+    "COOLHEADED": 5.5, "COLD_SNAP": 5.0, "BALL_LIGHTNING": 5.0, "SWEEPING_BEAM": 5.0, "BOOT_SEQUENCE": 5.0, "SHADOW_SHIELD": 5.0, "ZAP": 4.0, "DUALCAST": 3.5, "SUNDER": 4.5, "CHARGE_BATTERY": 4.5, "LIGHTNING_ROD": 4.5, "FUSION": 4.5,
+    "GLASSWORK": 4.5, "HAILSTORM": 4.5, "BULK_UP": 4.5, "CAPACITOR": 5.5, "CREATIVE_AI": 4.5, "ICE_LANCE": 4.5, "FIGHT_THROUGH": 4.0, "GO_FOR_THE_EYES": 4.0, "FOCUSED_STRIKE": 4.0, "BEAM_CELL": 4.0, "MOMENTUM_STRIKE": 4.0,
+    "COMPILE_DRIVER": 4.0, "FTL": 4.0, "BOOST_AWAY": 4.0, "DARKNESS": 4.0, "MODDED": 4.0, "GUNK_UP": 3.5, "UPROAR": 3.5, "COLLISION_COURSE": 3.5, "TESLA_COIL": 3.5, "METEOR_STRIKE": 3.5, "HOLOGRAM": 3.5, "OVERCLOCK": 3.5, "COMPACT": 3.5,
+    "WHITE_NOISE": 3.5, "DOUBLE_ENERGY": 3.5, "STORM": 3.5, "THUNDER": 3.5, "SCRAPE": 3.0, "ALL_FOR_ONE": 3.0, "HOTFIX": 3.0, "VOLTAIC": 3.0, "FERAL": 3.0, "TRASH_TO_TREASURE": 3.0, "ITERATION": 2.5,
     # --- more, all characters
-    "MACHINE_LEARNING": 6.5, "DEFRAGMENT": 7.5, "GLACIER": 6.0, "FRIENDSHIP": 4.5, "GENESIS": 5.5, "ECHO_FORM": 6.5,
-    "HYPERBEAM": 5.5, "DEVASTATE": 5.0, "SKIM": 5.0, "COOLANT": 5.0, "BUFFER": 5.0, "SPINNER": 5.0, "QUADCAST": 5.0,
-    "GUIDING_STAR": 4.5, "ADAPTIVE_STRIKE": 4.5, "BONE_SHARDS": 4.5,
-    "NULL": 4.5, "LOOP": 4.5, "SENTRY_MODE": 4.5, "CHILL": 4.0,
-    "TEMPEST": 4.0, "NEUROSURGE": 1.0, "BLACK_HOLE": 4.0, "LEAP": 3.5,
-    "DELAY": 3.5, "CHAOS": 3.5, "SOUL_STORM": 3.5, "REFRACT": 3.5, "FETCH": 3.5, "REBOOT": 3.0, "ALIGNMENT": 3.0,
-    "CRESCENT_SPEAR": 3.0, "CONQUEROR": 3.0, "SYNTHESIS": 3.0, "RIGHT_HAND_HAND": 3.0, "SPUR": 3.0, "CLEANSE": 3.0,
-    "TIMES_UP": 3.0, "SHARED_FATE": 3.0, "DANSE_MACABRE": 3.0, "CLAW": 2.5, "MELANCHOLY": 2.5, "SUBROUTINE": 2.0,
-    "PAGESTORM": 2.0, "SYNCHRONIZE": 2.0, "CHARGE": 1.5, "GUARDS": 1.0,
+    "MACHINE_LEARNING": 6.5, "DEFRAGMENT": 7.5, "GLACIER": 6.0, "FRIENDSHIP": 4.5, "GENESIS": 5.5, "ECHO_FORM": 6.5, "HYPERBEAM": 5.5, "DEVASTATE": 5.0, "SKIM": 5.0, "COOLANT": 5.0, "BUFFER": 5.0, "SPINNER": 5.0, "QUADCAST": 5.0,
+    "GUIDING_STAR": 4.5, "ADAPTIVE_STRIKE": 4.5, "BONE_SHARDS": 4.5, "NULL": 4.5, "LOOP": 4.5, "SENTRY_MODE": 4.5, "CHILL": 4.0, "TEMPEST": 4.0, "NEUROSURGE": 1.0, "BLACK_HOLE": 4.0, "LEAP": 3.5, "DELAY": 3.5, "CHAOS": 3.5,
+    "SOUL_STORM": 3.5, "REFRACT": 3.5, "FETCH": 3.5, "REBOOT": 3.0, "ALIGNMENT": 3.0, "CRESCENT_SPEAR": 3.0, "CONQUEROR": 3.0, "SYNTHESIS": 3.0, "RIGHT_HAND_HAND": 3.0, "SPUR": 3.0, "CLEANSE": 3.0, "TIMES_UP": 3.0, "SHARED_FATE": 3.0,
+    "DANSE_MACABRE": 3.0, "CLAW": 2.5, "MELANCHOLY": 2.5, "SUBROUTINE": 2.0, "PAGESTORM": 2.0, "SYNCHRONIZE": 2.0, "CHARGE": 1.5, "GUARDS": 1.0,
 }
 _AFFLICTION = {"SLOTH": -6.5, "MIND_ROT": -7.5, "WASTE_AWAY": -8.5, "DISINTEGRATION": -9.5}
 
@@ -464,14 +417,12 @@ _RARITY = {"Basic": 0.0, "Common": 1.0, "Uncommon": 2.2, "Rare": 3.5, "Ancient":
 _RARITY_CROWD = {"Common": 3.69, "Uncommon": 4.85, "Rare": 6.26}
 IMPALED_SHARE = 0.5  # of what a card that needs an Impaled enemy does, counted at rewards (see deck_value)
 CONDITIONAL_SHARE = 0.3  # of what a card that "can only be played if" something holds does, counted at rewards
-# Cards the crowd's numbers are not asked about: what makes them good in other hands is what this bot cannot do
-# (The Gambit can end the run, Stoke and GUARDS!!! spend the hand, Banshee's Cry and Knife Trap need decks built for them).
+# Cards the crowd is not asked about: what makes them good in other hands is what this bot cannot do (The Gambit can end the run).
 _OWN_VIEW = {"THE_GAMBIT", "STOKE", "GUARDS", "BANSHEES_CRY", "BANSHEE_S_CRY", "KNIFE_TRAP"}
 
 
 def _crowd_share() -> float:
     from .learn import knob  # (learn.py reads this module for its card keys)
-
     return knob("crowd")
 
 
@@ -498,7 +449,6 @@ def deck_value(card: dict) -> float:
         return -6.0  # e.g. "If you take unblocked attack damage this combat, die."
     cost = max(1, info.cost) if not info.is_x else 2
     score = base = _RARITY.get(str(card.get("rarity") or card.get("card_rarity") or ""), 1.0)
-
     dmg = info.total_damage * (1.6 if info.aoe else 1.0)
     score += min(4.0, max(0.0, dmg / cost - 6.0) * 0.45)  # (capped: uncapped, Crash Landing and Seven Stars beat every card rated by hand)
     score += max(0.0, info.block / cost - 5.0) * 0.45
@@ -536,9 +486,7 @@ def deck_value(card: dict) -> float:
 
 
 def upgrade_gain(base: dict, upgraded: dict) -> float:
-    """What upgrading a card adds, in the planner's points per play, read from the two versions of its text.
-
-    (By rating alone upgrades went to good cards whose upgrade is small while Devastate's +12 damage waited.)"""
+    """What upgrading a card adds, in the planner's points per play, read from the two versions of its text (not from its rating)."""
     a, b = parse({**base, "target_type": "AnyEnemy"}), parse({**upgraded, "target_type": "AnyEnemy"})
 
     def worth(i: CardInfo) -> float:
@@ -567,12 +515,6 @@ def order_key(c: CardInfo) -> tuple:
         rank = 1  # what later cards are paid with comes first
     elif c.vulnerable or (c.summon and not c.is_x) or (c.doom and not c.damage):
         rank = 2  # (a Summon before Osty's attacks: Unleash hits for his HP; Doom before what counts it)
-    elif c.damage and not c.is_x:
-        rank = 3
-    elif c.is_x:
-        rank = 4
-    elif c.block:
-        rank = 5
     else:
-        rank = 6
+        rank = 3 if c.damage and not c.is_x else 4 if c.is_x else 5 if c.block else 6
     return (rank, -c.total_damage, c.index)

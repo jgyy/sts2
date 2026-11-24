@@ -11,7 +11,6 @@ from pathlib import Path
 from .cards import key_of as card_key
 
 log = logging.getLogger("sts2bot.learn")
-
 WIN_BONUS = 15  # a win counts as this many floors beyond the last one
 HISTORY = 300  # runs per character the "usual" result is taken from
 PRIOR_PICKS = 400.0  # picks before a card's own record counts for half (a run is a noisy measurement)
@@ -161,8 +160,7 @@ def seed_from_history(stats: CardStats, runs_file: Path) -> None:
 
 
 # ----------------------------------------------------------------- knobs
-# Judgement calls that are plain numbers. Each run plays one setting of each, drawn more and more often from the
-# settings whose runs have gone furthest (Thompson sampling), so good settings end up used nearly always.
+# Judgement calls that are plain numbers: each run plays one setting of each, drawn by Thompson sampling from those whose runs went furthest.
 DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "crowd": 0.6, "punch": 0.9, "weak_want": 0.0, "attack_room": 99.0, "block_want": 0.0, "cards_first": 0.0, "debuff_worth": 1.0, "free_lean": 1.0}
 CHOICES = {
     "caution": [0.75, 1.0],  # weight of HP lost in the combat planner
@@ -180,7 +178,6 @@ CHOICES = {
 }
 MIN_RUNS = 20  # runs a setting gets before the record alone decides how often it is drawn
 SPREAD = 12.0  # how far apart two runs of the same character usually end, in floors
-
 KNOB = dict(DEFAULTS)  # the settings in force right now
 
 
