@@ -57,7 +57,9 @@ CARDS = {
     "FAME_AND_FORTUNE": "Gain 25(30) Gold.",
     "LIVE_FOREVER": "Gain 6(8) Plated Armor.",
     # status
-    "BURN": "Unplayable. At the end of your turn, take 2(4) damage.",
+    # (Burn, Decay and Regret in the second game's words, "if this is in your hand", which battle.hand_burns reads: in the
+    # first game's own the planner never saw them. Regret cost 3-5 HP a turn the plans counted as 0.)
+    "BURN": "Unplayable. At the end of your turn, if this is in your hand, take 2(4) damage.",
     "DAZED": "Unplayable. Ethereal.",
     "SLIMED": "Exhaust.",
     "VOID": "Unplayable. Ethereal. Whenever this card is drawn, lose 1 Energy.",
@@ -66,7 +68,7 @@ CARDS = {
     "ASCENDER_S_BANE": "Unplayable. Ethereal. Cannot be removed from your deck.",
     "CLUMSY": "Unplayable. Ethereal.",
     "CURSE_OF_THE_BELL": "Unplayable. Cannot be removed from your deck.",
-    "DECAY": "Unplayable. At the end of your turn, take 2 damage.",
+    "DECAY": "Unplayable. At the end of your turn, if this is in your hand, take 2 damage.",
     "DOUBT": "Unplayable. At the end of your turn, gain 1 Weak.",
     "INJURY": "Unplayable.",
     "NECRONOMICURSE": "Unplayable. There is no escape from this Curse.",
@@ -74,7 +76,7 @@ CARDS = {
     "PAIN": "Unplayable. While in hand, lose 1 HP when other cards are played.",
     "PARASITE": "Unplayable. If transformed or removed from your deck, lose 3 Max HP.",
     "PRIDE": "Innate. At the end of your turn, put a copy of this card on top of your draw pile. Exhaust.",
-    "REGRET": "Unplayable. At the end of your turn, lose HP equal to the number of cards in your hand.",
+    "REGRET": "Unplayable. At the end of your turn, if this is in your hand, lose 1 HP for each card in your hand.",
     "SHAME": "Unplayable. At the end of your turn, gain 1 Frail.",
     "WRITHE": "Unplayable. Innate.",
 }

@@ -69,6 +69,10 @@ class Powers(Sts1Case):
                                           {"id": "Sharp Hide", "amount": 3}, {"id": "Generic Strength Up Power", "amount": 3}]})
         self.assertEqual([p["id"] for p in read], ["ENRAGE_POWER", "HEX_DAZED_POWER", "FLUTTER_POWER", "THORNS_POWER", "RITUAL_POWER"])
 
+    def test_a_darkling_comes_back_on_half_its_hp(self):
+        (link,) = Screens.powers({"max_hp": 55, "powers": [{"id": "Life Link", "amount": -1}]})
+        self.assertEqual((link["id"], link["amount"]), ("REATTACH_POWER", 27))
+
 
 class Keys(Sts1Case):
     def test_no_key_matters_while_act_4_is_shut(self):
@@ -176,3 +180,104 @@ class EnergyLoss(Sts1Case):
         second = cards.deck_value(fasting) + decks.deck_fit(fasting, [strike] * 10 + [fasting], 1, 3)
         self.assertLess(first, cards.deck_value(fasting) - 3.0)
         self.assertLess(second, 0.0)
+
+    def test_a_second_fasting_is_not_played(self):
+        # 2026-11-24 21:54: two Fasting+ on round 1 and a third on round 3 left the Watcher 1 energy a turn, dead to a Chosen
+        # from 79 of 79 HP. One already in play: the second is an energy of what is left, and the Strikes are worth more.
+        from sts2bot.fight import combat
+        from tests.helpers import STRIKE, combat_state, enemy
+
+        fasting = Screens().card({"id": "Fasting2", "name": "Fasting", "type": "POWER", "rarity": "UNCOMMON", "cost": 2, "upgrades": 1}, 0)
+        self.assertEqual(cards.parse(fasting).energy_drain, 1)
+        s = combat_state([fasting, STRIKE(1), STRIKE(2)], [enemy("CHOSEN_0", 98, attack="5x2")], energy=2, kind="elite")
+        s["player"]["status"] = Screens.powers({"powers": [{"id": "EnergyDownPower", "amount": 1}, {"id": "Strength", "amount": 4}]})
+        self.assertEqual(s["player"]["status"][0]["id"], "ENERGY_DOWN_POWER")
+        self.assertNotEqual(combat.choose_card(s)[1]["card_index"], 0)
+
+
+class Curses(Sts1Case):
+    def test_curses_that_hurt_at_the_end_of_the_turn_are_seen(self):
+        # In the first game's words ("At the end of your turn, lose HP equal to ...") Regret cost 3-5 HP a turn the plans
+        # counted as nothing; Decay and Burn too.
+        from sts2bot.fight import battle
+
+        hand = [Screens().card({"id": cid, "name": cid, "type": t, "cost": -2}, n)
+                for n, (cid, t) in enumerate([("Regret", "CURSE"), ("Decay", "CURSE"), ("Burn", "STATUS"), ("Strike_R", "ATTACK")])]
+        self.assertEqual(battle.hand_burns({"hand": hand}), ((0, -1, False), (1, 2, True), (2, 2, True)))
+
+
+class TimeEater(Sts1Case):
+    def test_the_twelfth_card_ends_the_turn(self):
+        # 21:26 on 2026-11-24: 11 cards played, 30 HP, a 31 hit coming, 4 energy: Cold Snap was the 12th card and the last.
+        from sts2bot.fight import battle, combat
+        from tests.helpers import DEFEND, STRIKE, combat_state, enemy
+
+        s = combat_state([STRIKE(0), DEFEND(1), STRIKE(2)], [enemy("TIMEEATER_0", 183, attack=31, status=[{"id": "TIME_WARP_POWER", "amount": 11}])],
+                         energy=4, hp=30, block=4, kind="boss")
+        self.assertEqual(battle.cards_left_this_turn(s), 1)
+        self.assertEqual(combat.choose_card(s)[1]["card_index"], 1)
+
+
+class PaidHp(Sts1Case):
+    def test_no_card_that_costs_the_last_hp_even_with_regen_to_come(self):
+        # 2026-11-24 21:43: on 5 HP with Regen 3 the planner read Offering+'s 6 as 3 and played it into a stunned boss: dead.
+        from sts2bot.fight import combat
+        from tests.helpers import combat_state, enemy
+
+        def card(i, cid, ctype, cost, upgrades=0, **numbers):
+            return Screens().card({"id": cid, "name": cid, "type": ctype, "cost": cost, "upgrades": upgrades, **numbers}, i, live=True)
+
+        hand = [card(0, "Spot Weakness", "SKILL", 1, 1), card(1, "Wound", "STATUS", -2), card(2, "Defend_R", "SKILL", 1, 1, block=10, base_block=8),
+                card(3, "Bash", "ATTACK", 2, 1, damage=21, base_damage=10), card(4, "Offering", "SKILL", 0, 1)]
+        boss = enemy("BRONZEAUTOMATON_1", 75, status=[{"id": "ARTIFACT_POWER", "amount": 1}, {"id": "STRENGTH_POWER", "amount": 6}])
+        boss["intents"] = [{"type": "Stun", "label": ""}]
+        s = combat_state(hand, [boss], energy=2, hp=5, kind="boss")
+        s["player"].update(draw_pile_count=10, status=[{"id": "REGEN_POWER", "amount": 3}, {"id": "STRENGTH_POWER", "amount": 11}])
+        s["battle"]["round"] = 7
+        self.assertNotEqual(combat.choose_card(s)[1]["card_index"], 4)
+
+    def test_an_event_curse_in_the_first_game_s_words_costs_something(self):
+        # "Become Cursed - Regret." cost nothing until 2026-11-24: Golden Shrine's Desecrate (275 Gold and Regret) beat Pray.
+        from sts2bot.run import events
+
+        def value(title, description):
+            return events._event_option_value({"title": title, "description": description}, 60, 80, act=1)
+
+        self.assertLess(value("Desecrate", "Gain 275 Gold. Become Cursed - Regret."), value("Pray", "Gain 100 Gold."))
+        self.assertLess(value("Rummage", "Obtain a special Relic. Become Cursed - Pain."), value("Forge", "Upgrade a card in your deck."))
+
+
+class WrithingMass(Sts1Case):
+    def state(self, hp):
+        from tests.helpers import combat_state, enemy
+
+        def card(i, cid, ctype, cost, upgrades=0, **numbers):
+            return Screens().card({"id": cid, "name": cid, "type": ctype, "cost": cost, "upgrades": upgrades, **numbers}, i, live=True)
+
+        hand = [card(0, "Defend_P", "SKILL", 1, 1, block=8, base_block=8), card(1, "CrushJoints", "ATTACK", 0, 1, damage=10, base_damage=10),
+                card(2, "Consecrate", "ATTACK", 0, 1, damage=8, base_damage=8), card(3, "Eruption", "ATTACK", 2, damage=9, base_damage=9),
+                card(4, "ThirdEye", "SKILL", 1, block=7, base_block=7)]
+        mass = enemy("WRITHINGMASS_0", 81, status=Screens.powers({"powers": [{"id": "Malleable", "amount": 3}, {"id": "Compulsive", "amount": -1}]}))
+        mass["intents"] = [{"type": "Debuff", "label": ""}]
+        s = combat_state(hand, [mass], energy=4, hp=hp, max_hp=89)
+        s["battle"]["round"] = 4
+        return s
+
+    def test_a_hit_gives_it_a_new_intent(self):
+        # 2026-11-24 22:07: on 12 HP, its intent a Debuff, the Watcher entered Wrath and hit it; it came round to 14 x 3.
+        from sts2bot.fight import combat
+
+        action = combat.choose_card(self.state(12))
+        self.assertTrue(action is None or action[0] != "play_card" or action[1]["card_index"] in (0, 4))
+        self.assertEqual(combat.choose_card(self.state(60))[1]["card_index"], 1)  # (with HP to spare it is still to be killed)
+
+
+class AwakenedOne(Sts1Case):
+    def test_its_first_death_is_not_the_end(self):
+        from sts2bot.fight import battle, closing
+
+        status = Screens.powers({"powers": [{"id": "Unawakened", "amount": -1}, {"id": "Curiosity", "amount": 1}]})
+        e = {"entity_id": "AWAKENEDONE_2", "hp": 20, "max_hp": 300, "block": 0, "status": status, "intents": [{"type": "Attack", "label": "16"}]}
+        (boss,) = battle.read_enemies({"battle": {"enemies": [e], "round": 9}, "player": {"hp": 50}, "state_type": "boss"})
+        self.assertEqual((boss.respawns, boss.curious), (1, 1))
+        self.assertEqual(closing.discount(30.0, 10, 50, [boss]), 1.0)  # (20 HP is not "dying next turn": 300 more come after)

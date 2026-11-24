@@ -56,8 +56,11 @@ _CURSES = {
     "decay": 4.5, "doubt": 4.5, "shame": 4.5, "greed": 5.0, "curse of the bell": 5.0, "regret": 5.0, "writhe": 5.0,
     "normality": 8.0, "enthralled": 8.0, "bad luck": 10.0, "royal poison": 9.0, "sword of stone": -0.5,
 }
+# (The first game writes it "Become Cursed - Regret.": until 2026-11-24 no curse there cost anything, and Golden Shrine's
+# "Gain 275 Gold. Become Cursed - Regret." scored 6.0 against 2.5 for "Gain 100 Gold"; Accursed Blacksmith's relic and Pain
+# beat its free upgrade.)
 _CURSE_GAIN = re.compile(
-    r"\b(?:receive|obtain|add|gain)\b[^.]*?\b(" + "|".join(_CURSES) + r"|wound|burn|dazed|hex|parasite|"
+    r"\b(?:receive|obtain|add|gain|become cursed)\b[^.]*?\b(" + "|".join(_CURSES) + r"|wound|burn|dazed|hex|parasite|"
     r"pain|spite|void|mind rot|sloth|waste away|disintegration|curse)\b"
 )
 _RUINOUS = re.compile(r"\blose (all|everything)\b|\bset your max hp\b|\bmax hp (to|becomes) \d\b", re.I)

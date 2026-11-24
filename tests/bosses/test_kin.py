@@ -47,6 +47,15 @@ class KinFollowersFirst(unittest.TestCase):
         self.assertEqual([e.main_threat for e in battle.read_enemies(soft)], [False, False])
         self.assertEqual([e.main_threat for e in battle.read_enemies(hard)], [True, False])
 
+    def test_weak_on_the_amalgam_does_not_make_it_harmless(self):
+        # 21:22 on 2026-11-24: Deathbringer put Weak on the Amalgam, its 18 showed as 13, and Reap+ went into the
+        # Queen's 381 HP. What counts is the hit it will make once the Weak is gone.
+        queen = {**enemy("QUEEN_0", 381), "intents": [{"type": "Debuff", "label": ""}]}
+        weak = [*MINION, {"id": "WEAK_POWER", "amount": 1}]
+        state = combat_state([STRIKE(0)], [{**enemy("TORCH_HEAD_AMALGAM_0", 180, attack=13), "status": weak}, queen], kind="boss")
+        self.assertEqual([e.main_threat for e in battle.read_enemies(state)], [True, False])
+        self.assertEqual(aimed(state), "TORCH_HEAD_AMALGAM_0")
+
 
 if __name__ == "__main__":
     unittest.main()

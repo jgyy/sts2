@@ -31,6 +31,6 @@ def pace(state: dict) -> float:
 def discount(pace: float, lost: int, hp: int, survivors: list) -> float:
     """What to multiply the price of the HP a line loses by: CLOSE_PRICE when the line leaves every leader within reach, else 1."""
     leaders = [e for e in survivors if not e.minion]
-    if not pace or not CLOSE_REACH or lost >= hp or not leaders or any(e.adapts or e.spent for e in survivors):
-        return 1.0  # (the Test Subject comes back, and all of our HP is never cheap)
+    if not pace or not CLOSE_REACH or lost >= hp or not leaders or any(e.adapts or e.spent or e.respawns for e in survivors):
+        return 1.0  # (the Test Subject comes back, so does the first game's Awakened One, and all of our HP is never cheap)
     return CLOSE_PRICE if sum(e.hp + e.block for e in leaders) <= CLOSE_REACH * pace else 1.0

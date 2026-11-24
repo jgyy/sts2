@@ -92,6 +92,7 @@ class CardInfo:
     melody_twice: tuple = ()  # Wah Blast: "If you have a Cho Melody or Ki Melody, hits twice"
     verse: int = 0  # Ki Verse: "The next (2) "Wah", "Cho", or "Ki" card(s) you play this turn ... played an additional time"
     stance: str = ""  # the first game's Watcher: the stance the card puts her in (WRATH, CALM, DIVINITY, EXIT; games/sts1/stance.py)
+    energy_drain: int = 0  # a Power's energy taken away at the start of every turn from now on (the first game's Fasting)
 
     @property
     def is_x(self) -> bool:
@@ -368,6 +369,7 @@ def parse(card: dict) -> CardInfo:
         melody=melodies(card.get("name") or ""), melody_block=melody_block, keeps_hand=_keeps_hand(full_text),
         melody_hits=bool(re.search(r"additional\s+time\s+for\s+each\s+melody", text, re.I)),
         melody_twice=tuple(w.upper() for w in re.findall(r"(\w+)\s+melody", (re.search(r"if\s+you\s+have\s+an?\s+[^,.]*melody[^,.]*,\s*hits\s+twice", full_text, re.I) or re.match("", "")).group(0), re.I)),
+        energy_drain=_int(r"gain\s+(\d+)\s+less\s+energy\s+at\s+the\s+start\s+of\s+(?:your|each)\s+turn", full_text) if ctype == "Power" else 0,
         stance=(m.group(1).upper() if (m := re.search(r"\benter\s+(wrath|calm|divinity)\b", text, re.I)) else "EXIT" if re.search(r"\bexit\s+your\s+stance\b", text, re.I) else ""),
         verse=int(m.group(1) or 1) if (m := re.search(r"the\s+next\s+(?:(\d+)\s+)?\W*wah\W+cho\W+or\s+\W*ki\W*\s+cards?\s+you\s+play\s+this\s+turn\s+(?:is|are)\s+played\s+an\s+additional\s+time", full_text, re.I)) else 0,
         osty_dies=bool(re.search(r"\b(?:Osty|he)\s+dies", full_text, re.I)),  # (Sacrifice: "If Osty is alive, he dies and ...")

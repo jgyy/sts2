@@ -13,7 +13,7 @@ from dataclasses import dataclass, replace
 from itertools import combinations, permutations
 
 from .battle import (  # noqa: F401  (also the names other modules and the tests reach through here)
-    BEYOND_REACH, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, RAGE_COST, REATTACH_REACH, SLIP_WORTH, WIN_BONUS, Enemy, clone,
+    BEYOND_REACH, ENERGY_DRAIN, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, RAGE_COST, REATTACH_REACH, SLIP_WORTH, WIN_BONUS, Enemy, clone,
     _has_power, _is_attack, constrict, end_of_turn_block, end_of_turn_loss, expected_loss, hand_burns,
     intent_damage, intent_hits, kill_reach, osty_hp, power_amount, read_enemies, _bare_block, _draw_worth, _escape_odds, _next_wither, _sandpit, _wither_bill,
     deck_count, junk_cost, cards_left_this_turn, next_room, next_energy_worth, free_plays, _hit, _hit_count, _poison_total, _progress, _would_kill, _power_worth, _set_up, _rage_blocks, _resists, _respawns, loss_cap,
@@ -157,6 +157,7 @@ def simulate(
     holds: bool = False,  # Barricade: Block is not removed when our next turn starts
     strip: tuple = (0.0, 0.0),  # Artifact: (what a charge taken off an enemy is worth, debuffs the deck will still apply), artifact.outlook
     friends: int = 0,  # Friendships already in play (each is an energy a turn, and the next one is worth less)
+    drained: int = 0,  # energy a turn already taken away by Powers in play (the first game's Fasting: ENERGY_DOWN)
     free: int = 0,  # Void Form: this many of the next cards cost no energy
     doubled: bool = False,  # Duplication (the Duplicator potion): the next card is played an extra time, whatever it is
     fortify: int = 1,  # a Fortifier waits on the belt for this turn's Block ("Triple your Block": 3)
@@ -177,6 +178,7 @@ def simulate(
     last_aimed = max((n for n, c in enumerate(line) if c.needs_target), default=-1)
     first_target: str | None = None
     self_loss = 0
+    paid = 0  # HP the cards in the line cost us themselves (Offering, Hemokinesis)
     # Long fights are races: bosses and elites grow stronger every turn, so a
     # turn spent only blocking makes the next one worse. The bot used to sit
     # behind Defends for 19 rounds against a boss gaining Strength and lose.
@@ -287,7 +289,11 @@ def simulate(
         free_next = triggers.FREE_NEXT.get(c.key, free_next)  # Unrelenting: "The next Attack you play costs 0"
         surcharge += triggers.SURCHARGE.get(c.key, 0)
         healed += c.heal
-        self_loss += c.hp_loss
+        self_loss, paid = self_loss + c.hp_loss, paid + c.hp_loss
+        if c.hp_loss and paid >= hp + healed:
+            # A card's HP is paid as it is played: no Regen, Block or kill at the end of the turn gives it back. With Regen 3
+            # counted off its 6, Offering+ was played on 5 HP (2026-11-24 21:43, the Bronze Automaton Stunned on 75): dead.
+            score -= LETHAL_PENALTY
         if c.osty_attack and pet == 0:  # Osty is dead: his attacks do nothing (seen 12 times in 12)
             c = replace(c, damage=0, block=0 if c.osty_dies else c.block)
         elif c.osty_attack:
@@ -362,6 +368,8 @@ def simulate(
                     done = _fated(e)  # damage that does not kill it now changes nothing
                     gain = _progress(e, _hit(e, per, n_hits, c.double_if_vulnerable), chip_rate) * dmg_value * e.worth * e.focus
                     score += gain * (0.2 if done and e.alive else 1.0)
+                    if e.reacts and e.alive and c.type == "Attack":  # (a new intent, which may be its worst: battle.REACTIVE_HIT)
+                        e.incoming, e.incoming_hits = max(e.incoming, e.reacts), max(e.incoming_hits, 1)
                 if waves > 1:
                     rage_blocks(foes, known_dead)
             for e in struck:
@@ -497,12 +505,15 @@ def simulate(
             # the ones that hit many times. (This turn's share is in `incoming` already.)
             future += sum(c.enemy_strength_loss * max(1, e.incoming_hits) * 2.0 * e.worth for e in (alive if c.aoe or t is None else [t]) if e.alive) * span
         if c.type == "Power":
+            score -= sum(e.curious * ENRAGE_PRICE * max(1, e.incoming_hits) * min(4.0, 1.0 + e.hp / 35.0) for e in foes if e.alive)  # (as Enrage: Curiosity)
             # (An Ethereal Power not played now is never played: Echo Form was left to vanish 12 times
             # in the 15 boss and elite turns that could pay for it.)
             # (Not in an ordinary fight: three energy on round 1 of four for a card doubled on the other three.)
             # (A second Friendship is energy the hand has no cards for, at the same 2 Strength: half, then a quarter.)
             again, friends = (0.5**friends, friends + 1) if c.key == "FRIENDSHIP" else (1.0, friends)
             future += 0.0 if c.strength_lasts and c.strength > 0 else again * _power_worth(c, fight != "monster") * span * (1.6 if c.ethereal and fight != "monster" else 1.0)
+            future -= c.energy_drain * ENERGY_DRAIN * (1 + drained) * span
+            drained += c.energy_drain
         elif c.type in ("Status", "Curse"):
             # Only worth clearing out with energy nothing else can use, unless playing it is what
             # gets it out of the deck (Debris, Slimed): then it is every later draw it would have been.
@@ -796,6 +807,7 @@ def _context(state: dict) -> dict:
         might0=int(state.get("_might") or 0),
         holds=_has_power(player, "BARRICADE"),
         friends=max(0, power_amount(player, "FRIENDSHIP")),
+        drained=max(0, power_amount(player, "ENERGY_DOWN")),
         free=free_plays(state),
         # (Echo Form: "The first card you play each turn is played an extra time", and a second one the second card.)
         doubled=_has_power(player, "DUPLICATION") or max(0, power_amount(player, "ECHO_FORM")) > int(state.get("_plays_this_turn") or 0),
