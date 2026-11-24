@@ -10,3 +10,6 @@ dist/
 
 # The bridge mod, built by scripts/install_mod.sh
 .build/
+
+# Worktrees made by Claude Code agents
+.claude/worktrees/
