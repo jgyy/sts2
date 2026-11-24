@@ -92,6 +92,18 @@ _TURN_ENERGY = (
 )
 
 
+# The other way: a Power that takes energy away every turn (the first game's Fasting: "Gain 1 less Energy at the start of
+# each turn" beside 3 Strength and 3 Dexterity, read as 7.8 at a shop; the Watcher's first run bought a second one and
+# played on 1 energy a turn). Each copy already held makes the next one dearer still.
+_ENERGY_LOSS = re.compile(r"(?:gain\s+(\d+)\s+less\s+energy|lose\s+(\d+)\s+energy)\s+at\s+the\s+start\s+of\s+(?:your|each)\s+turn", re.I)
+
+
+def energy_loss(card: dict) -> int:
+    """Energy a turn that a Power takes away once it is in play (0 for anything else)."""
+    m = _ENERGY_LOSS.search(str(card.get("description") or "")) if str(card.get("type")) == "Power" else None
+    return int(m.group(1) or m.group(2)) if m else 0
+
+
 def turn_energy(card: dict) -> float:
     """Energy a turn that a Power gives once it is in play (0 for anything else)."""
     if str(card.get("type")) != "Power":
@@ -270,6 +282,8 @@ def deck_fit(card: dict, deck: list, act: int | None = None, energy: int = 3) ->
             hitters = [c for c in deck if _parse(c).total_damage > 0]
             gain *= 1.0 - STRENGTH_TOLL * (sum(1 for c in hitters if not _parse(c).osty_attack) / max(1, len(hitters)))
         fit += gain
+    if lost := energy_loss(card):
+        fit -= ENERGY_POWER * lost * (1 + 2 * sum(map(energy_loss, deck)))
     added = turn_damage(card, deck)
     if added:
         fit += min(SCALE_CAP, SCALE_POWER * added / TURN_DAMAGE)

@@ -186,9 +186,11 @@ FOOL_RATING = {_key(name): value for value, names in _FOOL_TIERS.items() for nam
 def rating(key: str) -> float | None:
     """What the crowd's numbers make a card worth, on the scale of cards._TIER (None: no numbers for it).
 
-    The numbers are Slay the Spire 2's: playing the first game there are none."""
+    The numbers are Slay the Spire 2's; the first game's cards have tiers of their own (games/sts1/tiers.py)."""
     if not games.uses_sts2_tables():
-        return None
+        from ..games.sts1 import tiers  # (only when playing the first game)
+
+        return tiers.rating(key)
     got = RATING.get(key.replace("_S_", "S_") if key not in RATING else key)
     return FOOL_RATING.get(key) if got is None else got
 

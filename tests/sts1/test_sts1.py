@@ -141,7 +141,10 @@ class Translation(Sts1Case):
 
 class GameSwitch(Sts1Case):
     def test_the_second_games_ratings_stay_out_of_the_first(self):
-        self.assertIsNone(crowd.rating("INFLAME"))
+        from sts2bot.games.sts1 import tiers
+
+        self.assertEqual(crowd.rating("INFLAME"), tiers.TIER["INFLAME"])  # (the first game's own tiers: games/sts1/tiers.py)
+        self.assertIsNone(crowd.rating("CRIMSON_MANTLE"))  # (a Slay the Spire 2 card)
         self.assertFalse(cards.is_known({"id": "INFLAME", "name": "Inflame"}))
         self.assertEqual(potions.boss_floors(), potions.STS1_BOSS_FLOORS)
         games.select("sts2")
@@ -164,6 +167,14 @@ class SaveFilesAndSetup(Sts1Case):
         self.assertEqual(prefs["wins"], 3)
         self.assertEqual(prefs["max_ascension"], {"IRONCLAD": 6, "THE_SILENT": 0})
         self.assertEqual(prefs["locked"], ["WATCHER"])
+
+    def test_a_first_win_opens_ascension_1(self):
+        # The game keeps no ASCENSION_LEVEL until the first level-up and reads it as 1 once a character has won.
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "STSDataVagabond").write_text(json.dumps({"WIN_COUNT": "1", "WIN_STREAK": "0"}))
+            Path(d, "STSDataTheSilent").write_text(json.dumps({"WIN_STREAK": "0"}))
+            prefs = host.read_prefs(Path(d))
+        self.assertEqual(prefs["max_ascension"], {"IRONCLAD": 1, "THE_SILENT": 0})
 
     def test_a_new_profile_has_only_the_ironclad(self):
         with tempfile.TemporaryDirectory() as d:

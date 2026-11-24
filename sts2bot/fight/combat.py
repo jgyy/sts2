@@ -24,6 +24,7 @@ from ..run.potions import fortifier, describe, potion_actions
 from . import sandpit as pit
 from . import artifact, closing, triggers
 from .fool.turn import FoolTurn, arrows_owned, concerns, fool_powers, impaled_pool, played_melodies
+from ..games.sts1.stance import Stance
 from ..learn import knob
 
 Action = tuple[str, dict]
@@ -162,6 +163,7 @@ def simulate(
     pace: float = 0.0,  # HP the enemies have lost a round so far in this fight (0: too early to say)
     room: tuple = (99.0, 1.0),  # energy the next hand can spend beyond its own, and a card kept in the hand's share (battle.next_room)
     arrows: int = -1, aiming: int = 0, stretch: int = 0, tune: frozenset = frozenset(), chord: int = 0, boom: int = 0, fool: tuple = (),  # the Fool's (fool/turn.py): Arrows (-1: none), Aim, Stretch, Melodies, Violent Chord, Explosive Arrows, powers
+    stance0: str = "",  # the first game's Watcher: the stance the turn begins in (games/sts1/stance.py)
 ) -> Outcome | None:
     """Score playing `line` in order. None if it cannot be afforded."""
     if card_limit is not None and len(line) > card_limit:
@@ -222,6 +224,7 @@ def simulate(
     dazed = 0  # Dazed this line's Attacks bring into it (Personal Hive)
     tainted = 0
     ft = FoolTurn(arrows, aiming, stretch, tune, chord, boom, fool, foes)  # the Fool's Arrows, Aim, Stretch and Melodies as the line goes on (fool/turn.py)
+    st = Stance(stance0)  # the Watcher's stance as the line goes on
     known_dead = {e.entity_id for e in foes if not e.alive}
     # (Only Stock and Adaptable enemies come back and only crabs hand on Block: for the rest both are skipped.)
     respawn, rage_blocks = (_respawns if any(e.respawns > 0 or e.adapts for e in foes) else _idle), (_rage_blocks if any(e.rage for e in foes) else _idle)
@@ -329,6 +332,7 @@ def simulate(
                     per = round(per / 3) if giant else per
                     per -= vigor
                 attacks += 1
+                per = st.deal(per)
             per = max(0, per)
             dealt = per * hits
             if c.aoe:
@@ -434,6 +438,7 @@ def simulate(
         enduring += c.forge * 0.5
         later, nexte = later + c.next_draw * 2.0 * dmg_value + c.next_block * 0.8, nexte + c.next_energy * xs  # (energy: priced after the line)
         kept = kept or c.keeps_hand == ("ANY",) or bool(ft.tune & set(c.keeps_hand))  # (Ki Rest with a Wah or Cho Melody)
+        energy += st.enter(c.stance)  # (after the card's own damage: Eruption hits, then she is in Wrath)
         if c.dexterity:
             nimble += c.dexterity
             if c.dexterity_lasts:
@@ -530,7 +535,7 @@ def simulate(
             score += 0.9 * _orb_damage(kind, passive, foes, chip_rate, dmg_value)
     if hail and any(o[0] == "FROST" for o in held):
         score += sum(_progress(e, _hit(e, hail, 1, raw=True), chip_rate) * dmg_value * e.worth for e in foes if e.alive)
-    later += ft.later(dmg_value) + next_energy_worth(nexte, room, max(0, hand_size + drawn - len(line)) if kept else 0) * dmg_value  # (Aim, Stretch)
+    later += ft.later(dmg_value) + next_energy_worth(nexte + st.later_energy(), room, max(0, hand_size + drawn - len(line)) if kept else 0) * dmg_value  # (Aim, Stretch)
     future += (lasting + enduring) * span + later
     score += future
     if debris:
@@ -625,7 +630,7 @@ def simulate(
             elif e.flanker and not e.behind and e.entity_id != faced:
                 e.incoming = round(e.incoming * 1.5)
 
-    incoming = sum(e.incoming + tainted * e.incoming_hits for e in survivors)
+    incoming = round(sum(e.incoming + tainted * e.incoming_hits for e in survivors) * st.taken())
     if block <= 0 and can_block:
         block = bare_block
     played = {c.index for c in line}
@@ -798,7 +803,7 @@ def _context(state: dict) -> dict:
         pace=closing.pace(state), room=next_room(state),
         arrows=arrows_owned(player), aiming=max(0, power_amount(player, "AIM")), stretch=max(0, power_amount(player, "STRETCH")),
         tune=played_melodies(state.get("_played_names")), chord=max(0, power_amount(player, "VIOLENT_CHORD")), boom=max(0, power_amount(player, "EXPLOSIVE_ARROWS")),
-        fool=fool_powers(player, bool(state.get("_dislodged"))),
+        fool=fool_powers(player, bool(state.get("_dislodged"))), stance0=str(player.get("stance") or ""),
     )
 
 

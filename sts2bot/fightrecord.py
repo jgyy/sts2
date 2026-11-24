@@ -18,11 +18,11 @@ import re
 import time
 from pathlib import Path
 
+from .fight.bossfight import mid_fight
+
 log = logging.getLogger("sts2bot")
 
 COMBAT = ("monster", "elite", "boss")
-# Screens the game opens in the middle of a fight (see bossfight.py): they do not end it.
-_IN_FIGHT_SCREENS = {"hand_select", "card_select", "bundle_select", "overlay"}
 LIMIT = 64 << 20  # bytes before the file is set aside as fights.jsonl.1 (about ten days of play)
 _PILES = ("hand", "draw_pile", "discard_pile", "exhaust_pile")
 
@@ -46,9 +46,9 @@ class FightWatch:
                 done = self._close(state, lost=False)  # (one fight straight into the next: it was won)
             self._seen(state, str(kind), where)
             return done
-        if self.fight is None or kind in _IN_FIGHT_SCREENS:
+        if self.fight is None or mid_fight(state, kind):
             return None
-        return self._close(state, lost=kind == "game_over")
+        return self._close(state, lost=kind == "game_over" and not (state.get("game_over") or {}).get("victory"))
 
     def _seen(self, state: dict, kind: str, where: tuple) -> None:
         battle, player, run = state.get("battle") or {}, state.get("player") or {}, state.get("run") or {}

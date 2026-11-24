@@ -91,6 +91,7 @@ class CardInfo:
     melody_block: int = 0  # "Gain 5 Block for each Melody you have" (Harmonic Shield): Block a Melody
     melody_twice: tuple = ()  # Wah Blast: "If you have a Cho Melody or Ki Melody, hits twice"
     verse: int = 0  # Ki Verse: "The next (2) "Wah", "Cho", or "Ki" card(s) you play this turn ... played an additional time"
+    stance: str = ""  # the first game's Watcher: the stance the card puts her in (WRATH, CALM, DIVINITY, EXIT; games/sts1/stance.py)
 
     @property
     def is_x(self) -> bool:
@@ -232,10 +233,12 @@ def parse(card: dict) -> CardInfo:
         else:
             on_impaled = (_icons(m.group(1)), _int(r"draw\s+(\d+)\s+card", m.group(1)))
             text = text[: m.start()] + text[m.end() :]
-    # "Aim affects this card 2 times" (Heavy Shot) is not 2 hits: one hit with the Aim counted twice.
+    # "Aim affects this card 2 times" (Heavy Shot) is not 2 hits: one hit with the Aim counted twice. Nor is the
+    # first game's Heavy Blade ("Strength affects this card 5 times": read as 14 damage 5 times, 70 for 2 energy).
     aim_times = 1
-    if m := re.search(r"aim\s+affects\s+this\s+card\s+(?:(\d+)\s+times?|twice)\.?", text, re.I):
-        aim_times, text = int(m.group(1) or 2), text[: m.start()] + text[m.end() :]
+    if m := re.search(r"(aim|strength)\s+affects\s+this\s+card\s+(?:(\d+)\s+times?|twice)\.?", text, re.I):
+        aim_times = int(m.group(2) or 2) if m.group(1).lower() == "aim" else 1
+        text = text[: m.start()] + text[m.end() :]
 
     # "Next turn, gain 4 Block." is read separately below, not as this turn's.
     next_text = "" if ctype == "Power" else " ".join(x for x in re.split(r"(?<=[.!?])\s+", full_text) if x.strip().lower().startswith("next turn"))
@@ -365,6 +368,7 @@ def parse(card: dict) -> CardInfo:
         melody=melodies(card.get("name") or ""), melody_block=melody_block, keeps_hand=_keeps_hand(full_text),
         melody_hits=bool(re.search(r"additional\s+time\s+for\s+each\s+melody", text, re.I)),
         melody_twice=tuple(w.upper() for w in re.findall(r"(\w+)\s+melody", (re.search(r"if\s+you\s+have\s+an?\s+[^,.]*melody[^,.]*,\s*hits\s+twice", full_text, re.I) or re.match("", "")).group(0), re.I)),
+        stance=(m.group(1).upper() if (m := re.search(r"\benter\s+(wrath|calm|divinity)\b", text, re.I)) else "EXIT" if re.search(r"\bexit\s+your\s+stance\b", text, re.I) else ""),
         verse=int(m.group(1) or 1) if (m := re.search(r"the\s+next\s+(?:(\d+)\s+)?\W*wah\W+cho\W+or\s+\W*ki\W*\s+cards?\s+you\s+play\s+this\s+turn\s+(?:is|are)\s+played\s+an\s+additional\s+time", full_text, re.I)) else 0,
         osty_dies=bool(re.search(r"\b(?:Osty|he)\s+dies", full_text, re.I)),  # (Sacrifice: "If Osty is alive, he dies and ...")
         doom_kills=bool(re.search(r"kill\s+enemies\s+with\s+at\s+least\s+as\s+much\s+Doom", full_text, re.I)),
@@ -518,6 +522,7 @@ _RARITY = {"Basic": 0.0, "Common": 1.0, "Uncommon": 2.2, "Rare": 3.5, "Ancient":
 # with no numbers of its own (every Fool card, on the beta) is mixed with, so that it is rated on the same scale as the rest.
 _RARITY_CROWD = {"Common": 3.69, "Uncommon": 4.85, "Rare": 6.26}
 IMPALED_SHARE = 0.5  # of what a card that needs an Impaled enemy does, counted at rewards (see deck_value)
+CONDITIONAL_SHARE = 0.3  # of what a card that "can only be played if" something holds does, counted at rewards
 
 # Cards the crowd's numbers (crowd.py) are not asked about: what makes them good in other
 # hands is what this bot cannot do. The Gambit can end the run.
@@ -580,6 +585,10 @@ def deck_value(card: dict) -> float:
     score += min(info.vulnerable, 3) * 0.6 + min(info.weak, 3) * 0.4
     if info.impaled_only:  # only with our Arrow in the enemy: 39-55% of the turns Nail, Uproot, Recall and Wrest were drawn
         score = base + (score - base) * IMPALED_SHARE
+    if re.search(r"can\s+only\s+be\s+played\s+if", str(card.get("description") or ""), re.I):
+        # Clash ("if every card in your hand is an Attack") read as 14 free damage and topped the first STS1 rewards at
+        # 9.7; held beside Defends it is dead most turns (Grand Finale, Signature Move: the same).
+        score = base + (score - base) * CONDITIONAL_SHARE
     if info.cost == 0 and info.known:
         score += 0.5
     if ctype == "Power":

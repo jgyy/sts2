@@ -265,6 +265,7 @@ LATE_ROW = 5  # from this row of acts 2 and 3 an ordinary fight costs more than 
 LATE_COST = {2: (0.85, 1.2), 3: (0.93, 1.08)}
 BAD_LUCK = 1.7  # how much more than average a fight costs when the draws go wrong
 BOSS_WORTH = 16.0  # what getting past the boss is worth, in the units of the room rewards below
+EMERALD_WORTH = 8.0  # the first game's burning elite, which holds the Emerald Key for act 4 (games/sts1/keys.py)
 MAX_PATHS = 1500
 ELITE_FLOOR = 0.35  # share of Max HP under which an elite is never chosen while there is another way on
 # The act 2 boss by the HP it is met on, as a share of the chance from full HP. Until 2026-11-22 acts 1 and 2 shared
@@ -349,6 +350,8 @@ def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, 
     costs = FIGHT_COST.get(act, FIGHT_COST[3])
     score = 0.0
     for n, (kind, row) in enumerate(rooms):
+        if kind == "EmeraldElite":
+            score, kind = score + EMERALD_WORTH, "Elite"
         if kind in ("Monster", "Elite"):
             cost = costs[kind]
             if kind == "Elite" and act == 1 and isinstance(row, int) and row < EARLY_ROWS:
@@ -452,11 +455,11 @@ def map_screen(state: dict, mem: Memory) -> list[Action]:
         return _room_value(str(opt.get("type")), hp, gold, is_early(opt.get("row")), act) + 0.9 * ahead
 
     scored = [(value(o), o) for o in options]
-    if hp < ELITE_FLOOR and any(str(o.get("type")) != "Elite" for _, o in scored):
+    if hp < ELITE_FLOOR and any("Elite" not in str(o.get("type")) for _, o in scored):
         # Badly hurt, every road "dies" on paper and the values no longer tell them apart: an elite was
         # taken on 14 of 76 HP at -67.1 over an Unknown room at -72.2. Of 9 elites met under half HP on
         # Ascension 7, 6 ended the run; an Unknown room is a fight one time in five.
-        scored = [(v - (1000.0 if str(o.get("type")) == "Elite" else 0.0), o) for v, o in scored]
+        scored = [(v - (1000.0 if "Elite" in str(o.get("type")) else 0.0), o) for v, o in scored]
     ranked = [o for _, o in sorted(scored, key=lambda t: t[0], reverse=True)]
     if log.isEnabledFor(logging.DEBUG) and len(scored) > 1:
         log.debug("map: %s", ", ".join(f"{o.get('type')}@{o.get('col')} {v:.1f}" for v, o in scored))
