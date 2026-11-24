@@ -418,7 +418,7 @@ index 76eee84..ff161de 100644
          if (previewShowing)
          {
 diff --git a/McpMod.cs b/McpMod.cs
-index 3b5ed64..6aa6eae 100644
+index 3b5ed64..60823f0 100644
 --- a/McpMod.cs
 +++ b/McpMod.cs
 @@ -84,6 +84,7 @@ public static partial class McpMod
@@ -429,7 +429,7 @@ index 3b5ed64..6aa6eae 100644
  
              // Connect to main thread process frame for action execution
              var tree = (SceneTree)Engine.GetMainLoop();
-@@ -450,6 +451,150 @@ public static partial class McpMod
+@@ -450,6 +451,157 @@ public static partial class McpMod
  
          string action = actionElem.GetString() ?? "";
  
@@ -476,6 +476,7 @@ index 3b5ed64..6aa6eae 100644
 +                int width = parsed.TryGetValue("width", out var wElem) && wElem.TryGetInt32(out var w) ? w : 960;
 +                int height = parsed.TryGetValue("height", out var hElem) && hElem.TryGetInt32(out var h) ? h : 540;
 +                bool maximize = parsed.TryGetValue("maximize", out var mElem) && mElem.ValueKind == System.Text.Json.JsonValueKind.True;
++                bool fullscreen = parsed.TryGetValue("fullscreen", out var fElem) && fElem.ValueKind == System.Text.Json.JsonValueKind.True;
 +                var resultTask = RunOnMainThread(() =>
 +                {
 +                    var tree = (SceneTree)Engine.GetMainLoop();
@@ -484,7 +485,12 @@ index 3b5ed64..6aa6eae 100644
 +                    tree.Root.Msaa3D = Viewport.Msaa.Disabled;
 +                    DisplayServer.WindowSetVsyncMode(DisplayServer.VSyncMode.Disabled);
 +                    Engine.MaxFps = 0;
-+                    if (maximize)
++                    if (fullscreen)
++                    {
++                        // sts2bot: borderless full screen at the desktop's size (asked for on 2026-11-24).
++                        DisplayServer.WindowSetMode(DisplayServer.WindowMode.Fullscreen);
++                    }
++                    else if (maximize)
 +                    {
 +                        DisplayServer.WindowSetMode(DisplayServer.WindowMode.Maximized);
 +                    }
@@ -496,8 +502,9 @@ index 3b5ed64..6aa6eae 100644
 +                    return new Dictionary<string, object?>
 +                    {
 +                        ["status"] = "ok",
-+                        ["message"] = $"Light graphics on ({(maximize ? "maximized" : $"{width}x{height}")}, no anti-aliasing, uncapped frame rate)",
-+                        ["maximized"] = maximize,
++                        ["message"] = $"Light graphics on ({(fullscreen ? "full screen" : maximize ? "maximized" : $"{width}x{height}")}, no anti-aliasing, uncapped frame rate)",
++                        ["maximized"] = maximize || fullscreen,
++                        ["fullscreen"] = fullscreen,
 +                        ["fps_before"] = before
 +                    };
 +                });

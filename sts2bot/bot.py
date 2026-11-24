@@ -20,6 +20,7 @@ from .run.strategy import Memory
 log = logging.getLogger("sts2bot")
 
 COMBAT_STATES = ("monster", "elite", "boss")
+RECENT_RUNS = 40  # runs whose characters the rotation looks back over (strategy.choose_character)
 # Screens strategy.py has a handler for, under the screen's own name (the map's is map_screen).
 SCREENS = {
     "hand_select", "rewards", "card_reward", "map", "event", "rest_site", "shop", "treasure", "card_select",
@@ -67,6 +68,10 @@ class Bot:
         self.character = character
         self.log_dir = log_dir
         self.poll = poll
+        # Pauses for Slay the Spire 2's sake: after leaving a room or buying (0.4 s), and between looks while a room loads
+        # (0.15 s), since faster polling there crashed that game. The first game's CommunicationMod answers a command only
+        # once the game is ready for the next, so its bot sets both near nothing (__main__).
+        self.room_pause, self.room_poll = 0.4, 0.15
         self.settle = settle
         self.travel_settle = 8.0
         self.quiet_settle = 0.3
@@ -98,6 +103,8 @@ class Bot:
         if log_dir:
             learn.seed_from_history(self.card_stats, log_dir / "runs.jsonl")
         self.mem.card_stats = self.card_stats
+        if log_dir:  # (the rotation of characters carries on across restarts)
+            self.mem.recent = [str(r.get("character") or "") for r in learn.history(log_dir / "runs.jsonl")][-RECENT_RUNS:]
         relics.load(log_dir / "runs.jsonl" if log_dir else None, events._ANCIENT)  # what the Ancients' relics did in our runs
         self._upgrades: dict = {}  # card id -> what its upgrade adds (None: the game could not say)
         self.mem.upgrade_gain = self._upgrade_gain
@@ -118,6 +125,7 @@ class Bot:
         self._last_change = clock()
         self._last_retry = clock()
         self._over_logged = False
+        self._prev_kind: str | None = None  # the state before this one (a run that ends straight out of a fight was lost)
         self._boss_watch = BossWatch()
         self._fight_watch = FightWatch(log_dir / "fights.jsonl" if log_dir else None)  # every fight, kept past the logs
         self._turn_key: tuple = ()
@@ -417,6 +425,7 @@ class Bot:
 
     def _note_state(self, state: dict) -> None:
         kind = state.get("state_type")
+        prev, self._prev_kind = self._prev_kind, kind
         ended = self._boss_watch.update(state, kind)
         if ended:
             log.info(ended)
@@ -442,7 +451,9 @@ class Bot:
         if kind == "game_over":
             if not self._over_logged:
                 self._over_logged = True
-                self._record_run(state)
+                # Straight out of a fight is a death, and so is a boss fight the boss watch saw end in the end screen: a won
+                # last boss leaves its fight first (which is how the watch has told wins from losses all along).
+                self._record_run(state, died=prev in COMBAT_STATES or bool(ended and " lost;" in ended))
         elif self._over_logged:
             self._over_logged = False
             self.mem.reset_run()
@@ -469,14 +480,16 @@ class Bot:
             log.info("epochs earned this run: %s", ", ".join(sorted(new)))
         self.mem.epochs = epochs
 
-    def _record_run(self, state: dict) -> None:
+    def _record_run(self, state: dict, died: bool = False) -> None:
         p = state.get("player") or {}
         run = state.get("run") or {}
         # The end screen looks the same for a win and a loss, and the HP it
         # reports is not reliable (the first win was logged as a loss). The
         # game's own win counter is: it goes up by one when a run is won.
         before, now = self._wins_seen, self._profile_wins()
-        if before is not None and now == before and int(run.get("act") or 0) >= 3:
+        # (Not after a death: the end screen came straight out of the fight, so no win is coming, and every act 3 death
+        # waited out the full 4 s here. Losses in act 3 took 4.1 s from the last play to this line, wins 1-2 s, 2026-11-24.)
+        if before is not None and now == before and int(run.get("act") or 0) >= 3 and not died:
             # The game writes a win to the profile a moment after the end
             # screen comes up: asked 0.3 s after the last click, the counter
             # had not moved and the Regent's first win went down as a loss
@@ -495,6 +508,8 @@ class Bot:
             won = int(p.get("hp") or 0) > 0
         self.runs_finished += 1
         self.wins += won
+        self.mem.last_result = "win" if won else "loss"
+        self.mem.recent = (self.mem.recent + [str(p.get("character") or "")])[-RECENT_RUNS:]
         entry = {
             "time": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
             "character": p.get("character"),
@@ -567,7 +582,7 @@ class Bot:
         # While a room is loading the game is rebuilding its scene; ask less
         # often then (a state request walks that scene, and the game once
         # crashed mid-travel under rapid polling).
-        pause = min(0.15 if leave or slow else 0.03, self.poll)
+        pause = min(self.room_poll if leave or slow else 0.03, self.poll)
         if self._careful():
             pause = max(pause, 0.5)
         while self.clock() < deadline:
@@ -635,8 +650,8 @@ class Bot:
             # Embarking loads the whole run; clicking the character again
             # while it does crashed the game. Wait for the menu to go away.
             embarking = action == "menu_select" and state.get("menu_screen") == "character_select" and str(params.get("option")) in ("confirm", "embark")
-            if fragile or embarking:
-                self.sleep(0.4)
+            if (fragile or embarking) and self.room_pause:
+                self.sleep(self.room_pause)
             if self._careful():
                 self.sleep(1.0)
             changed = self._wait_for_change(

@@ -18,16 +18,32 @@ from .screens import CHARACTERS, Screens
 log = logging.getLogger("sts2bot.sts1")
 
 DEFAULT_PORT = 15527
+INTENT_WAITS, INTENT_WAIT_FRAMES = 5, 10  # how often, and for how many frames each time, to wait for a fight's intents
+
+
+def _intents_pending(msg: dict | None) -> bool:
+    """A fight's message whose monsters have no intent yet (CommunicationMod says "DEBUG" until the game sets them)."""
+    if not isinstance(msg, dict) or "wait" not in (msg.get("available_commands") or []):
+        return False
+    monsters = ((msg.get("game_state") or {}).get("combat_state") or {}).get("monsters") or []
+    return any(str(m.get("intent")) == "DEBUG" for m in monsters if not m.get("is_gone") and not m.get("half_dead") and (m.get("current_hp") or 0) > 0)
 
 
 class Sts1Client(Client):
-    def __init__(self, host: str = "127.0.0.1", port: int = DEFAULT_PORT, timeout: float = 30.0, prefs: dict | None = None):
+    def __init__(self, host: str = "127.0.0.1", port: int = DEFAULT_PORT, timeout: float = 30.0, prefs=None):
+        """`prefs`: what the save files say (host.read_prefs's dict), or a function that reads them again: then each
+        profile() asks it afresh, so a win's next ascension and a newly unlocked character are seen without a restart."""
         super().__init__(host, port, timeout)
         self.screens = Screens()
         self._shops_opened: set = set()
-        prefs = prefs or {}
+        self._read_prefs = prefs if callable(prefs) else None
+        self._refused: set = set()  # characters the game would not start
+        self._take_prefs(self._read_prefs() if self._read_prefs else (prefs or {}))
+
+    def _take_prefs(self, prefs: dict) -> None:
         self.screens.max_ascension = {k: int(v) for k, v in (prefs.get("max_ascension") or {}).items()}
-        self.screens.wins = int(prefs.get("wins") or 0)
+        self.screens.wins = max(self.screens.wins, int(prefs.get("wins") or 0))
+        self.screens.locked = set(prefs.get("locked") or ()) | self._refused
 
     # ------------------------------------------------------------ transport
 
@@ -48,7 +64,18 @@ class Sts1Client(Client):
     # ------------------------------------------------------------ the Client calls the bot makes
 
     def state(self) -> dict[str, Any]:
-        st = self.screens.translate(self._message())
+        msg = self._message()
+        for _ in range(INTENT_WAITS):
+            # The first message of a fight comes before the monsters' intents are set (they read "DEBUG"), and the
+            # planner then played its first card blind (Strike into a Jaw Worm's 11, the first live runs). A few
+            # frames later they are there.
+            if not _intents_pending(msg):
+                break
+            answer = self.send(f"wait {INTENT_WAIT_FRAMES}")
+            if answer.get("status") != "ok" or not isinstance(answer.get("message"), dict):
+                break
+            msg = answer["message"]
+        st = self.screens.translate(msg)
         if st.get("_shop_room"):
             # The merchant's room comes before his shelf: open it once a visit, the bot only shops on the shelf.
             where = (self.screens.game.get("seed"), self.screens.game.get("floor"))
@@ -60,10 +87,12 @@ class Sts1Client(Client):
         return st
 
     def profile(self) -> dict[str, Any]:
-        """What the save files said, and the wins seen since: enough for the bot to pick a character."""
+        """What the save files say, and the wins seen since: enough for the bot to pick a character."""
+        if self._read_prefs and not self.screens.raw.get("in_game"):
+            self._take_prefs(self._read_prefs())
         return {
             "total_wins": self.screens.wins,
-            "characters": [{"id": c, "max_ascension": self.screens.max_ascension.get(c, 0)} for c in CHARACTERS],
+            "characters": [{"id": c, "max_ascension": self.screens.max_ascension.get(c, 0)} for c in CHARACTERS if c not in self.screens.locked],
         }
 
     def card(self, card_id: str) -> dict[str, Any] | None:
@@ -87,6 +116,7 @@ class Sts1Client(Client):
             if command.startswith("start "):
                 who = command.split()[1]
                 log.warning("the game would not start %s (%s)", who, answer.get("error"))
+                self._refused.add(who)
                 self.screens.locked.add(who)
             return {"status": "error", "error": str(answer.get("error") or "the game refused the command")}
         if isinstance(answer.get("message"), dict):

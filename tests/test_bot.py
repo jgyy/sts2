@@ -516,6 +516,43 @@ class LiveGameLessons(unittest.TestCase):
         self.assertIn("win", logs.output[-1])
         self.assertEqual(bot.wins, 1)
 
+    def test_a_death_straight_out_of_a_fight_is_not_waited_on(self):
+        # Every act 3 death waited 4 s for a win that could not come (2026-11-24: 4.1 s from the last play, wins 1-2 s).
+        class Game:
+            wins, asked = 2, 0
+
+            def profile(self):
+                self.asked += 1
+                return {"total_wins": self.wins, "characters": []}
+
+        game = Game()
+        slept = []
+        bot = Bot(game, clock=FakeClock().now, sleep=slept.append)
+        bot._refresh_ascensions()
+        fight = {"state_type": "boss", "run": {"act": 3, "floor": 48}, "player": {"hp": 4, "max_hp": 80}, "battle": {"round": 9, "enemies": []}}
+        over = {"state_type": "game_over", "run": {"act": 3, "floor": 48}, "player": {"hp": 0, "max_hp": 80}}
+        bot._note_state(fight)
+        with self.assertLogs("sts2bot", level="INFO") as logs:
+            bot._note_state(over)
+        self.assertTrue(any("run 1 over: loss" in line for line in logs.output), logs.output)
+        self.assertEqual(slept, [])  # no waiting on the counter
+        # ... while one that leaves its fight first (a won last boss) is still waited for.
+        bot = Bot(game, clock=FakeClock().now, sleep=slept.append)
+        bot._refresh_ascensions()
+        bot._note_state({"state_type": "rewards", "run": {"act": 3, "floor": 48}, "player": {"hp": 30, "max_hp": 80}})
+        with self.assertLogs("sts2bot", level="INFO"):
+            bot._note_state(over)
+        self.assertEqual(len(slept), 8)
+
+    def test_with_the_timeline_complete_a_death_skips_the_summary(self):
+        over = {"state_type": "game_over", "game_over": {"options": ["continue", "force_main_menu"]}}
+        mem = Memory(epochs={"NEOW_EPOCH": "Revealed", "FOOL1_EPOCH": "Revealed"}, last_result="loss")
+        self.assertEqual(strategy.game_over(over, mem), [("menu_select", {"option": "force_main_menu"})])
+        mem.last_result = "win"
+        self.assertEqual(strategy.game_over(over, mem), [("menu_select", {"option": "continue"})])  # (a win: the summary)
+        mem.last_result, mem.epochs["FOOL2_EPOCH"] = "loss", "NotObtained"
+        self.assertEqual(strategy.game_over(over, mem), [("menu_select", {"option": "continue"})])  # (score still buys epochs)
+
     def test_a_bot_started_mid_run_still_sees_that_run_won(self):
         class Game:
             wins = 3

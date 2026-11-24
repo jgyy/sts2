@@ -52,6 +52,8 @@ class Memory:
     max_ascension: dict = field(default_factory=dict)  # character id -> highest unlocked ascension
     ascension_waits: int = 0  # times we held off embarking for the ascension level to show
     epochs: dict = field(default_factory=dict)  # epoch id -> state, from the game's profile
+    last_result: str = ""  # "win" or "loss": how the run on the end screen went (set when it is recorded)
+    recent: list = field(default_factory=list)  # the characters of the last runs played, oldest first (for the rotation)
     timeline_done: bool = False  # the Timeline has nothing more to reveal this visit
     timeline_stuck: set = field(default_factory=set)  # epochs it could not reveal (not retried)
     parasol: tuple = ()  # the shop Lord's Parasol is emptying, and how often we have looked at it: (act, floor, looks)
@@ -116,7 +118,7 @@ def menu(state: dict, mem: Memory, character: str) -> list[Action]:
     if screen == "character_select":
         chars = [c for c in state.get("characters") or [] if not c.get("locked")]
         ids = [str(c.get("id")) for c in chars]
-        want = choose_character(character, ids, mem.runs_finished, mem.max_ascension, mem.epochs)
+        want = choose_character(character, ids, mem.runs_finished, mem.max_ascension, mem.epochs, mem.recent)
         select = [("menu_select", {"option": want})] if want else []
         embark = pick("confirm", "embark")
         if not mem.character_selected:
@@ -149,6 +151,11 @@ def menu(state: dict, mem: Memory, character: str) -> list[Action]:
 _EARNED = ("Obtained", "ObtainedNoSlot", "Revealed")
 
 
+def timeline_complete(epochs: dict | None) -> bool:
+    """Every epoch the profile lists has been earned (False when it lists none: a game without a Timeline, or not asked yet)."""
+    return bool(epochs) and all(state in _EARNED for state in epochs.values())
+
+
 def missing_epochs(character: str, epochs: dict | None) -> int:
     """How many of this character's own epochs (IRONCLAD2_EPOCH, ...) are still to be earned."""
     prefix = re.compile(rf"^{re.escape(character.upper())}\d+_EPOCH$")
@@ -158,7 +165,14 @@ def missing_epochs(character: str, epochs: dict | None) -> int:
 _SESSION = random.SystemRandom().getrandbits(32)  # so a restart does not replay the same draws
 
 
-def choose_character(setting: str, unlocked: list[str], runs_finished: int, max_ascension: dict | None = None, epochs: dict | None = None) -> str | None:
+def _who(name) -> str:
+    """A character's name as the menu lists it ("THE_SILENT", "SILENT") and as runs.jsonl keeps it ("The Silent"), alike."""
+    key = re.sub(r"[^A-Z]+", "_", str(name).upper()).strip("_")
+    return key[4:] if key.startswith("THE_") else key
+
+
+def choose_character(setting: str, unlocked: list[str], runs_finished: int, max_ascension: dict | None = None, epochs: dict | None = None,
+                     recent: list | None = None) -> str | None:
     """`setting` is a character id, or "auto" / "cycle" / "random" over the unlocked ones.
 
     "auto" first plays the characters that still have a Timeline epoch of
@@ -167,6 +181,8 @@ def choose_character(setting: str, unlocked: list[str], runs_finished: int, max_
     ascension unlocked, so that all of them climb evenly, and draws at random
     among those on that level (all asked for on 2026-11-18). The draw is
     fixed for a run, since the menu asks again on every poll.
+    With `recent` (the characters of the last runs, oldest first) "auto" takes the one of them played longest ago instead
+    of drawing: a rotation (asked for on 2026-11-24, "rotate between characters and focus on ascending everyone").
     """
     # The game's own "Random" tile is listed like a character, on ascension 0
     # for ever: counted as one, it was the lowest and got picked every time.
@@ -194,6 +210,10 @@ def choose_character(setting: str, unlocked: list[str], runs_finished: int, max_
             unlocked = owed or unlocked
         low = min(levels.get(u.upper(), 0) for u in unlocked)
         lowest = [u for u in unlocked if levels.get(u.upper(), 0) == low]
+        if s == "AUTO" and recent:
+            last = {_who(c): n for n, c in enumerate(recent)}
+            longest = min(last.get(_who(u), -1) for u in lowest)
+            lowest = [u for u in lowest if last.get(_who(u), -1) == longest]
         return random.Random(_SESSION + runs_finished).choice(lowest)
     if s == "CYCLE":
         return unlocked[runs_finished % len(unlocked)]
@@ -952,6 +972,10 @@ def game_over(state: dict, mem: Memory) -> list[Action]:
     after 196 runs the profile's score was still 0.
     """
     options = (state.get("game_over") or {}).get("options") or []
+    if mem.last_result == "loss" and timeline_complete(mem.epochs) and "force_main_menu" in options:
+        # With every epoch on the Timeline revealed (all 65 on the beta, 2026-11-24) the score has nothing left to buy:
+        # a death goes straight back to the menu (asked for that day). A win still goes by the summary.
+        return [("menu_select", {"option": "force_main_menu"})]
     if "continue" in options:
         mem.over_waits = 0
         return [("menu_select", {"option": "continue"})]

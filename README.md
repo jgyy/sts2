@@ -225,8 +225,12 @@ save files (`preferences/` in the game folder, first save slot; set
 
 Differences from the second game:
 
-- The game's own **Fast Mode** setting is the speed control; `--fast-mode`,
-  `--time-scale` and the graphics options only apply to Slay the Spire 2.
+- Speed: the bot turns the game's own **Fast Mode** on and runs its clock
+  `--sts1-time-scale` times faster (default 8) through a small ModTheSpire mod of
+  its own; `--fast-mode`, `--time-scale` and the graphics options only apply to
+  Slay the Spire 2. Before each launch it also sets borderless full screen
+  (`--windowed` for a window), a 240 fps cap, full volume, the first-run tips off,
+  and a profile in the first save slot if there is none.
 - CommunicationMod cannot continue a saved run, so a run interrupted by a crash
   is not resumed: the bot starts a new one.
 - The planner knows nothing of the Watcher's Stances or of Mantra, and plays
@@ -364,8 +368,10 @@ planner constant or tuned setting.
 | `--launch-cmd` | the game binary, else `steam -applaunch 2868840` | Command that starts the game |
 | `--fast-mode` | `instant` | Game animation speed (`instant`, `fast`, `normal`), set through the mod each time the bot connects (not saved to your settings); `keep` leaves it alone |
 | `--time-scale` | `3` | How many times faster the game's own clock runs (timers, pauses between enemy moves), set through the mod for the session; `1` leaves it alone |
+| `--sts1-time-scale` | `8` | The same for the first Slay the Spire, through the bot's own ModTheSpire mod (`sts2bot/games/sts1/speedmod.py`, built with the system's `javac` and loaded only when the bot starts the game) |
 | `--full-graphics` | off | Keep the game's normal window and graphics. By default the bot maximises the window and turns anti-aliasing and the frame cap off for the session (not saved to your settings) |
-| `--small-window` | off | Shrink the game window to 960x540 instead of maximising it (a little faster on a slow machine) |
+| `--small-window` | off | Shrink the game window to 960x540 instead of full screen (a little faster on a slow machine) |
+| `--windowed` | off | A maximised window instead of full screen, in both games |
 | `--stuck-timeout` | `300` | Seconds without change before the game is restarted |
 | `--host`, `--port` | `127.0.0.1`, `15526` (`15527` with `--game sts1`) | Where the bridge mod (or the first game's relay) listens |
 | `-v` | off | Log every action |

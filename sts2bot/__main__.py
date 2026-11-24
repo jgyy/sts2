@@ -15,6 +15,9 @@ from . import games, service
 from .supervisor import DEFAULT_LAUNCH, FAST_MODES, Supervisor
 
 DEFAULT_TIME_SCALE = 3.0
+# The first game's clock, through our own speed mod (games/sts1/speedmod.py). It runs at 240 frames a second there, so even x8
+# leaves each frame the time step of a 30 fps game: the game's logic sees nothing unusual.
+DEFAULT_STS1_TIME_SCALE = 8.0
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 STS1_SETUP_HINT = ("would wait for a relay that never starts and restart the game for ever. "
                    "Run `python3 -m sts2bot sts1-setup` to point CommunicationMod at the bot's relay")
@@ -106,12 +109,19 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="keep the game's normal window and graphics (default: maximised window, no anti-aliasing, uncapped frame rate)",
     )
-    ap.add_argument("--small-window", action="store_true", help="shrink the game window to 960x540 instead of maximising it")
+    ap.add_argument("--small-window", action="store_true", help="shrink the game window to 960x540 instead of full screen")
+    ap.add_argument("--windowed", action="store_true", help="a maximised window instead of full screen (both games)")
     ap.add_argument(
         "--time-scale",
         type=float,
         default=DEFAULT_TIME_SCALE,
         help=f"how many times faster the game's clock runs, set through the mod for the session (default: {DEFAULT_TIME_SCALE:g}; 1 leaves it alone)",
+    )
+    ap.add_argument(
+        "--sts1-time-scale",
+        type=float,
+        default=DEFAULT_STS1_TIME_SCALE,
+        help=f"the same for the first Slay the Spire, through the bot's own ModTheSpire mod (default: {DEFAULT_STS1_TIME_SCALE:g}; 1 leaves it alone)",
     )
     ap.add_argument("--stuck-timeout", type=float, default=300.0, help="seconds without any change before the game is restarted")
     ap.add_argument("--poll", type=float, default=0.2, help="seconds between state polls")
@@ -146,8 +156,8 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
             logging.getLogger("sts2bot").warning("%s; the bot cannot reach the game until you run `python3 -m sts2bot sts1-setup`", why)
 
-        client: Client = Sts1Client(args.host, args.port, prefs=sts1_host.read_prefs())
-        host = sts1_host.Sts1Host()
+        client: Client = Sts1Client(args.host, args.port, prefs=sts1_host.read_prefs)
+        host = sts1_host.Sts1Host(log_dir=args.log_dir, fullscreen=not args.windowed, time_scale=args.sts1_time_scale)
         launch_cmd = args.launch_cmd or sts1_host.default_launch()
     else:
         client = Client(args.host, args.port)
@@ -160,7 +170,9 @@ def main(argv: list[str] | None = None) -> int:
         stuck_timeout=args.stuck_timeout,
         tune=not args.no_tuning,
     )
-    sup = Supervisor(bot, client, host=host, launch_cmd=launch_cmd, manage_game=not args.no_launch, fast_mode=None if args.fast_mode == "keep" else args.fast_mode, light_graphics=not args.full_graphics, small_window=args.small_window, time_scale=args.time_scale)
+    if args.game == "sts1":
+        bot.room_pause, bot.room_poll = 0.0, 0.03  # (see Bot.__init__: CommunicationMod already waits for the game)
+    sup = Supervisor(bot, client, host=host, launch_cmd=launch_cmd, manage_game=not args.no_launch, fast_mode=None if args.fast_mode == "keep" else args.fast_mode, light_graphics=not args.full_graphics, small_window=args.small_window, fullscreen=not args.windowed, time_scale=args.time_scale)
     logging.getLogger("sts2bot").info("playing %s; logs and run history in %s", games.TITLES[args.game], args.log_dir)
     try:
         sup.run(args.runs)

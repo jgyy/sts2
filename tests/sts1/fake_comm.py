@@ -72,7 +72,7 @@ class FakeComm:
             self.screen, self.victory = "GAME_OVER", True
             return
         self.screen, self.phase = "COMBAT_REWARD", "COMPLETE"
-        self.rewards = [{"type": "GOLD", "gold": 15}, {"type": "CARD"}]
+        self.rewards = [{"reward_type": "GOLD", "gold": 15}, {"reward_type": "CARD"}]
 
     # ------------------------------------------------------------ messages
 
@@ -81,7 +81,7 @@ class FakeComm:
             return ["start", "state"]
         s = self.screen
         if s == "NONE":
-            return ["play", "end", "potion", "state"] if self.monster["hp"] > 0 else ["state"]
+            return ["play", "end", "potion", "wait", "state"] if self.monster["hp"] > 0 else ["state"]
         return {
             "MAP": ["choose", "state"], "COMBAT_REWARD": ["choose", "proceed", "state"], "CARD_REWARD": ["choose", "skip", "state"],
             "EVENT": ["choose", "state"], "SHOP_ROOM": ["choose", "proceed", "state"], "SHOP_SCREEN": ["choose", "leave", "state"],
@@ -110,7 +110,10 @@ class FakeComm:
                 "draw_pile": [self._card(c) for c in self.draw], "discard_pile": [self._card(c) for c in self.discard], "exhaust_pile": [],
                 "player": {"current_hp": self.hp, "max_hp": self.max_hp, "block": self.block, "energy": self.energy, "powers": [], "orbs": []},
                 "monsters": [{"id": "JawWorm", "name": "Jaw Worm", "current_hp": self.monster["hp"], "max_hp": self.max_monster, "block": 0,
-                              "intent": "ATTACK", "move_adjusted_damage": self.attack, "move_hits": 1, "half_dead": False, "is_gone": False,
+                              # (the real game's first message of a fight comes before the intents are set: "DEBUG")
+                              "intent": "DEBUG" if getattr(self, "intent_pending", 0) > 0 else "ATTACK",
+                              "move_adjusted_damage": -1 if getattr(self, "intent_pending", 0) > 0 else self.attack, "move_hits": 1,
+                              "half_dead": False, "is_gone": False,
                               "powers": [{"id": "Vulnerable", "name": "Vulnerable", "amount": self.monster["vuln"]}] if self.monster["vuln"] else []}],
             }
         elif s == "MAP":
@@ -164,6 +167,9 @@ class FakeComm:
         s = self.screen if self.in_game else "MENU"
         if verb == "state":
             return True
+        if verb == "wait":
+            self.intent_pending = max(0, getattr(self, "intent_pending", 0) - 1)
+            return True
         if verb == "start":
             self._start(args[0].upper(), int(args[1]) if len(args) > 1 else 0)
             return True
@@ -213,7 +219,7 @@ class FakeComm:
             return True
         if s == "COMBAT_REWARD" and verb == "choose":
             item = self.rewards[int(args[0])]
-            if item["type"] == "CARD":
+            if item["reward_type"] == "CARD":
                 self.screen = "CARD_REWARD"
             else:
                 self.gold += item.get("gold", 0)
@@ -224,7 +230,7 @@ class FakeComm:
             return True
         if s == "CARD_REWARD" and verb == "choose":
             self.deck.append(("Pommel Strike", "Pommel Strike", "ATTACK", 1, True) if args[0] == "0" else ("Clash", "Clash", "ATTACK", 0, True))
-            self.rewards = [r for r in self.rewards if r["type"] != "CARD"]
+            self.rewards = [r for r in self.rewards if r["reward_type"] != "CARD"]
             self.screen = "COMBAT_REWARD"
             return True
         if s == "CARD_REWARD" and verb == "skip":
@@ -270,7 +276,7 @@ class FakeComm:
             return True
         if s == "CHEST" and verb == "choose":
             self.chest_open = True
-            self.screen, self.rewards = "COMBAT_REWARD", [{"type": "RELIC", "relic": {"id": "Anchor", "name": "Anchor", "counter": -1}}]
+            self.screen, self.rewards = "COMBAT_REWARD", [{"reward_type": "RELIC", "relic": {"id": "Anchor", "name": "Anchor", "counter": -1}}]
             return True
         if s == "GAME_OVER" and verb == "proceed":
             self.in_game = False
