@@ -1,34 +1,7 @@
-"""What a relic on a Merchant's shelf is worth to this bot, next to an ordinary one.
-
-Until 2026-11-22 every shop relic stood at `8.0 - price / 200`, so the cheapest affordable one was bought,
-whatever it did: in 335 logged shop visits 74 relics were bought, nearly all commons at 150-200 gold (Red
-Mask, Happy Flower, Vajra, Anchor, Meal Ticket), and Girya, Shovel or Chemical X would have gone the same
-way had they been the cheapest. `worth` is added to that price rule: 0 is an ordinary relic, +1 a relic
-worth a good card more, -3 one that does nothing for the bot as it plays (bought only with 200 gold to spare).
-
-The numbers are set by what each text does, checked against what the relics held did to the cost of
-fights (fights.jsonl, 2026-11-21 17:54 to 2026-11-22 14:10: 3,437 ordinary and elite fights in 292 runs,
-HP lost per fight by least squares with the encounter, the character, relics held, deck size and floor
-taken out; errors clustered by run, about 1.0-1.5 HP for a relic held in 10-30 runs):
-
-    a fight cheaper by   Candelabra 5.6, Orichalcum 5.2, Cloak Clasp 5.7, Beating Remnant 3.9, Lizard Tail 3.4,
-                         Happy Flower 3.1, Captain's Wheel 2.7, Oddly Smooth Stone 2.5, Anchor 2.5, Gorget 2.4,
-                         Festive Popper 2.4, Red Mask 2.3, Bag of Marbles 2.2, Lantern 1.9, Bronze Scales 1.5
-    about nothing        Pendulum, Centennial Puzzle, War Paint, Pen Nib, Strike Dummy, Book of Five Rings,
-                         Venerable Tea Set (+0.4), Juzu Bracelet (+0.3), Amethyst Aubergine (+0.3), Blood Vial (+0.6)
-
-In boss fights (510, so errors of 3-4 HP) Potion Belt (-10.5), Bag of Preparation (-9.0) and Vajra (-7.4) stood
-out; potions held at a boss are already known to matter (strategy.shop), so the belt is rated above its
-ordinary-fight record. Relics whose worth comes outside fights (healing at rest sites and shops, Max HP,
-gold) are rated by what that HP or gold is worth here: HP at the act 2 boss is a cliff (under 75% of Max HP
-17% won, from 75% 59%), so Pantograph's 25 HP at each boss was the best relic a shop sold this bot, until the energy relics below.
-
-Energy is what the fight-cost table reads least well. It saw energy relics save HP in ordinary rooms (Candelabra 5.6, Happy Flower 3.1, Lantern 1.9 HP a fight), but energy is worth most where a deck is shortest of it, at bosses: the Knowledge Demon model (demonfight.py, the planner within 2 points of perfect play) wins 0.2% of its fights with a deck on 3 energy and 60% on the same deck on 4; on 4 energy, 50 HP at its door wins 14% and 75 HP 60%, so one energy a turn is worth more than Pantograph's 25 HP there (60 points against 46). `events._ANCIENT` already rates these relics that way (Paels Flesh 12.5, Seal of Gold 10.0), so the shop follows it: the per-turn group takes those ratings less what each one costs (Blessed Antler's three Dazed a fight, Blood-Soaked Rose's Enthralled, Spiked Gauntlets' dearer Powers). Whispering Earring's wiki text says Vakuu plays the first turn; the logs show the bot playing its own (Test Subject, 13:03), so it is rated as the Ancient table rates it. Judge by the act 2 boss results of runs holding one: before this edit 13 of 21 won, against 30 of 75 with no energy relic (fights.jsonl, 2026-11-22).
-
-Relics the bot cannot use as it plays are rated down: Miniature Tent's second option is never taken (the
-bot proceeds after one; Girya's Lift and Shovel's Dig were never taken either until edit 164, 2026-11-22), Belt Buckle needs an empty belt the bot keeps full for the boss. Deck-bound relics are rated by the
-deck (`_DECK`).
-"""
+"""What a relic on a Merchant's shelf is worth to this bot next to an ordinary one (0; +1 is a good card more, -3 a relic that
+does nothing for the bot as it plays), added to the shop's price rule, which alone bought the cheapest relic whatever it did.
+Set by what each text does, checked against what the relics held did to the cost of fights; energy, worth most at bosses,
+follows events._ANCIENT less each relic's drawback. Deck-bound relics are rated by the deck (`_DECK`)."""
 
 from __future__ import annotations
 
@@ -44,7 +17,7 @@ WORTH = {
     # --- energy
     "CANDELABRA": 1.0, "CHANDELIER": 1.0, "HAPPY_FLOWER": 0.8, "BREAD": 0.6, "LANTERN": 0.4, "ICE_CREAM": 0.2,
     "ART_OF_WAR": 0.1, "VENERABLE_TEA_SET": -0.3, "NUNCHAKU": -0.3, "IVORY_TILE": -1.0,
-    # energy every turn (the basis and each one's drawback: see the docstring)
+    # energy every turn (the Ancient table's rating, less each one's drawback)
     "PAELS_FLESH": 2.0, "PRISMATIC_GEM": 2.0, "WHISPERING_EARRING": 2.0, "SPIKED_GAUNTLETS": 1.0,
     "PUMPKIN_CANDLE": 1.0, "BLESSED_ANTLER": 0.5, "PAELS_TEARS": 0.5, "SEAL_OF_GOLD": 0.5, "VERY_HOT_COCOA": 1.5,
     "BLOOD_SOAKED_ROSE": 0.0,
@@ -83,15 +56,14 @@ WORTH = {
     "VITRUVIAN_MINION": -0.5,
 }
 
-# Worth that comes over the rest of the run outside fights, or by changing rewards still to come: less of it is
-# left in a later act (act -> taken off).
+# Worth that comes over the rest of the run outside fights, or by changing rewards still to come: less of it is left in a later act.
 LONG_RUN = {
     "MEMBERSHIP_CARD", "THE_COURIER", "AMETHYST_AUBERGINE", "BOWLER_HAT", "LUCKY_FYSH", "DRAGON_FRUIT", "OLD_COIN",
     "JUZU_BRACELET", "MEAL_TICKET", "REGAL_PILLOW", "ETERNAL_FEATHER", "TINY_MAILBOX", "PLANISPHERE",
     "BOOK_OF_FIVE_RINGS", "FROZEN_EGG", "MOLTEN_EGG", "TOXIC_EGG", "DINGY_RUG", "LASTING_CANDY", "WING_CHARM",
     "PRAYER_WHEEL", "WHITE_STAR", "VENERABLE_TEA_SET", "LAVA_LAMP", "WHITE_BEAST_STATUE", "PUMPKIN_CANDLE",
 }
-LATER = {1: 0.0, 2: 0.3, 3: 0.8}
+LATER = {1: 0.0, 2: 0.3, 3: 0.8}  # act -> taken off those
 
 
 def _count(deck: list, test) -> int:
@@ -124,23 +96,14 @@ def id_of(name: str) -> str:
     return re.sub(r"[^A-Z0-9]+", "_", re.sub(r"['’]", "", str(name or "")).upper()).strip("_")
 
 
-# An Ancient's energy-every-turn relic against its cards-every-turn relic, by the energy a turn the deck already has
-# (2026-11-22). The Knowledge Demon solved exactly (`scripts/demon/ancients.py`: perfect play from full HP), in points
-# of the chance of winning on 3 energy / on 4 or more: an energy a turn +46 / +19, Pael's Flesh (from the third turn)
-# +39 / +16, Philosopher's Stone (1 Strength on every hit of the enemy's) +34 / +3, Blessed Antler (its Dazed counted
-# as a dead card) +36 / +7, a card a turn +28 / +44, two cards a turn +43 / +53. `events._ANCIENT` had one number for
-# each, so a deck on 3 energy took Pael's Blood (13.5) over Pael's Flesh (12.5) every time both were offered (3 of 3 in
-# the logs of 16:30-20:20) and Runic Pyramid over Sozu. Live, act 2 bosses (Ascension 5+) held with Pael's Flesh were
-# won 10 times in 22, with Pael's Blood 12 in 36 (on 6 points more HP), with any energy relic 21 in 44, with any
-# cards-a-turn relic 18 in 47, with neither 92 in 218. (Rating points from those: about 10 of the model's to one.)
+# Energy-every-turn relics against cards-every-turn ones: on the Knowledge Demon model energy is worth most to a deck on 3 a turn, cards on 4+.
 TURN_LEAN = {  # relic -> (over its table rating for a deck on 3 energy, for one on 4 or more)
     "VELVET_CHOKER": (2.5, -1.5), "PRISMATIC_GEM": (2.5, -1.5), "SOZU": (2.5, -1.5), "ECTOPLASM": (2.5, -1.5),
     "SPIKED_GAUNTLETS": (2.5, -1.5), "WHISPERING_EARRING": (2.5, -1.5), "PAELS_FLESH": (2.0, -1.5), "SEAL_OF_GOLD": (2.0, -1.5),
     "PHILOSOPHERS_STONE": (2.0, -3.0), "BLESSED_ANTLER": (2.0, -3.0), "BLOOD_SOAKED_ROSE": (2.0, -3.0), "PUMPKIN_CANDLE": (1.25, -0.75),
     "PAELS_BLOOD": (-1.5, 1.0), "SNECKO_EYE": (0.0, 1.0), "FIDDLE": (0.0, 1.0), "IRON_CLUB": (-0.75, 0.5),
 }
-# The share of an energy a turn each gives once held (Pael's Flesh from the third turn, so not in the energy a fight
-# begins with; Seal of Gold while the gold lasts; the Pumpkin Candle five fights at a time).
+# The share of an energy a turn each gives once held (Pael's Flesh from the third turn, Seal of Gold while the gold lasts).
 TURN_ENERGY = {rid: 1.0 for rid, (on3, _on4) in TURN_LEAN.items() if on3 > 0} | {"PAELS_FLESH": 0.85, "SEAL_OF_GOLD": 0.8, "PUMPKIN_CANDLE": 0.5}
 
 
