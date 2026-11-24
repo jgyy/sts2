@@ -8,8 +8,10 @@ from functools import lru_cache
 
 from sts2bot.games.sts1 import text
 from sts2bot.games.sts1.text import potions as potion_tables
+from sts2bot.run import strategy
 
 from ..cards import Card, CardDef
+from ..effects import add
 from ..monsters import Foe
 from ..run import Potion
 from . import common, sts1_cards, sts1_foes
@@ -32,25 +34,19 @@ CHARACTERS = {
     "DEFECT": {"title": "The Defect", "hp": 75, "deck": ["STRIKE_B"] * 4 + ["DEFEND_B"] * 4 + ["ZAP", "DUALCAST"], "relics": ["CRACKED_CORE"], "orbs": 3},
     "WATCHER": {"title": "The Watcher", "hp": 72, "deck": ["STRIKE_P"] * 4 + ["DEFEND_P"] * 4 + ["ERUPTION", "VIGILANCE"], "relics": ["PURE_WATER"]},
 }
-COLORS = {}
-for _char, _mod in (("IRONCLAD", text.ironclad), ("THE_SILENT", text.silent), ("DEFECT", text.defect), ("WATCHER", text.watcher)):
-    for _k in _mod.CARDS:
-        COLORS[_k] = _char
+COLORS = {k: char for char, mod in (("IRONCLAD", text.ironclad), ("THE_SILENT", text.silent), ("DEFECT", text.defect), ("WATCHER", text.watcher)) for k in mod.CARDS}
 
 
 def _defs() -> dict[str, CardDef]:
     out = {}
-    for key, meta in re.findall(r"([A-Z_]+) ((?:St|Cu|[ASP])(?:\d|X|U)[BCURS]t?)", sts1_cards.META):
-        m = re.match(r"(St|Cu|[ASP])(\d|X|U)([BCURS])(t?)", meta)
-        kind, cost, rarity, aimed = m.groups()
+    for key, kind, cost, rarity, aimed in re.findall(r"([A-Z_]+) (St|Cu|[ASP])(\d|X|U)([BCURS])(t?)", sts1_cards.META):
         cost_n = -1 if cost == "X" else -2 if cost == "U" else int(cost)
         base, up = text.UPGRADE_COST.get(key, (cost_n, cost_n))
         name = sts1_cards.NAMES.get(key) or key.replace("_", " ").title()
         ctype = sts1_cards.TYPES[kind]
         color = COLORS.get(key) or {"Status": "STATUS", "Curse": "CURSE"}.get(ctype, "COLORLESS")
         rar = {"Status": "Status", "Curse": "Curse"}.get(ctype, sts1_cards.RARITIES[rarity])
-        out[key] = CardDef(key, name, ctype, base if key in text.UPGRADE_COST else cost_n, rar, bool(aimed),
-                           text.card_text(key, name, False), text.card_text(key, name, True), up if key in text.UPGRADE_COST else cost_n, color)
+        out[key] = CardDef(key, name, ctype, base, rar, bool(aimed), text.card_text(key, name, False), text.card_text(key, name, True), up, color)
     return out
 
 
@@ -78,25 +74,19 @@ _NO_SHOP = {"DISCOVERY", "JACK_OF_ALL_TRADES", "CHRYSALIS", "METAMORPHOSIS", "TR
 
 
 def EXTRA(f, c, foe, i, xs) -> None:
-    if i.channel:
-        for kind in i.channel * xs:
-            key = f"{kind}_CHANNELED"
-            f.pw[key] = f.pw.get(key, 0) + 1
+    for kind in i.channel * xs:
+        add(f.pw, f"{kind}_CHANNELED", 1)
 
 
 def START(f) -> None:
     run = f.run
     if run.has("CRACKED_CORE"):
         f.channel("LIGHTNING")
-    if run.has("PURE_WATER"):
-        f.add_card(make("MIRACLE"))
-    if run.has("HOLY_WATER"):
-        for _ in range(3):
-            f.add_card(make("MIRACLE"))
+    f.add_new("MIRACLE", run.has("PURE_WATER") + 3 * run.has("HOLY_WATER"))
     if run.has("SNECKO_EYE"):
         f.pw["CONFUSED"] = 1
     if run.has("SLAVER_S_COLLAR") and f.kind != "monster":
-        f.pw["ENERGY_NEXT_TURN"] = f.pw.get("ENERGY_NEXT_TURN", 0)
+        f.pw.setdefault("ENERGY_NEXT_TURN", 0)
     for foe in f.foes:
         if foe.key == "DARKLING":
             foe.powers["REATTACH"] = foe.max_hp // 2
@@ -109,34 +99,17 @@ def TURN_START(f) -> None:
         f.orb_slots += 1
 
 
-def TURN_END(f) -> None:
-    pass
-
-
 def TURN_CARDS(f) -> None:
-    pw = f.pw
-    for _ in range(pw.get("CREATIVE_AI", 0)):
-        powers = [d for d in pool(f.run.character) if d.type == "Power"]
-        f.add_card(Card(f.rng.choice(powers)))
-    for _ in range(pw.get("HELLO_WORLD", 0)):
-        commons = [d for d in pool(f.run.character) if d.rarity == "Common"]
-        f.add_card(Card(f.rng.choice(commons)))
-    for _ in range(pw.get("MAYHEM", 0)):
+    for _ in range(f.pw.get("CREATIVE_AI", 0)):
+        f.add_card(Card(f.rng.choice([d for d in pool(f.run.character) if d.type == "Power"])))
+    for _ in range(f.pw.get("HELLO_WORLD", 0)):
+        f.add_card(Card(f.rng.choice([d for d in pool(f.run.character) if d.rarity == "Common"])))
+    for _ in range(f.pw.get("MAYHEM", 0)):
         sts1_cards._havoc(f, None, (f.alive() or [None])[0], 0, 0)
 
 
-def POTION_CARD(f, pot) -> None:
-    kind = {"ATTACK_POTION": "Attack", "SKILL_POTION": "Skill", "POWER_POTION": "Power"}.get(pot.key)
-    choices = [d for d in (pool(f.run.character) if kind else colorless()) if kind is None or d.type == kind]
-    if choices:
-        c = Card(f.rng.choice(choices))
-        c.cost_turn = 0
-        f.add_card(c)
-
-
-def ROUND_END(f) -> None:
-    for hook in sts1_foes.ROUND_HOOKS:
-        hook(f)
+TURN_END = lambda f: None
+POTION_CARD, ROUND_END = common.potion_card, sts1_foes.darkling_round
 
 
 # ------------------------------------------------------------------ relics
@@ -185,10 +158,7 @@ def relic_pickup(run, rid: str) -> None:
     elif rid == "OLD_COIN":
         run.gold += 300
     elif rid in ("WAR_PAINT", "WHETSTONE"):
-        kind = "Skill" if rid == "WAR_PAINT" else "Attack"
-        fresh = [c for c in run.deck if c.type == kind and not c.up]
-        for c in run.rng.sample(fresh, min(2, len(fresh))):
-            c.up = True
+        common.upgrade_random(run, lambda c: c.type == ("Skill" if rid == "WAR_PAINT" else "Attack"))
     elif rid == "EMPTY_CAGE":
         run.remove_one()
         run.remove_one()
@@ -215,8 +185,6 @@ def relic_pickup(run, rid: str) -> None:
     elif rid == "ORRERY":
         for _ in range(5):
             run.card_reward(run.game.card_choices(run, "monster"))
-    elif rid == "BUSTED_CROWN":
-        pass
 
 
 def random_relic(run, chest: bool = False) -> str:
@@ -264,7 +232,6 @@ def run_start(run) -> None:
 
 
 def _choose(run, options: list) -> None:
-    from sts2bot.run import strategy
     state = run.screen("event", event={"event_id": "NEOW", "event_name": "Neow", "in_dialogue": False,
                                        "options": [{"index": i, "title": t, "description": d, "is_locked": False, "is_proceed": False}
                                                    for i, (t, d, _f) in enumerate(options)]})
@@ -306,13 +273,9 @@ def encounter(run, kind: str) -> list[Foe]:
         choice = run.rng.choice(fresh)
     run.recent.append(_name(choice))
     keys = choice(run.rng) if callable(choice) else list(choice)
-    leader = keys[0]
-    foes = []
-    for n, key in enumerate(keys):
-        foe = _new(key, n, run, kind)
-        if leader in sts1_foes.MINIONS and n > 0:
-            foe.minion = True
-        foes.append(foe)
+    foes = [_new(key, n, run, kind) for n, key in enumerate(keys)]
+    for foe in foes[1:] if keys[0] in sts1_foes.MINIONS else []:
+        foe.minion = True
     return foes
 
 
@@ -393,17 +356,11 @@ def shop_stock(run) -> list[dict]:
     return common.shop_stock(run, {"Common": 50, "Uncommon": 75, "Rare": 150}, colorless_mult=1.2)
 
 
-def event(run) -> None:
-    common.event(run)
+event = common.event
 
 
 def max_hp_penalty(asc: int, character: str) -> int:
     return (5 if character == "IRONCLAD" else 4) if asc >= 14 else 0
-
-
-def deck_relic_effects(run, c) -> None:
-    if run.has("CERAMIC_FISH"):
-        run.gold += 9
 
 
 def setup_run(run) -> None:

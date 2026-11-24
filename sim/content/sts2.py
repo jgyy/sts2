@@ -10,11 +10,12 @@ from __future__ import annotations
 import json
 import os
 import re
+from dataclasses import replace
 from functools import lru_cache
-
 
 from .. import effects as fx
 from ..cards import Card, CardDef
+from ..effects import add
 from ..monsters import Foe
 from ..run import Potion
 from . import common, sts1, sts2_foes
@@ -23,16 +24,12 @@ KEY = "sts2"
 ACTS = 3
 SHORT_REASON = True  # (the mod says why a card cannot be played: "EnergyCostTooHigh")
 KEEP_POTIONS = {"FAIRY_IN_A_BOTTLE"}
-UNKNOWN_ODDS = {"Monster": 0.1, "Shop": 0.03, "Treasure": 0.02}
-ROOM_WEIGHTS = {"Monster": 0.42, "Unknown": 0.30, "RestSite": 0.12, "Shop": 0.05, "Elite": 0.07, }
-CARD_ODDS = {"monster": [("Rare", 0.03), ("Uncommon", 0.37), ("Common", 0.60)], "elite": [("Rare", 0.10), ("Uncommon", 0.40), ("Common", 0.50)]}
+UNKNOWN_ODDS, CARD_ODDS = sts1.UNKNOWN_ODDS, sts1.CARD_ODDS
+ROOM_WEIGHTS = {"Monster": 0.42, "Unknown": 0.30, "RestSite": 0.12, "Shop": 0.05, "Elite": 0.07}
 PLAYED = ("Main", "IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT")
 
 with open(os.path.join(os.path.dirname(__file__), "sts2_data.json")) as _f:
     DATA = json.load(_f)
-
-RARITY = {"Basic": "Basic", "Common": "Common", "Uncommon": "Uncommon", "Rare": "Rare", "Ancient": "Ancient", "Event": "Event",
-          "Token": "Token", "Status": "Status", "Curse": "Curse"}
 
 
 def _defs() -> dict[str, CardDef]:
@@ -72,7 +69,7 @@ def _blade(f) -> Card | None:
 
 
 def _forge(f, n: int) -> None:
-    f.pw["FORGE"] = f.pw.get("FORGE", 0) + n
+    add(f.pw, "FORGE", n)
     if _blade(f) is None:
         f.add_card(make("SOVEREIGN_BLADE"))
 
@@ -99,13 +96,11 @@ def EXTRA(f, c, foe, i, xs) -> None:
             for v in f.alive():
                 if v.powers.get("DOOM", 0) >= v.hp:
                     f.kill(v)
-    for _ in range(i.souls * xs):
-        f.add_card(make("SOUL"), "draw")
+    f.add_new("SOUL", i.souls * xs, "draw")
     if i.debris:
-        for _ in range(i.debris if i.debris > 0 else max(0, 10 - len(f.hand))):
-            f.add_card(make("DEBRIS"))
+        f.add_new("DEBRIS", i.debris if i.debris > 0 else max(0, 10 - len(f.hand)))
     for kind in i.channel * xs:
-        f.pw[f"{kind}_CHANNELED"] = f.pw.get(f"{kind}_CHANNELED", 0) + 1
+        add(f.pw, f"{kind}_CHANNELED", 1)
 
 
 def _summon(f, n: int) -> None:
@@ -117,67 +112,25 @@ def _summon(f, n: int) -> None:
 
 def _star_hooks(f, n: int) -> None:
     if f.pw.get("BLACK_HOLE"):
-        for v in f.alive():
-            f.hurt(v, f.pw["BLACK_HOLE"] * abs(n), attack=False)
-
-
-def _unleash(f, c):
-    return (9 if c.up else 6) + max(0, f.osty)
-
-
-def _protector(f, c):
-    return (15 if c.up else 10) + f.pw.get("OSTY_MAX", 0)
+        f.hurt_all(f.pw["BLACK_HOLE"] * abs(n))
 
 
 DAMAGE = {
     "BODY_SLAM": lambda f, c: f.block,
     "SOVEREIGN_BLADE": lambda f, c: 10 + f.pw.get("FORGE", 0),
-    "UNLEASH": _unleash,
-    "PROTECTOR": _protector,
+    "UNLEASH": lambda f, c: (9 if c.up else 6) + max(0, f.osty),
+    "PROTECTOR": lambda f, c: (15 if c.up else 10) + f.pw.get("OSTY_MAX", 0),
     "TIMES_UP": lambda f, c: 0,
     "DEATH_MARCH": lambda f, c: (10 if c.up else 8) + (5 if c.up else 4) * f.pw.get("DRAWN_TURN", 0),
     "RAMPAGE": lambda f, c: 10 + c.bonus,
 }
 
 
-def _times_up(f, c, foe, i):
-    return i if foe is None else __import__("dataclasses").replace(i, damage=foe.powers.get("DOOM", 0), hits=1)
-
-
-def _osty_alive(f, c, foe, i):
-    from dataclasses import replace
-    if f.osty <= 0 and i.osty_attack:
-        return replace(i, damage=0)
-    return i
-
-
 PRE = {
-    "TIMES_UP": _times_up,
-    "FLATTEN": _osty_alive, "POKE": _osty_alive, "RATTLE": _osty_alive, "SNAP": _osty_alive, "SIC_EM": _osty_alive, "UNLEASH": _osty_alive,
-    "FIEND_FIRE": sts1.sts1_cards._fiend_fire, "BURNING_PACT": sts1.sts1_cards._burning_pact,
-    "SECOND_WIND": lambda f, c, foe, i: __import__("dataclasses").replace(i, block=0),
+    "TIMES_UP": lambda f, c, foe, i: i if foe is None else replace(i, damage=foe.powers.get("DOOM", 0), hits=1),
+    **dict.fromkeys(("FLATTEN", "POKE", "RATTLE", "SNAP", "SIC_EM", "UNLEASH"), lambda f, c, foe, i: replace(i, damage=0) if f.osty <= 0 and i.osty_attack else i),
+    **{k: sts1.PRE[k] for k in ("FIEND_FIRE", "BURNING_PACT", "SECOND_WIND")},
 }
-
-
-def _sacrifice(f, c, foe, x, dealt):
-    if f.osty > 0:
-        f.osty = 0
-        f.gain_block(3 * f.pw.get("OSTY_MAX", 0))
-
-
-def _spur(f, c, foe, x, dealt):
-    if f.osty > 0:
-        f.osty += 5
-
-
-def _expose(f, c, foe, x, dealt):
-    if foe is not None:
-        foe.block = 0
-        foe.powers.pop("ARTIFACT", None)
-
-
-def _up_my_sleeve(f, c, foe, x, dealt):
-    c.cost_fight = max(0, c.cost() - 1)
 
 
 def _summon_forth(f, c, foe, x, dealt):
@@ -189,43 +142,26 @@ def _summon_forth(f, c, foe, x, dealt):
         f.add_card(blade)
 
 
-def _knockout(f, c, foe, x, dealt):
-    if foe is not None and not foe.alive:
-        f.stars += 5
-
-
-def _hang(f, c, foe, x, dealt):
-    if foe is not None:
-        foe.powers["HANG"] = max(2, foe.powers.get("HANG", 0) * 2)
-
-
-def _sweep(f, c, foe, x, dealt):
-    pass
-
-
 AFTER = {
     **{k: sts1.AFTER[k] for k in ("HAVOC", "TRUE_GRIT", "BATTLE_TRANCE", "DUAL_WIELD", "INFERNAL_BLADE", "RAGE", "DOUBLE_TAP", "LIMIT_BREAK",
                                   "SURVIVOR", "ACROBATICS", "DAGGER_THROW", "PREPARED", "CALCULATED_GAMBLE", "BULLET_TIME", "BURST",
                                   "STORM_OF_STEEL", "UNLOAD", "CHAOS", "DOUBLE_ENERGY", "WHITE_NOISE", "REBOOT", "SEEK", "HOLOGRAM",
                                   "STACK", "SECOND_WIND", "FEED", "ARMAMENTS", "ANGER", "HEADBUTT")},
-    "SACRIFICE": _sacrifice, "SPUR": _spur, "EXPOSE": _expose, "UP_MY_SLEEVE": _up_my_sleeve, "SUMMON_FORTH": _summon_forth,
-    "KNOCKOUT_BLOW": _knockout, "HANG": _hang, "RAMPAGE": lambda f, c, foe, x, d: setattr(c, "bonus", c.bonus + (10 if c.up else 5)),
-    "ONE_TWO_PUNCH": lambda f, c, foe, x, d: setattr(f, "double_next", f.double_next + 1),
-    "HOTFIX": lambda f, c, foe, x, d: f.temp.__setitem__("FOCUS", f.temp.get("FOCUS", 0) + (3 if c.up else 2)),
-    "TERRAFORMING": lambda f, c, foe, x, d: f.pw.__setitem__("VIGOR", f.pw.get("VIGOR", 0) + (10 if c.up else 7)),
-    "MONOLOGUE": lambda f, c, foe, x, d: f.pw.__setitem__("MONOLOGUE", 1),
-    "FRANTIC_ESCAPE": lambda f, c, foe, x, d: ([v.powers.__setitem__("SANDPIT", v.powers["SANDPIT"] + 1) for v in f.alive() if v.powers.get("SANDPIT")],
-                                               setattr(c, "cost_fight", c.cost() + 1)),
-    "SHADOWMELD": lambda f, c, foe, x, d: f.pw.__setitem__("SHADOWMELD", 1),
-    "CORROSIVE_WAVE": lambda f, c, foe, x, d: f.pw.__setitem__("CORROSIVE_WAVE", f.pw.get("CORROSIVE_WAVE", 0) + (3 if c.up else 2)),
-    "OBLIVION": lambda f, c, foe, x, d: foe.mem.__setitem__("oblivion", foe.mem.get("oblivion", 0) + 3) if foe is not None else None,
-    "SIGNAL_BOOST": lambda f, c, foe, x, d: f.pw.__setitem__("AMPLIFY", f.pw.get("AMPLIFY", 0) + 1),
-    "NIGHTMARE": lambda f, c, foe, x, d: None,
+    "SACRIFICE": lambda f, *_: (setattr(f, "osty", 0), f.gain_block(3 * f.pw.get("OSTY_MAX", 0))) if f.osty > 0 else None,
+    "SPUR": lambda f, *_: setattr(f, "osty", f.osty + 5) if f.osty > 0 else None,
+    "EXPOSE": lambda f, c, foe, *_: (setattr(foe, "block", 0), foe.powers.pop("ARTIFACT", None)) if foe is not None else None,
+    "UP_MY_SLEEVE": lambda f, c, *_: setattr(c, "cost_fight", max(0, c.cost() - 1)), "SUMMON_FORTH": _summon_forth,
+    "KNOCKOUT_BLOW": lambda f, c, foe, *_: setattr(f, "stars", f.stars + 5) if foe is not None and not foe.alive else None,
+    "HANG": lambda f, c, foe, *_: foe.powers.__setitem__("HANG", max(2, foe.powers.get("HANG", 0) * 2)) if foe is not None else None,
+    "RAMPAGE": lambda f, c, *_: setattr(c, "bonus", c.bonus + (10 if c.up else 5)), "ONE_TWO_PUNCH": lambda f, *_: setattr(f, "double_next", f.double_next + 1),
+    "HOTFIX": lambda f, c, *_: add(f.temp, "FOCUS", 3 if c.up else 2), "TERRAFORMING": lambda f, c, *_: add(f.pw, "VIGOR", 10 if c.up else 7),
+    "MONOLOGUE": lambda f, *_: f.pw.__setitem__("MONOLOGUE", 1), "SHADOWMELD": lambda f, *_: f.pw.__setitem__("SHADOWMELD", 1),
+    "FRANTIC_ESCAPE": lambda f, c, *_: ([v.powers.__setitem__("SANDPIT", v.powers["SANDPIT"] + 1) for v in f.alive() if v.powers.get("SANDPIT")],
+                                        setattr(c, "cost_fight", c.cost() + 1)),
+    "CORROSIVE_WAVE": lambda f, c, *_: add(f.pw, "CORROSIVE_WAVE", 3 if c.up else 2),
+    "OBLIVION": lambda f, c, foe, *_: add(foe.mem, "oblivion", 3) if foe is not None else None, "SIGNAL_BOOST": lambda f, *_: add(f.pw, "AMPLIFY", 1),
 }
-PLAYABLE = {}
-DRAWN = {}
-RETAINED = {}
-X_PLUS = set()
+PLAYABLE, DRAWN, RETAINED, X_PLUS = {}, {}, {}, set()
 
 
 # ------------------------------------------------------------------ powers, read from their text
@@ -265,23 +201,16 @@ def _effect_card(text: str) -> CardDef:
     return CardDef("_EFFECT", "Effect", "Skill", 0, "Token", False, text[0].upper() + text[1:] if text else text, text, 0, "COLORLESS")
 
 
-def do_text(f, text: str, kind: str = "") -> None:
+def do_text(f, text: str) -> None:
     """Carry out a sentence of a Power's (or a relic's) text as a card that says it would."""
-    if kind and not text:
-        return
-    c = Card(_effect_card(text))
     alive = f.alive()
-    foe = f.rng.choice(alive) if alive else None
-    fx.resolve(f, c, foe, 0)
-
-
-POWER: dict = {}
+    fx.resolve(f, Card(_effect_card(text)), f.rng.choice(alive) if alive else None, 0)
 
 
 def _register(f, c) -> None:
     rules = power_rules(c.text)
     amount = int(m.group(1)) if (m := re.search(r"(\d+)", c.text)) else 1
-    f.pw[c.key] = f.pw.get(c.key, 0) + amount
+    add(f.pw, c.key, amount)
     own = OWN_POWER.get(c.key)
     if own is not None:
         own(f, c)
@@ -290,14 +219,9 @@ def _register(f, c) -> None:
         if when == "now":
             do_text(f, what)
         elif when == "energy":
-            f.pw["TURN_ENERGY"] = f.pw.get("TURN_ENERGY", 0) + what.count("energy_icon")
+            add(f.pw, "TURN_ENERGY", what.count("energy_icon"))
         else:
             f.triggers.append((when, what, c.key))
-
-
-def _void_form(f, c):
-    f.pw["VOID_FORM"] = 2
-    f.pw["TURN_OVER"] = 1
 
 
 OWN_POWER = {
@@ -307,45 +231,36 @@ OWN_POWER = {
     "BUFFER": lambda f, c: None,
     "ACCURACY": lambda f, c: None,
     "ENVENOM": lambda f, c: f.pw.__setitem__("ENVENOM", 1),
-    "AFTERIMAGE": lambda f, c: f.pw.__setitem__("AFTER_IMAGE", f.pw.get("AFTER_IMAGE", 0) + 1),
+    "AFTERIMAGE": lambda f, c: add(f.pw, "AFTER_IMAGE", 1),
     "WELL_LAID_PLANS": lambda f, c: f.pw.__setitem__("KEEP_HAND_ALWAYS", 1),
-    "VOID_FORM": _void_form,
+    "VOID_FORM": lambda f, c: f.pw.update(VOID_FORM=2, TURN_OVER=1),
     "CAPACITOR": lambda f, c: setattr(f, "orb_slots", f.orb_slots + (3 if c.up else 2)),
     "BULK_UP": lambda f, c: setattr(f, "orb_slots", max(0, f.orb_slots - 1)),
-    "DEFRAGMENT": lambda f, c: f.pw.__setitem__("FOCUS", f.pw.get("FOCUS", 0) + (2 if c.up else 1)),
-    "BIASED_COGNITION": lambda f, c: (f.pw.__setitem__("FOCUS", f.pw.get("FOCUS", 0) + (6 if c.up else 5)),
-                                      f.pw.__setitem__("BIASED_COGNITION", 1)),
-    "WRAITH_FORM": lambda f, c: (f.pw.__setitem__("INTANGIBLE", f.pw.get("INTANGIBLE", 0) + (3 if c.up else 2)),
-                                 f.pw.__setitem__("WRAITH_FORM", 1)),
+    "DEFRAGMENT": lambda f, c: add(f.pw, "FOCUS", 2 if c.up else 1),
+    "BIASED_COGNITION": lambda f, c: (add(f.pw, "FOCUS", 6 if c.up else 5), f.pw.__setitem__("BIASED_COGNITION", 1)),
+    "WRAITH_FORM": lambda f, c: (add(f.pw, "INTANGIBLE", 3 if c.up else 2), f.pw.__setitem__("WRAITH_FORM", 1)),
     "NECRO_MASTERY": lambda f, c: _summon(f, 8 if c.up else 5),
     "SEEKING_EDGE": lambda f, c: _forge(f, 11 if c.up else 7),
-    "FAN_OF_KNIVES": lambda f, c: [f.add_card(make("SHIV")) for _ in range(4)],
-    "ABRASIVE": lambda f, c: f.pw.__setitem__("THORNS", f.pw.get("THORNS", 0) + (6 if c.up else 4)),
-    "STONE_ARMOR": lambda f, c: f.pw.__setitem__("PLATING", f.pw.get("PLATING", 0) + (6 if c.up else 4)),
-    "NEUTRON_AEGIS": lambda f, c: f.pw.__setitem__("PLATING", f.pw.get("PLATING", 0) + (11 if c.up else 8)),
+    "FAN_OF_KNIVES": lambda f, c: f.add_new("SHIV", 4),
+    "ABRASIVE": lambda f, c: add(f.pw, "THORNS", 6 if c.up else 4),
+    "STONE_ARMOR": lambda f, c: add(f.pw, "PLATING", 6 if c.up else 4),
+    "NEUTRON_AEGIS": lambda f, c: add(f.pw, "PLATING", 11 if c.up else 8),
     "NEUROSURGE": lambda f, c: (setattr(f, "energy", f.energy + 3), f.draw_cards(2), f.pw.__setitem__("NEUROSURGE", 3)),
 }
-for _k, _d in CARDS.items():
-    if _d.type == "Power":
-        POWER[_k] = _register
 
 
 def trigger(f, when: str, card=None) -> None:
     for w, what, key in list(f.triggers):
-        if w != when:
-            continue
-        if when == "play" and card is not None:
-            want = _PLAY_KIND.get(key)
-            if want and want != card.type and want != "card":
-                continue
-        do_text(f, what)
+        want = _PLAY_KIND.get(key) if when == "play" and card is not None else None  # (a Power that names the type of card it waits for)
+        if w == when and not (want and want not in (card.type, "card")):
+            do_text(f, what)
 
 
-_PLAY_KIND = {}
+POWER, _PLAY_KIND = {}, {}
 for _k, _d in CARDS.items():
     if _d.type == "Power":
-        _m = re.search(r"whenever you play an? (attack|skill|power|card)", _d.text, re.I)
-        if _m:
+        POWER[_k] = _register
+        if _m := re.search(r"whenever you play an? (attack|skill|power|card)", _d.text, re.I):
             _PLAY_KIND[_k] = _m.group(1).title() if _m.group(1).lower() != "card" else "card"
 
 
@@ -361,7 +276,7 @@ def START(f) -> None:
         f.stars += 3
     if any(foe.powers.get("BACK_ATTACK_LEFT") or foe.powers.get("BACK_ATTACK_RIGHT") for foe in f.foes):
         f.pw["SURROUNDED"] = 1
-    for i, foe in enumerate(f.foes):
+    for foe in f.foes:
         foe.mem["fight"] = f
         if foe.powers.get("ILLUSION"):
             foe.minion = True
@@ -375,7 +290,7 @@ def TURN_START(f) -> None:
         f.pw["VOID_FREE"] = f.pw["VOID_FORM"]
     f.pw.pop("DRAWN_TURN", None)
     if f.pw.get("NEUROSURGE"):
-        f.pw["DOOM"] = f.pw.get("DOOM", 0) + f.pw["NEUROSURGE"]
+        add(f.pw, "DOOM", f.pw["NEUROSURGE"])
     trigger(f, "start")
 
 
@@ -386,26 +301,16 @@ def TURN_END(f) -> None:
     if f.pw.get("DOOM") and f.pw["DOOM"] >= f.run.hp:
         f.lose_hp(f.run.hp)
     f.temp.pop("FOCUS", None)
-    f.pw.pop("MONOLOGUE", None)
-    f.pw.pop("SHADOWMELD", None)
-    f.pw.pop("CORROSIVE_WAVE", None)
+    for k in ("MONOLOGUE", "SHADOWMELD", "CORROSIVE_WAVE"):
+        f.pw.pop(k, None)
     for foe in f.foes:
         foe.mem.pop("oblivion", None)
     if f.pw.get("KEEP_HAND_ALWAYS"):
         f.pw["KEEP_HAND"] = 1
 
 
-def TURN_CARDS(f) -> None:
-    pass
-
-
-def POTION_CARD(f, pot) -> None:
-    kind = {"ATTACK_POTION": "Attack", "SKILL_POTION": "Skill", "POWER_POTION": "Power"}.get(pot.key)
-    choices = [d for d in (pool(f.run.character) if kind else colorless()) if kind is None or d.type == kind]
-    if choices:
-        c = Card(f.rng.choice(choices))
-        c.cost_turn = 0
-        f.add_card(c)
+TURN_CARDS = lambda f: None
+POTION_CARD = common.potion_card
 
 
 def ROUND_END(f) -> None:
@@ -416,7 +321,7 @@ def ROUND_END(f) -> None:
             if foe.powers["SANDPIT"] <= 0:
                 f.lose_hp(f.run.hp)
         if foe.powers.get("TERRITORIAL"):
-            foe.powers["STRENGTH"] = foe.powers.get("STRENGTH", 0) + foe.powers["TERRITORIAL"]
+            add(foe.powers, "STRENGTH", foe.powers["TERRITORIAL"])
         if foe.powers.get("ESCAPE_ARTIST"):
             foe.powers["ESCAPE_ARTIST"] -= 1
             if foe.powers["ESCAPE_ARTIST"] <= 0:
@@ -440,7 +345,6 @@ UNCOMMON = [r for r in SHARED if _RELIC.get(r, ["", ""])[1] == "Uncommon"]
 RARE = [r for r in SHARED if _RELIC.get(r, ["", ""])[1] in ("Rare", "Shop")]
 ANCIENT = ["SOZU", "VELVET_CHOKER", "PHILOSOPHER_S_STONE", "ECTOPLASM", "SNECKO_EYE", "RUNIC_PYRAMID", "BLACK_STAR", "ASTROLABE",
            "CALLING_BELL", "EMPTY_CAGE", "PANDORA_S_BOX", "ORRERY", "WHITE_BEAST_STATUE"]
-STARTERS = {"BURNING_BLOOD", "RING_OF_THE_SNAKE", "CRACKED_CORE", "BOUND_PHYLACTERY", "DIVINE_RIGHT"}
 
 
 def relic_text(rid: str) -> str:
@@ -449,8 +353,8 @@ def relic_text(rid: str) -> str:
     return (_RELIC.get(key) or ["", "", ""])[2]
 
 
-def relic_pickup(run, rid: str) -> None:
-    sts1.relic_pickup(run, rid)
+relic_pickup, fight_won, rest_options, event = sts1.relic_pickup, sts1.fight_won, sts1.rest_options, common.event
+max_hp_penalty = lambda asc, character: 0
 
 
 def random_relic(run, chest: bool = False) -> str:
@@ -487,14 +391,14 @@ def random_potion(run) -> Potion:
 # ------------------------------------------------------------------ the run
 
 
+def _relic_options(rids: list) -> list:
+    return [(rid.replace("_", " ").title(), f"Obtain {rid.replace('_', ' ').title()}. {relic_text(rid)}", (lambda r, a, rid=rid: r.gain_relic(rid))) for rid in rids]
+
+
 def run_start(run) -> None:
-    """Neow: heals, then offers three relics (one of each kind of blessing here), the bot's event handler choosing."""
-    rng = run.rng
-    first = rng.sample([r for r in COMMON + UNCOMMON if r not in run.relics], 2)
-    options = [(rid.replace("_", " ").title(), f"Obtain {rid.replace('_', ' ').title()}. {relic_text(rid)}", (lambda r, a, rid=rid: r.gain_relic(rid)))
-               for rid in first]
-    options.append(("Remove", "Remove a card from your Deck.", lambda r, a: r.remove_one()))
-    sts1._choose(run, options)
+    """Neow: two relics or a card removed, the bot's event handler choosing."""
+    options = _relic_options(run.rng.sample([r for r in COMMON + UNCOMMON if r not in run.relics], 2))
+    sts1._choose(run, options + [("Remove", "Remove a card from your Deck.", lambda r, a: r.remove_one())])
 
 
 def act_start(run) -> None:
@@ -506,14 +410,15 @@ def act_start(run) -> None:
     run.act_id = {2: "HIVE", 3: "GLORY"}[run.act]
     heal = (run.max_hp - run.hp) * (1.0 if run.asc < 2 else 0.8)
     run.hp = min(run.max_hp, run.hp + int(heal))
-    offered = run.rng.sample([r for r in ANCIENT if r not in run.relics], 3)
-    options = [(rid.replace("_", " ").title(), f"Obtain {rid.replace('_', ' ').title()}. {relic_text(rid)}", (lambda r, a, rid=rid: r.gain_relic(rid)))
-               for rid in offered]
-    sts1._choose(run, options)
+    sts1._choose(run, _relic_options(run.rng.sample([r for r in ANCIENT if r not in run.relics], 3)))
+
+
+def _act(run) -> dict:
+    return next(a for a in DATA["acts"] if a["id"] == run.act_id)
 
 
 def make_map(run) -> dict:
-    act = next(a for a in DATA["acts"] if a["id"] == run.act_id)
+    act = _act(run)
     weights = dict(ROOM_WEIGHTS)
     if run.asc >= 1:
         weights["Elite"] *= 1.6
@@ -522,7 +427,7 @@ def make_map(run) -> dict:
 
 
 def encounter(run, kind: str) -> list[Foe]:
-    act = next(a for a in DATA["acts"] if a["id"] == run.act_id)
+    act = _act(run)
     if kind == "monster":
         run.fights_in_act = getattr(run, "fights_in_act", 0) + 1
         pool_name = "weak" if run.fights_in_act <= act["weak_fights"] else "normal"
@@ -533,8 +438,7 @@ def encounter(run, kind: str) -> list[Foe]:
         bosses = run.__dict__.setdefault("bosses", {})
         if run.act not in bosses:
             bosses[run.act] = run.rng.sample(options, 2 if run.act == 3 and run.asc >= 10 else 1)
-        picks = bosses[run.act]
-        name = picks[run.__dict__.setdefault("boss_fights", 0) % len(picks)] if False else picks[0]
+        name = bosses[run.act][0]
     else:
         fresh = [e for e in options if e not in run.recent[-2:]] or options
         name = run.rng.choice(fresh)
@@ -544,12 +448,7 @@ def encounter(run, kind: str) -> list[Foe]:
     if enc.get("randomized"):
         alts = enc.get("options") or keys
         keys = [run.rng.choice([a for a in alts if a.split("_")[-1] == k.split("_")[-1]] or [k]) for k in keys]
-    foes, seen = [], {}
-    for n, key in enumerate(keys):
-        slot = seen.get(key, 0)
-        seen[key] = slot + 1
-        foes.append(_new(key, n, run, slot, len(keys) == 1))
-    return foes
+    return [_new(key, n, run, keys[:n].count(key), len(keys) == 1) for n, key in enumerate(keys)]  # (slot: how many of its kind came before)
 
 
 @lru_cache(maxsize=None)
@@ -567,10 +466,6 @@ def spawn(key: str, f, minion: bool = False, hp: int | None = None) -> Foe:
     foe.minion = minion or foe.minion
     foe.mem["fight"] = f
     return foe
-
-
-def fight_won(run, f) -> None:
-    sts1.fight_won(run, f)
 
 
 def boss_won(run) -> None:
@@ -592,10 +487,6 @@ def card_choices(run, kind: str) -> list[Card]:
     return common.offer(run, pool(run.character), max(1, n), CARD_ODDS, kind if kind in CARD_ODDS or kind == "boss" else "monster", up)
 
 
-def rest_options(run) -> list[dict]:
-    return sts1.rest_options(run)
-
-
 def shop_stock(run) -> list[dict]:
     items = sts1.shop_stock(run)
     for it in items:
@@ -605,14 +496,6 @@ def shop_stock(run) -> list[dict]:
         if it["category"] == "relic":
             it["price"] = it["cost"] = int(it["price"] * 0.85)
     return items
-
-
-def event(run) -> None:
-    common.event(run)
-
-
-def max_hp_penalty(asc: int, character: str) -> int:
-    return 0
 
 
 def setup_run(run) -> None:
