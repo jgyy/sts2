@@ -701,8 +701,16 @@ def next_room(state: dict) -> tuple:
 
     per = sum(map(cost, pile)) / len(pile)
     draws = 5 + max(0, power_amount(player, "DRAW_CARDS_NEXT_TURN")) - max(0, power_amount(player, "MIND_ROT"))  # ("Draw 1 fewer card each turn")
-    draws = min(draws, 3) if _has_power(player, "SLOTH") else draws  # (the Knowledge Demon's: "You cannot play more than 3 cards each turn")
     have = int(player.get("max_energy") or 3) + max(0, power_amount(player, "ENERGY_NEXT_TURN"))
+    caps = [3] if _has_power(player, "SLOTH") else []  # (the Knowledge Demon's: "You cannot play more than 3 cards each turn")
+    caps += [int(m.group(1)) for r in player.get("relics") or [] if (m := re.search(r"cannot play more than (\d+) cards", str(r.get("description") or ""), re.I))]
+    if caps and draws >= min(caps):
+        # The cards a turn may play are used up by what it draws, so a hand Retained from this turn adds no play to
+        # the next, it only stands in for a card drawn. Counted as plays, Ki Rest+ ("Next turn, gain 6 energy ...
+        # Retain your Hand") won a Sloth turn of the Knowledge Demon (live, 2026-11-24 20:16) over Bow Smack+, Strike
+        # and Cho Ki: 17 damage given up for a next turn of 9 energy that could play three cards, 4 energy's worth;
+        # the Demon died 28 short.
+        return (min(caps) * per - have, 0.0)
     return (draws * per - have, per)
 
 

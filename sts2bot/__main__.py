@@ -15,6 +15,9 @@ from . import games, service
 from .supervisor import DEFAULT_LAUNCH, FAST_MODES, Supervisor
 
 DEFAULT_TIME_SCALE = 3.0
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+STS1_SETUP_HINT = ("would wait for a relay that never starts and restart the game for ever. "
+                   "Run `python3 -m sts2bot sts1-setup` to point CommunicationMod at the bot's relay")
 
 
 def default_log_dir(game: str = "sts2") -> Path:
@@ -38,6 +41,27 @@ def sts1_setup(argv: list[str]) -> int:
     return 0
 
 
+def play_both(ap: argparse.ArgumentParser, args: argparse.Namespace, raw: list[str]) -> int:
+    """`--game both`: a bot process for each game (games/both.py), started and kept going from here."""
+    from .games import both
+    from .games.sts1 import host as sts1_host
+
+    clash = [opt for opt in both.GAME_OPTIONS if getattr(args, opt[2:].replace("-", "_")) is not None]
+    if clash:
+        ap.error(f"{', '.join(clash)} cannot be used with --game both: each game needs its own (run the two bots separately instead)")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s both %(levelname)s %(message)s", datefmt=DATE_FORMAT, handlers=[logging.StreamHandler(sys.stderr)])
+    why = sts1_host.comm_config_problem(games.DEFAULT_PORT["sts1"])
+    if why and not args.no_launch:
+        logging.getLogger("sts2bot").error("%s. Neither game is started: the first game's bot %s", why, STS1_SETUP_HINT)
+        return 2
+    logging.getLogger("sts2bot").info(
+        "playing %s; logs in %s and %s",
+        " and ".join(games.TITLES[g] for g in games.GAMES),
+        *(default_log_dir(g) for g in games.GAMES),
+    )
+    return both.run(raw)
+
+
 def main(argv: list[str] | None = None) -> int:
     raw = sys.argv[1:] if argv is None else list(argv)
     if raw[:1] == ["service"]:  # `python3 -m sts2bot service disable` and friends: no game, no bot
@@ -46,9 +70,16 @@ def main(argv: list[str] | None = None) -> int:
         return sts1_setup(raw[1:])
     ap = argparse.ArgumentParser(
         prog="sts2bot",
-        description="Plays Slay the Spire 2 nonstop through the STS2_MCP mod, or the first Slay the Spire through CommunicationMod (--game sts1).",
+        description="Plays Slay the Spire 2 nonstop through the STS2_MCP mod, the first Slay the Spire through CommunicationMod "
+        "(--game sts1), or both at the same time (--game both).",
     )
-    ap.add_argument("--game", choices=games.GAMES, default="sts2", help="which game to play: sts2 (default) or sts1, the first Slay the Spire")
+    ap.add_argument(
+        "--game",
+        choices=(*games.GAMES, "both"),
+        default="sts2",
+        help="which game to play: sts2 (default), sts1 (the first Slay the Spire), or both at once (a bot process for each, "
+        "with the other options passed on to both)",
+    )
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=None, help="where the bridge listens (default: 15526 for sts2, 15527 for sts1's relay)")
     ap.add_argument(
@@ -87,24 +118,33 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--log-dir", type=Path, default=None, help="logs and run history (default: ~/.local/state/sts2bot, and its sts1/ for the first game)")
     ap.add_argument("-v", "--verbose", action="store_true", help="log every action")
     args = ap.parse_args(argv)
+    if args.game == "both":
+        return play_both(ap, args, raw)
     games.select(args.game)
     args.port = args.port or games.DEFAULT_PORT[args.game]
     args.log_dir = args.log_dir or default_log_dir(args.game)
 
     args.log_dir.mkdir(parents=True, exist_ok=True)
-    fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s", "%Y-%m-%d %H:%M:%S")
-    handlers: list[logging.Handler] = [
-        logging.StreamHandler(sys.stderr),
-        logging.handlers.RotatingFileHandler(args.log_dir / "bot.log", maxBytes=5_000_000, backupCount=3),
-    ]
-    for h in handlers:
-        h.setFormatter(fmt)
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, handlers=handlers)
+    # bot.log keeps its format (the analysis scripts read it); the terminal and the journal also say which
+    # game a line is from, since with --game both the two bots write to the same place.
+    fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s", DATE_FORMAT)
+    screen = logging.StreamHandler(sys.stderr)
+    screen.setFormatter(logging.Formatter(f"%(asctime)s {args.game} %(levelname)s %(message)s", DATE_FORMAT))
+    file = logging.handlers.RotatingFileHandler(args.log_dir / "bot.log", maxBytes=5_000_000, backupCount=3)
+    file.setFormatter(fmt)
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, handlers=[screen, file])
 
     host = None
     if args.game == "sts1":
         from .games.sts1 import host as sts1_host
         from .games.sts1.client import Sts1Client
+
+        why = sts1_host.comm_config_problem(args.port)
+        if why:
+            if not args.no_launch:
+                logging.getLogger("sts2bot").error("%s. Not launching the game: the bot %s", why, STS1_SETUP_HINT)
+                return 2
+            logging.getLogger("sts2bot").warning("%s; the bot cannot reach the game until you run `python3 -m sts2bot sts1-setup`", why)
 
         client: Client = Sts1Client(args.host, args.port, prefs=sts1_host.read_prefs())
         host = sts1_host.Sts1Host()

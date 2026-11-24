@@ -204,6 +204,7 @@ class LearnedRatings(unittest.TestCase):
             return {"id": name.upper().replace(" ", "_"), "name": name, "type": "Power", "cost": 1, "description": "Whenever a card is Exhausted, draw 1 card."}
 
         deck = [{"id": "STRIKE_IRONCLAD", "name": "Strike", "type": "Attack", "cost": 1, "description": "Deal 6 damage."}] * 9
+        deck += [{"id": "TRUE_GRIT", "name": "True Grit", "type": "Skill", "cost": 1, "description": "Gain 7 Block. Exhaust a random card in your Hand."}] * 2
         alone = strategy.deck_fit(card("Dark Embrace"), deck, 2)
         beside = strategy.deck_fit(card("Dark Embrace"), deck + [card("Feel No Pain")], 2)
         self.assertGreater(beside, alone + 1.0)

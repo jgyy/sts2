@@ -8,8 +8,9 @@ differs is how the bot talks to the game and a few tables that only fit one of t
   localhost; games/sts1/client.py turns that game's state into the shape the bot already reads,
   and the bot's actions back into CommunicationMod commands.
 
-Only one game is played at a time, so the choice is a process-wide setting made once at start-up
-(`select`). Code that holds a table for one game only asks `uses_sts2_tables()`.
+A bot process plays one game, so the choice is a process-wide setting made once at start-up
+(`select`); `--game both` plays the two at once with a process for each (games/both.py). Code that
+holds a table for one game only asks `uses_sts2_tables()`.
 """
 
 from __future__ import annotations
