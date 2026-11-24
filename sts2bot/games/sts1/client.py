@@ -19,6 +19,7 @@ log = logging.getLogger("sts2bot.sts1")
 
 DEFAULT_PORT = 15527
 INTENT_WAITS, INTENT_WAIT_FRAMES = 5, 10  # how often, and for how many frames each time, to wait for a fight's intents
+SCRY_AWAY, SCRY_STEPS = ("STATUS", "CURSE"), 12  # what Scry discards; clicks before giving the screen back to the bot
 
 
 def _intents_pending(msg: dict | None) -> bool:
@@ -75,6 +76,7 @@ class Sts1Client(Client):
             if answer.get("status") != "ok" or not isinstance(answer.get("message"), dict):
                 break
             msg = answer["message"]
+        msg = self._scry(msg)
         st = self.screens.translate(msg)
         if st.get("_shop_room"):
             # The merchant's room comes before his shelf: open it once a visit, the bot only shops on the shelf.
@@ -85,6 +87,23 @@ class Sts1Client(Client):
                 if answer.get("status") == "ok" and isinstance(answer.get("message"), dict):
                     st = self.screens.translate(answer["message"])
         return st
+
+    def _scry(self, msg: dict | None) -> dict | None:
+        """The Watcher's Scry: the top cards of the draw pile in a grid, any number of them to discard. Done here: Status and
+        Curse cards go, the rest stay, then confirm. (As a card select the bot clicked the three cards on and off for good:
+        the grid's confirm never showed as ready, 2026-11-24 21:52, the Watcher's first run.)"""
+        for _ in range(SCRY_STEPS):
+            g = (msg or {}).get("game_state") or {}
+            if str(g.get("screen_type")) != "GRID" or str(g.get("current_action")) != "ScryAction":
+                return msg
+            ss = g.get("screen_state") or {}
+            picked = {c.get("uuid") for c in ss.get("selected_cards") or []}
+            wrong = [i for i, c in enumerate(ss.get("cards") or []) if (str(c.get("type")) in SCRY_AWAY) != (c.get("uuid") in picked)]
+            answer = self.send(f"choose {wrong[0]}" if wrong else "confirm")
+            if answer.get("status") != "ok" or not isinstance(answer.get("message"), dict):
+                return msg
+            msg = answer["message"]
+        return msg
 
     def profile(self) -> dict[str, Any]:
         """What the save files say, and the wins seen since: enough for the bot to pick a character."""

@@ -92,7 +92,9 @@ def read_prefs(folder: Path | None = None) -> dict:
             continue
         try:
             wins = int(data.get("WIN_COUNT") or 0)
-            level = int(data.get("ASCENSION_LEVEL") or 0)
+            # Once a character has won, the game reads a missing ASCENSION_LEVEL as 1 (Prefs.getInteger(..., 1)): after the
+            # first win (2026-11-24 21:39) the bot still read the Ironclad as on 0 and went on playing Ascension 0.
+            level = int(data.get("ASCENSION_LEVEL") or (1 if wins > 0 else 0))
         except (TypeError, ValueError):
             continue
         out["wins"] += wins

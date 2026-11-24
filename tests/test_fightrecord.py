@@ -49,3 +49,18 @@ class FightWatchTest(unittest.TestCase):
         self.assertEqual((first["floor"], first["hp_out"], first["died"]), (5, 61, False))
         second = watch.update({"state_type": "map", "run": {"act": 1, "floor": 6}, "player": {"hp": 40}}, "map")
         self.assertEqual((second["floor"], second["kind"], second["hp_in"], second["hp_out"]), (6, "elite", 61, 40))
+
+    def test_a_card_chosen_mid_fight_does_not_end_it(self):
+        # The first game's Attack Potion opens a card reward inside the fight: every such boss fight logged a "won" after
+        # round 1 and began again (2026-11-24).
+        from sts2bot.fight.bossfight import BossWatch
+
+        watch, bosses = FightWatch(), BossWatch()
+        start = fight_state(["THEGUARDIAN"], 1, kind="boss", act=1, floor=16)
+        pick = {"state_type": "card_reward", "run": start["run"], "card_reward": {"cards": [], "in_combat": True}}
+        for w in (watch, bosses):
+            w.update(start, "boss")
+            self.assertIsNone(w.update(pick, "card_reward"))
+            self.assertIsNone(w.update(fight_state(["THEGUARDIAN"], 2, hp=60, kind="boss", act=1, floor=16), "boss"))
+        record = watch.update({"state_type": "rewards", "run": start["run"], "player": {"hp": 60}}, "rewards")
+        self.assertEqual((record["rounds"], record["hp_out"]), (2, 60))

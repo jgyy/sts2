@@ -19,6 +19,13 @@ from . import combat
 _IN_FIGHT_SCREENS = {"hand_select", "card_select", "bundle_select", "overlay"}
 
 
+def mid_fight(state: dict, kind: str | None) -> bool:
+    """A screen that opens inside a fight. The first game's card choices from a potion or a card (Attack Potion,
+    Discovery) come as a card reward marked `in_combat`: each one closed the fight record and opened a new one, so every
+    such boss fight logged a "won" after round 1 (2026-11-24)."""
+    return kind in _IN_FIGHT_SCREENS or (kind == "card_reward" and bool((state.get("card_reward") or {}).get("in_combat")))
+
+
 def _base_name(entity_id: str) -> str:
     return re.sub(r"_\d+$", "", entity_id)
 
@@ -33,10 +40,10 @@ class BossWatch:
         if kind == "boss" and state.get("battle"):
             self._seen(state)
             return None
-        if self.fight is None or kind in _IN_FIGHT_SCREENS:
+        if self.fight is None or mid_fight(state, kind):
             return None
         fight, self.fight = self.fight, None
-        return self._summary(fight, lost=kind == "game_over")
+        return self._summary(fight, lost=kind == "game_over" and not (state.get("game_over") or {}).get("victory"))
 
     def _seen(self, state: dict) -> None:
         battle = state.get("battle") or {}

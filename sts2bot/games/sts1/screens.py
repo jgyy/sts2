@@ -17,7 +17,7 @@ from __future__ import annotations
 import re
 
 from ...cards import key_of
-from . import text
+from . import keys, text
 
 CHARACTERS = ("IRONCLAD", "THE_SILENT", "DEFECT", "WATCHER")
 CHARACTER_NAMES = {"IRONCLAD": "The Ironclad", "THE_SILENT": "The Silent", "DEFECT": "The Defect", "WATCHER": "The Watcher"}
@@ -31,6 +31,19 @@ POWER_ID = {
     "WEAKENED": "WEAK", "PLATED_ARMOR": "PLATING", "INTANGIBLEPLAYER": "INTANGIBLE", "REGENERATION": "REGEN",
     "REGENERATE": "REGEN", "CONSTRICTED": "CONSTRICT", "DRAW_CARD": "DRAW_CARDS_NEXT_TURN", "ENERGIZED": "ENERGY_NEXT_TURN",
     "ENERGIZEDBLUE": "ENERGY_NEXT_TURN", "LOCKON": "LOCK_ON", "SURROUNDED": "SURROUNDED", "MINION": "MINION",
+    # (2026-11-24, from the first STS1 logs.) The Gremlin Nob's Enrage (id "Anger"): Strength for each Skill played.
+    "ANGER": "ENRAGE",
+    # The Orb Walker gains 3 Strength at the end of each of its turns, as a Cultist's Ritual does.
+    "GENERIC_STRENGTH_UP": "RITUAL",
+    # The Guardian's Sharp Hide (3 damage back for each Attack played: Thorns counts it a hit, close enough).
+    "SHARP_HIDE": "THORNS",
+    # The Byrd's Flight is Slay the Spire 2's Flutter: half damage from Attacks until it has been hit enough times.
+    "FLIGHT": "FLUTTER",
+    # Panic Button: no Block from cards for a while.
+    "NOBLOCKPOWER": "NO_BLOCK",
+    # The Chosen's Hex (a Dazed for each non-Attack played) is not Slay the Spire 2's Hex (all cards Ethereal while the
+    # Spectral Knight lives): under that name the planner hurried every card out of the hand.
+    "HEX": "HEX_DAZED",
 }
 INTENT_TYPE = {"BUFF": "Buff", "DEBUFF": "Debuff", "STRONG_DEBUFF": "Debuff", "DEFEND": "Defend", "ESCAPE": "Escape",
                "SLEEP": "Sleep", "STUN": "Stun", "MAGIC": "Buff", "UNKNOWN": "Unknown", "NONE": "Unknown", "DEBUG": "Unknown"}
@@ -87,11 +100,14 @@ class Screens:
         g = self.game
         return {"act": g.get("act"), "floor": g.get("floor"), "ascension": g.get("ascension_level")}
 
-    def card(self, c: dict, index: int | None = None) -> dict:
+    def card(self, c: dict, index: int | None = None, live: bool = False) -> dict:
+        """`live`: a card in the hand, whose numbers the game has worked out for this moment of the fight."""
         upgraded = int(c.get("upgrades") or 0) > 0
         cost = c.get("cost")
         desc = text.card_text(c.get("id"), c.get("name"), upgraded)
         ctype = CARD_TYPE.get(str(c.get("type")), str(c.get("type") or "").title())
+        if live and desc:
+            desc = text.live_numbers(desc, ctype, c)
         target = "AnyEnemy" if c.get("has_target") else "AllEnemies" if re.search(r"\ball enemies\b", desc, re.I) else "Self"
         out = {
             "id": upper_id(c.get("id")),
@@ -115,8 +131,9 @@ class Screens:
     def powers(creature: dict) -> list[dict]:
         out = []
         for p in creature.get("powers") or []:
-            pid = upper_id(p.get("id") or p.get("name"))
-            out.append({"id": POWER_ID.get(pid, pid) + "_POWER", "name": p.get("name"), "amount": p.get("amount"), "description": ""})
+            pid = re.sub(r"_POWER$", "", upper_id(p.get("id") or p.get("name")))  # ("Generic Strength Up Power")
+            out.append({"id": POWER_ID.get(pid, pid) + "_POWER", "name": p.get("name"), "amount": p.get("amount"),
+                        "description": clean(p.get("description"))})
         return out
 
     def potions(self) -> list[dict]:
@@ -147,7 +164,7 @@ class Screens:
         if not cs:
             return p
         me = cs.get("player") or {}
-        hand = [self.card(c, i) for i, c in enumerate(cs.get("hand") or [])]
+        hand = [self.card(c, i, live=True) for i, c in enumerate(cs.get("hand") or [])]
         draw = [self.card(c) for c in cs.get("draw_pile") or []]
         orbs = [o for o in me.get("orbs") or [] if str(o.get("id")) not in ("Empty", "None")]
         turn = (g.get("floor"), cs.get("turn"))
@@ -162,7 +179,7 @@ class Screens:
             discard_pile=[self.card(c) for c in cs.get("discard_pile") or []], discard_pile_count=len(cs.get("discard_pile") or []),
             exhaust_pile_count=len(cs.get("exhaust_pile") or []),
             orbs=[{"id": upper_id(o.get("id") or o.get("name")), "passive_val": o.get("passive_amount"), "evoke_val": o.get("evoke_amount")} for o in orbs],
-            orb_slots=len(me.get("orbs") or []),
+            orb_slots=len(me.get("orbs") or []), stance=me.get("stance"),
         )
         return p
 
@@ -244,10 +261,14 @@ class Screens:
         g = self.game
         ss = g.get("screen_state") or {}
         nodes, top = {}, 0
+        emerald = keys.wants_emerald(g)
         for n in g.get("map") or []:
             x, y = n.get("x"), n.get("y")
             top = max(top, int(y or 0))
-            nodes[(x, y)] = {"col": x, "row": int(y) + 1, "type": MAP_SYMBOL.get(str(n.get("symbol")), "Unknown"),
+            kind = MAP_SYMBOL.get(str(n.get("symbol")), "Unknown")
+            if kind == "Elite" and emerald and n.get("emerald_key"):
+                kind = "EmeraldElite"  # (the burning elite, with the Emerald Key: strategy.path_value prices it)
+            nodes[(x, y)] = {"col": x, "row": int(y) + 1, "type": kind,
                              "children": [[c.get("x"), int(c.get("y")) + 1] for c in n.get("children") or []]}
         boss = [3, top + 2]
         for node in nodes.values():  # the boss is not on the map: every road ends there
@@ -268,12 +289,18 @@ class Screens:
 
     def _combat_reward(self) -> dict:
         items = []
-        for i, r in enumerate((self.game.get("screen_state") or {}).get("rewards") or []):
+        rewards = (self.game.get("screen_state") or {}).get("rewards") or []
+        # A chest's Sapphire Key and its relic: taking one takes the other away, so only the one wanted is shown.
+        key_wanted = keys.wants_sapphire(self.game) and any(str(r.get("reward_type") or "").upper() == "SAPPHIRE_KEY" for r in rewards)
+        linked = {upper_id((r.get("link") or {}).get("id")) for r in rewards if str(r.get("reward_type") or "").upper() == "SAPPHIRE_KEY"}
+        for i, r in enumerate(rewards):
             # (CommunicationMod names it "reward_type"; read as "type" every reward came through untyped, and a card
             # reward skipped on the real game was claimed again at once, for ever: 2026-11-24, the first live run.)
             kind = str(r.get("reward_type") or r.get("type") or "").upper()
-            if kind == "SAPPHIRE_KEY":
+            if kind == "SAPPHIRE_KEY" and not key_wanted:
                 continue  # (taking it gives up the relic beside it)
+            if kind == "RELIC" and key_wanted and upper_id((r.get("relic") or {}).get("id")) in linked:
+                continue
             item = {"index": i, "type": {"STOLEN_GOLD": "gold"}.get(kind, kind.lower())}
             if kind in ("GOLD", "STOLEN_GOLD"):
                 item["gold_amount"] = r.get("gold")
@@ -313,6 +340,10 @@ class Screens:
     def _rest(self) -> dict:
         ss = self.game.get("screen_state") or {}
         opts = [{"index": i, "id": str(o).lower(), "name": str(o).title(), "is_enabled": True} for i, o in enumerate(ss.get("rest_options") or [])]
+        # The Ruby Key (Recall) when it is wanted here, and never by accident otherwise (the bot ranks unknown options low,
+        # but under the rest option's 1.0 when it does not heal).
+        recall = [o for o in opts if o["id"] == "recall"]
+        opts = recall if recall and keys.wants_ruby(self.game) else [o for o in opts if o["id"] != "recall"]
         return self._wrap("rest_site", rest_site={"options": opts, "can_proceed": "proceed" in self.commands})
 
     def _shop_room(self) -> dict:
@@ -371,7 +402,7 @@ class Screens:
             kind = "choose"  # (Seek, Headbutt, Exhume: one click picks and closes)
         prompt = f"Choose {n} card{'s' if n != 1 else ''} to {verb}." if verb else f"Choose {n} card{'s' if n != 1 else ''}."
         cards = [self.card(c, i) for i, c in enumerate(ss.get("cards") or [])]
-        confirm = bool(ss.get("confirm_up")) or ("confirm" in self.commands and len(ss.get("selected_cards") or []) >= n)
+        confirm = bool(ss.get("confirm_up")) or ("confirm" in self.commands and (len(ss.get("selected_cards") or []) >= n or bool(ss.get("any_number"))))
         return self._wrap("card_select", card_select={"screen_type": kind, "prompt": prompt, "cards": cards, "preview_showing": bool(ss.get("confirm_up")),
                                                       "can_confirm": confirm, "can_cancel": "cancel" in self.commands or "return" in self.commands,
                                                       "can_skip": "skip" in self.commands})
@@ -382,7 +413,7 @@ class Screens:
         n = int(ss.get("max_cards") or 1)
         action = str(g.get("current_action") or "")
         prompt = HAND_PROMPT.get(action, "Choose {n} card(s).").format(n=n)
-        cards = [self.card(c, i) for i, c in enumerate(ss.get("hand") or [])]
+        cards = [self.card(c, i, live=True) for i, c in enumerate(ss.get("hand") or [])]
         picked = len(ss.get("selected") or [])
         ready = "confirm" in self.commands and (picked >= n or not cards or (bool(ss.get("can_pick_zero")) and picked > 0))
         state = self._wrap("hand_select", hand_select={"prompt": prompt, "cards": cards, "can_confirm": ready,
@@ -402,4 +433,6 @@ class Screens:
         return self._wrap("game_over", game_over={"options": ["main_menu"], "victory": bool(ss.get("victory")), "score": ss.get("score")})
 
     def _complete(self) -> dict:
-        return self._game_over()
+        # A room finished with nothing left to choose ("proceed" goes on): not the end of the run. After the act 3 boss it
+        # was read as game over, and the first win (2026-11-24 21:39) was written down as a loss at floor 50 and a win at 51.
+        return self._wrap("overlay")

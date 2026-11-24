@@ -7,10 +7,21 @@ animates or waits on is counted down by libGDX's frame time, so the mod multipli
 launches the game; unset, nothing changes, so the game started by hand plays as usual).
 
 The death screen unlocks the next character (the Silent after any run, the Defect after a Silent run, the Watcher once the
-Defect is unlocked and an act 3 boss has been beaten) only when its button is clicked, through the "unlock" screen that
+Defect is unlocked and an act 3 boss has been beaten; the game counts that by achievements, which it grants only unmodded, so
+here a win does) only when its button is clicked, through the "unlock" screen that
 follows; CommunicationMod's "proceed" goes straight to the menu, so on a new profile (2026-11-24) four runs went by with the
 Silent still locked. The mod grants the same unlock when the death screen is built, by the game's own rules and calls
 (UnlockTracker.hardUnlockOverride, read from desktop-1.0.jar's DeathScreen.update).
+
+The same click does three more things that "proceed" skipped (found 2026-11-24): the next ascension level after a win
+(DeathScreen.updateAscensionProgress), the CLASS_WIN flag that opens act 4 once the Ironclad, the Silent and the Defect
+all have it (CardCrawlGame.doorUnlockScreenCheck; Settings.setFinalActAvailability reads them), and the cards and relics
+the unlock bar has earned (the game grants those only at its next launch otherwise). The mod does all three when the
+death screen (or the Heart's victory screen) is built.
+
+It also adds to CommunicationMod's state what that mod leaves out: each card's damage and Block as the game works them
+out (with Strength, Weak, Dexterity, Frail, stances: the card text the bot keeps is the printed one), the three keys and
+whether act 4 is open, the elite that carries the Emerald Key, the Watcher's stance, and each power's text.
 
 `ensure(game_dir)` compiles it with the system's javac against the game's own jars (Java 8 bytecode, the game's
 JRE) and puts `sts2botspeed.jar` in the game's mods folder, again only when the source has changed.
@@ -36,12 +47,22 @@ import com.badlogic.gdx.backends.lwjgl.LwjglGraphics;
 import com.evacipated.cardcrawl.modthespire.lib.SpireInitializer;
 import com.evacipated.cardcrawl.modthespire.lib.SpirePatch;
 import com.evacipated.cardcrawl.modthespire.lib.SpirePostfixPatch;
+import com.megacrit.cardcrawl.cards.AbstractCard;
 import com.megacrit.cardcrawl.characters.AbstractPlayer;
+import com.megacrit.cardcrawl.core.AbstractCreature;
+import com.megacrit.cardcrawl.core.CardCrawlGame;
 import com.megacrit.cardcrawl.core.Settings;
 import com.megacrit.cardcrawl.dungeons.AbstractDungeon;
+import com.megacrit.cardcrawl.map.MapRoomNode;
 import com.megacrit.cardcrawl.monsters.MonsterGroup;
+import com.megacrit.cardcrawl.powers.AbstractPower;
 import com.megacrit.cardcrawl.screens.DeathScreen;
+import com.megacrit.cardcrawl.screens.GameOverScreen;
+import com.megacrit.cardcrawl.screens.VictoryScreen;
 import com.megacrit.cardcrawl.unlock.UnlockTracker;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 @SpireInitializer
 public class TimeScale {
@@ -89,7 +110,7 @@ public class TimeScale {
                 key = "Defect";
             } else if (UnlockTracker.isCharacterLocked("Watcher") && !UnlockTracker.isCharacterLocked("Defect")
                     && (UnlockTracker.isAchievementUnlocked("RUBY") || UnlockTracker.isAchievementUnlocked("EMERALD")
-                        || UnlockTracker.isAchievementUnlocked("SAPPHIRE"))) {
+                        || UnlockTracker.isAchievementUnlocked("SAPPHIRE") || GameOverScreen.isVictory || everWon())) {
                 key = "Watcher";
             }
             if (key != null) {
@@ -99,6 +120,146 @@ public class TimeScale {
             }
         }
     }
+
+    // The game's Watcher rule asks for an act 3 achievement (RUBY, EMERALD, SAPPHIRE), and grants none while it is modded
+    // (UnlockTracker.unlockAchievement returns at once under Settings.isModded: the first win, 2026-11-24 21:39, left
+    // STSAchievements empty and the Watcher locked). A win now, or a CLASS_WIN flag from an earlier one, stands in for it.
+    static boolean everWon() {
+        return CardCrawlGame.playerPref.getBoolean("IRONCLAD_WIN", false) || CardCrawlGame.playerPref.getBoolean("THE_SILENT_WIN", false)
+            || CardCrawlGame.playerPref.getBoolean("DEFECT_WIN", false);
+    }
+
+    // What the death screen's button does for a finished run besides the character unlock: the next ascension level
+    // (updateAscensionProgress: a win, or a death in act 4, at the highest level unlocked) and, for a win, the
+    // CLASS_WIN flag that opens act 4 once the Ironclad, the Silent and the Defect all have it
+    // (CardCrawlGame.doorUnlockScreenCheck, without its door screen). Then the cards and relics the unlock bar has
+    // earned (the game grants them at its next launch otherwise: UnlockTracker.retroactiveUnlock in create()).
+    @SpirePatch(clz = DeathScreen.class, method = SpirePatch.CONSTRUCTOR, paramtypez = {MonsterGroup.class})
+    public static class Progress {
+        @SpirePostfixPatch
+        public static void Postfix(DeathScreen __instance, MonsterGroup m) {
+            if (AbstractDungeon.player == null || !Settings.isStandardRun()) {
+                return;
+            }
+            ascend(__instance, "updateAscensionProgress");
+            AbstractPlayer.PlayerClass c = AbstractDungeon.player.chosenClass;
+            if (GameOverScreen.isVictory && (c == AbstractPlayer.PlayerClass.IRONCLAD || c == AbstractPlayer.PlayerClass.THE_SILENT
+                    || c == AbstractPlayer.PlayerClass.DEFECT)) {
+                String key = c.name() + "_WIN";
+                if (!CardCrawlGame.playerPref.getBoolean(key, false)) {
+                    CardCrawlGame.playerPref.putBoolean(key, true);
+                    CardCrawlGame.playerPref.flush();
+                    System.out.println("sts2botspeed: " + key);
+                }
+            }
+            unlocks();
+        }
+    }
+
+    // The same after the Heart (VictoryScreen's button: updateAscensionAndBetaArtProgress).
+    @SpirePatch(clz = VictoryScreen.class, method = SpirePatch.CONSTRUCTOR, paramtypez = {MonsterGroup.class})
+    public static class HeartProgress {
+        @SpirePostfixPatch
+        public static void Postfix(VictoryScreen __instance, MonsterGroup m) {
+            if (AbstractDungeon.player != null && Settings.isStandardRun()) {
+                ascend(__instance, "updateAscensionAndBetaArtProgress");
+                unlocks();
+            }
+        }
+    }
+
+    static void ascend(Object screen, String method) {
+        try {
+            Method up = screen.getClass().getDeclaredMethod(method);
+            up.setAccessible(true);
+            up.invoke(screen);
+            System.out.println("sts2botspeed: " + method + " done");
+        } catch (Exception e) {
+            System.out.println("sts2botspeed: " + method + " failed: " + e);
+        }
+    }
+
+    static void unlocks() {
+        try {
+            UnlockTracker.retroactiveUnlock();
+        } catch (Exception e) {
+            System.out.println("sts2botspeed: retroactiveUnlock failed: " + e);
+        }
+    }
+
+    // What CommunicationMod leaves out of its state, added to it. A card's damage and Block as the game has worked them
+    // out (Strength, Weak, Dexterity, Frail, stances, Heavy Blade, Perfected Strike ...: the numbers on the card in hand).
+    @SpirePatch(cls = "communicationmod.GameStateConverter", method = "convertCardToJson", requiredModId = "CommunicationMod", optional = true)
+    public static class CardNumbers {
+        @SpirePostfixPatch
+        public static HashMap<String, Object> Postfix(HashMap<String, Object> __result, AbstractCard card) {
+            __result.put("damage", card.damage);
+            __result.put("base_damage", card.baseDamage);
+            __result.put("block", card.block);
+            __result.put("base_block", card.baseBlock);
+            __result.put("magic", card.magicNumber);
+            __result.put("base_magic", card.baseMagicNumber);
+            return __result;
+        }
+    }
+
+    // The keys for act 4 and whether act 4 is open at all.
+    @SpirePatch(cls = "communicationmod.GameStateConverter", method = "getGameState", requiredModId = "CommunicationMod", optional = true)
+    public static class Keys {
+        @SpirePostfixPatch
+        public static HashMap<String, Object> Postfix(HashMap<String, Object> __result) {
+            HashMap<String, Object> keys = new HashMap<>();
+            keys.put("ruby", Settings.hasRubyKey);
+            keys.put("emerald", Settings.hasEmeraldKey);
+            keys.put("sapphire", Settings.hasSapphireKey);
+            __result.put("keys", keys);
+            __result.put("final_act_available", Settings.isFinalActAvailable);
+            return __result;
+        }
+    }
+
+    // Which elite on the map carries the Emerald Key (the burning one).
+    @SpirePatch(cls = "communicationmod.GameStateConverter", method = "convertMapRoomNodeToJson", requiredModId = "CommunicationMod", optional = true)
+    public static class EmeraldNode {
+        @SpirePostfixPatch
+        public static HashMap<String, Object> Postfix(HashMap<String, Object> __result, MapRoomNode node) {
+            if (node != null && node.hasEmeraldKey) {
+                __result.put("emerald_key", true);
+            }
+            return __result;
+        }
+    }
+
+    // The Watcher's stance.
+    @SpirePatch(cls = "communicationmod.GameStateConverter", method = "convertPlayerToJson", requiredModId = "CommunicationMod", optional = true)
+    public static class Stance {
+        @SpirePostfixPatch
+        public static HashMap<String, Object> Postfix(HashMap<String, Object> __result, AbstractPlayer p) {
+            if (p != null && p.stance != null) {
+                __result.put("stance", p.stance.ID);
+            }
+            return __result;
+        }
+    }
+
+    // What each power says (CommunicationMod sends its id, name and amount only).
+    @SpirePatch(cls = "communicationmod.GameStateConverter", method = "convertCreaturePowersToJson", requiredModId = "CommunicationMod", optional = true)
+    public static class PowerText {
+        @SpirePostfixPatch
+        public static ArrayList<Object> Postfix(ArrayList<Object> __result, AbstractCreature creature) {
+            if (creature == null || creature.powers == null) {
+                return __result;
+            }
+            for (int i = 0; i < __result.size() && i < creature.powers.size(); i++) {
+                Object o = __result.get(i);
+                AbstractPower p = creature.powers.get(i);
+                if (o instanceof HashMap && p != null && p.description != null) {
+                    ((HashMap<String, Object>) o).put("description", p.description);
+                }
+            }
+            return __result;
+        }
+    }
 }
 """
 
@@ -106,7 +267,7 @@ MANIFEST = """{
   "modid": "sts2botspeed",
   "name": "sts2bot speed",
   "author_list": ["sts2bot"],
-  "description": "For the bot: runs the game clock faster (STS2BOT_TIME_SCALE) and unlocks characters as the death screen would.",
+  "description": "For the bot: runs the game clock faster (STS2BOT_TIME_SCALE), does what the death screen's button would (unlocks, ascension, act 4) and adds card numbers, keys and stances to CommunicationMod's state.",
   "version": "1.0.0",
   "sts_version": "12-18-2022",
   "mts_version": "3.18.0",

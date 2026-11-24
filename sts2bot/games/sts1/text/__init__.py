@@ -66,6 +66,29 @@ def expand(text: str, upgraded: bool) -> str:
     return _ENERGY.sub(lambda m: f"Gain {m.group(1)}[energy_icon.png]", text)
 
 
+_DEAL = re.compile(r"\b(deal)\s+\d+\s+damage", re.I)
+_GAIN_BLOCK = re.compile(r"\b(gain)\s+\d+\s+block", re.I)
+# Sentences whose effect the game's own damage number already holds.
+_FOLDED_IN = re.compile(r"\s*(?:strength\s+affects\s+this\s+card\s+\d+\s+times|deals?\s+\d+\s+additional\s+damage\s+for\s+all\s+your\s+cards\s+containing\s+strike)\.?", re.I)
+
+
+def live_numbers(desc: str, ctype: str, card: dict) -> str:
+    """A hand card's text with the damage and Block the game has worked out for it (Strength, Weak, Dexterity, Frail,
+    stances; the bot's own mod adds them to CommunicationMod's card), the way Slay the Spire 2 prints them in a fight.
+    The tables hold the printed numbers only: until 2026-11-24 a Defend read 5 Block under Frail, 8 with 3 Dexterity, and
+    a Strike 6 damage under Weak and with 5 Strength alike; Heavy Blade+ read as 14 damage 5 times (70)."""
+    dmg, base_dmg = card.get("damage"), card.get("base_damage")
+    if ctype == "Attack" and isinstance(dmg, int) and isinstance(base_dmg, int) and base_dmg >= 0:
+        n = max(0, dmg)
+        desc = _FOLDED_IN.sub("", desc)
+        desc = re.sub(r"\bdeal\s+damage\s+equal\s+to\s+[^.]*", f"Deal {n} damage", desc, flags=re.I)  # (Body Slam, Mind Blast)
+        desc = _DEAL.sub(lambda m: f"{m.group(1)} {n} damage", desc)
+    blk, base_blk = card.get("block"), card.get("base_block")
+    if ctype in ("Attack", "Skill") and isinstance(blk, int) and isinstance(base_blk, int) and base_blk >= 0:
+        desc = _GAIN_BLOCK.sub(lambda m: f"{m.group(1)} {max(0, blk)} Block", desc)
+    return desc
+
+
 def card_key(card_id, name=None) -> str | None:
     """The table key for a card, or None if it is not in the tables."""
     for raw in (card_id, name):
