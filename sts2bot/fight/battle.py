@@ -22,6 +22,12 @@ SLIP_WORTH = 7.0  # what taking one Slippery stack off is worth, in damage: the 
 # 7-damage attack at a flat 5), and 1 beyond that (a dear card may still come). See next_room.
 NEXT_ENERGY, SPARE_ENERGY = 6.0, 1.0
 RINGERS = ("CEREMONIAL_BEAST",)  # whose Debuff leaves us Ringing ("You can only play 1 card this turn") next turn: 42 times in 42
+# The Writhing Mass (the first game, act 3) changes its intent every time an Attack hits it: Strong Strike 32, Multi-Strike
+# 7 x 3, 15 and Block, 10 and Weak and Vulnerable, or Implant (a Parasite), on Ascension 0 (38, 9 x 3, 16, 12 from 2). What
+# the next one deals: a little over the mean, or the Strong Strike when that could be the end of us (the planner prices HP
+# by what it expects, not by the chance of dying). Until 2026-11-24 a Debuff intent read as a quiet turn whatever was
+# played: on 12 HP the Watcher entered Wrath and hit it, it came round to 14 x 3, and she was dead.
+REACTIVE_HIT, REACTIVE_WORST, REACTIVE_SAFE_HP = 20, 32, 40
 STAB_SCAR = 8.0  # Painful Stabs (the Test Subject's second form): what each Wound from a hit that gets through costs, in points
 
 
@@ -31,6 +37,12 @@ STAB_SCAR = 8.0  # Painful Stabs (the Test Subject's second form): what each Wou
 # What a freshly channeled orb does: (each turn, when evoked). Focus changes
 # these; the live numbers for orbs already held come from the game.
 ORB_VALUES = {"LIGHTNING": (3, 8), "FROST": (2, 5), "DARK": (6, 6), "PLASMA": (0, 0), "GLASS": (4, 8)}
+
+# A Power that takes an energy away every turn (the first game's Fasting: "Gain 1 less Energy at the start of each turn"),
+# in the units of POWER_VALUE, for each energy and each copy already in play (the second costs twice the first). Read as
+# its 4 Strength and 4 Dexterity alone (+30), Fasting was played three times in a fight on 2026-11-24 21:54: the Watcher
+# went on 1 energy a turn and lost to an act 2 Chosen from 79 of 79 HP. An energy every turn is about 20 here (Demesne).
+ENERGY_DRAIN = 20.0
 
 POWER_VALUE = {
     "DEMON_FORM": 24.0, "ROLLING_BOULDER": 18.0, "PYRE": 16.0, "CRIMSON_MANTLE": 12.0, "MAYHEM": 9.0,
@@ -80,6 +92,7 @@ class Enemy:
     artifact: int = 0  # the next N debuffs we apply do nothing
     hit_cap: int = 0  # Hard to Kill: no single hit removes more HP than this
     enrage: int = 0  # Strength it gains whenever we play a Skill
+    curious: int = 0  # ... a Power (Curiosity: the first game's Awakened One)
     vuln_turns: int = 0  # turns of Vulnerable / Weak it has left
     weak_turns: int = 0
     vuln_added: int = 0  # ... and how many of those this plan added
@@ -103,6 +116,7 @@ class Enemy:
     adapted: bool = False  # ... and this plan has done that
     asleep: int = 0  # Asleep: turns until it wakes by itself (losing HP wakes it at once)
     imbalanced: bool = False  # Imbalanced (Bowlbug Rock): Stunned next turn if its attack is blocked whole
+    reacts: int = 0  # Reactive (the first game's Writhing Mass): an Attack that hits it draws a new intent; what to expect of that
     skittish: int = 0  # Skittish: Block it gains the first time it is hit this turn (0 once that has happened)
     hang: int = 0  # Hang: what the Hang cards' damage on it is multiplied by (2, 4, 8 ...; 0: none played yet)
     threat: float = 0.0  # damage a turn it has been doing in this fight (ordinary fights only; 0: not known)
@@ -331,6 +345,7 @@ def read_enemies(state: dict) -> list[Enemy]:
                 # Intangible: every hit takes 1 HP, whatever its size.
                 hit_cap=1 if _has_power(e, "INTANGIBLE") else _stacks(e, "HARD_TO_KILL"),
                 enrage=_stacks(e, "ENRAGE"),
+                curious=_stacks(e, "CURIOSITY"),
                 thorns=_stacks(e, "THORNS"),
                 revives=_has_power(e, "ILLUSION"),
                 # (Shriek: the Eel on 77 before a 22 was hit to 64, Stunned, after 12 Block had gone up for nothing.)
@@ -353,6 +368,7 @@ def read_enemies(state: dict) -> list[Enemy]:
                 adapts=_has_power(e, "ADAPTABLE"),
                 asleep=_stacks(e, "ASLEEP"),
                 imbalanced=_has_power(e, "IMBALANCED"),
+                reacts=(REACTIVE_HIT if int(player.get("hp") or 0) >= REACTIVE_SAFE_HP else REACTIVE_WORST) + 3 * _stacks(e, "STRENGTH") if _has_power(e, "REACTIVE") else 0,
                 hang=_stacks(e, "HANG"),
                 threat=threat,
                 hive=_stacks(e, "PERSONAL_HIVE"),
@@ -386,7 +402,10 @@ def read_enemies(state: dict) -> list[Enemy]:
         leader_hp = sum(e.hp + e.block for e in leaders)
         leader_hits = sum(e.incoming for e in leaders)
         for e in out:
-            if e.minion and e.incoming >= 15 and e.incoming > 2 * leader_hits and e.hp + e.block <= 0.6 * leader_hp:
+            # (Its hit as it would be without our Weak: Weakened, the Amalgam's 18 showed as 13, and 30 attacks
+            # in 215 went into the Queen's 381 HP while it lived, a whole turn's at a time.)
+            hard = e.incoming / (e.weak_cut if e.weak else 1.0) >= 15
+            if e.minion and hard and e.incoming > 2 * leader_hits and e.hp + e.block <= 0.6 * leader_hp:
                 e.main_threat = True
             elif e.minion and re.sub(r"_\d+$", "", e.entity_id) in MAIN_MINIONS:
                 e.main_threat = True  # (worth what the leader is: the health order then takes it first while he is far from dead)
@@ -668,6 +687,10 @@ def cards_left_this_turn(state: dict) -> int | None:
         if m:
             limits.append(int(m.group(1)))
     left = [max(0, n - played) for n in limits]
+    # The first game's Time Eater counts every card we play (Time Warp, kept from turn to turn): the 12th ends our turn
+    # and gives it 2 Strength. Not counted (2026-11-24 21:26), the Defect on 30 HP and 11 cards played, in front of a 31 hit,
+    # spent its one card left on Cold Snap: the turn ended there with 4 energy and a Defend unplayed, 30 -> 8 HP.
+    left += [12 - max(0, warp) for e in (state.get("battle") or {}).get("enemies") or [] if (warp := _shown(e, "TIME_WARP", 0)) is not None]
     encore = _shown(player, "ENCORE", 1)  # "You can only play 1 more card this turn": the game counts it down, 1 then 0
     if encore is not None:
         left.append(max(0, encore))
@@ -777,7 +800,7 @@ def _set_up(playable: list[CardInfo], energy: int) -> tuple | None:
         x, cost = (energy, energy) if c.is_x else (1, c.cost)
         worth = _power_worth(c) if c.type == "Power" else 0.0
         worth += (4.0 * len(c.channel) + c.summon + 1.5 * c.souls) * x + 0.5 * c.forge + 2.5 * c.star_gain
-        worth += 4.0 * c.strength * c.strength_lasts + 3.5 * c.dexterity * c.dexterity_lasts
+        worth += 4.0 * c.strength * c.strength_lasts + 3.5 * c.dexterity * c.dexterity_lasts - ENERGY_DRAIN * c.energy_drain
         worth += 5.0 * c.next_energy + 1.5 * c.next_draw + 0.8 * c.next_block
         if energy - cost > 0 or c.energy_gain:
             worth += 1.0 * c.draw + 2.0 * c.energy_gain

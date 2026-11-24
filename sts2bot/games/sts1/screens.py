@@ -44,7 +44,19 @@ POWER_ID = {
     # The Chosen's Hex (a Dazed for each non-Attack played) is not Slay the Spire 2's Hex (all cards Ethereal while the
     # Spectral Knight lives): under that name the planner hurried every card out of the hand.
     "HEX": "HEX_DAZED",
+    # Fasting's price (id "EnergyDownPower"): an energy less at the start of every turn, one a stack.
+    "ENERGYDOWNPOWER": "ENERGY_DOWN",
+    # The Duplication Potion's "Your next card is played twice this turn" (id "DuplicationPower"): the second game's Duplicator.
+    "DUPLICATIONPOWER": "DUPLICATION",
+    # The Writhing Mass's Reactive (id "Compulsive"): every Attack that hits it gives it a new intent (battle.REACTIVE_HIT).
+    "COMPULSIVE": "REACTIVE",
+    # The Awakened One's first form (Unawakened, no number): killed, it rises again at full HP, as Stock does in the second game.
+    "UNAWAKENED": "STOCK",
+    # The Darklings' Life Link ("If other enemies are still alive, revives in 2 turns at 50% HP"): the second game's
+    # Reattach (a Decimillipede segment), whose number is the HP it comes back on; battle._pick_target wears them down together.
+    "LIFE_LINK": "REATTACH",
 }
+AMOUNT = {"UNAWAKENED": 1}  # powers that show no number where the planner needs one
 INTENT_TYPE = {"BUFF": "Buff", "DEBUFF": "Debuff", "STRONG_DEBUFF": "Debuff", "DEFEND": "Defend", "ESCAPE": "Escape",
                "SLEEP": "Sleep", "STUN": "Stun", "MAGIC": "Buff", "UNKNOWN": "Unknown", "NONE": "Unknown", "DEBUG": "Unknown"}
 # What a hand selection is for, by the action that asked for it (CommunicationMod does not send the game's prompt).
@@ -132,7 +144,8 @@ class Screens:
         out = []
         for p in creature.get("powers") or []:
             pid = re.sub(r"_POWER$", "", upper_id(p.get("id") or p.get("name")))  # ("Generic Strength Up Power")
-            out.append({"id": POWER_ID.get(pid, pid) + "_POWER", "name": p.get("name"), "amount": p.get("amount"),
+            amount = int(creature.get("max_hp") or 0) // 2 if pid == "LIFE_LINK" else AMOUNT.get(pid, p.get("amount"))
+            out.append({"id": POWER_ID.get(pid, pid) + "_POWER", "name": p.get("name"), "amount": amount,
                         "description": clean(p.get("description"))})
         return out
 
