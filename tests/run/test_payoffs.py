@@ -7,9 +7,12 @@ from sts2bot.cards import deck_value
 from sts2bot.run import decks, strategy
 
 
+def silent(cid, name, ctype, cost, text):
+    return {"id": cid, "name": name, "type": ctype, "cost": cost, "rarity": "Uncommon", "description": text}
+
+
 class Payoffs(unittest.TestCase):
     def test_a_payoff_is_worth_little_until_the_deck_holds_what_feeds_it(self):
-        silent = lambda cid, name, ctype, cost, text: {"id": cid, "name": name, "type": ctype, "cost": cost, "rarity": "Uncommon", "description": text}
         bubble = silent("BUBBLE_BUBBLE", "Bubble Bubble", "Skill", 1, "If the enemy has Poison, apply 9 Poison.")
         accuracy = silent("ACCURACY", "Accuracy", "Power", 1, "Shivs deal 4 additional damage.")
         poison = silent("DEADLY_POISON", "Deadly Poison", "Skill", 1, "Apply 5 Poison.")
@@ -35,7 +38,3 @@ class Payoffs(unittest.TestCase):
         # A card that does something of its own is no payoff (Soul Storm deals its 9 whatever the Souls).
         storm = silent("SOUL_STORM", "Soul Storm", "Attack", 1, "Deal 9 damage. Deals 4 additional damage for each Soul in your Exhaust Pile.")
         self.assertIsNone(decks.pays_off(storm))
-
-
-if __name__ == "__main__":
-    unittest.main()

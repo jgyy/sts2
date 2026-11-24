@@ -23,11 +23,6 @@ class Act2Boss(unittest.TestCase):
         # 375 act 2 Unknown rooms: an event 65% of the time, a fight 20% at 17% of Max HP; 3% on average.
         way = [("Unknown", 13), ("Boss", 14)]
         with mock.patch.object(strategy, "UNKNOWN_COST", {}):
-            free = strategy.path_value(way, 70, 80, 0, 2)
-            free_act1 = strategy.path_value(way, 70, 80, 0, 1)
+            free, free_act1 = strategy.path_value(way, 70, 80, 0, 2), strategy.path_value(way, 70, 80, 0, 1)
         self.assertLess(strategy.path_value(way, 70, 80, 0, 2), free - 0.5)
         self.assertEqual(strategy.path_value(way, 70, 80, 0, 1), free_act1)  # (act 1: under 1%, left out)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -16,9 +16,7 @@ from sts2bot.games.sts1 import host
 
 class FakeProc:
     def __init__(self, argv, pid):
-        self.argv, self.pid = argv, pid
-        self.code = None
-        self.signals = []
+        self.argv, self.pid, self.code, self.signals = argv, pid, None, []
 
     @property
     def game(self):
@@ -39,15 +37,15 @@ class FakeProc:
 
 
 class Rig:
-    """A clock that moves only when `run` sleeps, and bots that exit when `script` says."""
+    """A clock that moves only when `run` sleeps, and bots that exit when `script` says (those started from `until` on: at once)."""
 
-    def __init__(self, script):
-        self.t = 0.0
-        self.procs = []
-        self.script = script
+    def __init__(self, script, until=float("inf")):
+        self.t, self.procs, self.script, self.until = 0.0, [], script, until
 
     def spawn(self, argv, **kw):
         self.procs.append(FakeProc(argv, 1000 + len(self.procs)))
+        if self.t >= self.until:
+            self.procs[-1].code = 0
         return self.procs[-1]
 
     def clock(self):
@@ -60,8 +58,8 @@ class Rig:
     def of(self, game):
         return [p for p in self.procs if p.game == game]
 
-    def run(self, argv):
-        return both.run(argv, spawn=self.spawn, clock=self.clock, sleep=self.sleep)
+    def run(self, argv, **kw):
+        return both.run(argv, spawn=self.spawn, clock=self.clock, sleep=self.sleep, **kw)
 
 
 class Both(unittest.TestCase):
@@ -99,20 +97,11 @@ class Both(unittest.TestCase):
                     starts.append(rig.t)
                     p.code = 2
 
-        rig = Rig(script)
+        rig = Rig(script, until=200)
         with mock.patch.object(both, "RESTART_DELAY", 10.0), mock.patch.object(both, "MAX_DELAY", 40.0):
-            both.run(["--game", "both"], games=("sts1",), spawn=self._spawn_until(rig, 200), clock=rig.clock, sleep=rig.sleep)
+            rig.run(["--game", "both"], games=("sts1",))
         gaps = [b - a for a, b in zip(starts, starts[1:])]
         self.assertEqual([round(g) for g in gaps[:4]], [11, 21, 41, 41])  # (1 s of polling on top of each pause)
-
-    def _spawn_until(self, rig, end):
-        def spawn(argv, **kw):
-            proc = rig.spawn(argv, **kw)
-            if rig.t >= end:
-                proc.code = 0
-            return proc
-
-        return spawn
 
     def test_stopping_stops_every_bot(self):
         def script(rig):
@@ -129,15 +118,10 @@ class Both(unittest.TestCase):
 
 class CommandLine(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
-        env = mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": self.tmp.name})
-        env.start()
-        self.addCleanup(env.stop)
+        self.tmp = self.enterContext(tempfile.TemporaryDirectory())
+        self.enterContext(mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": self.tmp}))
+        self.enterContext(mock.patch("logging.basicConfig"))
         self.addCleanup(games.select, "sts2")
-        quiet = mock.patch("logging.basicConfig")
-        quiet.start()
-        self.addCleanup(quiet.stop)
 
     def test_options_that_belong_to_one_game_are_refused(self):
         for opt in (["--port", "1"], ["--log-dir", "x"], ["--launch-cmd", "x"]):
@@ -157,9 +141,8 @@ class CommandLine(unittest.TestCase):
     def test_the_first_game_is_not_launched_for_another_program(self):
         host.comm_config_path().parent.mkdir(parents=True)
         host.comm_config_path().write_text("command=python3 /elsewhere/main.py --ascension 0\nrunAtGameStart=true\n")
-        no_file = mock.patch("logging.handlers.RotatingFileHandler")
-        with no_file, mock.patch.object(cli, "Supervisor") as sup, self.assertLogs("sts2bot", "ERROR") as said:
-            self.assertEqual(cli.main(["--game", "sts1", "--log-dir", self.tmp.name]), 2)
+        with mock.patch("logging.handlers.RotatingFileHandler"), mock.patch.object(cli, "Supervisor") as sup, self.assertLogs("sts2bot", "ERROR") as said:
+            self.assertEqual(cli.main(["--game", "sts1", "--log-dir", self.tmp]), 2)
         sup.assert_not_called()
         self.assertIn("/elsewhere/main.py", said.output[0])
 
@@ -176,7 +159,3 @@ class CommConfig(unittest.TestCase):
             self.assertIsNone(host.comm_config_problem(15599, path))
             path.write_text(f"command=python3 {host.RELAY}\n")  # no --port: the relay's own default
             self.assertIsNone(host.comm_config_problem(15527, path))
-
-
-if __name__ == "__main__":
-    unittest.main()

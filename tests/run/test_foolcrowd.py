@@ -9,11 +9,11 @@ from sts2bot.run import crowd
 
 from ..fake_game import card
 
+QUICK_SHOT = ("QUICK_SHOT", "Quick Shot", "Attack", 0, "Shoot an Arrow to deal 10 damage.", "Common")
+
 
 def rated(key, name, ctype, cost, text, rarity):
-    c = card(0, key, name, ctype, cost, text, "Self")
-    c["rarity"] = rarity
-    return cards.deck_value(c)
+    return cards.deck_value(card(0, key, name, ctype, cost, text, "Self", rarity))
 
 
 class FoolTiers(unittest.TestCase):
@@ -30,17 +30,11 @@ class FoolTiers(unittest.TestCase):
 
     def test_an_aim_card_the_parser_cannot_read_beats_a_shot_that_it_can(self):
         with mock.patch.dict(learn.KNOB, {"crowd": 0.6}):
-            ready = rated("CHO_READY", "Cho Ready", "Skill", 1, "Gain 8 Block. Gain 3 Aim.", "Uncommon")
-            quick = rated("QUICK_SHOT", "Quick Shot", "Attack", 0, "Shoot an Arrow to deal 10 damage.", "Common")
+            ready, quick = rated("CHO_READY", "Cho Ready", "Skill", 1, "Gain 8 Block. Gain 3 Aim.", "Uncommon"), rated(*QUICK_SHOT)
         self.assertGreater(ready, quick)  # 3.2 against 3.5 before the tiers, a Fool's top pick in 129 of 360 offers
 
     def test_a_setting_of_zero_leaves_the_text_rating_alone(self):
         with mock.patch.dict(learn.KNOB, {"crowd": 0.0}):
-            with_tiers = rated("QUICK_SHOT", "Quick Shot", "Attack", 0, "Shoot an Arrow to deal 10 damage.", "Common")
+            with_tiers = rated(*QUICK_SHOT)
             with mock.patch.dict(crowd.FOOL_RATING, {}, clear=True):
-                without = rated("QUICK_SHOT", "Quick Shot", "Attack", 0, "Shoot an Arrow to deal 10 damage.", "Common")
-        self.assertEqual(with_tiers, without)
-
-
-if __name__ == "__main__":
-    unittest.main()
+                self.assertEqual(with_tiers, rated(*QUICK_SHOT))

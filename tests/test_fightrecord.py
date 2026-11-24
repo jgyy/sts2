@@ -3,17 +3,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from sts2bot.fight.bossfight import BossWatch
 from sts2bot.fightrecord import FightWatch
 
 
 def fight_state(foes, round_no, hp=70, kind="monster", act=2, floor=20, **player):
     enemies = [{"entity_id": f"{name}_{i}", "hp": 40, "block": 0} for i, name in enumerate(foes)]
-    return {
-        "state_type": kind,
-        "run": {"act": act, "floor": floor, "ascension": 7},
-        "battle": {"round": round_no, "turn": "player", "enemies": enemies},
-        "player": {"hp": hp, "max_hp": 80, "character": "The Silent", **player},
-    }
+    return {"state_type": kind, "run": {"act": act, "floor": floor, "ascension": 7}, "battle": {"round": round_no, "turn": "player", "enemies": enemies},
+            "player": {"hp": hp, "max_hp": 80, "character": "The Silent", **player}}
 
 
 class FightWatchTest(unittest.TestCase):
@@ -51,10 +48,7 @@ class FightWatchTest(unittest.TestCase):
         self.assertEqual((second["floor"], second["kind"], second["hp_in"], second["hp_out"]), (6, "elite", 61, 40))
 
     def test_a_card_chosen_mid_fight_does_not_end_it(self):
-        # The first game's Attack Potion opens a card reward inside the fight: every such boss fight logged a "won" after
-        # round 1 and began again (2026-11-24).
-        from sts2bot.fight.bossfight import BossWatch
-
+        # The first game's Attack Potion opens a card reward inside the fight (each such boss fight was "won" after round 1).
         watch, bosses = FightWatch(), BossWatch()
         start = fight_state(["THEGUARDIAN"], 1, kind="boss", act=1, floor=16)
         pick = {"state_type": "card_reward", "run": start["run"], "card_reward": {"cards": [], "in_combat": True}}

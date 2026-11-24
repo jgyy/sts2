@@ -1,19 +1,37 @@
 """The first Slay the Spire: the state as the bot reads it, the commands its actions become, whole runs."""
 
 import json
-from unittest import mock
 import tempfile
 from pathlib import Path
+from unittest import mock
 
-from sts2bot import cards, games
+from sts2bot import cards, games, supervisor
 from sts2bot.fight import combat
-from sts2bot.games.sts1 import host, text
+from sts2bot.games.sts1 import host, speedmod, text, tiers
 from sts2bot.games.sts1.screens import Screens
 from sts2bot.run import crowd, potions, strategy
 
 from ..helpers import make_bot
 from .fake_comm import FakeComm
 from .helpers import Direct, Sts1Case
+
+
+def started(room=None):
+    """The fake (seed 1) with an Ironclad run begun under the client, and a fight in `room` if given."""
+    game = FakeComm(seed=1)
+    client = Direct(game)
+    game._start("IRONCLAD", 0)
+    if room:
+        game._fight(room)
+    return game, client
+
+
+def read_saves(**files):
+    """host.read_prefs over a save folder of these files (a dict written as JSON, a str as it is)."""
+    with tempfile.TemporaryDirectory() as d:
+        for name, body in files.items():
+            Path(d, name).write_text(body if isinstance(body, str) else json.dumps(body))
+        return host.read_prefs(Path(d))
 
 
 class WholeRuns(Sts1Case):
@@ -34,14 +52,11 @@ class WholeRuns(Sts1Case):
         self.assertEqual(bot.mem.character_selected, False)  # (reset for the next run)
 
     def test_a_skipped_card_reward_is_not_opened_again(self):
-        # The first live run (2026-11-24): CommunicationMod names a reward's kind "reward_type", the game keeps a skipped card
-        # reward on the list, and the bot opened it, skipped it and opened it again some hundreds of times a second.
-        game = FakeComm(seed=1)
-        client = Direct(game)
-        game._start("IRONCLAD", 0)
+        # CommunicationMod names a reward's kind "reward_type", and the game keeps a skipped card reward on the list:
+        # the first live run opened it, skipped it and opened it again hundreds of times a second.
+        game, client = started()
         game.screen, game.phase, game.rewards = "COMBAT_REWARD", "COMPLETE", [{"reward_type": "GOLD", "gold": 15}, {"reward_type": "CARD"}]
-        rewards = client.state()["rewards"]["items"]
-        self.assertEqual([r["type"] for r in rewards], ["gold", "card"])
+        self.assertEqual([r["type"] for r in client.state()["rewards"]["items"]], ["gold", "card"])
         bot = make_bot(client, character="IRONCLAD")
         with mock.patch.object(strategy, "reward_bar", lambda size, act: 99.0):  # (nothing on offer is good enough)
             for _ in range(8):
@@ -50,22 +65,15 @@ class WholeRuns(Sts1Case):
         self.assertIn("proceed", game.sent)  # (and on to the map)
 
     def test_a_fights_first_look_waits_for_the_intents(self):
-        game = FakeComm(seed=1)
-        client = Direct(game)
-        game._start("IRONCLAD", 0)
-        game._fight("MonsterRoom")
+        game, client = started("MonsterRoom")
         game.intent_pending = 2  # (the game sets them a few frames in)
-        enemy = client.state()["battle"]["enemies"][0]
-        self.assertEqual(enemy["intents"][0]["type"], "Attack")
+        self.assertEqual(client.state()["battle"]["enemies"][0]["intents"][0]["type"], "Attack")
         self.assertEqual(game.sent.count("wait 10"), 2)
         client.state()
         self.assertEqual(game.sent.count("wait 10"), 2)  # (none once they are there)
 
     def test_attacks_are_aimed_at_the_monster_by_its_place_in_the_list(self):
-        game = FakeComm(seed=1)
-        client = Direct(game)
-        game._start("IRONCLAD", 0)
-        game._fight("MonsterRoom")
+        game, client = started("MonsterRoom")
         game.hand = [("Strike_R", "Strike", "ATTACK", 1, True)]
         state = client.state()
         self.assertEqual(state["state_type"], "monster")
@@ -81,16 +89,14 @@ class WholeRuns(Sts1Case):
 class Translation(Sts1Case):
     def test_cards_read_like_the_second_games(self):
         s = Screens()
-        bash = s.card({"id": "Bash", "name": "Bash", "type": "ATTACK", "cost": 2, "has_target": True, "rarity": "BASIC", "upgrades": 0})
-        info = cards.parse(bash)
+        info = cards.parse(s.card({"id": "Bash", "name": "Bash", "type": "ATTACK", "cost": 2, "has_target": True, "rarity": "BASIC", "upgrades": 0}))
         self.assertEqual((info.damage, info.vulnerable, info.cost), (8, 2, 2))
         plus = cards.parse(s.card({"id": "Bash", "name": "Bash+", "type": "ATTACK", "cost": 2, "has_target": True, "upgrades": 1}))
         self.assertEqual((plus.damage, plus.vulnerable), (10, 3))
         # Ids that are older names find their text, and energy is read.
         sneaky = s.card({"id": "Underhanded Strike", "name": "Sneaky Strike", "type": "ATTACK", "cost": 2, "has_target": True})
         self.assertEqual(cards.parse(sneaky).damage, 12)
-        seeing = cards.parse(s.card({"id": "Seeing Red", "name": "Seeing Red", "type": "SKILL", "cost": 1}))
-        self.assertEqual(seeing.energy_gain, 2)
+        self.assertEqual(cards.parse(s.card({"id": "Seeing Red", "name": "Seeing Red", "type": "SKILL", "cost": 1})).energy_gain, 2)
         whirl = s.card({"id": "Whirlwind", "name": "Whirlwind", "type": "ATTACK", "cost": -1})
         self.assertEqual((whirl["cost"], whirl["target_type"]), ("X", "AllEnemies"))
 
@@ -102,21 +108,17 @@ class Translation(Sts1Case):
                 self.assertNotRegex(out, r"\d+\(\d+\)", key)
 
     def test_the_boss_closes_every_road_on_the_map(self):
-        s = Screens()
-        msg = {"in_game": True, "available_commands": ["choose"], "game_state": {
-            "screen_type": "MAP", "act": 1, "floor": 14, "current_hp": 50, "max_hp": 80, "gold": 0,
-            "map": [{"x": 1, "y": 13, "symbol": "R", "children": [{"x": 1, "y": 14}]}, {"x": 1, "y": 14, "symbol": "M", "children": [{"x": 3, "y": 16}]}],
-            "screen_state": {"next_nodes": [{"x": 1, "y": 14, "symbol": "M"}], "boss_available": False}}}
-        st = s.translate(msg)
+        road = [{"x": 1, "y": 13, "symbol": "R", "children": [{"x": 1, "y": 14}]}, {"x": 1, "y": 14, "symbol": "M", "children": [{"x": 3, "y": 16}]}]
+        st = Screens().translate({"in_game": True, "available_commands": ["choose"], "game_state": {
+            "screen_type": "MAP", "act": 1, "floor": 14, "current_hp": 50, "max_hp": 80, "gold": 0, "map": road,
+            "screen_state": {"next_nodes": [{"x": 1, "y": 14, "symbol": "M"}], "boss_available": False}}})
         self.assertEqual(st["map"]["next_options"][0]["leads_to"][0]["type"], "Boss")
-        boss = [n for n in st["map"]["nodes"] if n["type"] == "Boss"]
-        self.assertEqual(len(boss), 1)
+        self.assertEqual(len([n for n in st["map"]["nodes"] if n["type"] == "Boss"]), 1)
 
     def test_potions_that_must_stay_on_the_belt_are_not_offered(self):
         s = Screens()
         s.raw = {"game_state": {"potions": [{"id": "FairyPotion", "name": "Fairy in a Bottle", "can_use": True, "requires_target": False},
-                                            {"id": "Potion Slot", "name": "Potion Slot"},
-                                            {"id": "Fire Potion", "name": "Fire Potion", "can_use": True, "requires_target": True}]}}
+                                            {"id": "Potion Slot", "name": "Potion Slot"}, {"id": "Fire Potion", "name": "Fire Potion", "can_use": True, "requires_target": True}]}}
         belt = s.potions()
         self.assertEqual([p["slot"] for p in belt], [0, 2])
         self.assertFalse(belt[0]["can_use_in_combat"])
@@ -124,8 +126,7 @@ class Translation(Sts1Case):
 
     def test_powers_take_the_names_the_planner_knows(self):
         m = {"powers": [{"id": "Weakened", "amount": 2}, {"id": "Plated Armor", "amount": 4}, {"id": "Vulnerable", "amount": 1}]}
-        ids = [p["id"] for p in Screens.powers(m)]
-        self.assertEqual(ids, ["WEAK_POWER", "PLATING_POWER", "VULNERABLE_POWER"])
+        self.assertEqual([p["id"] for p in Screens.powers(m)], ["WEAK_POWER", "PLATING_POWER", "VULNERABLE_POWER"])
 
     def test_menu_is_the_bots_own_until_the_run_starts(self):
         game = FakeComm()
@@ -141,8 +142,6 @@ class Translation(Sts1Case):
 
 class GameSwitch(Sts1Case):
     def test_the_second_games_ratings_stay_out_of_the_first(self):
-        from sts2bot.games.sts1 import tiers
-
         self.assertEqual(crowd.rating("INFLAME"), tiers.TIER["INFLAME"])  # (the first game's own tiers: games/sts1/tiers.py)
         self.assertIsNone(crowd.rating("CRIMSON_MANTLE"))  # (a Slay the Spire 2 card)
         self.assertFalse(cards.is_known({"id": "INFLAME", "name": "Inflame"}))
@@ -158,27 +157,19 @@ class GameSwitch(Sts1Case):
 
 class SaveFilesAndSetup(Sts1Case):
     def test_ascension_and_wins_come_from_the_save_files(self):
-        with tempfile.TemporaryDirectory() as d:
-            Path(d, "STSDataVagabond").write_text(json.dumps({"WIN_COUNT": "3", "ASCENSION_LEVEL": "6"}))  # (the Ironclad's)
-            Path(d, "STSDataTheSilent").write_text(json.dumps({"WIN_COUNT": "0", "ASCENSION_LEVEL": "1"}))
-            Path(d, "STSDataDefect").write_text("not json")
-            Path(d, "STSUnlocks").write_text(json.dumps({"The Silent": "2", "Defect": "1", "GUARDIAN": "2"}))
-            prefs = host.read_prefs(Path(d))
+        prefs = read_saves(STSDataVagabond={"WIN_COUNT": "3", "ASCENSION_LEVEL": "6"}, STSDataTheSilent={"WIN_COUNT": "0", "ASCENSION_LEVEL": "1"},
+                           STSDataDefect="not json", STSUnlocks={"The Silent": "2", "Defect": "1", "GUARDIAN": "2"})  # (Vagabond: the Ironclad)
         self.assertEqual(prefs["wins"], 3)
         self.assertEqual(prefs["max_ascension"], {"IRONCLAD": 6, "THE_SILENT": 0})
         self.assertEqual(prefs["locked"], ["WATCHER"])
 
     def test_a_first_win_opens_ascension_1(self):
         # The game keeps no ASCENSION_LEVEL until the first level-up and reads it as 1 once a character has won.
-        with tempfile.TemporaryDirectory() as d:
-            Path(d, "STSDataVagabond").write_text(json.dumps({"WIN_COUNT": "1", "WIN_STREAK": "0"}))
-            Path(d, "STSDataTheSilent").write_text(json.dumps({"WIN_STREAK": "0"}))
-            prefs = host.read_prefs(Path(d))
+        prefs = read_saves(STSDataVagabond={"WIN_COUNT": "1", "WIN_STREAK": "0"}, STSDataTheSilent={"WIN_STREAK": "0"})
         self.assertEqual(prefs["max_ascension"], {"IRONCLAD": 1, "THE_SILENT": 0})
 
     def test_a_new_profile_has_only_the_ironclad(self):
-        with tempfile.TemporaryDirectory() as d:
-            prefs = host.read_prefs(Path(d))
+        prefs = read_saves()
         self.assertEqual(prefs, {"max_ascension": {}, "wins": 0, "locked": ["THE_SILENT", "DEFECT", "WATCHER"]})
         client = Direct(FakeComm(), prefs=prefs)
         self.assertEqual([c["id"] for c in client.profile()["characters"]], ["IRONCLAD"])
@@ -212,9 +203,6 @@ class SaveFilesAndSetup(Sts1Case):
             self.assertEqual((game / "info.displayconfig").read_text().split()[3:5], ["false", "false"])  # --windowed
 
     def test_the_game_is_launched_with_its_clock_sped_up_and_its_output_kept(self):
-        from sts2bot import supervisor
-        from sts2bot.games.sts1 import speedmod
-
         with tempfile.TemporaryDirectory() as d, mock.patch.dict("os.environ", {"STS1_GAME_DIR": d, "STS1_PREFS_DIR": str(Path(d) / "preferences")}):
             spawned = {}
             fake_spawn = lambda argv, **kw: spawned.update(argv=argv, **kw)
@@ -231,8 +219,7 @@ class SaveFilesAndSetup(Sts1Case):
 
     def test_communication_mod_is_pointed_at_the_relay(self):
         with tempfile.TemporaryDirectory() as d:
-            path = host.write_comm_config(15599, Path(d) / "CommunicationMod" / "config.properties")
-            written = path.read_text()
+            written = host.write_comm_config(15599, Path(d) / "CommunicationMod" / "config.properties").read_text()
         self.assertIn("relay.py --port 15599", written)
         self.assertIn("runAtGameStart=true", written)
         self.assertIn("verbose=false", written)  # (every message echoed into game.log otherwise)

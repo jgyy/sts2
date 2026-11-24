@@ -1,3 +1,5 @@
+"""The Ancients' relics: rated by how far the runs that held them went (relics.py), from the table's own numbers."""
+
 import json
 import tempfile
 import unittest
@@ -14,9 +16,7 @@ def run(floor, held, result="loss", who="The Regent", ascension=7):
 class WhatTheAncientsRelicsDid(unittest.TestCase):
     def setUp(self):
         relics.load(None, events._ANCIENT)
-
-    def tearDown(self):
-        relics.load(None, events._ANCIENT)  # (the record is the module's: leave none behind for the other tests)
+        self.addCleanup(relics.load, None, events._ANCIENT)  # (the record is the module's: leave none behind for the other tests)
 
     def test_with_no_runs_on_record_the_table_stands(self):
         self.assertEqual(relics.shift("SEAL_OF_GOLD"), 0.0)
@@ -93,7 +93,7 @@ class AncientRatings(unittest.TestCase):
 
     def test_relics_once_read_word_by_word_no_longer_outrank_an_energy_every_turn(self):
         value = lambda title: events._event_option_value({"title": title}, 60, 75)
-        self.assertGreater(value("Philosopher's Stone"), value("Astrolabe"))  # (13.5 by its text until 2026-11-21)
+        self.assertGreater(value("Philosopher's Stone"), value("Astrolabe"))  # (13.5 by its text)
         self.assertGreaterEqual(value("Sozu"), value("Empty Cage"))  # (11.5)
         self.assertGreater(value("Seal of Gold"), value("Biiig Hug"))
 
@@ -110,7 +110,3 @@ class SealOfGold(unittest.TestCase):
         self.assertEqual(self._shop(["SEAL_OF_GOLD"], 170), [("shop_purchase", {"index": 1}), ("proceed", {})])
         self.assertEqual(self._shop(["SEAL_OF_GOLD"], 140), [("proceed", {})])  # nothing leaves 45
         self.assertEqual(len(self._shop(["SEAL_OF_GOLD"], 400)), 3)  # with plenty, everything as before
-
-
-if __name__ == "__main__":
-    unittest.main()
