@@ -1,8 +1,4 @@
-"""Thin HTTP client for the STS2MCP bridge mod (localhost REST API).
-
-It speaks plain HTTP/1.1 over a socket: urllib.request would bring in SSL, e-mail parsing and proxy
-handling (about 6 MB of a process that otherwise needs some 20) for a server on this machine.
-"""
+"""Thin HTTP client for the STS2MCP bridge mod (localhost REST API), over a plain socket (urllib would add some 6 MB of SSL and proxy code)."""
 
 from __future__ import annotations
 
@@ -66,14 +62,12 @@ class Client:
             code, raw = self._exchange(url, data)
         except (OSError, ValueError) as e:  # (ValueError: a status or chunk size that is not a number)
             raise GameUnavailable(str(e)) from e
-        if code >= 400:
-            # The mod reports action failures as 4xx/5xx with a JSON body.
+        if code >= 400:  # the mod reports action failures as 4xx/5xx with a JSON body
             try:
                 parsed = json.loads(raw)
             except ValueError:
                 parsed = {}
-            if not isinstance(parsed, dict):
-                parsed = {}
+            parsed = parsed if isinstance(parsed, dict) else {}
             parsed.setdefault("status", "error")
             parsed.setdefault("error", f"HTTP {code}")
             return parsed

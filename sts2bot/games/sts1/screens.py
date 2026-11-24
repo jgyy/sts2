@@ -1,16 +1,6 @@
-"""The first game's state, as CommunicationMod sends it, turned into the state the bot reads.
-
-The bot (bot.py, strategy.py, the planner in fight/) was written against the STS2_MCP mod's state:
-`state_type` names the screen ("monster", "map", "rewards", "card_reward", "rest_site", "shop",
-"event", "card_select", "hand_select", "relic_select", "treasure", "game_over", "menu"), with the
-player, the run and the screen's own block next to it. CommunicationMod sends the first game's
-state in its own words (screen_type MAP, COMBAT_REWARD, GRID ...). `Screens.translate` gives the
-same state in the bot's words, and remembers what the bot's actions will need to be sent back as
-commands (which choice an index means, which monster an enemy id is): see client.py.
-
-The menu is the bot's own: CommunicationMod only knows "start CLASS ASCENSION", so the main menu
-and the character select screen are made up here, and the run starts when the bot confirms.
-"""
+"""The first game's state, as CommunicationMod sends it, in the words of the STS2_MCP mod the bot was written against
+(`state_type`, the player, the run, the screen's block), and what the bot's actions need to be sent back as commands. The
+menu is the bot's own (CommunicationMod only has "start CLASS ASCENSION")."""
 
 from __future__ import annotations
 
@@ -28,45 +18,29 @@ CARD_TYPE = {"ATTACK": "Attack", "SKILL": "Skill", "POWER": "Power", "STATUS": "
 RARITY = {"BASIC": "Basic", "COMMON": "Common", "UNCOMMON": "Uncommon", "RARE": "Rare", "SPECIAL": "Event", "CURSE": "Curse"}
 # The first game's power ids where the planner knows the same thing by another name.
 POWER_ID = {
-    "WEAKENED": "WEAK", "PLATED_ARMOR": "PLATING", "INTANGIBLEPLAYER": "INTANGIBLE", "REGENERATION": "REGEN",
-    "REGENERATE": "REGEN", "CONSTRICTED": "CONSTRICT", "DRAW_CARD": "DRAW_CARDS_NEXT_TURN", "ENERGIZED": "ENERGY_NEXT_TURN",
-    "ENERGIZEDBLUE": "ENERGY_NEXT_TURN", "LOCKON": "LOCK_ON", "SURROUNDED": "SURROUNDED", "MINION": "MINION",
-    # (2026-11-24, from the first STS1 logs.) The Gremlin Nob's Enrage (id "Anger"): Strength for each Skill played.
-    "ANGER": "ENRAGE",
-    # The Orb Walker gains 3 Strength at the end of each of its turns, as a Cultist's Ritual does.
-    "GENERIC_STRENGTH_UP": "RITUAL",
-    # The Guardian's Sharp Hide (3 damage back for each Attack played: Thorns counts it a hit, close enough).
-    "SHARP_HIDE": "THORNS",
-    # The Byrd's Flight is Slay the Spire 2's Flutter: half damage from Attacks until it has been hit enough times.
-    "FLIGHT": "FLUTTER",
-    # Panic Button: no Block from cards for a while.
-    "NOBLOCKPOWER": "NO_BLOCK",
-    # The Chosen's Hex (a Dazed for each non-Attack played) is not Slay the Spire 2's Hex (all cards Ethereal while the
-    # Spectral Knight lives): under that name the planner hurried every card out of the hand.
-    "HEX": "HEX_DAZED",
-    # Fasting's price (id "EnergyDownPower"): an energy less at the start of every turn, one a stack.
-    "ENERGYDOWNPOWER": "ENERGY_DOWN",
-    # The Duplication Potion's "Your next card is played twice this turn" (id "DuplicationPower"): the second game's Duplicator.
-    "DUPLICATIONPOWER": "DUPLICATION",
-    # The Writhing Mass's Reactive (id "Compulsive"): every Attack that hits it gives it a new intent (battle.REACTIVE_HIT).
-    "COMPULSIVE": "REACTIVE",
-    # The Awakened One's first form (Unawakened, no number): killed, it rises again at full HP, as Stock does in the second game.
-    "UNAWAKENED": "STOCK",
-    # The Darklings' Life Link ("If other enemies are still alive, revives in 2 turns at 50% HP"): the second game's
-    # Reattach (a Decimillipede segment), whose number is the HP it comes back on; battle._pick_target wears them down together.
-    "LIFE_LINK": "REATTACH",
+    "WEAKENED": "WEAK", "PLATED_ARMOR": "PLATING", "INTANGIBLEPLAYER": "INTANGIBLE", "REGENERATION": "REGEN", "REGENERATE": "REGEN", "CONSTRICTED": "CONSTRICT",
+    "DRAW_CARD": "DRAW_CARDS_NEXT_TURN", "ENERGIZED": "ENERGY_NEXT_TURN", "ENERGIZEDBLUE": "ENERGY_NEXT_TURN", "LOCKON": "LOCK_ON", "SURROUNDED": "SURROUNDED", "MINION": "MINION",
+    "ANGER": "ENRAGE",  # the Gremlin Nob's Enrage: Strength for each Skill played
+    "GENERIC_STRENGTH_UP": "RITUAL",  # the Orb Walker's 3 Strength at the end of each of its turns
+    "SHARP_HIDE": "THORNS",  # the Guardian's 3 damage back for each Attack played (Thorns counts it a hit, close enough)
+    "FLIGHT": "FLUTTER",  # the Byrd's: half damage from Attacks until it has been hit enough times
+    "NOBLOCKPOWER": "NO_BLOCK",  # Panic Button's: no Block from cards for a while
+    "HEX": "HEX_DAZED",  # the Chosen's (a Dazed for each non-Attack played), not StS2's Hex (all cards Ethereal)
+    "ENERGYDOWNPOWER": "ENERGY_DOWN",  # Fasting's price: an energy less at the start of every turn, one a stack
+    "DUPLICATIONPOWER": "DUPLICATION",  # the Duplication Potion's "your next card is played twice this turn"
+    "COMPULSIVE": "REACTIVE",  # the Writhing Mass's Reactive: every Attack that hits it gives it a new intent
+    "UNAWAKENED": "STOCK",  # the Awakened One's first form: killed, it rises again at full HP
+    "LIFE_LINK": "REATTACH",  # the Darklings' (revive in 2 turns at 50% HP while others live): StS2's Reattach, whose number is the HP it comes back on
 }
 AMOUNT = {"UNAWAKENED": 1}  # powers that show no number where the planner needs one
 INTENT_TYPE = {"BUFF": "Buff", "DEBUFF": "Debuff", "STRONG_DEBUFF": "Debuff", "DEFEND": "Defend", "ESCAPE": "Escape",
                "SLEEP": "Sleep", "STUN": "Stun", "MAGIC": "Buff", "UNKNOWN": "Unknown", "NONE": "Unknown", "DEBUG": "Unknown"}
 # What a hand selection is for, by the action that asked for it (CommunicationMod does not send the game's prompt).
 HAND_PROMPT = {
-    "ExhaustAction": "Choose {n} card(s) to Exhaust.", "PurityAction": "Choose up to {n} card(s) to Exhaust.",
-    "RecycleAction": "Choose a card to Exhaust.", "DiscardAction": "Choose {n} card(s) to Discard.",
-    "GamblingChipAction": "Choose any number of cards to Discard.", "PutOnDeckAction": "Put a card on top of your draw pile.",
-    "WarcryAction": "Put a card on top of your draw pile.", "SetupAction": "Put a card on top of your draw pile.",
-    "ThinkingAheadAction": "Put a card on top of your draw pile.", "ForethoughtAction": "Put a card on top of your draw pile.",
-    "ArmamentsAction": "Choose a card to Upgrade.", "DualWieldAction": "Choose a card to copy.",
+    "ExhaustAction": "Choose {n} card(s) to Exhaust.", "PurityAction": "Choose up to {n} card(s) to Exhaust.", "RecycleAction": "Choose a card to Exhaust.",
+    "DiscardAction": "Choose {n} card(s) to Discard.", "GamblingChipAction": "Choose any number of cards to Discard.", "PutOnDeckAction": "Put a card on top of your draw pile.",
+    "WarcryAction": "Put a card on top of your draw pile.", "SetupAction": "Put a card on top of your draw pile.", "ThinkingAheadAction": "Put a card on top of your draw pile.",
+    "ForethoughtAction": "Put a card on top of your draw pile.", "ArmamentsAction": "Choose a card to Upgrade.", "DualWieldAction": "Choose a card to copy.",
     "RetainCardsAction": "Choose up to {n} card(s) to Retain.", "NightmareAction": "Choose a card to copy.",
 }
 _COLOR = re.compile(r"#[rgbyp]|~|@|\bNL\b")
@@ -77,28 +51,18 @@ def clean(s) -> str:
     return " ".join(_COLOR.sub("", str(s or "")).split())
 
 
-def upper_id(raw) -> str:
-    return key_of(raw)
-
-
 class Screens:
     """Translates one message at a time, and keeps what the way back needs."""
 
     def __init__(self):
         self.raw: dict = {}  # the last message from the game
-        self.menu_screen = "main"  # the bot's own menu, between runs
-        self.character: str | None = None
-        self.ascension: int | None = None
+        self.menu_screen, self.character, self.ascension = "main", None, None  # the bot's own menu, between runs
         self.max_ascension: dict[str, int] = {}  # character -> highest ascension unlocked (from the save files)
         self.locked: set[str] = set()  # characters the game would not start
-        self.wins = 0  # runs won as seen by this session (plus what the save files said at the start)
-        self._won_seen: tuple | None = None
+        self.wins, self._won_seen = 0, None  # runs won as seen by this session (plus what the save files said at the start)
         self.targets: dict[str, int] = {}  # enemy id -> monster index in the game's list
         self.shop_names: dict[int, str] = {}  # shop item index -> choice name
-        self.max_energy = 3
-        self._turn_seen: tuple = ()
-
-    # ------------------------------------------------------------ helpers
+        self.max_energy, self._turn_seen = 3, ()
 
     @property
     def commands(self) -> list[str]:
@@ -121,18 +85,9 @@ class Screens:
         if live and desc:
             desc = text.live_numbers(desc, ctype, c)
         target = "AnyEnemy" if c.get("has_target") else "AllEnemies" if re.search(r"\ball enemies\b", desc, re.I) else "Self"
-        out = {
-            "id": upper_id(c.get("id")),
-            "name": str(c.get("name") or ""),
-            "type": ctype,
-            "cost": "X" if cost == -1 else str(max(0, int(cost))) if isinstance(cost, (int, float)) else str(cost or 0),
-            "star_cost": None,
-            "description": desc,
-            "target_type": target,
-            "can_play": bool(c.get("is_playable", True)),
-            "is_upgraded": upgraded,
-            "rarity": RARITY.get(str(c.get("rarity")), str(c.get("rarity") or "").title()),
-        }
+        out = {"id": key_of(c.get("id")), "name": str(c.get("name") or ""), "type": ctype,
+               "cost": "X" if cost == -1 else str(max(0, int(cost))) if isinstance(cost, (int, float)) else str(cost or 0), "star_cost": None, "description": desc,
+               "target_type": target, "can_play": bool(c.get("is_playable", True)), "is_upgraded": upgraded, "rarity": RARITY.get(str(c.get("rarity")), str(c.get("rarity") or "").title())}
         if cost == -2:
             out["unplayable_reason"] = "Unplayable"
         if index is not None:
@@ -143,10 +98,9 @@ class Screens:
     def powers(creature: dict) -> list[dict]:
         out = []
         for p in creature.get("powers") or []:
-            pid = re.sub(r"_POWER$", "", upper_id(p.get("id") or p.get("name")))  # ("Generic Strength Up Power")
+            pid = re.sub(r"_POWER$", "", key_of(p.get("id") or p.get("name")))  # ("Generic Strength Up Power")
             amount = int(creature.get("max_hp") or 0) // 2 if pid == "LIFE_LINK" else AMOUNT.get(pid, p.get("amount"))
-            out.append({"id": POWER_ID.get(pid, pid) + "_POWER", "name": p.get("name"), "amount": amount,
-                        "description": clean(p.get("description"))})
+            out.append({"id": POWER_ID.get(pid, pid) + "_POWER", "name": p.get("name"), "amount": amount, "description": clean(p.get("description"))})
         return out
 
     def potions(self) -> list[dict]:
@@ -155,12 +109,8 @@ class Screens:
             if str(p.get("id")) == "Potion Slot":
                 continue
             key = text.potion_key(p.get("id"), p.get("name"))
-            out.append({
-                "slot": slot, "id": key, "name": p.get("name"), "description": text.potion_text(p.get("id"), p.get("name")),
-                "target_type": "AnyEnemy" if p.get("requires_target") else "Self",
-                "can_use_in_combat": bool(p.get("can_use")) and key not in text.potions.KEEP,
-                "can_discard": bool(p.get("can_discard", True)),
-            })
+            out.append({"slot": slot, "id": key, "name": p.get("name"), "description": text.potion_text(p.get("id"), p.get("name")), "target_type": "AnyEnemy" if p.get("requires_target") else "Self",
+                        "can_use_in_combat": bool(p.get("can_use")) and key not in text.potions.KEEP, "can_discard": bool(p.get("can_discard", True))})
         return out
 
     def player(self, combat: bool) -> dict:
@@ -169,7 +119,7 @@ class Screens:
         p = {
             "character": CHARACTER_NAMES.get(cls, cls.replace("_", " ").title()),
             "hp": g.get("current_hp"), "max_hp": g.get("max_hp"), "gold": g.get("gold"), "block": 0, "status": [],
-            "relics": [{"id": upper_id(r.get("id")), "name": r.get("name"), "counter": r.get("counter"),
+            "relics": [{"id": key_of(r.get("id")), "name": r.get("name"), "counter": r.get("counter"),
                         "description": text.relic_text(r.get("id"), r.get("name"))} for r in g.get("relics") or []],
             "potions": self.potions(), "max_potion_slots": len(g.get("potions") or []) or 3,
         }
@@ -185,21 +135,15 @@ class Screens:
             self._turn_seen = turn
             if int(cs.get("turn") or 0) == 1:
                 self.max_energy = int(me.get("energy") or 3)
-        p.update(
-            hp=me.get("current_hp", p["hp"]), max_hp=me.get("max_hp", p["max_hp"]), block=me.get("block", 0),
-            energy=me.get("energy", 0), max_energy=self.max_energy, status=self.powers(me), hand=hand,
-            draw_pile=draw, draw_pile_count=len(cs.get("draw_pile") or []),
-            discard_pile=[self.card(c) for c in cs.get("discard_pile") or []], discard_pile_count=len(cs.get("discard_pile") or []),
-            exhaust_pile_count=len(cs.get("exhaust_pile") or []),
-            orbs=[{"id": upper_id(o.get("id") or o.get("name")), "passive_val": o.get("passive_amount"), "evoke_val": o.get("evoke_amount")} for o in orbs],
-            orb_slots=len(me.get("orbs") or []), stance=me.get("stance"),
-        )
+        p.update(hp=me.get("current_hp", p["hp"]), max_hp=me.get("max_hp", p["max_hp"]), block=me.get("block", 0), energy=me.get("energy", 0), max_energy=self.max_energy,
+                 status=self.powers(me), hand=hand, draw_pile=draw, draw_pile_count=len(cs.get("draw_pile") or []),
+                 discard_pile=[self.card(c) for c in cs.get("discard_pile") or []], discard_pile_count=len(cs.get("discard_pile") or []), exhaust_pile_count=len(cs.get("exhaust_pile") or []),
+                 orbs=[{"id": key_of(o.get("id") or o.get("name")), "passive_val": o.get("passive_amount"), "evoke_val": o.get("evoke_amount")} for o in orbs],
+                 orb_slots=len(me.get("orbs") or []), stance=me.get("stance"))
         return p
 
     def _wrap(self, kind: str, **body) -> dict:
         return {"state_type": kind, "run": self._run(), "player": self.player(kind in ROOM_KIND.values()), **body}
-
-    # ------------------------------------------------------------ screens
 
     def translate(self, msg: dict | None) -> dict:
         self.raw = msg or {}
@@ -208,41 +152,30 @@ class Screens:
         if not msg.get("in_game"):
             return self.menu()
         self.menu_screen, self.character = "main", None
-        g = self.game
-        screen = str(g.get("screen_type") or "NONE")
+        screen = str(self.game.get("screen_type") or "NONE")
         handler = getattr(self, "_" + screen.lower(), None)
-        if handler is not None:
-            return handler()
-        if g.get("room_phase") == "COMBAT" and g.get("combat_state"):
-            return self.combat()
-        return self._wrap("overlay")
+        return handler() if handler is not None else self._none()
 
     def menu(self) -> dict:
         if self.menu_screen == "character_select":
             chars = [{"id": c, "name": CHARACTER_NAMES[c], "locked": c in self.locked} for c in CHARACTERS]
             top = self.max_ascension.get(self.character, 0) if self.character else None
-            return {
-                "state_type": "menu", "menu_screen": "character_select", "characters": chars,
-                "options": [{"name": c["id"], "enabled": not c["locked"]} for c in chars]
-                + [{"name": "confirm", "enabled": self.character is not None}, {"name": "back", "enabled": True}],
-                "selected": self.character, "ascension": self.ascension if self.character else None, "max_ascension": top,
-            }
+            return {"state_type": "menu", "menu_screen": "character_select", "characters": chars,
+                    "options": [{"name": c["id"], "enabled": not c["locked"]} for c in chars] + [{"name": "confirm", "enabled": self.character is not None}, {"name": "back", "enabled": True}],
+                    "selected": self.character, "ascension": self.ascension if self.character else None, "max_ascension": top}
         return {"state_type": "menu", "menu_screen": "main", "options": ["singleplayer"] if "start" in self.commands else []}
 
     def combat(self) -> dict:
         g = self.game
         cs = g.get("combat_state") or {}
-        enemies = []
-        self.targets = {}
+        enemies, self.targets = [], {}
         for i, m in enumerate(cs.get("monsters") or []):
             if m.get("is_gone"):
                 continue
-            eid = f"{upper_id(m.get('id') or m.get('name'))}_{i}"
+            eid = f"{key_of(m.get('id') or m.get('name'))}_{i}"
             self.targets[eid] = i
-            enemies.append({
-                "entity_id": eid, "name": m.get("name"), "hp": 0 if m.get("half_dead") else m.get("current_hp"),
-                "max_hp": m.get("max_hp"), "block": m.get("block", 0), "status": self.powers(m), "intents": self.intents(m),
-            })
+            enemies.append({"entity_id": eid, "name": m.get("name"), "hp": 0 if m.get("half_dead") else m.get("current_hp"), "max_hp": m.get("max_hp"),
+                            "block": m.get("block", 0), "status": self.powers(m), "intents": self.intents(m)})
         playing = "play" in self.commands or "end" in self.commands
         battle = {"round": cs.get("turn"), "turn": "player" if playing else "enemy", "is_play_phase": playing, "enemies": enemies}
         return self._wrap(ROOM_KIND.get(str(g.get("room_type")), "monster"), battle=battle)
@@ -281,8 +214,7 @@ class Screens:
             kind = MAP_SYMBOL.get(str(n.get("symbol")), "Unknown")
             if kind == "Elite" and emerald and n.get("emerald_key"):
                 kind = "EmeraldElite"  # (the burning elite, with the Emerald Key: strategy.path_value prices it)
-            nodes[(x, y)] = {"col": x, "row": int(y) + 1, "type": kind,
-                             "children": [[c.get("x"), int(c.get("y")) + 1] for c in n.get("children") or []]}
+            nodes[(x, y)] = {"col": x, "row": int(y) + 1, "type": kind, "children": [[c.get("x"), int(c.get("y")) + 1] for c in n.get("children") or []]}
         boss = [3, top + 2]
         for node in nodes.values():  # the boss is not on the map: every road ends there
             node["children"] = [c if (c[0], c[1] - 1) in nodes else boss for c in node["children"]]
@@ -305,14 +237,12 @@ class Screens:
         rewards = (self.game.get("screen_state") or {}).get("rewards") or []
         # A chest's Sapphire Key and its relic: taking one takes the other away, so only the one wanted is shown.
         key_wanted = keys.wants_sapphire(self.game) and any(str(r.get("reward_type") or "").upper() == "SAPPHIRE_KEY" for r in rewards)
-        linked = {upper_id((r.get("link") or {}).get("id")) for r in rewards if str(r.get("reward_type") or "").upper() == "SAPPHIRE_KEY"}
+        linked = {key_of((r.get("link") or {}).get("id")) for r in rewards if str(r.get("reward_type") or "").upper() == "SAPPHIRE_KEY"}
         for i, r in enumerate(rewards):
-            # (CommunicationMod names it "reward_type"; read as "type" every reward came through untyped, and a card
-            # reward skipped on the real game was claimed again at once, for ever: 2026-11-24, the first live run.)
-            kind = str(r.get("reward_type") or r.get("type") or "").upper()
+            kind = str(r.get("reward_type") or r.get("type") or "").upper()  # (CommunicationMod's name for it is "reward_type")
             if kind == "SAPPHIRE_KEY" and not key_wanted:
                 continue  # (taking it gives up the relic beside it)
-            if kind == "RELIC" and key_wanted and upper_id((r.get("relic") or {}).get("id")) in linked:
+            if kind == "RELIC" and key_wanted and key_of((r.get("relic") or {}).get("id")) in linked:
                 continue
             item = {"index": i, "type": {"STOLEN_GOLD": "gold"}.get(kind, kind.lower())}
             if kind in ("GOLD", "STOLEN_GOLD"):
@@ -323,7 +253,7 @@ class Screens:
                             potion_description=text.potion_text(p.get("id"), p.get("name")), description=text.potion_text(p.get("id"), p.get("name")))
             elif kind == "RELIC":
                 rel = r.get("relic") or {}
-                item.update(relic_id=upper_id(rel.get("id")), relic_name=rel.get("name"))
+                item.update(relic_id=key_of(rel.get("id")), relic_name=rel.get("name"))
             items.append(item)
         return self._wrap("rewards", rewards={"items": items, "can_proceed": "proceed" in self.commands})
 
@@ -331,30 +261,26 @@ class Screens:
         ss = self.game.get("screen_state") or {}
         cards = [self.card(c, i) for i, c in enumerate(ss.get("cards") or [])]
         state = self._wrap("card_reward", card_reward={"cards": cards, "can_skip": "skip" in self.commands or bool(ss.get("skip_available"))})
-        if self.game.get("room_phase") == "COMBAT":
-            # A card a card or potion offers in a fight (Discovery, Attack Potion): picked like a reward, but it is for this turn.
+        if self.game.get("room_phase") == "COMBAT":  # a card offered in a fight (Discovery, Attack Potion): for this turn
             state["card_reward"]["in_combat"] = True
         return state
 
     def _event(self) -> dict:
         ss = self.game.get("screen_state") or {}
-        opts = []
-        raw = ss.get("options") or []
+        opts, raw = [], ss.get("options") or []
         for o in raw:
             words = clean(o.get("text"))
             m = re.match(r"\[([^\]]*)\]\s*(.*)", words)
             title, desc = (m.group(1), m.group(2)) if m else (clean(o.get("label")) or words, words)
             locked = bool(o.get("disabled")) or o.get("choice_index") is None
-            opts.append({"index": o.get("choice_index", -1), "title": title, "description": desc, "is_locked": locked,
-                         "is_proceed": len(raw) == 1})
-        return self._wrap("event", event={"event_id": upper_id(ss.get("event_id") or ss.get("event_name")), "event_name": ss.get("event_name"),
+            opts.append({"index": o.get("choice_index", -1), "title": title, "description": desc, "is_locked": locked, "is_proceed": len(raw) == 1})
+        return self._wrap("event", event={"event_id": key_of(ss.get("event_id") or ss.get("event_name")), "event_name": ss.get("event_name"),
                                           "body": clean(ss.get("body_text")), "options": opts, "in_dialogue": False})
 
     def _rest(self) -> dict:
         ss = self.game.get("screen_state") or {}
         opts = [{"index": i, "id": str(o).lower(), "name": str(o).title(), "is_enabled": True} for i, o in enumerate(ss.get("rest_options") or [])]
-        # The Ruby Key (Recall) when it is wanted here, and never by accident otherwise (the bot ranks unknown options low,
-        # but under the rest option's 1.0 when it does not heal).
+        # Recall (the Ruby Key) only when it is wanted here, and never by accident otherwise.
         recall = [o for o in opts if o["id"] == "recall"]
         opts = recall if recall and keys.wants_ruby(self.game) else [o for o in opts if o["id"] != "recall"]
         return self._wrap("rest_site", rest_site={"options": opts, "can_proceed": "proceed" in self.commands})
@@ -371,15 +297,13 @@ class Screens:
         def add(cat: str, name: str, price, **fields) -> None:
             i = len(items)
             self.shop_names[i] = name.lower()
-            items.append({"index": i, "category": cat, "price": price, "cost": price, "is_stocked": True,
-                          "can_afford": int(price or 0) <= gold, **fields})
+            items.append({"index": i, "category": cat, "price": price, "cost": price, "is_stocked": True, "can_afford": int(price or 0) <= gold, **fields})
 
         for c in ss.get("cards") or []:
             card = self.card(c)
             add("card", str(c.get("name")), c.get("price"), **{"card_" + k: v for k, v in card.items()})
         for r in ss.get("relics") or []:
-            add("relic", str(r.get("name")), r.get("price"), relic_id=upper_id(r.get("id")), relic_name=r.get("name"),
-                description=text.relic_text(r.get("id"), r.get("name")))
+            add("relic", str(r.get("name")), r.get("price"), relic_id=key_of(r.get("id")), relic_name=r.get("name"), description=text.relic_text(r.get("id"), r.get("name")))
         for p in ss.get("potions") or []:
             add("potion", str(p.get("name")), p.get("price"), potion_id=text.potion_key(p.get("id"), p.get("name")),
                 potion_name=p.get("name"), description=text.potion_text(p.get("id"), p.get("name")))
@@ -389,12 +313,12 @@ class Screens:
 
     def _chest(self) -> dict:
         ss = self.game.get("screen_state") or {}
-        relics = [] if ss.get("chest_open") else [{"index": 0, "name": "chest", "id": upper_id(ss.get("chest_type"))}]
+        relics = [] if ss.get("chest_open") else [{"index": 0, "name": "chest", "id": key_of(ss.get("chest_type"))}]
         return self._wrap("treasure", treasure={"relics": relics, "can_proceed": True})
 
     def _boss_reward(self) -> dict:
         ss = self.game.get("screen_state") or {}
-        relics = [{"index": i, "id": upper_id(r.get("id")), "name": r.get("name")} for i, r in enumerate(ss.get("relics") or [])]
+        relics = [{"index": i, "id": key_of(r.get("id")), "name": r.get("name")} for i, r in enumerate(ss.get("relics") or [])]
         relics.sort(key=text.boss_relic_rank)
         return self._wrap("relic_select", relic_select={"relics": relics, "can_skip": "skip" in self.commands})
 
@@ -402,16 +326,9 @@ class Screens:
         g = self.game
         ss = g.get("screen_state") or {}
         n = int(ss.get("num_cards") or 1)
-        if ss.get("for_upgrade"):
-            kind, verb = "upgrade", "Upgrade"
-        elif ss.get("for_transform"):
-            kind, verb = "transform", "Transform"
-        elif ss.get("for_purge"):
-            kind, verb = "remove", "Remove"
-        else:
-            kind, verb = "", ""
-        in_fight = g.get("room_phase") == "COMBAT"
-        if not kind and in_fight and n == 1 and not ss.get("any_number"):
+        kind = next((k for flag, k in (("for_upgrade", "upgrade"), ("for_transform", "transform"), ("for_purge", "remove")) if ss.get(flag)), "")
+        verb = kind.title()
+        if not kind and g.get("room_phase") == "COMBAT" and n == 1 and not ss.get("any_number"):
             kind = "choose"  # (Seek, Headbutt, Exhume: one click picks and closes)
         prompt = f"Choose {n} card{'s' if n != 1 else ''} to {verb}." if verb else f"Choose {n} card{'s' if n != 1 else ''}."
         cards = [self.card(c, i) for i, c in enumerate(ss.get("cards") or [])]
@@ -446,6 +363,5 @@ class Screens:
         return self._wrap("game_over", game_over={"options": ["main_menu"], "victory": bool(ss.get("victory")), "score": ss.get("score")})
 
     def _complete(self) -> dict:
-        # A room finished with nothing left to choose ("proceed" goes on): not the end of the run. After the act 3 boss it
-        # was read as game over, and the first win (2026-11-24 21:39) was written down as a loss at floor 50 and a win at 51.
+        # A room finished with nothing left to choose ("proceed" goes on), not the end of the run (after the act 3 boss too).
         return self._wrap("overlay")

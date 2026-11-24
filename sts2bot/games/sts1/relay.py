@@ -1,27 +1,12 @@
 #!/usr/bin/env python3
-"""The first game's end of the bridge: CommunicationMod starts this, the bot talks to it over localhost.
-
-CommunicationMod (a Slay the Spire mod) runs one external program and speaks to it over that
-program's stdin and stdout: it writes the game state as one JSON object per line whenever the game
-is ready for a command, and reads commands ("play 1 0", "end", "choose 2", ...) a line at a time.
-The bot is a long-running service with its own supervisor, so instead of being that program it
-reaches the game through this small relay, which CommunicationMod starts and which serves:
+"""The first game's end of the bridge. CommunicationMod starts it and talks to it over stdin/stdout (a JSON state per line
+when the game is ready, commands a line at a time); the bot talks to it over localhost:
 
     GET  /         {"status": "ok", "connected": true once the game has sent a state}
     GET  /state    {"seq": n, "message": the last state the game sent}
     POST /command  {"command": "play 1 0"} -> {"status": "ok"|"error", "message": the next state, ...}
 
-A command is answered when the game's next message comes (its new state, or an error), so the bot
-acts on the state that followed what it asked for. The relay exits when the game closes its stdin.
-
-Standard library only, and no imports from the bot: CommunicationMod runs it with the game's working
-directory. Point CommunicationMod's config.properties at it, e.g.
-
-    command=python3 /path/to/sts2/sts2bot/games/sts1/relay.py --port 15527
-
-Its stdout is the game's command channel: nothing else may be printed there (logging goes to stderr,
-which CommunicationMod keeps in communication_mod_errors.log).
-"""
+Standard library only, no imports from the bot. Stdout is the game's command channel: logs go to stderr."""
 
 from __future__ import annotations
 
@@ -45,10 +30,8 @@ class Relay:
     """Holds the game's latest message and passes commands to it, one at a time."""
 
     def __init__(self, out=None, answer_timeout: float = ANSWER_TIMEOUT):
-        self.out = out if out is not None else sys.stdout
-        self.answer_timeout = answer_timeout
-        self.cond = threading.Condition()
-        self.send_lock = threading.Lock()
+        self.out, self.answer_timeout = out if out is not None else sys.stdout, answer_timeout
+        self.cond, self.send_lock = threading.Condition(), threading.Lock()
         self.seq = 0  # messages received from the game
         self.latest: dict | None = None  # the last game state (errors are kept apart)
         self.last_error: tuple[int, str] | None = None  # (seq, text) of the last error message
@@ -93,8 +76,7 @@ class Relay:
                 self.waiting = True
                 self.out.write(command + "\n")
                 self.out.flush()
-                answered = self.cond.wait_for(lambda: self.seq > before, timeout)
-                if not answered:
+                if not self.cond.wait_for(lambda: self.seq > before, timeout):
                     return {"status": "ok", "message": None, "pending": True, "seq": self.seq}
                 if self.last_error and self.last_error[0] > before:
                     return {"status": "error", "error": self.last_error[1], "seq": self.seq}
@@ -112,10 +94,7 @@ def make_handler(relay: Relay):
             self.wfile.write(raw)
 
         def do_GET(self):
-            if self.path.startswith("/state"):
-                self._send(200, relay.snapshot())
-            else:
-                self._send(200, {"status": "ok", "game": "sts1", "connected": relay.seq > 0})
+            self._send(200, relay.snapshot() if self.path.startswith("/state") else {"status": "ok", "game": "sts1", "connected": relay.seq > 0})
 
         def do_POST(self):
             try:

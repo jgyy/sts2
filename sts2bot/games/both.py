@@ -1,16 +1,6 @@
-"""`python3 -m sts2bot --game both`: play Slay the Spire 2 and the first Slay the Spire at the same time.
-
-Each game gets a bot process of its own (`--game sts2` and `--game sts1`), with every other option
-passed on to both. The two share nothing that could clash: each talks to its own port (15526 and
-15527), keeps its logs and what it learns in its own folder, and its supervisor only starts, finds
-and kills its own game (the SlayTheSpire2 binary; the java process running ModTheSpire). A process
-each rather than a thread each, because which game is played is a process-wide switch
-(`games.select`) and the planner is pure Python: two processes plan on two cores.
-
-This process only keeps the two going, the way the systemd unit keeps one going: a bot that exits
-with an error is started again after a pause, one that finished its --runs stays finished, and
-Ctrl+C or SIGTERM stops both.
-"""
+"""`python3 -m sts2bot --game both`: a bot process for each game (`--game sts2`, `--game sts1`, other options passed on), kept going
+as the systemd unit would: one that fails is restarted after a pause, one that finished its --runs stays finished, and Ctrl+C or
+SIGTERM stops both. (Processes, not threads: the game is a process-wide switch, and two processes plan on two cores.)"""
 
 from __future__ import annotations
 
@@ -108,11 +98,8 @@ def _wait(procs: list, seconds: float, clock, sleep) -> None:
 
 
 def _stop(procs: list, *, clock=time.monotonic, sleep=time.sleep) -> None:
-    """Stop the bots still running. The games stay up, as when the systemd unit stops: the next start picks them up.
-
-    Ctrl+C in a terminal and systemd's SIGTERM reach the bots too, so they get a moment to stop by themselves
-    (a second Ctrl+C would cut short their "stopped after N runs"). Those still running then get a Ctrl+C
-    of their own, and a kill if that is not enough."""
+    """Stop the bots still running (the games stay up): a moment to stop by themselves (Ctrl+C and SIGTERM reach them too), then
+    a Ctrl+C of their own, then a kill."""
     _wait(procs, STOP_GRACE / 4, clock, sleep)
     for proc in procs:
         if proc.poll() is None:
