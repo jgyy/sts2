@@ -458,7 +458,7 @@ spec("ORB_WALKER", "Orb Walker", (90, 96), {"laser": M(10, fx=(("status", "BURN"
      hooks={"start": lambda f, foe: (_start_fight(f, foe), foe.mem.__setitem__("ritual_ready", True))})
 spec("SPIKER", "Spiker", (42, 56), {"cut": M(7), "spike": M(fx=(("thorns", 2),))}, weighted({"cut": 50, "spike": 50}, {"spike": 2, "cut": 2}), powers={"THORNS": 3})
 spec("REPULSOR", "Repulsor", (29, 35), {"repulse": M(fx=(("status", "DAZED", 2, "draw"),)), "bash": M(11)}, weighted({"repulse": 80, "bash": 20}, {"bash": 1}))
-spec("EXPLODER", "Exploder", (30, 30), {"slam": M(9), "explode": M(fx=(("damage_all", 30), ("die",)))}, opening("slam", "slam", then=cycle("explode")))
+spec("EXPLODER", "Exploder", (30, 30), {"slam": M(9), "explode": M(30, fx=(("die",),))}, opening("slam", "slam", then=cycle("explode")))
 spec("SPIRE_GROWTH", "Spire Growth", (170, 170), {"quick": M(16), "smash": M(22), "constrict": M(fx=(("constrict", 10),))}, _spire_growth)
 spec("TRANSIENT", "Transient", (999, 999), {"attack": M(30)}, _transient, powers={"FADING": 5, "SHIFTING": 1}, hooks={"end": _transient_end})
 spec("MAW", "The Maw", (300, 300), {"roar": M(fx=(("weak", 3), ("frail", 3))), "slam": M(25), "nom": M(5, hits=1), "drool": M(fx=(("str", 3),))}, _maw)
