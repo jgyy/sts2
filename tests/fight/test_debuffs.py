@@ -1,33 +1,20 @@
 """What a turn of Weak or Vulnerable that outlasts this one counts for (the `debuff_worth` setting)."""
 
 import unittest
+from unittest import mock
 
-from sts2bot.fight import combat
 from sts2bot import learn
 
-from ..helpers import STRIKE, card, combat_state, enemy
+from ..helpers import STRIKE, card, enemy
+from . import combat_state, pick
 
 
 class DebuffWorth(unittest.TestCase):
-    def choice(self, hand, worth, **kw):
-        saved, learn.KNOB["debuff_worth"] = learn.KNOB.get("debuff_worth", 1.0), worth
-        try:
-            return combat.choose_card(combat_state(hand, [enemy("BOSS", 300)], energy=1, kind="boss", **kw))[1]["card_index"]
-        finally:
-            learn.KNOB["debuff_worth"] = saved
-
-    def test_two_turns_of_weak_on_a_boss_that_is_not_attacking(self):
-        # One energy, the boss buffing: a Strike is 9 points, two turns of Weak to come were 6.5.
+    def test_a_debuff_goes_first_only_when_its_later_turns_outweigh_a_strike(self):
+        # One energy against a boss that is buffing: (why, the debuff, debuff_worth, the card played: 0 the debuff, 1 the Strike).
         weak = card(0, "INTIMIDATE", "Intimidate", "Skill", 1, "Apply 2 Weak.", "AnyEnemy")
-        self.assertEqual(self.choice([weak, STRIKE(1)], 1.0), 1)
-        self.assertEqual(self.choice([weak, STRIKE(1)], 2.0), 0)  # at 13 they go first
-
-    def test_a_single_turn_of_vulnerable_is_not_made_dearer_than_the_hit_it_would_help(self):
-        # One Vulnerable is gone when the boss has moved: with the last energy it helps nothing, at either value.
         once = card(0, "TRIP", "Trip", "Skill", 1, "Apply 1 Vulnerable.", "AnyEnemy")
-        self.assertEqual(self.choice([once, STRIKE(1)], 1.0), 1)
-        self.assertEqual(self.choice([once, STRIKE(1)], 2.0), 1)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        for why, debuff, worth, first in (("two turns of Weak to come are 6.5 points, a Strike 9", weak, 1.0, 1), ("... at 13 they go first", weak, 2.0, 0),
+                                          ("one Vulnerable is gone when the boss has moved: it helps nothing", once, 1.0, 1), ("... at either value", once, 2.0, 1)):
+            with self.subTest(why), mock.patch.dict(learn.KNOB, {"debuff_worth": worth}):
+                self.assertEqual(pick(combat_state([debuff, STRIKE(1)], [enemy("BOSS", 300)], energy=1, kind="boss")), first)

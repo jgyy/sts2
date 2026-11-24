@@ -4,49 +4,39 @@ import unittest
 
 from sts2bot.fight import artifact, combat
 
-from ..helpers import STRIKE, card, combat_state, enemy
+from ..helpers import STRIKE, card, enemy
+from . import combat_state, pick, power
 
 SCOURGE = lambda i: card(i, "SCOURGE", "Scourge", "Skill", 1, "Apply 13 Doom.", "AnyEnemy")
-TRIP = lambda i: card(i, "TRIP", "Trip", "Skill", 1, "Apply 2 Vulnerable.", "AnyEnemy")
-PILE = lambda name, text: {"name": name, "cost": "1", "description": text}
-SHIELDED = lambda charges: [enemy("BOSS", 480, status=[{"id": "ARTIFACT_POWER", "amount": charges}])]
+PILE = lambda name, text, n: [{"name": name, "cost": "1", "description": text}] * n
+DOOM_DECK = PILE("Scourge", "Apply 13 Doom.", 3) + PILE("No Escape", "Apply 10 Doom.", 2) + PILE("Strike", "Deal 6 damage.", 20)
 
 
 def state(hand, pile, charges=3, **kw):
-    s = combat_state(hand, SHIELDED(charges), kind="boss", **kw)
-    s["player"]["draw_pile"] = pile
-    s["player"]["discard_pile"] = []
-    return s
-
-
-DOOM_DECK = [PILE("Scourge", "Apply 13 Doom.")] * 3 + [PILE("No Escape", "Apply 10 Doom.")] * 2 + [PILE("Strike", "Deal 6 damage.")] * 20
-PLAIN_DECK = [PILE("Strike", "Deal 6 damage.")] * 29
+    return combat_state(hand, [enemy("BOSS", 480, status=[power("ARTIFACT", charges)])], kind="boss", draw_pile=pile, discard_pile=[], **kw)
 
 
 class StrippingArtifact(unittest.TestCase):
     def test_a_doom_deck_spends_spare_energy_on_the_charges(self):
-        # Round 2 of Aeonglass, 18:40 on 2026-11-21: two energy and a Scourge left in the hand, Artifact 3 on the boss
-        # until round 9. The Doom is swallowed; the next one is a charge nearer to landing.
+        # Round 2 of Aeonglass, a Scourge left in the hand and Artifact 3 on the boss until round 9: the Doom is swallowed, and the next one is a charge nearer to landing.
         choice = combat.choose_card(state([SCOURGE(0)], DOOM_DECK, energy=1))
         self.assertIsNotNone(choice)
         self.assertEqual(choice[1]["card_index"], 0)
 
     def test_a_deck_that_cannot_wear_them_off_does_not_try(self):
         # One debuff card in thirty and three charges: nothing would ever land, so the strip buys nothing.
-        self.assertIsNone(combat.choose_card(state([TRIP(0)], PLAIN_DECK, energy=1)))
+        trip = card(0, "TRIP", "Trip", "Skill", 1, "Apply 2 Vulnerable.", "AnyEnemy")
+        self.assertIsNone(combat.choose_card(state([trip], PILE("Strike", "Deal 6 damage.", 29), energy=1)))
 
     def test_a_strike_is_not_given_up_for_a_charge(self):
-        # A charge is a debuff later, at a discount: with one energy the damage now still goes first...
+        # A charge is a debuff later, at a discount: with one energy the damage now still goes first, and with two both are played.
         weak = card(0, "INTIMIDATE", "Intimidate", "Skill", 1, "Apply 1 Weak.", "AnyEnemy")
-        deck = [PILE("Intimidate", "Apply 1 Weak.")] * 8 + [PILE("Strike", "Deal 6 damage.")] * 12
-        self.assertEqual(combat.choose_card(state([weak, STRIKE(1)], deck, energy=1))[1]["card_index"], 1)
-        # ... and with two, both are played.
-        first = combat.choose_card(state([weak, STRIKE(1)], deck, energy=2))
-        self.assertIsNotNone(first)
+        deck = PILE("Intimidate", "Apply 1 Weak.", 8) + PILE("Strike", "Deal 6 damage.", 12)
+        self.assertEqual(pick(state([weak, STRIKE(1)], deck, energy=1)), 1)
+        self.assertIsNotNone(combat.choose_card(state([weak, STRIKE(1)], deck, energy=2)))
 
     def test_no_artifact_no_change(self):
-        s = combat_state([SCOURGE(0), STRIKE(1)], [enemy("BOSS", 480)], kind="boss", energy=1)
-        self.assertEqual(combat._context(s)["strip"], (0.0, 0.0))
+        self.assertEqual(combat._context(combat_state([SCOURGE(0), STRIKE(1)], [enemy("BOSS", 480)], kind="boss", energy=1))["strip"], (0.0, 0.0))
 
 
 class WhatAChargeIsWorth(unittest.TestCase):
@@ -66,7 +56,3 @@ class WhatAChargeIsWorth(unittest.TestCase):
         both = combat.parse(card(0, "UPPERCUT", "Uppercut", "Attack", 2, "Deal 13 damage. Apply 1 Weak. Apply 1 Vulnerable.", "AnyEnemy"))
         self.assertEqual(artifact.landed(both, "boss")[0], 2)
         self.assertEqual(artifact.landed(combat.parse(STRIKE(0)), "boss"), (0, 0.0))
-
-
-if __name__ == "__main__":
-    unittest.main()

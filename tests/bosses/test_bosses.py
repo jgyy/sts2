@@ -36,15 +36,12 @@ class BossMechanics(unittest.TestCase):
         self.assertEqual(combat.choose_card(state), ("play_card", {"card_index": 0}))  # 6 saved beats 4 blocked
 
     def test_a_turn_only_the_fortifier_saves_is_played_for_the_fortifier(self):
-        # The Soul Fysh on 6 HP, us on 4 with 36 coming, a Beckon in hand and a Fortifier on the belt: three Block cards (22,
-        # tripled 66) left the Beckon's 6 to kill; the Beckon and two of them are 15, tripled 45.
+        # The Soul Fysh on 6 HP, us on 4 with 36 coming, a Beckon in hand and a Fortifier on the belt: three Block cards (22, tripled 66) left the Beckon's 6 to kill; the Beckon and two of them are 15, tripled 45.
         guard = lambda i, n: card(i, f"GUARD_{i}", f"Guard {n}", "Skill", 1, f"Gain {n} Block.", "Self")
-
         def turn(belt, kind="boss"):
             state = combat_state([guard(0, 7), guard(1, 7), BECKON(2), guard(3, 8)], [enemy("SOUL_FYSH", 6, attack=36)], energy=3, hp=4, max_hp=82, kind=kind, potions=belt)
             played = play_turn(state, limit=9, block=True, choose=lambda s: combat.actions(s)[0])
             return sorted(c["name"] for c in played), combat.actions(state)[0]
-
         # The Beckon and two Block cards (14 or 15: either holds once tripled), then the potion on the Block that is up.
         fortifier = potion(0, "Fortifier", "Triple your Block.")
         played, then = turn([fortifier])
@@ -68,8 +65,7 @@ class BossMechanics(unittest.TestCase):
         self.assertEqual(combat._next_wither({}, round_no=8), 9)  # two of Aeonglass's upgrades have gone by
 
     def test_the_card_that_brings_the_next_wither_is_not_held_back(self):
-        # Aeonglass's count on 1 and 25 coming: the turn ended on three energy with a Block card in hand, as the Wither it would
-        # bring cost more this turn than the Block saved. But the count carries over, and the Wither came all the same.
+        # Aeonglass's count on 1 and 25 coming: the turn ended on three energy with a Block card in hand, as the Wither it would bring cost more this turn than the Block saved. But the count carries over, and the Wither came all the same.
         count = lambda n: [power("WITHERING_PRESENCE", n)]
         state = combat_state([DEFEND(0)], [enemy("AEONGLASS", 410, attack=25, status=count(1))], energy=3, hp=62, max_hp=109, block=4, kind="boss", round_no=4,
                              draw_pile_count=20, discard_pile_count=9)  # a deck of thirty
@@ -169,8 +165,7 @@ class CardPlayTriggers(unittest.TestCase):
         # 33 HP: the attack takes 28, the two debuffs 13 each. The form dies and its 50 damage never comes.
         self.assertIn(pick(self.subject(33, [exterminate, bringer(1), defend(2)], sleight)), (0, 1))  # (either first: the two together are the kill)
         self.assertEqual(combat.choose_card(self.subject(5, [bringer(0), defend(1)], sleight, energy=2)), ("play_card", {"card_index": 0}))
-        # Without the Power there is no kill in the hand, and no Block that saves us either (10 HP in front of 50): the attack
-        # that leaves the form on 5 HP is the best try.
+        # Without the Power there is no kill in the hand, and no Block that saves us either (10 HP in front of 50): the attack that leaves the form on 5 HP is the best try.
         self.assertIn(pick(self.subject(33, [exterminate, bringer(1), defend(2)], [])), (0, 1))  # (the Doom card goes first now; both are played)
 
     def test_afterimage_and_strangle_count_for_every_card(self):
@@ -216,15 +211,13 @@ class PersonalHive(unittest.TestCase):
         self.assertLess(combat.simulate([parse(unleash), parse(storm)], foes, **kw).score, combat.simulate([parse(unleash)], foes, **kw).score)
         # With the kill in the hand nothing is drawn afterwards: everything goes.
         foe = hive(24, 3)
-
         def hit(c, _):
             foe["hp"] -= {"Unleash": 10, "Soul Storm": 9, "Strike": 6}[c["name"]]
             return foe["hp"] <= 0
-
         self.assertEqual(len(play_turn(combat_state([unleash, storm, STRIKE(2)], [foe], energy=4, hp=65, max_hp=76, kind="elite"), limit=4, after=hit)), 3)
 
 
-class Disintegration(unittest.TestCase):
+class WhatStopsDamage(unittest.TestCase):
     def test_block_stops_constrict_too(self):
         state = combat_state([DEFEND(0), DEFEND(1), STRIKE(2)], [enemy("SLITHERING_STRANGLER_0", 40)], energy=2, hp=40, status=[power("CONSTRICT", 6)])
         self.assertEqual(combat.expected_end_loss(state), 6)  # no attack coming: the squeeze alone
@@ -238,22 +231,16 @@ class Disintegration(unittest.TestCase):
         state["player"]["block"] = 10
         self.assertEqual(combat.expected_end_loss(state), 4)  # seen live: 8 a turn, 0 HP lost behind 25 Block
 
-
-class PainfulStabs(unittest.TestCase):
     def test_each_hit_stopped_is_a_wound_saved(self):
         guard = lambda i: card(i, "DEFEND_B", "Defend+", "Skill", 1, "Gain 10 Block.", "Self")
-
         def score(line, stabs):
             foe = {"entity_id": "T", "hp": 190, "max_hp": 200, "block": 0, "intents": [{"type": "Attack", "label": "10x3"}], "status": [power("PAINFUL_STABS")] if stabs else []}
             state = combat_state([guard(0), guard(1)], [foe], energy=2, hp=80, kind="boss")
             return outcome(state, [state["player"]["hand"][i] for i in line]).score
-
         wound = score([], False) - score([], True)  # three hits through: three Wounds
         self.assertGreater(wound, 0)
         self.assertAlmostEqual(score([0, 1], False) - score([0, 1], True), wound / 3)  # two hits stopped, one Wound
 
-
-class BufferCard(unittest.TestCase):
     def test_buffer_played_now_stops_the_hit_that_would_kill(self):
         buffer = card(0, "BUFFER", "Buffer", "Power", 2, "Prevent the next time you would lose HP.", "Self")
         guard = card(1, "GLACIER", "Glacier", "Skill", 2, "Gain 11 Block.", "Self")
@@ -377,7 +364,7 @@ class Necrobinder(unittest.TestCase):
         self.assertEqual(combat.expected_end_loss(self.state([days], osty=0, foe_hp=40, attack=30, doom=15)), 30)
 
 
-class StrengthSappedFromAll(unittest.TestCase):
+class StrengthSapped(unittest.TestCase):
     def test_piercing_wail_is_played_in_front_of_a_many_hit_attack(self):
         wail = card(0, "PIERCING_WAIL", "Piercing Wail", "Skill", 1, "ALL enemies lose 6 Strength this turn. Exhaust.", "AllEnemies")
         foe = {"entity_id": "TEST_SUBJECT_0", "hp": 97, "max_hp": 200, "block": 0, "intents": [{"type": "Attack", "label": "10x6"}], "status": [power("PAINFUL_STABS")]}
@@ -390,8 +377,6 @@ class StrengthSappedFromAll(unittest.TestCase):
         state = combat_state([crush], [enemy("A", 50, attack="3x4"), enemy("B", 50, attack=10)], energy=1, hp=40)
         self.assertEqual(outcome(state, [crush]).lost, 2 * 4 + 9)
 
-
-class Malaise(unittest.TestCase):
     def test_x_amounts_are_read_per_energy(self):
         malaise = card(0, "MALAISE", "Malaise", "Skill", "X", "Enemy loses X Strength. Apply X Weak. Exhaust.", "AnyEnemy")
         info = parse(malaise)
@@ -435,8 +420,7 @@ class LostOnPaper(unittest.TestCase):
         return combat_state([swing(0), swing(1), guard], [enemy("QUEEN_0", 30, attack=35)], energy=2, hp=hp, max_hp=80, kind="boss")
 
     def test_the_bot_goes_for_the_kill_it_cannot_quite_count(self):
-        # 15 HP in front of 35: one attack and the Block lose 27, both attacks lose 35 and leave her on 6. Dead either way by
-        # the count; only the second can turn out a kill.
+        # 15 HP in front of 35: one attack and the Block lose 27, both attacks lose 35 and leave her on 6. Dead either way by the count; only the second can turn out a kill.
         state = self.state(15)
         self.assertEqual(pick(state), 0)
         state["player"]["hand"] = [dict(c, index=n) for n, c in enumerate(state["player"]["hand"][1:])]
@@ -480,8 +464,7 @@ class SmallReads(unittest.TestCase):
         bolt = {"id": "LIGHTNING_ORB", "name": "Lightning", "passive_val": 3, "evoke_val": 8}
         state = combat_state([cool, strike, ball], [enemy("CRUSHER_0", 3, status=rage), enemy("ROCKET_0", 20, attack=52, status=rage)], energy=4, hp=3, max_hp=85, block=7, kind="boss",
                              orbs=[bolt, bolt, bolt], orb_slots=3)
-        # Coolheaded first pushes a Lightning out at one of the two: on the Crusher it kills, and the Rocket takes 99 Block with
-        # its 52 still coming. The two attacks kill the Rocket first.
+        # Coolheaded first pushes a Lightning out at one of the two: on the Crusher it kills, and the Rocket takes 99 Block with its 52 still coming. The two attacks kill the Rocket first.
         first = combat.choose_card(state)
         self.assertEqual((first[1]["card_index"], first[1].get("target")), (1, "ROCKET_0"))
 
@@ -489,8 +472,7 @@ class SmallReads(unittest.TestCase):
         rage = [power("CRAB_RAGE")]
         hand = [card(0, "EXTERMINATE", "Exterminate+", "Attack", 1, "Deal 10 damage to ALL enemies 4 times.", "AllEnemies"), card(1, "BEAT_INTO_SHAPE", "Beat into Shape", "Attack", 1, "Deal 11 damage.", "AnyEnemy"),
                 card(2, "SOLAR_STRIKE", "Solar Strike", "Attack", 1, "Deal 15 damage.", "AnyEnemy"), card(3, "CRUSH_UNDER", "Crush Under", "Attack", 1, "Deal 14 damage.", "AnyEnemy")]
-        # 15 on the Rocket and four rounds of 10 looks like both dead; the Rocket dies of the first round and the Crusher keeps
-        # 29 HP behind 99 Block. 15 + 14 + 11 on the Crusher kills what is about to hit us.
+        # 15 on the Rocket and four rounds of 10 looks like both dead; the Rocket dies of the first round and the Crusher keeps 29 HP behind 99 Block. 15 + 14 + 11 on the Crusher kills what is about to hit us.
         plan: dict = {}
         first = combat.choose_card(combat_state(hand, [enemy("CRUSHER_0", 39, attack=24, status=rage), enemy("ROCKET_0", 22, status=rage)], energy=3, hp=4, max_hp=91, kind="boss"), plan)
         self.assertEqual(first[1].get("target"), "CRUSHER_0")
@@ -549,8 +531,7 @@ class Debris(unittest.TestCase):
         self.assertEqual(parse(card(0, "COLLISION_COURSE", "Collision Course", "Attack", 0, "Deal 10 damage. Add a Debris into your Hand.", "AnyEnemy")).debris, 1)
 
     def test_early_in_a_boss_fight_it_stays_in_the_hand(self):
-        # Six dead cards in a deck of nineteen, for eight more rounds: Regent bosses with Crash Landing in the deck were won
-        # 1 time in 6 (22 in 34 without).
+        # Six dead cards in a deck of nineteen, for eight more rounds: Regent bosses with Crash Landing in the deck were won 1 time in 6 (22 in 34 without).
         self.assertNotIn(1, self.line([enemy("LAGAVULIN_MATRIARCH_0", 200, attack=14)]))
 
     def test_it_finishes_a_fight_and_clears_a_room(self):
@@ -563,17 +544,14 @@ class Debris(unittest.TestCase):
         self.assertEqual([c["index"] for c in play_turn(s)], [0, 1])
 
 
-class Imbalanced(unittest.TestCase):
+class PowersAndRelics(unittest.TestCase):
     def test_the_rocks_attack_is_blocked_whole(self):
-        # Bowlbug (Rock): "If its attacks are fully blocked, it becomes Stunned." Three Defends stop its 15 and take its next
-        # turn away; two of them and an attack only save 10 HP.
+        # Bowlbug (Rock): "If its attacks are fully blocked, it becomes Stunned." Three Defends stop its 15 and take its next turn away; two of them and an attack only save 10 HP.
         big = card(0, "BLUDGEON", "Bludgeon", "Attack", 1, "Deal 16 damage.", "AnyEnemy")
         rock = lambda status: combat_state([big, DEFEND(1), DEFEND(2), DEFEND(3)], [enemy("BOWLBUG_ROCK_0", 60, attack=15, status=status)], energy=3, hp=70, max_hp=75)
         self.assertEqual(sorted(c["index"] for c in play_turn(rock([power("IMBALANCED")]), block=True)), [1, 2, 3])
         self.assertEqual(sorted(c["index"] for c in play_turn(rock([]), block=True)), [0, 1, 2])
 
-
-class Skittish(unittest.TestCase):
     def test_each_gardener_is_hit_once_a_turn(self):
         # "The first time it is hit each turn, it gains 6 Block": a second Strike on the same one does nothing.
         foes = [enemy("PHANTASMAL_GARDENER_0", 29, status=[power("SKITTISH", 6)]), enemy("PHANTASMAL_GARDENER_1", 30, status=[power("SKITTISH", 6)])]
@@ -583,23 +561,18 @@ class Skittish(unittest.TestCase):
         state["player"]["hand"], state["player"]["energy"] = [STRIKE(1)], 1
         self.assertNotEqual(aimed(state), first["target"])
 
-
-class Reattach(unittest.TestCase):
     def segments(self, front, middle, back):
         names = ("DECIMILLIPEDE_SEGMENT_FRONT_0", "DECIMILLIPEDE_SEGMENT_MIDDLE_0", "DECIMILLIPEDE_SEGMENT_BACK_0")
         return combat_state([STRIKE(0)], [enemy(n, hp, attack=6, status=[power("REATTACH", 25)]) for n, hp in zip(names, (front, middle, back)) if hp], energy=1, kind="elite")
 
     def test_a_segment_is_not_killed_while_the_others_are_far_from_dead(self):
-        # "If other segments are still alive, revives in 2 turns with 25 HP": the Strike that would kill the middle one (7 HP)
-        # goes into the healthiest instead, until all three can die within two turns.
+        # "If other segments are still alive, revives in 2 turns with 25 HP": the Strike that would kill the middle one (7 HP) goes into the healthiest instead, until all three can die within two turns.
         self.assertEqual(aimed(self.segments(46, 7, 44)), "DECIMILLIPEDE_SEGMENT_FRONT_0")
 
     def test_the_segments_are_finished_once_the_rest_is_within_reach(self):
         self.assertEqual(aimed(self.segments(20, 5, 18)), "DECIMILLIPEDE_SEGMENT_MIDDLE_0")
         self.assertEqual(aimed(self.segments(0, 5, 0)), "DECIMILLIPEDE_SEGMENT_MIDDLE_0")  # the last one standing: the fight
 
-
-class BeatingRemnant(unittest.TestCase):
     def test_a_turn_costs_no_more_than_the_relic_allows(self):
         # "You cannot lose more than 20 HP in a single turn": 5 Block in front of 40 saves nothing, the Strike counts.
         state = combat_state([STRIKE(0), DEFEND(1)], [enemy("A", 60, attack=40)], energy=1, hp=70)
@@ -636,7 +609,7 @@ class VoidForm(unittest.TestCase):
         self.assertEqual(combat.free_plays({**state, "_plays_this_turn": 0}), 0)  # (a hand that shows a cost says so, whatever the bot has counted)
 
 
-class ThievingHopper(unittest.TestCase):
+class StunsAndShells(unittest.TestCase):
     def hopper(self, flutter, attack=21):
         return enemy("THIEVING_HOPPER_0", 40, attack=attack, status=[power("ESCAPE_ARTIST", 3), power("SWIPE"), power("FLUTTER", flutter)])
 
@@ -667,8 +640,6 @@ class ThievingHopper(unittest.TestCase):
         self.assertEqual(combat._hit(foe, 6, 2), 6)  # the second Strike of the turn meets the 14 Block
         self.assertEqual(foe.block, 8)
 
-
-class StunsAndShells(unittest.TestCase):
     def test_the_terror_eel_is_stunned_as_its_hp_crosses_the_shriek(self):
         # "The first time Terror Eel's HP reaches 70 or below, it becomes Stunned": the Strike is this turn's Block.
         plan: dict = {}
@@ -739,7 +710,6 @@ class DoomAndAttacksTogether(unittest.TestCase):
     def plays(self, hand, foes, energy=3):
         """(card name, target) of every card of the turn, the enemies taking what each card did (near enough for the next choice)."""
         out = []
-
         def did(c, params):
             out.append((c["name"], params.get("target")))
             for e in foes:
@@ -747,7 +717,6 @@ class DoomAndAttacksTogether(unittest.TestCase):
                     e["status"] = [power("DOOM", 13 + sum(p["amount"] for p in e["status"]))]
                 elif e["entity_id"] == params.get("target"):
                     e["hp"] -= 6
-
         play_turn(combat_state(hand, foes, energy=energy, hp=49, max_hp=66), limit=99, after=did)
         return out
 

@@ -30,14 +30,12 @@ class CardParsing(unittest.TestCase):
     READS = [  # a card, and what parse makes of its text
         (card(0, "X", "X", "Attack", 2, "Deal 5 damage 3 times. Apply 2 Vulnerable.", "AnyEnemy"), dict(damage=5, hits=3, vulnerable=2, cost=2, needs_target=True)),
         (DISMANTLE, dict(damage=8, hits=1, double_if_vulnerable=True)),
-        # "twice" counts hits only when it is about the damage
         (card(0, "DEBILITATE", "Debilitate", "Attack", 1, "Deal 10 damage. Vulnerable and Weak are twice as effective against the enemy for the next 2 turns.", "AnyEnemy"), dict(damage=10, hits=1)),
-        (card(0, "TWIN_STRIKE", "Twin Strike", "Attack", 1, "Deal 5 damage twice.", "AnyEnemy"), dict(damage=5, hits=2)),
+        (card(0, "TWIN_STRIKE", "Twin Strike", "Attack", 1, "Deal 5 damage twice.", "AnyEnemy"), dict(damage=5, hits=2)),  # ("twice" counts hits only when it is about the damage)
         (card(0, "FISTICUFFS", "Fisticuffs", "Attack", 1, "Deal 7 damage. Gain Block equal to damage dealt.", "AnyEnemy"), dict(damage=7, block=7)),
         ({"index": 1, "type": "Skill", "cost": "X", "description": "Gain 7 Block. Draw 2 cards."}, dict(is_x=True, block=7, draw=2)),
         (card(0, "DRUM_OF_BATTLE", "Drum of Battle", "Skill", 1, "Draw 2 cards. When this card is Exhausted, gain [ironclad_energy_icon.png][ironclad_energy_icon.png].", "Self"), dict(draw=2, energy_gain=0)),
-        # the Silent's, Regent's, Necrobinder's and Defect's
-        (card(0, "X", "X", "Skill", 2, "Apply 3 Poison to a random enemy 3 times."), dict(poison=9)),
+        (card(0, "X", "X", "Skill", 2, "Apply 3 Poison to a random enemy 3 times."), dict(poison=9)),  # (the Silent's, Regent's, Necrobinder's and Defect's)
         (card(0, "X", "X", "Skill", 1, "Add 3 Shivs into your Hand. Exhaust."), dict(shivs=3)),
         (card(0, "X", "X", "Skill", 0, f"Gain 9 {STAR}. Exhaust."), dict(star_gain=9)),
         (card(0, "X", "X", "Skill", 1, f"Gain {STAR}{STAR}."), dict(star_gain=2)),
@@ -72,8 +70,7 @@ FIRST_MOVES = [  # (the rule, a turn, what the planner does first: a hand index,
     ("attacks an enemy that is not attacking", combat_state([DEFEND(0), STRIKE(1)], [enemy("A_0", 60)], energy=1), 1),
     ("kills the enemy it can kill", combat_state([STRIKE(0)], [enemy("BIG_0", 50, attack=5), enemy("SMALL_0", 6, attack=10)], energy=1), "SMALL_0"),
     ("Vulnerable makes lethal reachable", combat_state([STRIKE(0), DEFEND(1)], [enemy("A_0", 9, attack=30, status=[power("VULNERABLE", 2)])], energy=1, hp=10), 0),
-    ("a hit doubled on the Vulnerable: 8 * 1.5 * 2 = 24 kills it, the plain one would survive",
-     combat_state([DISMANTLE], [enemy("PLAIN_0", 20, attack=5), enemy("VULN_0", 24, attack=5, status=[power("VULNERABLE")])], energy=1), "VULN_0"),
+    ("a hit doubled on the Vulnerable: 8 * 1.5 * 2 = 24 kills it", combat_state([DISMANTLE], [enemy("PLAIN_0", 20, attack=5), enemy("VULN_0", 24, attack=5, status=[power("VULNERABLE")])], energy=1), "VULN_0"),
     ("blocks at full health when it cannot kill", combat_state([STRIKE(0), DEFEND(1)], [enemy("A_0", 40, attack=10)], energy=1), 1),
     ("no energy spent on Status cards", combat_state([card(0, "SLIMED", "Slimed", "Status", 1, "Exhaust.", "None"), STRIKE(1)], [enemy("A_0", 40)], energy=1), 1),
     ("the Strike eats the Slippery", combat_state([HEMO, STRIKE(1)], [enemy("V_0", 100, status=[power("SLIPPERY")])], energy=2), 1),
@@ -81,8 +78,7 @@ FIRST_MOVES = [  # (the rule, a turn, what the planner does first: a hand index,
     ("Thorns cost HP per hit", combat_state([card(0, "TWIN", "Twin Strike", "Attack", 1, "Deal 5 damage twice.", "AnyEnemy"), card(1, "BIG", "Big", "Attack", 1, "Deal 10 damage.", "AnyEnemy")],
                                             [enemy("A_0", 60, status=[power("THORNS", 5)])], energy=1), 1),
     ("an Illusion that just revives is ignored", combat_state([STRIKE(0)], [enemy("EYE_0", 6, status=[power("ILLUSION"), power("MINION")]), enemy("FOGMOG_0", 50, attack=8)], energy=1), "FOGMOG_0"),
-    ("killing the leader wins with minions left", combat_state([STRIKE(0), DEFEND(1)], [enemy("MINION_0", 20, attack=30, status=[power("MINION")]), enemy("LEADER_0", 6)], energy=1, hp=10),
-     ("play_card", {"card_index": 0, "target": "LEADER_0"})),
+    ("the leader's death wins with minions left", combat_state([STRIKE(0), DEFEND(1)], [enemy("MINION_0", 20, attack=30, status=[power("MINION")]), enemy("LEADER_0", 6)], energy=1, hp=10), ("play_card", {"card_index": 0, "target": "LEADER_0"})),
     ("races to the stun threshold: 6 damage stuns it, 5 Block would not save us", combat_state([STRIKE(0), DEFEND(1)], [enemy("BEAST_0", 155, attack=24, status=[power("PLOW", 150)])], energy=1, hp=19), 0),
     ("Block cards are useless while Block is locked", combat_state([STRIKE(0), DEFEND(1)], [enemy("A_0", 40, attack=10)], energy=1, status=[power("NO_BLOCK")]), 0),
     ("a Slow enemy gets the Skills first", combat_state([BIG, STRIKE(1), DEFEND(2)], [enemy("EFFIGY_0", 120, attack=10, status=[power("SLOW", 0)])], energy=3), 2),
@@ -90,15 +86,13 @@ FIRST_MOVES = [  # (the rule, a turn, what the planner does first: a hand index,
     ("the Slow order that kills: 6x3 then 10 (+10%) is 29, the other way 28",
      combat_state([card(0, "PHOTON_CUT", "Photon Cut", "Attack", 1, "Deal 10 damage.", "AnyEnemy"), card(1, "CELESTIAL_MIGHT", "Celestial Might", "Attack", 2, "Deal 6 damage 3 times.", "AnyEnemy"), DEFEND(2)],
                   [enemy("E", 29, attack=23, status=[power("SLOW", 0)])], energy=3, hp=40), ("play_card", {"card_index": 1, "target": "E"})),
-    ("Weak goes on the attacker", combat_state([card(0, "W", "Weaken", "Skill", 1, "Apply 2 Weak.", "AnyEnemy")], [enemy("IDLE_0", 30), enemy("HITTER_0", 60, attack=20)], energy=1, hp=30),
-     ("play_card", {"card_index": 0, "target": "HITTER_0"})),
+    ("Weak goes on the attacker", combat_state([card(0, "W", "Weaken", "Skill", 1, "Apply 2 Weak.", "AnyEnemy")], [enemy("IDLE_0", 30), enemy("HITTER_0", 60, attack=20)], energy=1, hp=30), ("play_card", {"card_index": 0, "target": "HITTER_0"})),
     ("Debilitate doubles Vulnerable", combat_state([STRIKE(0), DEFEND(1)], [enemy("A", 12, attack=5, status=[power("VULNERABLE"), power("DEBILITATE", 2)])], energy=1), ("play_card", {"card_index": 0, "target": "A"})),
     ("Toxic is played: 5 saved beats 4 blocked", combat_state([card(0, "TOXIC", "Toxic", "Status", 1, "At the end of your turn, if this is in your Hand, take 5 damage. Exhaust.", "Self"), DEFEND(1)],
                                                                [enemy("A", 90, attack=4)], energy=1), ("play_card", {"card_index": 0})),
     ("a Burn's 2 and the 5 coming would kill", combat_state([{**card(0, "BURN", "Burn", "Status", 0, "Unplayable. At the end of your turn, if this is in your Hand, take 2 damage.", "Self"), "can_play": False},
                                                              STRIKE(1), DEFEND(2)], [enemy("A", 90, attack=5)], energy=1, hp=6), ("play_card", {"card_index": 2})),
-    ("Lightning orbs finish a lone enemy before it acts: nothing to block",
-     combat_state([DEFEND(0), DEFEND(1)], [enemy("A", 5, attack=28)], energy=2, hp=20, orbs=[{"id": "LIGHTNING_ORB", "passive_val": 3, "evoke_val": 8}] * 2, orb_slots=3), None),
+    ("Lightning orbs kill a lone enemy before it acts", combat_state([DEFEND(0), DEFEND(1)], [enemy("A", 5, attack=28)], energy=2, hp=20, orbs=[{"id": "LIGHTNING_ORB", "passive_val": 3, "evoke_val": 8}] * 2, orb_slots=3), None),
     ("Enrage keeps the Skill back", combat_state([ZAP, STRIKE(1)], [enemy("A", 100, attack=10, status=[power("ENRAGE", 2)])], energy=1, kind="boss"), 1),
     ("... for when it is needed", combat_state([ZAP], [enemy("A", 100, attack=10, status=[power("ENRAGE", 2)])], energy=1, kind="boss"), None),
     ("Poison does not kill through Intangible", combat_state([DEFEND(0)], [enemy("FYSH", 6, attack=9, status=[power("POISON", 8), power("INTANGIBLE")])], energy=1, hp=29), ("play_card", {"card_index": 0})),
@@ -118,8 +112,7 @@ class CombatPlanning(unittest.TestCase):
                 self.assertEqual(act, want)
 
     def test_a_slippery_stack_taken_off_is_worth_a_hit(self):
-        # Vantom on 8 Slippery: each stack is a later hit that lands in full, so the hits go before the Defends (fights
-        # still on Slippery at round 5 were lost 4 times in 8) ...
+        # Vantom on 8 Slippery: each stack is a later hit that lands in full, so the hits go before the Defends (fights still on Slippery at round 5 were lost 4 times in 8) ...
         twin = card(0, "TWIN_STRIKE", "Twin Strike", "Attack", 1, "Deal 5 damage twice.", "AnyEnemy")
         vantom = lambda attack: enemy("VANTOM_0", 173, attack=attack, status=[power("SLIPPERY", 8)])
         s = combat_state([twin, DEFEND(1), STRIKE(2), DEFEND(3), STRIKE(4)], [vantom(7)], energy=3, kind="boss")
@@ -306,8 +299,7 @@ BELTS = [  # (when, the belt, Potions.boss keywords, the slots drunk)
     ("... nor with the boss two rooms on", FIRES, dict(floor=31, kind="elite"), []),
     ("... unless the fight has gone wrong", FIRES[:2], dict(floor=24, kind="elite", hp=35), [0, 1]),
     ("the boss gets all of them", FIRES[:2], dict(floor=33), [0, 1]),
-    ("the Test Subject's first form: our Strength lasts, its Vulnerable would not", [VULN, STRENGTH(1)],
-     dict(foe="TEST_SUBJECT_0", foe_hp=100, floor=48, powers=[power("ADAPTABLE"), power("ENRAGE", 2)]), [1]),
+    ("the Test Subject's first form: our Strength lasts, its Vulnerable would not", [VULN, STRENGTH(1)], dict(foe="TEST_SUBJECT_0", foe_hp=100, floor=48, powers=[power("ADAPTABLE"), power("ENRAGE", 2)]), [1]),
     ("... its second form", [VULN, STRENGTH(1)], dict(foe="TEST_SUBJECT_0", foe_hp=100, floor=48, powers=[power("ADAPTABLE"), power("PAINFUL_STABS")]), [0, 1]),
     ("... Intangible: 20 damage would take 1 HP", [FIRE(0)], dict(foe="TEST_SUBJECT_0", floor=3, powers=[power("INTANGIBLE")]), []),
     ("a debuff does not go into Artifact", [potion(0, "Weak Potion", "Apply 3 Weak.", "AnyEnemy"), STRENGTH(1)], dict(**AEONGLASS, powers=[power("ARTIFACT", 3)]), [1]),
@@ -333,8 +325,7 @@ class Potions(unittest.TestCase):
         self.assertEqual(sorted(a[1]["slot"] for a in combat.potion_actions(state)), [0, 1])
 
     def test_a_big_belt_keeps_three_for_the_boss_and_drinks_the_rest_on_the_way(self):
-        # Six slots and five held was never "full", and a Regent lost 37 HP in two fights holding all five. The two a boss
-        # needs least go on the way; near the boss none.
+        # Six slots and five held was never "full", and a Regent lost 37 HP in two fights holding all five. The two a boss needs least go on the way; near the boss none.
         belt = [STRENGTH(0), potion(1, "Swift Potion", "Draw 3 cards."), FIRE(2), potion(3, "Attack Potion", "Add 1 of 3 random Attack cards into your Hand."), potion(4, "Focus Potion", "Gain 2 Focus.")]
         state = combat_state([STRIKE(0)], [enemy("A", 60, attack=10)], hp=60, max_hp=75, potions=belt, floor=21, max_potion_slots=6)
         self.assertEqual(sorted(a[1]["slot"] for a in combat.potion_actions(state)), [1, 3])
@@ -384,7 +375,6 @@ class Potions(unittest.TestCase):
         def used(drink, hand, line=None, block=0, attack=30, discard=0):
             state = combat_state(hand, [enemy("A", 300, attack=attack)], hp=75, max_hp=75, block=block, kind="boss", potions=[drink], floor=33, discard_pile_count=discard)
             return bool(combat.potion_actions(state, None, line))
-
         # "Triple your Block": 11 of 14 tripled nothing. It goes once the turn's Block is up and is still short.
         fortifier = potion(0, "Fortifier", "Triple your Block.")
         self.assertFalse(used(fortifier, [DEFEND(0)], line=[parse(DEFEND(0))]))
@@ -485,8 +475,7 @@ class PowersThePlannerKnows(unittest.TestCase):
         self.assertEqual(strategy.deck_fit(glow, [STRIKE(0)]), 0.0)
 
     def test_the_stars_a_fight_starts_with_do_not_pay_for_every_cycle(self):
-        # The starter deck (Falling Star 2, Venerate +2) with one Astral Pulse: a third star card would ask for 8 Stars a cycle
-        # of a deck that makes 2 (and has 3 once, when the fight starts).
+        # The starter deck (Falling Star 2, Venerate +2) with one Astral Pulse: a third star card would ask for 8 Stars a cycle of a deck that makes 2 (and has 3 once, when the fight starts).
         star = lambda cid, name, n: {**card(0, cid, name, "Attack", 0, "Deal 8 damage.", "AnyEnemy"), "star_cost": n}
         venerate = card(0, "VENERATE", "Venerate", "Skill", 1, f"Gain {STAR}{STAR}.", "Self")
         deck = [STRIKE(i) for i in range(4)] + [DEFEND(i) for i in range(4)] + [star("FALLING_STAR", "Falling Star", 2), venerate, star("ASTRAL_PULSE", "Astral Pulse", 3)]
@@ -618,7 +607,7 @@ class OtherCharacters(unittest.TestCase):
         self.assertGreater(deck_value(fumes), deck_value(card(1, "SLICE", "Slice", "Attack", 0, "Deal 6 damage.", "AnyEnemy")))
 
 
-class CrabRage(unittest.TestCase):
+class RageAndRespawn(unittest.TestCase):
     def crabs(self, crusher_hp=6, rocket_hp=120):
         crab = lambda eid, hp: combat.Enemy(entity_id=eid, hp=hp, block=0, vulnerable=False, weak=False, incoming=6, rage=True)
         return [crab("CRUSHER_0", crusher_hp), crab("ROCKET_0", rocket_hp)]
@@ -636,8 +625,6 @@ class CrabRage(unittest.TestCase):
         with mock.patch.object(battle, "RAGE_BLOCK", 0):
             self.assertLess(with_rage, combat.simulate(line, self.crabs(), **kw).score)
 
-
-class StockRespawn(unittest.TestCase):
     def axebot(self, hp=5, respawns=2):
         return combat.Enemy(entity_id="AXEBOT_0", hp=hp, block=0, vulnerable=False, weak=False, incoming=15, respawns=respawns, max_hp=85)
 
@@ -655,8 +642,7 @@ class StockRespawn(unittest.TestCase):
         self.assertLess(with_stock, combat.simulate(line, [self.axebot(respawns=0)], **kw).score - combat.WIN_BONUS / 2)
 
     def test_killing_a_stock_enemy_takes_its_attack_away_for_the_turn(self):
-        # Axebot on 32 about to hit for 17: the Hammer and the Crush Under kill it, and the new one only Defends and Buffs this
-        # turn. That beats 10 damage and 8 Block in front of the 17.
+        # Axebot on 32 about to hit for 17: the Hammer and the Crush Under kill it, and the new one only Defends and Buffs this turn. That beats 10 damage and 8 Block in front of the 17.
         hammer = card(0, "HEIRLOOM_HAMMER", "Heirloom Hammer+", "Attack", 2, "Deal 22 damage.", "AnyEnemy")
         crush = card(1, "CRUSH_UNDER", "Crush Under+", "Attack", 1, "Deal 10 damage.", "AnyEnemy")
         wall = card(2, "GLITTERSTREAM", "Glitterstream", "Skill", 2, "Gain 8 Block.", "Self")
