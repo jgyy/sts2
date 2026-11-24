@@ -17,9 +17,7 @@ from .decks import BIG_DECK, SKIP_THRESHOLD, _blocks, _hitters, _punch, _stars, 
 from ..fight import afflictions, handpick
 
 Action = tuple[str, dict]
-
 log = logging.getLogger("sts2bot.strategy")
-
 POTION_SWAP = 6.0  # how much more a potion on offer must be worth at a boss than the least of a full belt to take its place
 
 
@@ -80,8 +78,6 @@ def _option_names(options) -> list[str]:
 
 
 # --------------------------------------------------------------------- menu
-
-
 def menu(state: dict, mem: Memory, character: str) -> list[Action]:
     screen = state.get("menu_screen") or "main"
     names = _option_names(state.get("options"))
@@ -154,7 +150,6 @@ def _who(name) -> str:
 def choose_character(setting: str, unlocked: list[str], runs_finished: int, max_ascension: dict | None = None, epochs: dict | None = None,
                      recent: list | None = None) -> str | None:
     """`setting` is a character id, or "auto" / "cycle" / "random" over the unlocked ones.
-
     "auto" first plays the characters with a Timeline epoch of their own still to earn; among those (or everyone) one on
     the lowest ascension unlocked: drawn at random once a run, or with `recent` (oldest first) the one played longest ago."""
     # The game's own "Random" tile is listed like a character, on ascension 0 for ever: never pick it.
@@ -190,7 +185,6 @@ def choose_character(setting: str, unlocked: list[str], runs_finished: int, max_
 
 
 # ---------------------------------------------------------------------- map
-
 _ROOM_BASE = {"Unknown": 2.2, "Treasure": 4.0, "Boss": 0.0, "Ancient": 3.0}  # (the other kinds are worked out below)
 EARLY_ROWS = 8  # act 1 rows where the deck is still close to the starter deck
 
@@ -241,16 +235,8 @@ def boss_odds(hp_ratio: float, act: int = 1) -> float:
     if act == 2:
         return _between(ACT2_ODDS, hp_ratio)
     if act >= 3:
-        if hp_ratio >= 0.95:
-            return 1.0
-        if hp_ratio >= 0.8:
-            return 0.3 + 0.7 * (hp_ratio - 0.8) / 0.15
-        return max(0.0, 0.3 * (hp_ratio - 0.5) / 0.3)
-    if hp_ratio >= 0.85:
-        return 1.0
-    if hp_ratio >= 0.6:
-        return 0.45 + 0.55 * (hp_ratio - 0.6) / 0.25
-    return max(0.0, 0.45 * (hp_ratio - 0.3) / 0.3)
+        return 1.0 if hp_ratio >= 0.95 else 0.3 + 0.7 * (hp_ratio - 0.8) / 0.15 if hp_ratio >= 0.8 else max(0.0, 0.3 * (hp_ratio - 0.5) / 0.3)
+    return 1.0 if hp_ratio >= 0.85 else 0.45 + 0.55 * (hp_ratio - 0.6) / 0.25 if hp_ratio >= 0.6 else max(0.0, 0.45 * (hp_ratio - 0.3) / 0.3)
 
 
 REST_HEAL = 0.3  # of Max HP
@@ -367,8 +353,6 @@ def map_screen(state: dict, mem: Memory) -> list[Action]:
 
 
 # ------------------------------------------------------------------ rewards
-
-
 def _belt_full(player: dict) -> bool:
     """No room for a potion: the belt is full, or a relic (Sozu) forbids potions (and the shop would sell one for nothing)."""
     for relic in player.get("relics") or []:
@@ -429,8 +413,6 @@ def card_reward(state: dict, mem: Memory) -> list[Action]:
 
 
 # ---------------------------------------------------------------- rest site
-
-
 def rest_site(state: dict, mem: Memory) -> list[Action]:
     rs = state.get("rest_site") or {}
     opts = [o for o in rs.get("options") or [] if o.get("is_enabled", True)]
@@ -469,8 +451,6 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
 
 
 # --------------------------------------------------------------------- shop
-
-
 REMOVAL_EARLY = {1: 3.5, 2: 1.5}  # what a card removal is worth less in acts 1 and 2 under the `cards_first` setting
 RELIC_BAR = 5.0  # a shop relic wanted less than this (a fair card) is bought only with 200 Gold to spare
 SEAL_RESERVE = 45  # Gold a Merchant does not get while Seal of Gold is held (3 a turn for an energy: a boss fight is 10 to 15 turns)
@@ -498,7 +478,6 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
         looks = mem.parasol[2] + 1 if mem.parasol[:2] == _where(state) else 1
         mem.parasol = (*_where(state), looks)
         return [("proceed", {})] if looks > 8 or not any(i.get("is_stocked", True) for i in s.get("items") or []) else []
-
     reserve = SEAL_RESERVE if any(str(r.get("id")) == "SEAL_OF_GOLD" for r in player.get("relics") or []) else 0
     scored: list[tuple[float, dict]] = []
     shelf: list[str] = []  # (for the log: what was on offer, what it cost and what we made of it)
@@ -554,7 +533,6 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
 
 
 # --------------------------------------------------------------- selections
-
 _WORST_FIRST = re.compile(r"remove|transform|exhaust|discard|lose|purge|sacrifice|destroy", re.I)
 KEEP_AT_ALL_COSTS = {"FRANTIC_ESCAPE"}  # the only way out of the Sandpit
 
@@ -600,7 +578,6 @@ def card_select(state: dict, mem: Memory) -> list[Action]:
     key = f"{_where(state)}|{kind}|{prompt}|{len(cards)}"
     if key != mem.select_key:
         mem.select_key, mem.selected = key, set()
-
     ordered = afflictions.order(_pick_order(cards, prompt, kind, mem.upgrade_gain), state)
     if kind == "choose":
         ordered = afflictions.offered(ordered, state.get("_fight_state"))  # (a card a potion offers mid-fight: by the turn)
@@ -685,8 +662,7 @@ def hand_select(state: dict, mem: Memory) -> list[Action]:
     # A Sly card discarded from the hand is played for free: the best thing to throw away.
     sly = lambda c: discarding and any(str(k.get("name")) == "Sly" for k in c.get("keywords") or [])
     ordered = sorted((c for c in ordered if sly(c)), key=deck_value, reverse=True) + [c for c in ordered if not sly(c)]
-    # Then the card this turn's plan misses least (not planned once the choice is only to be confirmed): for a discard the
-    # turn is all that counts; a card Exhausted is gone for the fight, so its rating decides unless it costs a kill or our life.
+    # Then the card this turn's plan misses least (unless only to be confirmed): a discard by the turn, an Exhaust unless it costs a kill or our life.
     costs = handpick.turn_costs(state, ordered, 1e-9 if discarding else handpick.RUINOUS / 2) if _WORST_FIRST.search(prompt) and not kind and not hs.get("can_confirm") else None
     if costs:
         def price(c: dict) -> float:

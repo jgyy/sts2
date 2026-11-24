@@ -132,13 +132,9 @@ FEED_LEAN = 1.0  # rating points for a feeding card, for each payoff held, while
 FEED_LEAN_MOST = 2.0
 
 
-def _text(card: dict) -> str:
-    return str(card.get("description") or "")
-
-
 def feeds(card: dict, what: str) -> float:
     """How much a card feeds payoffs of `what` (0: not at all; a Power that does it every turn counts 2)."""
-    text = _text(card)
+    text = str(card.get("description") or "")
     if not _FEEDS[what].search(text) or (what == "exhaust" and _PAYS["exhaust"].search(text)):
         return 0.0
     if what == "poison" and _parse(card).poison_needs:
@@ -151,7 +147,7 @@ def pays_off(card: dict) -> str | None:
     info = _parse(card)
     if info.total_damage > 0 or info.block > 0:
         return None
-    text = _text(card)
+    text = str(card.get("description") or "")
     for what, pattern in _PAYS.items():
         if pattern.search(text) and (not feeds(card, what) or (what == "poison" and info.poison_needs)):
             return what

@@ -12,7 +12,6 @@ from pathlib import Path
 from ..learn import history
 
 log = logging.getLogger("sts2bot.relics")
-
 WIN_BONUS = 15  # as learn.WIN_BONUS: a win counts as this many floors beyond the last one
 PRIOR_RUNS = 25.0  # runs a relic needs before its record counts for half
 POINTS_PER_FLOOR = 1.0  # a floor further than usual, in the points of events._ANCIENT (its ratings spread about as wide as the floors do)
@@ -22,23 +21,19 @@ BAND = 2  # ascension levels taken together for "the usual"
 
 # The relics of the Ancients that open act 2 (Orobas, Pael, Tezcatara) and act 3 (Nonupeipe, Tanx, Vakuu), and Darv's (either); any other is Neow's.
 ACT2 = {
-    "ALCHEMICAL_COFFER", "ARCHAIC_TOOTH", "DRIFTWOOD", "ELECTRIC_SHRYMP", "GEAR_GLASS", "GLASS_EYE", "LICH_GLASS", "NOBLE_GLASS",
-    "VENOM_GLASS", "PRISMATIC_GEM", "RADIANT_PEARL", "SAND_CASTLE", "PAELS_BLOOD", "PAELS_CLAW", "PAELS_EYE", "PAELS_FLESH",
-    "PAELS_GROWTH", "PAELS_HORN", "PAELS_LEGION", "PAELS_TEARS", "PAELS_TOOTH", "PAELS_WING", "BIIIG_HUG", "GOLDEN_COMPASS",
-    "NUTRITIOUS_SOUP", "PUMPKIN_CANDLE", "SEAL_OF_GOLD", "STORYBOOK", "TOASTY_MITTENS", "TOY_BOX", "VERY_HOT_COCOA", "YUMMY_COOKIE",
+    "ALCHEMICAL_COFFER", "ARCHAIC_TOOTH", "DRIFTWOOD", "ELECTRIC_SHRYMP", "GEAR_GLASS", "GLASS_EYE", "LICH_GLASS", "NOBLE_GLASS", "VENOM_GLASS", "PRISMATIC_GEM", "RADIANT_PEARL", "SAND_CASTLE", "PAELS_BLOOD", "PAELS_CLAW", "PAELS_EYE",
+    "PAELS_FLESH", "PAELS_GROWTH", "PAELS_HORN", "PAELS_LEGION", "PAELS_TEARS", "PAELS_TOOTH", "PAELS_WING", "BIIIG_HUG", "GOLDEN_COMPASS", "NUTRITIOUS_SOUP", "PUMPKIN_CANDLE", "SEAL_OF_GOLD", "STORYBOOK", "TOASTY_MITTENS", "TOY_BOX",
+    "VERY_HOT_COCOA", "YUMMY_COOKIE",
 }
 ACT3 = {
-    "BEAUTIFUL_BRACELET", "BLESSED_ANTLER", "BRILLIANT_SCARF", "DELICATE_FROND", "DIAMOND_DIADEM", "FUR_COAT", "GLITTER",
-    "JEWELRY_BOX", "LOOMING_FRUIT", "SIGNET_RING", "CLAWS", "CROSSBOW", "IRON_CLUB", "MEAT_CLEAVER", "SAI", "SPIKED_GAUNTLETS",
-    "TANXS_WHISTLE", "THROWING_AXE", "TRI_BOOMERANG", "WAR_HAMMER", "BLOOD_SOAKED_ROSE", "CHOICES_PARADOX", "DISTINGUISHED_CAPE",
-    "FIDDLE", "JEWELED_MASK", "LORDS_PARASOL", "MUSIC_BOX", "PRESERVED_FOG", "WHISPERING_EARRING",
+    "BEAUTIFUL_BRACELET", "BLESSED_ANTLER", "BRILLIANT_SCARF", "DELICATE_FROND", "DIAMOND_DIADEM", "FUR_COAT", "GLITTER", "JEWELRY_BOX", "LOOMING_FRUIT", "SIGNET_RING", "CLAWS", "CROSSBOW", "IRON_CLUB", "MEAT_CLEAVER", "SAI",
+    "SPIKED_GAUNTLETS", "TANXS_WHISTLE", "THROWING_AXE", "TRI_BOOMERANG", "WAR_HAMMER", "BLOOD_SOAKED_ROSE", "CHOICES_PARADOX", "DISTINGUISHED_CAPE", "FIDDLE", "JEWELED_MASK", "LORDS_PARASOL", "MUSIC_BOX", "PRESERVED_FOG",
+    "WHISPERING_EARRING",
 }
 DARV = {
-    "ASTROLABE", "BLACK_STAR", "CALLING_BELL", "DUSTY_TOME", "ECTOPLASM", "EMPTY_CAGE", "PHILOSOPHERS_STONE", "RUNIC_PYRAMID",
-    "SNECKO_EYE", "SOZU", "VELVET_CHOKER",
+    "ASTROLABE", "BLACK_STAR", "CALLING_BELL", "DUSTY_TOME", "ECTOPLASM", "EMPTY_CAGE", "PHILOSOPHERS_STONE", "RUNIC_PYRAMID", "SNECKO_EYE", "SOZU", "VELVET_CHOKER",
 }
 FLOOR2, FLOOR3 = 18, 34  # the floors acts 2 and 3 open on
-
 _known: set = set()  # every relic an Ancient offers that we rate (events._ANCIENT)
 _runs: list = []  # (character, ascension band, floors reached with the win bonus, relics held)
 _table: dict = {}  # relic -> [runs that held it, floors beyond the usual in total]

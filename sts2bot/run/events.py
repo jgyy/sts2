@@ -11,9 +11,7 @@ from .potions import boss_worth
 from .relicworth import energy_lean, id_of as relic_id, worth as relic_worth
 
 Action = tuple[str, dict]
-
 log = logging.getLogger("sts2bot.strategy")
-
 _RELIC_WORD = r"\brelics?\b"
 _GOOD = [(_RELIC_WORD, 6.0), (r"\bremove\b", 4.0), (r"\bupgrade\b", 4.0), (r"\btransform\b", 2.0), (r"\bpotions?\b", 1.5), (r"\bcards?\b", 1.0), (r"\benchant\b", 3.0),
          (r"draw \d+ additional cards?", 5.0), (r"energy_icon", 5.0), (r"\bgreater rewards\b", 6.0)]  # (more draw: every turn of the run; Punch Off: relic, card, potion)
@@ -21,11 +19,9 @@ _GOOD = [(_RELIC_WORD, 6.0), (r"\bremove\b", 4.0), (r"\bupgrade\b", 4.0), (r"\bt
 _BAD = [(r"\bfoul potions?\b", 1.0), (r"\bfight to obtain the key\b", 6.0), (r"\bcurse\b", 6.0), (r"\bfight\b", 2.0), (r"draw \d+ fewer cards?", 4.0), (r"\bdowngrade\b", 2.0), (r"\bsacrifice\b", 5.0)]
 EVENT_FIGHT_HP = [(r"\bfight them\b", 32.0)]  # HP an option that starts a fight costs, priced as "Lose N HP" is (Punch Off's constructs)
 _DUPLICATE_DECK = re.compile(r"duplicate (?:your|the) (?:whole )?deck")  # (doubles every draw pile and dilutes the good cards)
-# What something bad received costs, where a relic is worth 6: little for a card drawn once a fight, much for one that hurts
-# each time or can never be removed. Royal Poison (4 HP a fight) and the Sword of Stone (five elites) belong here too.
+# What something bad received costs (a relic is 6): little for a card drawn once a fight, much for one that hurts or stays (two relics too).
 _CURSES = {
-    "clumsy": 1.5, "guilty": 1.5, "poor sleep": 2.0, "folly": 2.5, "spore mind": 2.5, "injury": 3.0, "debt": 4.0,
-    "decay": 4.5, "doubt": 4.5, "shame": 4.5, "greed": 5.0, "curse of the bell": 5.0, "regret": 5.0, "writhe": 5.0,
+    "clumsy": 1.5, "guilty": 1.5, "poor sleep": 2.0, "folly": 2.5, "spore mind": 2.5, "injury": 3.0, "debt": 4.0, "decay": 4.5, "doubt": 4.5, "shame": 4.5, "greed": 5.0, "curse of the bell": 5.0, "regret": 5.0, "writhe": 5.0,
     "normality": 8.0, "enthralled": 8.0, "bad luck": 10.0, "royal poison": 9.0, "sword of stone": -0.5,
 }
 _CURSE_GAIN = re.compile(  # (the first game writes "Become Cursed - Regret.")
@@ -35,33 +31,22 @@ _CURSE_GAIN = re.compile(  # (the first game writes "Become Cursed - Regret.")
 _RUINOUS = re.compile(r"\blose (all|everything)\b|\bset your max hp\b|\bmax hp (to|becomes) \d\b", re.I)  # the run ended in all but name
 _JUNK_NAMES = {"CLUMSY", "GUILTY", "NORMALITY", "BADLUCK", "REGRET", "POORSLEEP", "INJURY", "WOUND", "DAZED", "SOOT", "SLIMED", "INFECTION", "ENTHRALLED", "DOUBT", "SHAME", "DECAY",
                "PARASITE", "PAIN", "WRITHE"}
-# What the Ancients' relics (the event that opens each act) are worth to this bot, on the scale of the scores below (read word
-# by word, energy with a curse scored below "upgrade a card"). relics.py moves each by what the runs that held it did.
+# What the Ancients' relics (the event opening each act) are worth on the scale of the scores below; relics.py moves each by its runs.
 _ANCIENT = {
     # more energy or cards every turn
-    "BLOOD_SOAKED_ROSE": 6.5, "SPIKED_GAUNTLETS": 8.5, "PHILOSOPHERS_STONE": 10.0, "SOZU": 8.5,
-    "BLESSED_ANTLER": 8.0, "PAELS_FLESH": 12.5, "PAELS_BLOOD": 13.5, "FIDDLE": 11.5, "WHISPERING_EARRING": 12.0,
-    "PAELS_TEARS": 9.0, "VERY_HOT_COCOA": 11.5, "PUMPKIN_CANDLE": 8.5, "SEAL_OF_GOLD": 10.0, "BOOMING_CONCH": 5.5,
-    "SNECKO_EYE": 13.0, "VELVET_CHOKER": 11.5, "PRISMATIC_GEM": 9.0, "ECTOPLASM": 7.0, "RUNIC_PYRAMID": 9.0,
-    "IRON_CLUB": 9.5,
+    "BLOOD_SOAKED_ROSE": 6.5, "SPIKED_GAUNTLETS": 8.5, "PHILOSOPHERS_STONE": 10.0, "SOZU": 8.5, "BLESSED_ANTLER": 8.0, "PAELS_FLESH": 12.5, "PAELS_BLOOD": 13.5, "FIDDLE": 11.5, "WHISPERING_EARRING": 12.0, "PAELS_TEARS": 9.0,
+    "VERY_HOT_COCOA": 11.5, "PUMPKIN_CANDLE": 8.5, "SEAL_OF_GOLD": 10.0, "BOOMING_CONCH": 5.5, "SNECKO_EYE": 13.0, "VELVET_CHOKER": 11.5, "PRISMATIC_GEM": 9.0, "ECTOPLASM": 7.0, "RUNIC_PYRAMID": 9.0, "IRON_CLUB": 9.5,
     # something every turn or every fight
-    "SAI": 13.0, "CROSSBOW": 12.0, "TOASTY_MITTENS": 11.0, "MUSIC_BOX": 10.0, "DELICATE_FROND": 12.0,
-    "CHOICES_PARADOX": 9.0, "DIAMOND_DIADEM": 9.0, "PAELS_LEGION": 8.0, "RADIANT_PEARL": 9.5, "JEWELED_MASK": 7.0,
-    "BRILLIANT_SCARF": 6.5, "FUR_COAT": 10.0, "BLACK_STAR": 8.5, "ALCHEMICAL_COFFER": 9.5,
+    "SAI": 13.0, "CROSSBOW": 12.0, "TOASTY_MITTENS": 11.0, "MUSIC_BOX": 10.0, "DELICATE_FROND": 12.0, "CHOICES_PARADOX": 9.0, "DIAMOND_DIADEM": 9.0, "PAELS_LEGION": 8.0, "RADIANT_PEARL": 9.5, "JEWELED_MASK": 7.0, "BRILLIANT_SCARF": 6.5,
+    "FUR_COAT": 10.0, "BLACK_STAR": 8.5, "ALCHEMICAL_COFFER": 9.5,
     # health, gold, relics
-    "LOOMING_FRUIT": 8.5, "NUTRITIOUS_OYSTER": 8.5, "STONE_HUMIDIFIER": 9.5, "LORDS_PARASOL": 12.0,
-    "SIGNET_RING": 9.5, "LARGE_CAPSULE": 8.5, "SMALL_CAPSULE": 8.0, "TOY_BOX": 9.0, "LAVA_ROCK": 8.0,
-    "NEOWS_BONES": 7.0, "GOLDEN_PEARL": 6.5, "CURSED_PEARL": 6.0,
+    "LOOMING_FRUIT": 8.5, "NUTRITIOUS_OYSTER": 8.5, "STONE_HUMIDIFIER": 9.5, "LORDS_PARASOL": 12.0, "SIGNET_RING": 9.5, "LARGE_CAPSULE": 8.5, "SMALL_CAPSULE": 8.0, "TOY_BOX": 9.0, "LAVA_ROCK": 8.0, "NEOWS_BONES": 7.0, "GOLDEN_PEARL": 6.5,
+    "CURSED_PEARL": 6.0,
     # the deck
-    "YUMMY_COOKIE": 7.5, "PAELS_TOOTH": 10.0, "JEWELRY_BOX": 10.0, "WAR_HAMMER": 10.5, "FISHING_ROD": 8.5,
-    "PANDORAS_BOX": 10.5, "SAND_CASTLE": 8.5, "ELECTRIC_SHRYMP": 8.0, "GLASS_EYE": 6.0, "CALLING_BELL": 6.5,
-    "BIIIG_HUG": 9.0, "ARCHAIC_TOOTH": 7.0, "NUTRITIOUS_SOUP": 8.5, "PAELS_CLAW": 7.0, "BEAUTIFUL_BRACELET": 8.0,
-    "TRI_BOOMERANG": 7.5, "PAELS_GROWTH": 7.5, "PHIAL_HOLSTER": 7.5, "PRECISE_SCISSORS": 6.5, "PRESERVED_FOG": 7.0,
-    "PRECARIOUS_SHEARS": 5.0, "LOST_COFFER": 6.5, "ARCANE_SCROLL": 6.5, "CLAWS": 7.0, "SILVER_CRUCIBLE": 7.0,
-    "GLITTER": 7.0, "POMANDER": 6.5, "KALEIDOSCOPE": 6.5, "SCROLL_BOXES": 7.5, "DEMON_GLASS": 6.5,
-    "LEAD_PAPERWEIGHT": 8.5, "DUSTY_TOME": 6.5, "STORYBOOK": 6.5, "NEOWS_TALISMAN": 6.0, "NEW_LEAF": 5.5,
-    "DOWSING_ROD": 5.5, "TANXS_WHISTLE": 5.5, "NEOWS_TORMENT": 5.5, "PAELS_HORN": 5.5, "GOLDEN_COMPASS": 5.0,
-    "ASTROLABE": 9.0, "EMPTY_CAGE": 8.5, "THROWING_AXE": 7.5, "DRIFTWOOD": 6.5,
+    "YUMMY_COOKIE": 7.5, "PAELS_TOOTH": 10.0, "JEWELRY_BOX": 10.0, "WAR_HAMMER": 10.5, "FISHING_ROD": 8.5, "PANDORAS_BOX": 10.5, "SAND_CASTLE": 8.5, "ELECTRIC_SHRYMP": 8.0, "GLASS_EYE": 6.0, "CALLING_BELL": 6.5, "BIIIG_HUG": 9.0,
+    "ARCHAIC_TOOTH": 7.0, "NUTRITIOUS_SOUP": 8.5, "PAELS_CLAW": 7.0, "BEAUTIFUL_BRACELET": 8.0, "TRI_BOOMERANG": 7.5, "PAELS_GROWTH": 7.5, "PHIAL_HOLSTER": 7.5, "PRECISE_SCISSORS": 6.5, "PRESERVED_FOG": 7.0, "PRECARIOUS_SHEARS": 5.0,
+    "LOST_COFFER": 6.5, "ARCANE_SCROLL": 6.5, "CLAWS": 7.0, "SILVER_CRUCIBLE": 7.0, "GLITTER": 7.0, "POMANDER": 6.5, "KALEIDOSCOPE": 6.5, "SCROLL_BOXES": 7.5, "DEMON_GLASS": 6.5, "LEAD_PAPERWEIGHT": 8.5, "DUSTY_TOME": 6.5, "STORYBOOK": 6.5,
+    "NEOWS_TALISMAN": 6.0, "NEW_LEAF": 5.5, "DOWSING_ROD": 5.5, "TANXS_WHISTLE": 5.5, "NEOWS_TORMENT": 5.5, "PAELS_HORN": 5.5, "GOLDEN_COMPASS": 5.0, "ASTROLABE": 9.0, "EMPTY_CAGE": 8.5, "THROWING_AXE": 7.5, "DRIFTWOOD": 6.5,
     # things the bot cannot make use of
     "WINGED_BOOTS": 4.0, "PAELS_WING": 4.0, "MEAT_CLEAVER": 3.5, "PAELS_EYE": 3.0, "DISTINGUISHED_CAPE": 3.0,
 }
