@@ -246,7 +246,11 @@ class NextTurnEnergy(unittest.TestCase):
         state["player"]["status"] = [{"id": "ENERGY_NEXT_TURN_POWER", "amount": 3}]
         self.assertEqual(battle.next_room(state), (-1.0, 1.0))
         state["player"]["status"] = [{"id": "SLOTH_POWER", "amount": 0}, {"id": "MIND_ROT_POWER", "amount": 1}]
-        self.assertEqual(battle.next_room(state), (0.0, 1.0))  # three cards a turn
+        self.assertEqual(battle.next_room(state), (0.0, 0.0))  # three cards a turn, and a kept hand adds none to them
+        state["player"]["status"] = [{"id": "MIND_ROT_POWER", "amount": 1}]
+        state["player"]["relics"] = [{"id": "VELVET_CHOKER", "description": "Gain [regent_energy_icon.png] at the start of each turn. You cannot play more than 6 cards per turn."}]
+        self.assertEqual(battle.next_room(state), (1.0, 1.0))  # four drawn, two more may be played: a kept card still counts
+        state["player"]["relics"] = []
         self.assertEqual(battle.next_energy_worth(6, (2.0, 1.0)), 6.0 * 2 + 1.0 * 4)
         self.assertEqual(battle.next_energy_worth(6, (2.0, 1.0), kept=3), 6.0 * 5 + 1.0 * 1)
         self.assertEqual(battle.next_energy_worth(2, (99.0, 1.0)), 12.0)  # (the old flat 6)
@@ -262,6 +266,20 @@ class NextTurnEnergy(unittest.TestCase):
         self.assertEqual(combat.choose_card(state)[1]["card_index"], 1)
         with mock.patch.object(combat, "next_room", lambda s: (99.0, 1.0)):
             self.assertNotEqual(combat.choose_card(state)[1]["card_index"], 1)  # (what it did before: Strike, then Ki Rest+)
+
+    def test_no_ki_rest_for_a_next_turn_that_sloth_holds_to_three_cards(self):
+        # Live 2026-11-24 20:16, the Knowledge Demon's round 6 under Sloth and Mind Rot: Cho Ki then Ki Rest+ (its hand
+        # Retained, 9 energy next turn) over Bow Smack+, Strike and Cho Ki; the next turn spent 4 of the 9 on three cards.
+        demon = {**enemy("KNOWLEDGE_DEMON_0", 144, attack=14), "status": [{"id": "STRENGTH_POWER", "amount": 2}]}
+        cho_ki = card(1, "CHO_KI", "Cho Ki", "Skill", 1, "Gain 8 Block. Regain any spent Stretch.", "Self")
+        smack = card(2, "BIG_HIT", "Big Hit", "Attack", 1, "Deal 11 damage.", "AnyEnemy")
+        hand = [KI_REST(0), cho_ki, smack, STRIKE(3), DEFEND(4)]
+        state = combat_state(hand, [demon], energy=3, hp=44, max_hp=77, kind="boss")
+        state["battle"]["round"] = 6
+        state["player"].update(draw_pile=ONES, max_energy=3, status=[{"id": "SLOTH_POWER", "amount": 0}, {"id": "MIND_ROT_POWER", "amount": 1}])
+        self.assertIn(combat.choose_card(state)[1]["card_index"], (2, 3))  # the attacks
+        with mock.patch.object(combat, "next_room", lambda s: (0.0, 1.0)):  # (what next_room said before: kept cards on top of the three)
+            self.assertIn(combat.choose_card(state)[1]["card_index"], (0, 1))  # (what it did: Cho Ki, then Ki Rest+)
 
     def test_rewards_count_about_two_energy_next_turn(self):
         from sts2bot import cards

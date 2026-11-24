@@ -155,6 +155,57 @@ def makes_doom(card: dict) -> bool:
     return _parse(card).doom > 0 or bool(re.search(r"apply that much doom|apply \d+ doom to (?:the enemy|a random enemy|all enemies)", text, re.I))
 
 
+# Cards that pay off only on what other cards make (2026-11-24): Poison (Accelerant, Bubble Bubble, Mirage), Shivs
+# (Accuracy, Phantom Blades, Knife Trap), Souls (Haunt, Devour Life), cards Exhausted (Feel No Pain, Dark Embrace,
+# Forgotten Ritual). Taken since 2026-11-21 into decks with nothing to feed them: Bubble Bubble 9 times of 20 (8 more
+# beside one card that applies Poison), Accuracy 7 of 27, Phantom Blades 3 of 11, Haunt 5 of 23, Mirage 2 of 3. Bubble
+# Bubble does nothing to an enemy without Poison (the planner holds it, `poison_needs`), Accuracy without a Shiv is an
+# energy for nothing; and the lean to damage counted Bubble Bubble's 9 Poison as a hit (+1.3 to +4 points at a reward).
+# Only cards that do nothing else: Soul Storm's 9 damage and Evil Eye's 8 Block stand on their own.
+_FEEDS = {
+    "poison": re.compile(r"apply (?:\d+|x) poison", re.I),
+    "shiv": re.compile(r"add (?:\d+|x|an?) (?:inky )?shivs?\b", re.I),
+    "soul": re.compile(r"add (?:\d+|x|an?) souls?\b|into soul\b", re.I),
+    "exhaust": re.compile(r"\bexhaust\b(?! pile)", re.I),
+}
+_PAYS = {
+    "poison": re.compile(r"\bpoison\b", re.I),
+    "shiv": re.compile(r"\bshivs?\b", re.I),
+    "soul": re.compile(r"\bsouls?\b", re.I),
+    "exhaust": re.compile(r"whenever a card is exhausted|if you (?:have )?exhausted a card", re.I),
+}
+FEED_FULL = 2.0  # feeding cards a payoff needs to be worth its rating (a Power that feeds it every turn counts twice)
+FEED_KEEP = 0.3  # of a payoff's worth kept with nothing yet to feed it (one may come later)
+FEED_LEAN = 1.0  # rating points for a feeding card, for each payoff held, while the deck has less than FEED_FULL of them
+FEED_LEAN_MOST = 2.0
+
+
+def _text(card: dict) -> str:
+    return str(card.get("description") or "")
+
+
+def feeds(card: dict, what: str) -> float:
+    """How much a card feeds payoffs of `what` (0: not at all; a Power that does it every turn counts 2)."""
+    text = _text(card)
+    if not _FEEDS[what].search(text) or (what == "exhaust" and _PAYS["exhaust"].search(text)):
+        return 0.0
+    if what == "poison" and _parse(card).poison_needs:
+        return 0.0  # Bubble Bubble's Poison needs Poison already there
+    return 2.0 if str(card.get("type")) == "Power" else 1.0
+
+
+def pays_off(card: dict) -> str | None:
+    """What a card needs other cards to make before it does anything (None: it stands on its own)."""
+    info = _parse(card)
+    if info.total_damage > 0 or info.block > 0:
+        return None
+    text = _text(card)
+    for what, pattern in _PAYS.items():
+        if pattern.search(text) and (not feeds(card, what) or (what == "poison" and info.poison_needs)):
+            return what
+    return None
+
+
 def _blocks(card: dict) -> bool:
     """A card taken for its Block: 5 or more when played, the Defends (upgraded or not) left out."""
     return _parse(card).block >= 5 and not is_basic(card) and not is_basic({"name": str(card.get("name") or "").rstrip("+")})
@@ -251,6 +302,19 @@ def deck_fit(card: dict, deck: list, act: int | None = None, energy: int = 3) ->
         fit += crowd.partner(key, {_card_key(c) for c in deck})  # cards other players win with together
     if key == "FRIENDSHIP" and copies:
         fit -= 2.5  # the planner leaves a second one in the hand (2 more Strength for energy it has no cards for)
+    for what in _FEEDS:
+        made = feeds(card, what)
+        if made:
+            # A feeding card for payoffs the deck already holds and cannot yet feed.
+            payoffs = sum(1 for c in deck if pays_off(c) == what)
+            fed = sum(feeds(c, what) for c in deck)
+            if payoffs and fed < FEED_FULL:
+                fit += min(FEED_LEAN_MOST, FEED_LEAN * payoffs) * (1.0 - fed / FEED_FULL)
+    need = pays_off(card)
+    if need:
+        fed = sum(feeds(c, need) for c in deck)
+        share = FEED_KEEP + (1.0 - FEED_KEEP) * min(1.0, fed / FEED_FULL)
+        fit -= (1.0 - share) * max(0.0, deck_value(card) + fit)
     return fit
 
 

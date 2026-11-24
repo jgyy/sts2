@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -17,6 +18,7 @@ import time
 from pathlib import Path
 
 from ... import supervisor
+from . import relay
 from .screens import CHARACTERS
 
 log = logging.getLogger("sts2bot.supervisor")
@@ -97,6 +99,35 @@ def write_comm_config(port: int, path: Path | None = None) -> Path:
     # (Java's properties format: backslashes and colons would need escaping; a POSIX path has neither.)
     path.write_text(f"command={command}\nrunAtGameStart=true\n")
     return path
+
+
+def comm_command(path: Path | None = None) -> str | None:
+    """The program CommunicationMod starts with the game (None if it has no config yet)."""
+    try:
+        text = (path or comm_config_path()).read_text()
+    except OSError:
+        return None
+    for line in text.splitlines():
+        if line.startswith("command="):
+            return line[len("command="):].strip()
+    return None
+
+
+def comm_config_problem(port: int, path: Path | None = None) -> str | None:
+    """Why CommunicationMod will not start the relay this bot listens to on `port` (None when it will).
+
+    Without the relay a launched game never answers: the bot would wait it out, kill it and launch it again
+    for ever, and whatever CommunicationMod starts instead (another bot, say) would be killed with it."""
+    command = comm_command(path)
+    if command is None:
+        return f"CommunicationMod has no command to start ({path or comm_config_path()})"
+    if RELAY.name not in command:
+        return f"CommunicationMod starts another program with the game: {command}"
+    found = re.search(r"--port[=\s]+(\d+)", command)
+    relay_port = int(found.group(1)) if found else relay.DEFAULT_PORT
+    if relay_port != port:
+        return f"CommunicationMod starts the relay on another port than {port}: {command}"
+    return None
 
 
 def _game_processes() -> list[str]:

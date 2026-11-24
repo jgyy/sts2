@@ -10,7 +10,8 @@
 #
 # The bot starts Steam itself if it is not running (Steam must be able to log in unattended).
 #
-# To play the first Slay the Spire instead, add --game sts1 at the end of ExecStart (one game at a time).
+# To play both games at the same time, add --game both at the end of ExecStart (run `python3 -m sts2bot sts1-setup`
+# once first); --game sts1 plays only the first Slay the Spire. Each line in the journal names its game.
 
 [Unit]
 Description=Slay the Spire 2 bot

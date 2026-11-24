@@ -5,8 +5,8 @@ to the end, returns to the menu and starts the next one. If the game crashes or
 freezes, it restarts the game and carries on.
 
 The same bot also plays the first **Slay the Spire** (`--game sts1`, through
-CommunicationMod): see [Slay the Spire 1](#slay-the-spire-1). One game is
-played at a time.
+CommunicationMod), or both games at the same time (`--game both`): see
+[Slay the Spire 1](#slay-the-spire-1) and [Both games at once](#both-games-at-once).
 
 ## How it works
 
@@ -233,6 +233,35 @@ Differences from the second game:
   her cards for what they do outright. Defect orbs are planned as in the second
   game.
 - The bot takes no Keys on purpose, so a won run ends after the act 3 boss.
+
+## Both games at once
+
+```sh
+python3 -m sts2bot sts1-setup        # once: CommunicationMod starts the bot's relay with the first game
+python3 -m sts2bot --game both       # plays Slay the Spire 2 and Slay the Spire side by side
+python3 -m sts2bot --game both -v --runs 3
+```
+
+`--game both` starts one bot process per game (`--game sts2` and `--game sts1`)
+and passes every other option on to both. The two share nothing that could
+clash: each talks to its own port (15526 and 15527), keeps its logs, run history
+and what it learns in its own folder (`~/.local/state/sts2bot/` and its `sts1/`),
+and its supervisor only starts, finds and kills its own game. A bot that stops
+with an error is started again after 15 seconds (less often if it keeps
+failing); Ctrl+C or stopping the service stops both, and the games stay open.
+
+- Lines on the terminal (and in the journal) name their game:
+  `2026-11-24 10:00:00 sts1 INFO ...`. `bot.log` in each folder is unchanged.
+- `--port`, `--log-dir` and `--launch-cmd` each belong to one game, so they are
+  refused with `--game both`: run the two bots separately to change them.
+- `--runs N` plays N runs in each game.
+- For the service, add `--game both` at the end of `ExecStart` in the installed
+  unit, then `systemctl --user daemon-reload` and restart it.
+
+The first game is only launched while CommunicationMod's config starts the
+bot's relay. If it starts something else (another bot, say), the bot says so and
+does not start, instead of waiting for a relay that never comes up and
+restarting the game for ever; `sts1-setup` fixes it.
 
 ## Unlocks and the Timeline
 
