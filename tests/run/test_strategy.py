@@ -1,5 +1,3 @@
-"""Tests of the choices between fights."""
-
 import random
 import tempfile
 import unittest
@@ -370,8 +368,9 @@ class Strategy(unittest.TestCase):
 
     def test_a_badly_hurt_bot_rests_even_when_the_path_says_smith(self):
         # Act 3 at 6 of 109 HP, the boss next: the path values came out small, so the flat Smith bonus beat healing.
+        s, mem = self.rest(6, max_hp=109, act=3), boss_after(1, 13, 3)
         with mock.patch.dict(learn.KNOB, {"upgrade_worth": 2.5}):  # the setting the learner usually picks
-            self.assertEqual(strategy.rest_site(self.rest(6, max_hp=109, act=3), boss_after(1, 13, 3))[0][1]["index"], 0)
+            self.assertEqual(strategy.rest_site(s, mem)[0][1]["index"], 0)
 
     def test_an_upgrade_counts_the_same_in_act_one_whatever_the_setting(self):
         # Act 1 lost 20 runs in 86 with the upgrade at 2.5 and 16 in 143 at 4.0; from act 2 on the lower worth got past the
