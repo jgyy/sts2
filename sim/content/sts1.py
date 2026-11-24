@@ -280,7 +280,8 @@ def encounter(run, kind: str) -> list[Foe]:
 
 
 def _name(e) -> str:
-    return e.__name__ if callable(e) else "+".join(e)
+    """An encounter's name for the "not the last two again" rule (its id for a drawn one: lambdas all share a __name__)."""
+    return f"drawn{id(e)}" if callable(e) else "+".join(e)
 
 
 def _hp_mult(run, kind: str) -> float:
