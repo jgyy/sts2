@@ -1,19 +1,14 @@
 #!/usr/bin/env python3
-"""What the decks that fought cheaply held. Reads fights.jsonl, the bot's record of every fight
-(deck, relics, HP in and out; kept past the logs, since 2026-11-21 18:00), and wiki.json for what
-each card is (`fightlog.py wiki` writes it; a card met since then is counted in the deck's size only).
+"""What the decks that fought cheaply held: fights.jsonl (each fight's deck, relics and HP in and out) against wiki.json
+(what each card is; `fightlog.py wiki` writes it, and a card it lacks counts in the deck's size only).
 
-    python3 scripts/decklog.py [ACT] ['YYYY-MM-DD HH:MM']     ordinary fights: what one costs, as a share
-                                                             of Max HP, against how many cards of each
-                                                             sort the deck held, the character taken out;
-                                                             then the cards and relics themselves
-    python3 scripts/decklog.py bosses [ACT] ['YYYY-MM-DD HH:MM']
-                                                             the same for boss fights, won or lost
+    python3 scripts/decklog.py [ACT] ['YYYY-MM-DD HH:MM']          ordinary fights: what one costs (a share of Max HP) against how
+                                                                   many cards of each sort the deck held, the character taken out;
+                                                                   then the cards and relics themselves
+    python3 scripts/decklog.py bosses [ACT] ['YYYY-MM-DD HH:MM']   the same for boss fights, won or lost
 
-A fight that ended the run counts as the HP it began on and a tenth of Max HP more; fights begun
-under half HP are left out of the costs (they cost what there was to lose), and so are fights the
-bot joined half way. One card more is "a unit"; t is the slope over its standard error, and with
-twenty sorts of card on the table one of them passes 2 by chance.
+A death costs the HP the fight began on and a tenth of Max HP more; fights begun under half HP or joined half way are left
+out. t is the slope over its standard error (with twenty sorts of card on the table, one passes 2 by chance).
 """
 
 from __future__ import annotations
@@ -33,19 +28,13 @@ LOGS = os.path.expanduser(os.environ.get("STS2BOT_STATE", "~/.local/state/sts2bo
 def _wiki() -> dict:
     with open(os.path.join(LOGS, "wiki.json")) as f:
         wiki = json.load(f)
-    out = {}
-    for cid, entry in wiki["cards"].items():
-        for variant in ("base", "upgraded"):
-            v = entry.get(variant)
-            if v:
-                out[v["name"]] = dict(id=cid, name=v["name"], type=v["type"], cost=v["cost"], description=v["description"], rarity=v.get("rarity"))
-    return out
+    return {v["name"]: dict(id=cid, name=v["name"], type=v["type"], cost=v["cost"], description=v["description"], rarity=v.get("rarity"))
+            for cid, entry in wiki["cards"].items() for v in (entry.get("base"), entry.get("upgraded")) if v}
 
 
 def load(since: str = "") -> list[dict]:
     fights = []
-    for name in ("fights.jsonl.1", "fights.jsonl"):
-        path = os.path.join(LOGS, name)
+    for path in (os.path.join(LOGS, "fights.jsonl.1"), os.path.join(LOGS, "fights.jsonl")):
         if os.path.exists(path):
             with open(path) as f:
                 fights += [r for r in map(json.loads, f) if r.get("whole") and r["time"].replace("T", " ") >= since]
@@ -84,7 +73,6 @@ def _slope(rows: list[tuple]) -> tuple[float, float]:
     by = collections.defaultdict(list)
     for g, x, y in rows:
         by[g].append((x, y))
-    sxx = sxy = 0.0
     centred = []
     for pts in by.values():
         mx, my = sum(x for x, _ in pts) / len(pts), sum(y for _, y in pts) / len(pts)
@@ -93,8 +81,7 @@ def _slope(rows: list[tuple]) -> tuple[float, float]:
     if sxx <= 0 or len(centred) - len(by) - 1 <= 0:
         return 0.0, 0.0
     b = sxy / sxx
-    rss = sum((y - b * x) ** 2 for x, y in centred)
-    return b, (rss / (len(centred) - len(by) - 1) / sxx) ** 0.5
+    return b, (sum((y - b * x) ** 2 for x, y in centred) / (len(centred) - len(by) - 1) / sxx) ** 0.5
 
 
 def report(fights: list[dict], bosses: bool) -> None:
@@ -111,8 +98,7 @@ def report(fights: list[dict], bosses: bool) -> None:
         if len(sub) < 30:
             print(f"act {act}: {len(sub)} fights, too few")
             continue
-        feats = [features(f, wiki) for f in sub]
-        ys = [outcome(f) for f in sub]
+        feats, ys = [features(f, wiki) for f in sub], [outcome(f) for f in sub]
         print(f"act {act}: {len(sub)} {'boss' if bosses else 'ordinary'} fights; {what} {sum(ys) / len(ys):.1f} on average")
         for name in feats[0]:
             xs = [ft[name] for ft in feats]
@@ -142,8 +128,7 @@ if __name__ == "__main__":
     args = args[1:] if bosses else args
     act = int(args.pop(0)) if args and args[0].isdigit() else None
     fights = [f for f in load(args[0] if args else "") if act is None or f["act"] == act]
-    if not fights:
-        print(__doc__)
-        print("(no fights on record yet)")
-    else:
+    if fights:
         report(fights, bosses)
+    else:
+        print(__doc__ + "\n(no fights on record yet)")

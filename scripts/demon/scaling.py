@@ -2,18 +2,14 @@
 
     python3 scripts/demon/scaling.py      six decks holding no Power, each with one card more of each sort (about 3 min)
 
-Behind decks.SCALE_POWER (2026-11-22).
-
-Adds to the model's Power slot: `pd` damage (Doom) every turn per Power in play (Countdown: 6 Doom at the start of
-each turn), `pc` the Power's cost, `pm` attacks multiplied by (1 + pm) once it is in play (Reaper Form: every attack
-applies as much Doom as it deals, so x2 against one enemy). Doom is counted as damage: it does not heal off and the
-Demon dies once it covers its HP (at the end of its turn rather than at once: left out).
+Behind decks.SCALE_POWER. The Power slot gains `pd` damage (Doom, counted as damage) a turn per Power in play, a cost
+`pc`, and `pm`: attacks times (1 + pm) once it is in play (Reaper Form).
 """
+import itertools
 import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 import demonfight as D
 
 
@@ -30,16 +26,11 @@ def plays(deck, hand, energy, limit, s=0):
     a, h, z, b, _f, pw = hand
     pc, pd = getattr(deck, "pc", 1), getattr(deck, "pd", 0)
     seen = set()
-    for n in range(min(pw, deck.powers - s) + 1):
-        for i in range(a + 1):
-            for j in range(h + 1):
-                for k in range(b + 1):
-                    if n * pc + i + 2 * j + k > energy:
-                        continue
-                    for zz in range(z + 1):
-                        if n + i + j + k + zz <= limit:
-                            dmg = i * deck.hit("A", s + n) + j * deck.hit("H", s + n) + zz * deck.hit("Z", s + n) + pd * s
-                            seen.add((dmg, k * deck.db, n))
+    for n, i, j, k in itertools.product(range(min(pw, deck.powers - s) + 1), range(a + 1), range(h + 1), range(b + 1)):
+        if n * pc + i + 2 * j + k <= energy:
+            for zz in range(z + 1):
+                if n + i + j + k + zz <= limit:
+                    seen.add((i * deck.hit("A", s + n) + j * deck.hit("H", s + n) + zz * deck.hit("Z", s + n) + pd * s, k * deck.db, n))
     return [p for p in seen if not any(q != p and q[2] == p[2] and q[0] >= p[0] and q[1] >= p[1] for q in seen)]
 
 
@@ -78,13 +69,8 @@ def cell(args):
 
 
 if __name__ == "__main__":
-    import multiprocessing
-
-    jobs = [(c, kw, n, a, p) for c, kw in BASES for n, a, p in EXTRA]
-    with multiprocessing.Pool(min(8, os.cpu_count() or 2)) as pool:
-        out = pool.map(cell, jobs)
     last = None
-    for deck, name, v in out:
+    for deck, name, v in D.on_all_cores(cell, [(c, kw, n, a, p) for c, kw in BASES for n, a, p in EXTRA], most=8):
         if deck != last:
             print(deck)
             last = deck

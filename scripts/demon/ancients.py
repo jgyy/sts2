@@ -2,24 +2,13 @@
 
     python3 scripts/demon/ancients.py      eight decks (six on 4 energy or more, two on 3) under each relic (about 10 s)
 
-Behind relicworth.energy_lean (2026-11-22). Each relic is a change to the fight's rules: an energy more every turn
-(Velvet Choker, Prismatic Gem, Sozu: the potions it costs are not in the model), from the third turn (Pael's Flesh),
-with 1 Strength on the Demon's every hit (Philosopher's Stone), with one or two dead cards (Blessed Antler's three
-Dazed a fight, drawn once each: about one dead card for the fight), four energy on the first turn (Very Hot Cocoa),
-one or two cards more a turn (Pael's Blood; Snecko Eye without its Confused), a Strength a round with and without a
-card lost (Toasty Mittens exhausts one: the truth is between). The Demon's afflictions are all taken (Mind Rot draws a
-card less from round 2, which flatters the extra card).
-
-Result (2026-11-22): on 3 energy an energy a turn +56 points, Pael's Flesh +44, Philosopher's Stone +38, Antler +42,
-a card a turn +12, two +37; on 4 energy and up an energy +20, a card +43, two +53.
+Each relic is a change to the fight's rules (RELICS); the Demon's afflictions are all taken. Behind relicworth.energy_lean.
 """
 import logging
 import os
 import sys
-from multiprocessing import Pool
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 logging.disable(logging.CRITICAL)
 import demonfight as D  # noqa: E402
 
@@ -32,9 +21,7 @@ def rules(r, burns):
     out = dict(_rules(r, burns))
     ROUND["r"] = r
     out["draw"] += RELIC.get("draw", 0)
-    gain = RELIC.get("energy", 0) - (RELIC.get("energy", 0) if RELIC.get("from3") and r < 3 else 0)
-    gain += RELIC.get("cocoa", 0) if r == 1 else 0
-    out["drain"] -= gain
+    out["drain"] -= RELIC.get("energy", 0) - (RELIC.get("energy", 0) if RELIC.get("from3") and r < 3 else 0) + (RELIC.get("cocoa", 0) if r == 1 else 0)
     if RELIC.get("enemy_str") and out["hits"]:
         out["inc"] += RELIC["enemy_str"] * out["hits"]
         out["per"] = out["inc"] // out["hits"]
@@ -86,8 +73,7 @@ def job(args):
 
 
 if __name__ == "__main__":
-    with Pool(min(8, os.cpu_count() or 2)) as pool:
-        res = {(b, v): p for b, v, p in pool.map(job, [(b, v) for b in range(len(BASES)) for v in range(len(RELICS))])}
+    res = {(b, v): p for b, v, p in D.on_all_cores(job, [(b, v) for b in range(len(BASES)) for v in range(len(RELICS))], most=8)}
     on3 = [b for b, (_c, kw) in enumerate(BASES) if kw.get("energy", 3) == 3]
     on4 = [b for b in range(len(BASES)) if b not in on3]
     gain = lambda v, bs: 100 * sum(res[(b, v)] - res[(b, 0)] for b in bs) / len(bs)

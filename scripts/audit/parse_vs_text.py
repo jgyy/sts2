@@ -2,10 +2,8 @@
 
     python3 scripts/audit/parse_vs_text.py
 
-Reads the wiki dump (`fightlog.py wiki` writes it). Most rows are Powers, which `decks.turn_damage` and
-`combat._power_worth` price by other means; look at the Skills and Attacks. On 2026-11-22 it found Bubble Bubble
-("If the enemy has Poison, apply 9 Poison.") read as plain Poison: a dead card the planner valued at +65.7 points.
-The second list is every card with an "if"/"when"/"unless" in its text: check each against what `parse` gives.
+Reads the wiki dump (`fightlog.py wiki` writes it). Powers are mostly priced by other means: look at the Skills and
+Attacks. The second list is every card with an "if", "unless" or "only" in its text, to check against what `parse` gives.
 """
 
 import json
@@ -33,8 +31,7 @@ def main() -> None:
     print("-- named in the text, read as 0")
     seen = set()
     for cid, v in sorted(wiki.items()):
-        for variant in ("base", "upgraded"):
-            c = v.get(variant)
+        for c in (v.get("base"), v.get("upgraded")):
             text = str((c or {}).get("description") or "")
             for name, rx, get in CHECKS:
                 if c and re.search(rx, text, re.I) and not get(cards.parse(c)) and (cid, name) not in seen:
