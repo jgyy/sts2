@@ -1,11 +1,4 @@
-"""Powers that act each time a card is played.
-
-The planner used to price these only as "a Power worth playing". What they
-do during a turn was invisible to it: with Sleight of Flesh 13 up, the
-Necrobinder held Deathbringer (two debuffs: 26 damage) next to a four-hit
-attack against a Test Subject on 33 HP about to hit for 50, did not see the
-kill that would have cancelled the attack, and died on 10 HP.
-"""
+"""Powers that act each time a card is played, and other card rules the planner applies by name."""
 
 from __future__ import annotations
 
@@ -32,24 +25,10 @@ def read(state: dict) -> Triggers | None:
     """The card-play triggers in force, or None when there are none (the usual case)."""
     player = state.get("player") or {}
     foes = (state.get("battle") or {}).get("enemies") or []
-
-    def amount(power: str) -> int:
-        return max(0, power_amount(player, power))
-
-    def on_foes(power: str) -> dict:
-        return {str(e.get("entity_id")): n for e in foes if (n := max(0, power_amount(e, power)))}
-
-    t = Triggers(
-        per_debuff=amount("SLEIGHT_OF_FLESH"),
-        per_card=amount("SERPENT_FORM"),
-        per_soul=amount("HAUNT"),
-        card_block=amount("AFTERIMAGE"),
-        attack_block=amount("RAGE"),
-        costly_block=amount("DANSE_MACABRE"),
-        doom_block=amount("SHROUD"),
-        strangle=on_foes("STRANGLE"),
-        oblivion=on_foes("OBLIVION"),
-    )
+    amount = lambda power: max(0, power_amount(player, power))
+    on_foes = lambda power: {str(e.get("entity_id")): n for e in foes if (n := max(0, power_amount(e, power)))}
+    t = Triggers(per_debuff=amount("SLEIGHT_OF_FLESH"), per_card=amount("SERPENT_FORM"), per_soul=amount("HAUNT"), card_block=amount("AFTERIMAGE"), attack_block=amount("RAGE"),
+                 costly_block=amount("DANSE_MACABRE"), doom_block=amount("SHROUD"), strangle=on_foes("STRANGLE"), oblivion=on_foes("OBLIVION"))
     return None if t == Triggers() else t
 
 
@@ -62,11 +41,7 @@ def marks(foes: list[Enemy]) -> list[tuple]:
 
 
 def fire(t: Triggers, c, foes: list[Enemy], before: list[tuple], hit: Callable, gain: Callable) -> tuple[float, int]:
-    """What the triggers do once card `c` has been played: (points scored, Block gained).
-
-    `hit(enemy, damage)` takes HP off an enemy through its Block and returns
-    the HP removed; `gain(enemy, hp_removed)` prices that.
-    """
+    """What the triggers do once card `c` has been played: (points, Block). `hit(enemy, damage)` returns the HP removed, `gain` prices it."""
     score, block = 0.0, 0
     alive = [e for e in foes if e.alive]
 
@@ -81,8 +56,7 @@ def fire(t: Triggers, c, foes: list[Enemy], before: list[tuple], hit: Callable, 
             return gain(e, hit(e, n)) if through_block else lose(e, n)
         return n * 0.8 if alive else 0.0  # no telling who: counted, but nobody is planned dead on it
 
-    if c.doom_kills:
-        # End of Days: "Kill enemies with at least as much Doom as HP", now, before they act.
+    if c.doom_kills:  # End of Days: "Kill enemies with at least as much Doom as HP", now, before they act
         for e in alive:
             if e.doom >= e.hp and not e.hit_cap:
                 score += lose(e, e.hp)
@@ -115,25 +89,13 @@ def fire(t: Triggers, c, foes: list[Enemy], before: list[tuple], hit: Callable, 
 
 
 def counted(hand: list) -> list:
-    """The hand, with the cards whose numbers depend on the hand read for this one.
-
-    Flechettes, "Deal 5 damage for each Skill in your Hand": the text gives the 5 and nothing else, so it
-    was one hit of 5 whatever it stood beside. (Fiend Fire, a hit for each card left when it is played, is
-    counted in combat.simulate, where the cards played before it are known: read as its bare 7 it was never
-    played, and an Ironclad with four cards beside it, one play allowed that turn and a boss on 44 Vulnerable
-    played a Defend, then lost the fight with the boss on 2.)
-    """
+    """The hand, with the cards whose numbers depend on the hand read for this one (Flechettes: "Deal 5 damage for each Skill in your Hand")."""
     skills = sum(1 for c in hand if c.type == "Skill")
     return [replace(c, hits=skills) if c.key == "FLECHETTES" else c for c in hand]
 
 
 def more_doom(c, e) -> int:
-    """Doom a card applies beyond the number its text begins with.
-
-    No Escape: "Apply 10 Doom, plus an additional 5 Doom for every 10 Doom already on this enemy". Read as
-    its 10 it was a card worth less than a Defile; on a boss carrying 67 Doom it is 40, three cards' worth
-    for one energy (and it was played before the turn's other Doom as often as after it).
-    """
+    """Doom a card applies beyond the number its text begins with (No Escape: "plus an additional 5 Doom for every 10 Doom already on this enemy")."""
     return 5 * (e.doom // 10) if c.key == "NO_ESCAPE" else 0
 
 
@@ -141,23 +103,10 @@ BURNS_HAND = {"FIEND_FIRE", "SECOND_WIND", "STOKE"}  # "Exhaust your Hand" (Seco
 
 
 def shunned(c, state: dict) -> bool:
-    """Cards the planner must not play here, whatever they seem to offer.
-
-    Neurosurge (3 energy and 2 cards now, 3 Doom on ourselves every turn for
-    the rest of the fight): Doom kills us at the end of our turn once it
-    reaches our HP. Three boss fights ended that way with 24 to 31 HP left
-    (Aeonglass in round 6 with two of them up; the Insatiable in round 14),
-    all played on sight in round 1. It is for a fight that will be over before
-    the Doom adds up: an ordinary one nearly won, or a boss or elite with few
-    enough turns left in it at the pace this fight has gone so far, and our
-    HP well above what the Doom will be by then. (Other players win 53% of
-    the runs that hold it, the most of any Necrobinder card: their fights are
-    short. Until 2026-11-20 it was never played against a boss or an elite.)
-    """
+    """Cards the planner must not play here, whatever they seem to offer. Neurosurge puts 3 Doom on us every turn, which kills us once
+    it reaches our HP: only for a fight that will be over before the Doom adds up, with our HP well above it by then."""
     battle, player = state.get("battle") or {}, state.get("player") or {}
-    if c.key in BURNS_HAND:
-        # What it burns is gone for the fight, and the planner counts that as nothing: not while a Power is
-        # in the hand beside it (a Demon Form it cannot pay for this turn is worth more than 7 damage).
+    if c.key in BURNS_HAND:  # the planner counts what it burns as nothing: not while a Power is in the hand beside it
         return any(str(h.get("type")) == "Power" for h in player.get("hand") or [])
     if c.key != "NEUROSURGE":
         return False
@@ -170,40 +119,22 @@ def shunned(c, state: dict) -> bool:
     pace = max(15.0, dealt / rounds) if rounds >= 2 else 25.0
     turns = -(-left // pace) + 1  # (and one to spare: fights run over)
     doom = max(0, power_amount(player, "DOOM")) + (3 + max(0, power_amount(player, "NEUROSURGE"))) * turns
-    # Against the HP we will have by then, not the HP now: a boss takes some 8% of Max HP a round. Played on 67 of
-    # 76 in round 5 of the Insatiable (six turns to go, 18 Doom, "under 40% of 67"), it killed a Necrobinder on
-    # 13 HP in round 10 with the boss on 16. (Its ten other plays in the logs were ordinary and elite fights, all won.)
-    then = int(player.get("hp") or 0) - 0.08 * int(player.get("max_hp") or 0) * turns
+    then = int(player.get("hp") or 0) - 0.08 * int(player.get("max_hp") or 0) * turns  # our HP by then: a boss takes some 8% of Max HP a round
     return doom > 0.4 * max(0.0, then)
 
 
-# Share of what an Ethereal card does when played that keeping it in the deck is worth, as a lasting effect (x span).
-# Tuned on scripts/knightfight.py (1,200 fights a value, the same shuffles): 0 won 66%, 0.1 74%, 0.3 77.5% with
-# 17.2 HP left, 0.5 77.7% with 14.2, 1.0 74.8% with 8.7 (it starts trading too much HP for cards).
-ETHEREAL_KEEP = 0.3
+ETHEREAL_KEEP = 0.3  # share of what an Ethereal card does when played that keeping it in the deck is worth, as a lasting effect (x span)
 
 
 def kept(c, dmg_value: float) -> float:
-    """What playing an Ethereal card is worth beyond the play itself: left in the hand when the turn ends it is
-    Exhausted, and the deck is without it for the rest of the fight (Powers have their own price in combat.simulate).
-
-    Under the Spectral Knight's Hex every card is Ethereal, and the planner, counting nothing lost, kept the Block
-    cards: in a model of that fight (scripts/knightfight.py) it played three Defends a turn against 33 and let the
-    Strikes beside them go, until the deck held nothing that could finish the Flail Knight.
-    """
+    """What playing an Ethereal card is worth beyond the play: left in the hand it is Exhausted, lost for the fight (not Powers: combat.simulate)."""
     if not c.ethereal or not c.playable or c.type not in ("Attack", "Skill"):
         return 0.0
     return ETHEREAL_KEEP * (c.total_damage * dmg_value + 0.5 * c.block)
 
 
-# Cards that make the next card of one type free ("The next Attack you play costs 0").
-FREE_NEXT = {"UNRELENTING": "Attack", "POUNCE": "Skill"}
-# ... and cards that make every card after them dearer this turn (Borrowed Time: 4 energy, "Cards cost an additional" 1).
-SURCHARGE = {"BORROWED_TIME": 1}
-# Cards that play the next card of one type an extra time ("This turn, your next Skill is played an extra time").
-ECHO_NEXT = {"BURST": "Skill", "ONE_TWO_PUNCH": "Attack"}
-# Cards that pay for others without saying "gain energy": Double Energy doubles what is left, and after
-# Bullet Time everything in the hand is free. (Other players rate all four among their characters' best;
-# read as nothing, they were worth a flat 3 points to the planner whatever was in the hand.)
-PAYS = {"DOUBLE_ENERGY", "BULLET_TIME"}
+FREE_NEXT = {"UNRELENTING": "Attack", "POUNCE": "Skill"}  # cards that make the next card of one type free
+SURCHARGE = {"BORROWED_TIME": 1}  # ... and cards that make every card after them dearer this turn
+ECHO_NEXT = {"BURST": "Skill", "ONE_TWO_PUNCH": "Attack"}  # cards that play the next card of one type an extra time
+PAYS = {"DOUBLE_ENERGY", "BULLET_TIME"}  # cards that pay for others without saying "gain energy" (energy doubled; the hand free)
 READ = {*ECHO_NEXT, *PAYS, "CASCADE", "TIMES_UP", "TIME_S_UP", "KI_VERSE"}  # cards with no numbers in their text that the planner works out all the same

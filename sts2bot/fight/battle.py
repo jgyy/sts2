@@ -1,7 +1,4 @@
-"""What a combat state says: the enemies, their intents and powers, and what our own hand will cost us.
-
-The planner in combat.py works on what is read here.
-"""
+"""What a combat state says: the enemies, their intents and powers, and what our own hand will cost us (for combat.py's planner)."""
 
 from __future__ import annotations
 
@@ -16,57 +13,28 @@ WIN_BONUS = 10_000.0
 BEYOND_REACH = 100_000  # HP no enemy really has: the game's way of saying it cannot be hurt any more
 REATTACH_REACH = 40  # Decimillipede: HP the other segments may have left for a kill to be the start of the end (they have two turns)
 RAGE_BLOCK = 99  # Crab Rage: Block a crab gains for each ally that dies (gone again when its next turn starts)
-RAGE_COST = 0.3  # ... and what the 6 Strength it keeps costs, in points for each HP it still has (2.0 until 2026-11-21: see combat.simulate)
+RAGE_COST = 0.3  # ... and what the 6 Strength it keeps costs, in points for each HP it still has
 SLIP_WORTH = 7.0  # what taking one Slippery stack off is worth, in damage: the hit it lets through later
-# Energy next turn, in damage: 6 while the next hand has cards to spend it on (with the Queen only buffing, Invoke+ lost to a
-# 7-damage attack at a flat 5), and 1 beyond that (a dear card may still come). See next_room.
-NEXT_ENERGY, SPARE_ENERGY = 6.0, 1.0
-RINGERS = ("CEREMONIAL_BEAST",)  # whose Debuff leaves us Ringing ("You can only play 1 card this turn") next turn: 42 times in 42
-# The Writhing Mass (the first game, act 3) changes its intent every time an Attack hits it: Strong Strike 32, Multi-Strike
-# 7 x 3, 15 and Block, 10 and Weak and Vulnerable, or Implant (a Parasite), on Ascension 0 (38, 9 x 3, 16, 12 from 2). What
-# the next one deals: a little over the mean, or the Strong Strike when that could be the end of us (the planner prices HP
-# by what it expects, not by the chance of dying). Until 2026-11-24 a Debuff intent read as a quiet turn whatever was
-# played: on 12 HP the Watcher entered Wrath and hit it, it came round to 14 x 3, and she was dead.
+NEXT_ENERGY, SPARE_ENERGY = 6.0, 1.0  # energy next turn, in damage: while the next hand has cards to spend it on, and beyond that (next_room)
+RINGERS = ("CEREMONIAL_BEAST",)  # whose Debuff leaves us Ringing ("You can only play 1 card this turn") next turn
+# The Writhing Mass draws a new intent whenever an Attack hits it: a little over the mean, or its worst when that could be the end of us.
 REACTIVE_HIT, REACTIVE_WORST, REACTIVE_SAFE_HP = 20, 32, 40
 STAB_SCAR = 8.0  # Painful Stabs (the Test Subject's second form): what each Wound from a hit that gets through costs, in points
 
-
-# What playing each Power is worth in an ordinary fight, in points of damage
-# (the planner multiplies it for elites and bosses, where it pays for longer).
-# Powers that are not listed get a guess from their cost.
-# What a freshly channeled orb does: (each turn, when evoked). Focus changes
-# these; the live numbers for orbs already held come from the game.
-ORB_VALUES = {"LIGHTNING": (3, 8), "FROST": (2, 5), "DARK": (6, 6), "PLASMA": (0, 0), "GLASS": (4, 8)}
-
-# A Power that takes an energy away every turn (the first game's Fasting: "Gain 1 less Energy at the start of each turn"),
-# in the units of POWER_VALUE, for each energy and each copy already in play (the second costs twice the first). Read as
-# its 4 Strength and 4 Dexterity alone (+30), Fasting was played three times in a fight on 2026-11-24 21:54: the Watcher
-# went on 1 energy a turn and lost to an act 2 Chosen from 79 of 79 HP. An energy every turn is about 20 here (Demesne).
-ENERGY_DRAIN = 20.0
-
+ORB_VALUES = {"LIGHTNING": (3, 8), "FROST": (2, 5), "DARK": (6, 6), "PLASMA": (0, 0), "GLASS": (4, 8)}  # a new orb: (each turn, when evoked), before Focus
+ENERGY_DRAIN = 20.0  # a Power that takes an energy away every turn (Fasting), in POWER_VALUE's units, per energy and per copy already in play
+# What playing each Power is worth in an ordinary fight, in points of damage (more for elites and bosses); unlisted ones: a guess from the cost.
 POWER_VALUE = {
-    "DEMON_FORM": 24.0, "ROLLING_BOULDER": 18.0, "PYRE": 16.0, "CRIMSON_MANTLE": 12.0, "MAYHEM": 9.0,
-    "STONE_ARMOR": 8.0, "AGGRESSION": 8.0, "UNMOVABLE": 7.0, "FASTEN": 6.0, "JUGGERNAUT": 6.0, "HELLRAISER": 6.0,
-    "STAMPEDE": 5.0, "PANACHE": 4.0, "JUGGLING": 4.0, "VICIOUS": 4.0, "DARK_EMBRACE": 4.0, "STRATAGEM": 4.0,
-    "BARRICADE": 4.0, "FEEL_NO_PAIN": 3.0, "RUPTURE": 3.0,
-    # other characters
-    "SERPENT_FORM": 16.0, "NOXIOUS_FUMES": 14.0, "AFTERIMAGE": 10.0, "CREATIVE_AI": 12.0, "ABRASIVE": 9.0,
-    "HAILSTORM": 9.0, "INFINITE_BLADES": 8.0, "ENVENOM": 8.0, "FAN_OF_KNIVES": 8.0, "SEEKING_EDGE": 8.0,
-    "CAPACITOR": 7.0, "LETHALITY": 7.0, "ACCURACY": 6.0, "TOOLS_OF_THE_TRADE": 6.0, "SPEEDSTER": 6.0,
-    "PARRY": 6.0, "CHILD_OF_THE_STARS": 6.0, "CALL_OF_THE_VOID": 6.0, "TYRANNY": 6.0, "SPECTRUM_SHIFT": 6.0,
-    "WELL_LAID_PLANS": 5.0, "TRACKING": 5.0, "SHROUD": 5.0, "HAUNT": 5.0, "ORBIT": 5.0, "STORM": 5.0,
-    "THUNDER": 5.0, "ACCELERANT": 4.0, "PILLAR_OF_CREATION": 4.0, "PALE_BLUE_DOT": 4.0, "FERAL": 4.0,
-    "ITERATION": 3.0, "TRASH_TO_TREASURE": 3.0, "ROYALTIES": 2.0,
-    "ECHO_FORM": 22.0, "FRIENDSHIP": 12.0, "MACHINE_LEARNING": 10.0, "DEFRAGMENT": 10.0, "GENESIS": 9.0,
-    # (Energy and a card every turn; 5 more on the Sovereign Blade every turn; 6 Doom every turn.)
-    "DEMESNE": 20.0, "FURNACE": 10.0, "COUNTDOWN": 8.0,
-    # (Doom for every point of attack damage: half as much again to kill; two free cards every turn;
-    # the Sovereign Blade twice; Strength for every card made; a quarter more from Vulnerable enemies.)
-    "REAPER_FORM": 20.0, "VOID_FORM": 16.0, "SWORD_SAGE": 10.0, "ARSENAL": 8.0, "CRUELTY": 8.0, "MONARCHS_GAZE": 8.0,
-    "AUTOMATION": 7.0, "DEVOUR_LIFE": 6.0, "SPIRIT_OF_ASH": 6.0,
-    "COOLANT": 8.0, "SPINNER": 8.0, "BUFFER": 8.0, "SENTRY_MODE": 8.0, "NECRO_MASTERY": 8.0, "LOOP": 7.0,
-    "BLACK_HOLE": 7.0, "SLEIGHT_OF_FLESH": 6.0, "NEUROSURGE": 6.0, "DANSE_MACABRE": 4.0, "SUBROUTINE": 3.0,
-    "PAGESTORM": 2.0,
+    "DEMON_FORM": 24.0, "ROLLING_BOULDER": 18.0, "PYRE": 16.0, "CRIMSON_MANTLE": 12.0, "MAYHEM": 9.0, "STONE_ARMOR": 8.0, "AGGRESSION": 8.0, "UNMOVABLE": 7.0, "FASTEN": 6.0,
+    "JUGGERNAUT": 6.0, "HELLRAISER": 6.0, "STAMPEDE": 5.0, "PANACHE": 4.0, "JUGGLING": 4.0, "VICIOUS": 4.0, "DARK_EMBRACE": 4.0, "STRATAGEM": 4.0, "BARRICADE": 4.0,
+    "FEEL_NO_PAIN": 3.0, "RUPTURE": 3.0, "SERPENT_FORM": 16.0, "NOXIOUS_FUMES": 14.0, "AFTERIMAGE": 10.0, "CREATIVE_AI": 12.0, "ABRASIVE": 9.0, "HAILSTORM": 9.0,
+    "INFINITE_BLADES": 8.0, "ENVENOM": 8.0, "FAN_OF_KNIVES": 8.0, "SEEKING_EDGE": 8.0, "CAPACITOR": 7.0, "LETHALITY": 7.0, "ACCURACY": 6.0, "TOOLS_OF_THE_TRADE": 6.0,
+    "SPEEDSTER": 6.0, "PARRY": 6.0, "CHILD_OF_THE_STARS": 6.0, "CALL_OF_THE_VOID": 6.0, "TYRANNY": 6.0, "SPECTRUM_SHIFT": 6.0, "WELL_LAID_PLANS": 5.0, "TRACKING": 5.0,
+    "SHROUD": 5.0, "HAUNT": 5.0, "ORBIT": 5.0, "STORM": 5.0, "THUNDER": 5.0, "ACCELERANT": 4.0, "PILLAR_OF_CREATION": 4.0, "PALE_BLUE_DOT": 4.0, "FERAL": 4.0,
+    "ITERATION": 3.0, "TRASH_TO_TREASURE": 3.0, "ROYALTIES": 2.0, "ECHO_FORM": 22.0, "FRIENDSHIP": 12.0, "MACHINE_LEARNING": 10.0, "DEFRAGMENT": 10.0, "GENESIS": 9.0,
+    "DEMESNE": 20.0, "FURNACE": 10.0, "COUNTDOWN": 8.0, "REAPER_FORM": 20.0, "VOID_FORM": 16.0, "SWORD_SAGE": 10.0, "ARSENAL": 8.0, "CRUELTY": 8.0, "MONARCHS_GAZE": 8.0,
+    "AUTOMATION": 7.0, "DEVOUR_LIFE": 6.0, "SPIRIT_OF_ASH": 6.0, "COOLANT": 8.0, "SPINNER": 8.0, "BUFFER": 8.0, "SENTRY_MODE": 8.0, "NECRO_MASTERY": 8.0, "LOOP": 7.0,
+    "BLACK_HOLE": 7.0, "SLEIGHT_OF_FLESH": 6.0, "NEUROSURGE": 6.0, "DANSE_MACABRE": 4.0, "SUBROUTINE": 3.0, "PAGESTORM": 2.0,
 }
 
 
@@ -101,13 +69,11 @@ class Enemy:
     doom: int = 0  # Doom on it: dies at the end of its turn once Doom covers its HP
     flanker: bool = False  # Back Attack: hits 50% harder from behind us
     behind: bool = False  # ... and is behind us right now (its intent already shows the bonus)
-
     vuln_mult: float = 1.5  # what Vulnerable multiplies our attacks by (Debilitate doubles its effect)
     weak_cut: float = 0.75  # what Weak multiplies its attacks by
     weak_mult: float = 1.0  # Tracking: our attacks hit a Weak enemy this much harder
     rage: bool = False  # Crab Rage: gains 6 Strength and 99 Block when an ally dies
     scar: float = 0.0  # extra cost of each of its hits that gets through (Paper Cuts: Max HP; Painful Stabs: a Wound)
-
     main_threat: bool = False  # a minion that is doing the real damage and is quicker to kill than its leader
     respawns: int = 0  # Stock: when killed it is summoned again in its place, at full HP, this many more times
     max_hp: int = 0  # its full HP (what a Stock summon comes back with)
@@ -144,8 +110,7 @@ class Enemy:
 
 
 def clone(e: Enemy, **changes) -> Enemy:
-    """`dataclasses.replace` for an Enemy at a third of the cost: a plan copies the enemies ten thousand times
-    (the plan per card of a discard on ten cards was two seconds, a third of it in `replace`)."""
+    """`dataclasses.replace` for an Enemy at a third of the cost: a plan copies the enemies thousands of times."""
     new = object.__new__(Enemy)
     new.__dict__.update(e.__dict__)
     new.__dict__.update(changes)
@@ -153,9 +118,7 @@ def clone(e: Enemy, **changes) -> Enemy:
 
 
 def _is_attack(intent: dict) -> bool:
-    """Intents that hit us. The Waterfall Giant's last move is a "DeathBlow":
-    read as no attack at all, the bot spent that turn hitting a boss that was
-    already dead and died to the blast with two Defends in hand."""
+    """Intents that hit us (the Waterfall Giant's last move, a "DeathBlow", too)."""
     kind = str(intent.get("type", "")).lower()
     return "attack" in kind or "deathblow" in kind
 
@@ -165,11 +128,9 @@ def intent_damage(intent: dict) -> int:
         return 0
     for field in ("label", "description"):
         text = str(intent.get(field) or "")
-        m = re.search(r"(\d+)\s*[xX×*]\s*(\d+)", text)
-        if m:
+        if m := re.search(r"(\d+)\s*[xX×*]\s*(\d+)", text):
             return int(m.group(1)) * int(m.group(2))
-        m = re.search(r"(\d+)", text)
-        if m:
+        if m := re.search(r"(\d+)", text):
             return int(m.group(1))
     return 0
 
@@ -178,16 +139,13 @@ def intent_hits(intent: dict) -> int:
     if not _is_attack(intent):
         return 0
     for field in ("label", "description"):
-        m = re.search(r"\d+\s*[xX×*]\s*(\d+)", str(intent.get(field) or ""))
-        if m:
+        if m := re.search(r"\d+\s*[xX×*]\s*(\d+)", str(intent.get(field) or "")):
             return int(m.group(1))
     return 1 if intent_damage(intent) else 0
 
 
 def _shown(creature: dict, power_id: str, blank: int, missing=None):
-    """The number the game shows on a power (`blank` if it shows none; `missing` if the creature has no such power).
-
-    The game names them like VULNERABLE_POWER."""
+    """The number the game shows on a power, named like VULNERABLE_POWER (`blank` if it shows none; `missing` if there is no such power)."""
     for p in creature.get("status") or []:
         if str(p.get("id", "")).upper().removesuffix("_POWER") == power_id:
             amount = p.get("amount")
@@ -214,37 +172,28 @@ def end_of_turn_block(player: dict) -> int:
     return _stacks(player, "PLATING")
 
 
-# (The mod turns line breaks into spaces: Beckon reads "... in your Hand,  lose 6 HP." with two.
-# With one space in the pattern the Soul Fysh's Beckons went unseen, 6 HP a card every turn.)
+# (\s*: the mod turns line breaks into spaces, sometimes two.)
 _WITHER = re.compile(r"Wither(?:\+(\d+))?$")
 _HAND_BURN = re.compile(r"at the end of your turn,\s*if this is in your hand,\s*(?:lose|take)\s+(\d+)\s+(?:hp|damage)", re.I)
 
 
 def end_of_turn_loss(player: dict) -> int:
-    """Damage we take when our turn ends, before the enemy moves (Disintegration). It eats
-    into Block first. Leaving it out made the bot think it could afford a hit that killed it."""
+    """Damage we take when our turn ends, before the enemy moves (Disintegration). It eats into Block first."""
     return _stacks(player, "DISINTEGRATION")
 
 
 def hand_burns(player: dict) -> tuple:
-    """Cards that hurt if they are still in the hand when the turn ends, as
-    (hand index, HP, whether Block stops it). Most cannot be played; Toxic and
-    Beckon can (1 energy), and the bot sat on three Toxics, taking 15 a turn,
-    with energy to spare. "Take N damage" goes through our Block first (two
-    Wither+2 behind 30 Block and a 26 attack cost 14, not 18); "lose N HP"
-    does not. An amount of -1 stands for Regret: 1 HP for every card left in
-    the hand."""
+    """Cards that hurt if still in the hand when the turn ends: (hand index, HP, whether Block stops it ("take N damage", not "lose N HP")).
+    An amount of -1 stands for Regret: 1 HP for every card left in the hand."""
     out = []
     for c in player.get("hand") or []:
         text = str(c.get("description") or "")
         m = _HAND_BURN.search(text)
-        # (Regret first: its text begins like the others, "... lose 1 HP", and read as 1 it cost 5 with five cards held.)
-        if re.search(r"if this is in your hand,\s*lose 1 hp for each card in your hand", text, re.I):
+        if re.search(r"if this is in your hand,\s*lose 1 hp for each card in your hand", text, re.I):  # (Regret first: its text begins like the others)
             out.append((int(c.get("index", -1)), -1, False))
         elif m:
             amount = int(m.group(1))
-            w = _WITHER.match(str(c.get("name") or ""))
-            if w:  # whatever the text says, a Wither has cost 3 for each level
+            if w := _WITHER.match(str(c.get("name") or "")):  # whatever the text says, a Wither has cost 3 for each level
                 amount = max(amount, 3 * (int(w.group(1) or 0) + 1))
             out.append((int(c.get("index", -1)), amount, "damage" in m.group(0).lower()))
     return tuple(out)
@@ -255,49 +204,16 @@ def osty_hp(player: dict) -> int:
     return sum(int(p.get("hp") or 0) for p in player.get("pets") or [] if p.get("alive", True))
 
 
-# Damage a turn some enemies do over a whole fight, where their first intents say much less, with what
-# their aura costs us counted in; it orders whom to hit first (`Enemy.threat`) in any fight. The act 3
-# knights (an elite, where nothing is counted as the fight goes): the Magi Knight opens 6 and Block,
-# Debuff ("ALL your cards are Downgraded" while it lives), 10, Block, and then hits 35 every third turn;
-# the Spectral Knight makes every card Ethereal while it lives and hits 15 or 3x3; the Flail Knight
-# 15, 9x2, Buff, 18. Round 5 brings 50 to 68 with all three up. Read by health alone the Magi Knight (the
-# fewest HP) waited: of 13 fights on Ascension 6+ (2026-11-21/22) 7 ended the run, both lost fights in
-# the logs on round 5 with it alive, and a Necrobinder spread 154 damage evenly over the three in four
-# rounds. On the logged intents, at the 25 to 35 damage a round these decks do, Magi Knight first loses
-# 20 to 45 HP less than the other orders (at 45 and up the order hardly matters).
-# Crusher and Rocket (act 2 boss), rounds 1-7 on Ascension 9: Rocket 4, 30, Buff, 57, Sleep, 10, 34 (19 a round),
-# Crusher 21, 5, 10x2, Buff, 25, 17, 6 (13 a round); round 1 says the opposite. Without them, Vulnerable went on
-# the crab with more HP (the Crusher, 219 to 209), and health first then followed it: in 12 of 13 lost fights in
-# the logs (2026-11-22 14:24-17:58) neither crab had died, and a Regent took the Crusher to 59 while the Rocket hit
-# 31, 58 and 36 from 190. scripts/crabfight.py with a Bash and a Clothesline in its decks: 62.8% -> 77.0% won over
-# 600 fights (never worse on a deck, "neither died" 112 -> 3); without them 43.0% -> 53.2%. Crusher 8 or 17: the same.
-# Bowlbug Nectar (act 2 hallway, with the Bowlbug Rock and often an Egg or a Silk): 3, then Buff (16 Strength for good),
-# then 19 every turn. What it had shown so far (3, then 1.5 a round, 10 by round 4) put it under the Rock's 16 all fight,
-# so the Rock was killed first in every logged fight (30 on Ascension 9, 2026-11-22) and the Nectar hit 19 for two or
-# three rounds after it; the Necrobinder lost 19% of its Max HP to the pair, the others 9%. scripts/bosses/bowlfight.py,
-# the real planner on the logged intents: 25.0 HP lost a fight -> 15.5, deaths 4.6% -> 0.2% (with an Egg 48 -> 37), never
-# worse on any of six decks; 19 and 25 the same, 12 half of it.
+# Damage a turn some enemies do over a whole fight, where their first intents say much less: it orders whom to hit first (`Enemy.threat`).
 KNOWN_THREAT = {"MAGI_KNIGHT": 22.0, "FLAIL_KNIGHT": 16.0, "SPECTRAL_KNIGHT": 12.0, "ROCKET": 20.0, "CRUSHER": 13.0, "BOWLBUG_NECTAR": 19.0}
 FOCUS_FLOOR = 6.0  # damage a turn every enemy is taken to do at least, in that order (as combat.THREAT_FLOOR)
-
-# Minions to kill before their leader although his death takes them along. The Kin (act 1 boss, Ascension
-# 8): the Priest 199 HP, 8, 8, 3x3, Buff; each Follower 63 HP, Buff (2 Strength), 5, 2x2, so from round 5
-# the two do 60% of what comes in, more every third turn, in hits too small for the per-turn rule below.
-# The bot hit the Priest first in 17 of 19 fights (2026-11-21/22) and won 9 of 15 on Ascension 8; the one
-# fight that took the Followers first (AoE) won on 35/70. scripts/kinfight.py, the real planner on the
-# logged intents: Followers first won 92% against 31% on six act 1 decks, and was never worse on any deck
-# tried (the strongest finish level, on 31 HP against 30), since the Priest alone is two Defends a turn.
+# Minions to kill before their leader although his death takes them along (most of the damage, in hits too small for read_enemies' rule).
 MAIN_MINIONS = {"KIN_FOLLOWER"}
 
 
 def _set_focus(enemies: list) -> None:
-    """In a fight with a KNOWN_THREAT enemy, what damage on each is worth: the kill order is by threat over
-    health left, and HP taken off one brings its death, and the deaths of all that come after it, that much
-    sooner. So a point on the first is worth the whole threat, one on the last only its own.
-
-    The order alone was not enough: a line is also tried aimed wholly at each enemy and scored by HP removed,
-    so a Vulnerable Flail Knight (9 for a Strike, against 6) drew the attacks off the Magi Knight; and Vulnerable
-    went on the enemy with the most HP, the one to be killed last."""
+    """In a fight with a KNOWN_THREAT enemy, what damage on each is worth: by kill order (threat over health left), a point on the
+    first brings all the deaths after it sooner and is worth the whole threat, one on the last only its own."""
     live = [e for e in enemies if e.alive and not e.minion and not e.spent]
     if len(live) < 2 or not any(e.threat and re.sub(r"_\d+$", "", e.entity_id) in KNOWN_THREAT for e in live):
         return
@@ -319,71 +235,34 @@ def read_enemies(state: dict) -> list[Enemy]:
         hp = int(e.get("hp") or 0)
         if hp <= 0:
             continue
-        # What it has done a turn so far in this fight. One that attacks and Buffs itself in the same
-        # move is growing: what it does now and half as much again, whatever it did while it slept.
+        # Damage a turn so far; one that attacks and Buffs itself in the same move is growing: what it does now and half again.
         kinds = [str(i.get("type", "")).lower() for i in e.get("intents") or []]
         grows = any("buff" in k and "debuff" not in k for k in kinds) and any(map(_is_attack, e.get("intents") or []))
         threat = float(seen.get(str(e.get("entity_id")), 0.0))
         if grows and seen:
             threat = 1.5 * max(threat, float(sum(intent_damage(i) for i in e.get("intents") or [])))
         threat = max(threat, KNOWN_THREAT.get(re.sub(r"_\d+$", "", str(e.get("entity_id"))), 0.0))
-        # The Waterfall Giant, once killed, stands there on 999,999,999 HP for
-        # the turn it takes to blow up. Nothing we do to it counts any more.
-        spent = hp >= BEYOND_REACH
+        spent = hp >= BEYOND_REACH  # (the Waterfall Giant, once killed, stands on 999,999,999 HP for the turn it takes to blow up)
         out.append(
             Enemy(
-                entity_id=str(e.get("entity_id")),
-                hp=hp,
-                spent=spent,
-                block=int(e.get("block") or 0),
-                vulnerable=_has_power(e, "VULNERABLE"),
-                weak=_has_power(e, "WEAK"),
-                vuln_turns=_stacks(e, "VULNERABLE"),
-                weak_turns=_stacks(e, "WEAK"),
-                slippery=_stacks(e, "SLIPPERY"),
+                entity_id=str(e.get("entity_id")), hp=hp, spent=spent, block=int(e.get("block") or 0), vulnerable=_has_power(e, "VULNERABLE"), weak=_has_power(e, "WEAK"),
+                vuln_turns=_stacks(e, "VULNERABLE"), weak_turns=_stacks(e, "WEAK"), slippery=_stacks(e, "SLIPPERY"),
                 damage_mult=0.0 if spent else 0.5 if _has_power(e, "FLUTTER") or _has_power(e, "SOAR") else 1.0,
-                # Intangible: every hit takes 1 HP, whatever its size.
-                hit_cap=1 if _has_power(e, "INTANGIBLE") else _stacks(e, "HARD_TO_KILL"),
-                enrage=_stacks(e, "ENRAGE"),
-                curious=_stacks(e, "CURIOSITY"),
-                thorns=_stacks(e, "THORNS"),
-                revives=_has_power(e, "ILLUSION"),
-                # (Shriek: the Eel on 77 before a 22 was hit to 64, Stunned, after 12 Block had gone up for nothing.)
-                stun_at=_stacks(e, "PLOW") or _stacks(e, "SHRIEK"),
-                shell=_shown(e, "HARDENED_SHELL", 0, -1),
-                slow=_shown(e, "SLOW", 0, -1),
-                minion=_has_power(e, "MINION"),
-                keeps_block=_has_power(e, "BURROWED") or _has_power(e, "BARRICADE"),
-                artifact=_stacks(e, "ARTIFACT"),
-                poison=_stacks(e, "POISON"),
-                doom=_stacks(e, "DOOM"),
-                incoming=sum(intent_damage(i) for i in e.get("intents") or []),
-                incoming_hits=sum(intent_hits(i) for i in e.get("intents") or []),
-                vuln_mult=2.0 if _has_power(e, "DEBILITATE") else 1.5,
-                weak_cut=0.5 if _has_power(e, "DEBILITATE") else 0.75,
-                weak_mult=1.5 if _has_power(player, "TRACKING") else 1.0,
-                scar=8.0 * _has_power(e, "PAPER_CUTS") + STAB_SCAR * _has_power(e, "PAINFUL_STABS"),
-                rage=_has_power(e, "CRAB_RAGE"),
-                respawns=_stacks(e, "STOCK"),
-                adapts=_has_power(e, "ADAPTABLE"),
-                asleep=_stacks(e, "ASLEEP"),
-                imbalanced=_has_power(e, "IMBALANCED"),
+                hit_cap=1 if _has_power(e, "INTANGIBLE") else _stacks(e, "HARD_TO_KILL"),  # (Intangible: every hit takes 1 HP)
+                enrage=_stacks(e, "ENRAGE"), curious=_stacks(e, "CURIOSITY"), thorns=_stacks(e, "THORNS"), revives=_has_power(e, "ILLUSION"),
+                stun_at=_stacks(e, "PLOW") or _stacks(e, "SHRIEK"), shell=_shown(e, "HARDENED_SHELL", 0, -1), slow=_shown(e, "SLOW", 0, -1), minion=_has_power(e, "MINION"),
+                keeps_block=_has_power(e, "BURROWED") or _has_power(e, "BARRICADE"), artifact=_stacks(e, "ARTIFACT"), poison=_stacks(e, "POISON"), doom=_stacks(e, "DOOM"),
+                incoming=sum(intent_damage(i) for i in e.get("intents") or []), incoming_hits=sum(intent_hits(i) for i in e.get("intents") or []),
+                vuln_mult=2.0 if _has_power(e, "DEBILITATE") else 1.5, weak_cut=0.5 if _has_power(e, "DEBILITATE") else 0.75, weak_mult=1.5 if _has_power(player, "TRACKING") else 1.0,
+                scar=8.0 * _has_power(e, "PAPER_CUTS") + STAB_SCAR * _has_power(e, "PAINFUL_STABS"), rage=_has_power(e, "CRAB_RAGE"), respawns=_stacks(e, "STOCK"),
+                adapts=_has_power(e, "ADAPTABLE"), asleep=_stacks(e, "ASLEEP"), imbalanced=_has_power(e, "IMBALANCED"),
                 reacts=(REACTIVE_HIT if int(player.get("hp") or 0) >= REACTIVE_SAFE_HP else REACTIVE_WORST) + 3 * _stacks(e, "STRENGTH") if _has_power(e, "REACTIVE") else 0,
-                hang=_stacks(e, "HANG"),
-                threat=threat,
-                hive=_stacks(e, "PERSONAL_HIVE"),
-                flutter=_stacks(e, "FLUTTER"),
-                thief=_has_power(e, "SWIPE"),
-                reattach=_stacks(e, "REATTACH"),
+                hang=_stacks(e, "HANG"), threat=threat, hive=_stacks(e, "PERSONAL_HIVE"), flutter=_stacks(e, "FLUTTER"), thief=_has_power(e, "SWIPE"), reattach=_stacks(e, "REATTACH"),
                 grows=max(float(_stacks(e, "RITUAL") + _stacks(e, "TERRITORIAL")), _stacks(e, "STRENGTH") / rounds),
-                # (Block on it: it has been hit already. Curl Up, the Louse Progenitor's, is the same once a fight: 14.)
-                skittish=0 if int(e.get("block") or 0) else _stacks(e, "SKITTISH") or _stacks(e, "CURL_UP"),
-                max_hp=int(e.get("max_hp") or 0),
-                impaled=_stacks(e, "IMPALED"),
+                skittish=0 if int(e.get("block") or 0) else _stacks(e, "SKITTISH") or _stacks(e, "CURL_UP"), max_hp=int(e.get("max_hp") or 0), impaled=_stacks(e, "IMPALED"),
             )
         )
-    # Surrounded: we face whoever we targeted last, and the one behind us hits
-    # 50% harder. The fight starts with us facing right.
+    # Surrounded: we face whoever we targeted last, and the one behind us hits 50% harder. The fight starts with us facing right.
     if _has_power(player, "SURROUNDED"):
         facing = state.get("_facing")
         for e in out:
@@ -391,20 +270,14 @@ def read_enemies(state: dict) -> list[Enemy]:
             e.flanker = left or _has_power(raw[e.entity_id], "BACK_ATTACK_RIGHT")
             if e.flanker:
                 e.behind = e.entity_id != facing if facing in raw else left
-
-    # Minions leave when their leader dies, so the leader is normally the
-    # target. Not when the leader only buffs and one minion with far less HP
-    # deals all the damage: against the Queen the bot hit her 400 HP while her
-    # 199 HP minion took 30 to 50 HP off it every turn.
+    # Minions leave when their leader dies, so he is normally the target; not when a minion with far less HP deals all the damage.
     _set_focus(out)
     leaders = [e for e in out if not e.minion]
     if leaders:
         leader_hp = sum(e.hp + e.block for e in leaders)
         leader_hits = sum(e.incoming for e in leaders)
         for e in out:
-            # (Its hit as it would be without our Weak: Weakened, the Amalgam's 18 showed as 13, and 30 attacks
-            # in 215 went into the Queen's 381 HP while it lived, a whole turn's at a time.)
-            hard = e.incoming / (e.weak_cut if e.weak else 1.0) >= 15
+            hard = e.incoming / (e.weak_cut if e.weak else 1.0) >= 15  # (its hit as it would be without our Weak)
             if e.minion and hard and e.incoming > 2 * leader_hits and e.hp + e.block <= 0.6 * leader_hp:
                 e.main_threat = True
             elif e.minion and re.sub(r"_\d+$", "", e.entity_id) in MAIN_MINIONS:
@@ -427,11 +300,7 @@ def _per_hit(e: Enemy, dmg_per_hit: int, raw: bool = False) -> int:
 
 
 def _would_kill(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> bool:
-    """Whether this attack leaves the enemy dead, without touching it.
-
-    The planner asks this of every enemy for every attack it tries, so the plain case is worked out
-    directly: hit after hit goes through Block and then HP. Anything that bends a hit is played out on a copy.
-    """
+    """Whether this attack leaves the enemy dead, without touching it (worked out directly in the plain case: it is asked very often)."""
     if e.skittish or e.hit_cap or e.slippery or e.shell >= 0 or e.flutter:
         trial = clone(e)
         _hit(trial, dmg_per_hit, hits, double_if_vulnerable)
@@ -440,43 +309,30 @@ def _would_kill(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: boo
 
 
 def _progress(e: Enemy, hp_removed: int, chip_rate: float) -> float:
-    """How far an attack moved the fight on: HP removed, plus Block worn down.
-
-    Block an enemy keeps between turns is as good as HP. Only counting HP,
-    the bot never attacked a Burrowed enemy (20 Block that stays, 24 damage
-    a turn) and blocked every turn instead, for 180 rounds.
-    """
+    """How far an attack moved the fight on: HP removed, plus Block worn down (Block an enemy keeps between turns is as good as HP)."""
     chip, e.chipped = e.chipped, 0
-    # A Slippery stack taken off is a later hit that lands in full. Counted as the 1 HP it removes,
-    # eight stacks were not worth a Defend: Vantom fights that still had Slippery on round 5 were
-    # lost 4 times in 8 (2 in 19 when it was gone by round 4; one bot took until round 8).
+    # A Slippery stack taken off is a later hit that lands in full.
     strip, e.stripped = e.stripped, 0
     hp_removed += strip * min(SLIP_WORTH, e.hp / 3.0)
     return hp_removed + chip * (1.0 if e.keeps_block or (e.incoming == 0 and chip and e.block == 0 and chip_rate >= 1) else chip_rate)
 
 
 def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False, raw: bool = False) -> int:
-    """Apply an attack hit by hit, return HP actually removed.
-
-    `raw` is damage that is not an Attack (an orb's): Vulnerable does nothing
-    for it (a Lightning evoked twice did 16 to a Vulnerable enemy, 18 times in 18).
-    """
+    """Apply an attack hit by hit, return HP actually removed. `raw` is damage that is not an Attack (an orb's): Vulnerable does nothing for it."""
     per = _per_hit(e, dmg_per_hit, raw)
     removed = 0
     for _ in range(_hit_count(e, hits, double_if_vulnerable)):
         if e.hp <= 0:
             break
         if e.impaled and not raw:
-            e.impaled -= 1  # (Block or not: the Tunneler's Burrowed Block took the count from 3 to 2)
+            e.impaled -= 1  # (Block or not)
         absorbed = min(e.block, per)
         e.block -= absorbed
         e.chipped += absorbed
         if absorbed and e.block == 0 and e.keeps_block:
             e.keeps_block = False
             e.incoming = 0  # "Stunned if all Block is removed."
-        # Skittish (Phantasmal Gardener): the first hit of a turn lands, and the rest meet 6 Block.
-        # Four of them took 11 rounds and 38 of 51 HP from a bot that hit one twice a turn.
-        e.block, e.skittish = e.block + e.skittish, 0
+        e.block, e.skittish = e.block + e.skittish, 0  # Skittish: the first hit of a turn lands, the rest meet its Block
         through = per - absorbed
         if through <= 0:
             continue
@@ -487,9 +343,7 @@ def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = Fal
             e.stripped += 1
             through = 1
         lost = min(e.hp, through)
-        if e.shell >= 0:
-            # "Cannot lose more than 20 HP each turn", and the power counts down as it goes: at 0 two more
-            # attacks were played into it for nothing, with its hit still to come.
+        if e.shell >= 0:  # "Cannot lose more than 20 HP each turn", counted down as it goes
             lost = min(lost, e.shell)
             e.shell -= lost
         e.hp -= lost
@@ -498,10 +352,7 @@ def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = Fal
             e.stun_at = 0
             e.incoming = 0  # Stunned: its attack this turn never happens
         if e.flutter and not raw:
-            # Flutter, the Thieving Hopper's ("Deal attack damage 5 times to Stun it"): the fifth hit takes away
-            # this turn's move, its 21 or its Escape with our card, and the 50% off our Attacks with it. Unread,
-            # three Defends went up against the 21 with a 27-damage attack in hand and the Hopper two turns
-            # from leaving on 18 HP; it left on 6, and the deck was a card short from then on.
+            # Flutter ("Deal attack damage 5 times to Stun it"): the fifth hit takes away this turn's move, and the 50% off our Attacks.
             e.flutter -= 1
             if not e.flutter:
                 e.incoming = e.incoming_hits = 0
@@ -510,12 +361,8 @@ def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = Fal
 
 
 def kill_reach(survivors: list, blow_is_all: bool) -> float:
-    """HP still in the way of the kill that would save a turn lost on paper (infinite: no kill would).
-
-    Either every leader dies (the fight is over) or, when the attacks are all
-    that kills us, everything that is about to attack. Poison bites before
-    they move.
-    """
+    """HP still in the way of the kill that would save a turn lost on paper (infinite: none would): every leader, or every attacker
+    when the attacks are all that kills us. Poison bites before they move."""
     def left(group: list) -> float:
         if not group or any(e.spent or e.hit_cap or e.slippery or e.respawns for e in group):
             return float("inf")
@@ -545,13 +392,8 @@ def _sandpit(state: dict) -> int | None:
 
 
 def _escape_odds(player: dict, hand_draw: int = 5) -> tuple:
-    """Chance that the next hand holds no Frantic Escape, and the same for a hand a few turns on.
-
-    The first from where the Escapes are right now (the draw pile, or what
-    will be shuffled back into it); the second from the deck as a whole.
-    """
-    def is_escape(c: dict) -> bool:
-        return str(c.get("name") or "").startswith("Frantic Escape")
+    """Chance that the next hand holds no Frantic Escape (from the piles as they are), and a hand a few turns on (from the whole deck)."""
+    is_escape = lambda c: str(c.get("name") or "").startswith("Frantic Escape")
 
     def none(n: int, k: int, d: int) -> float:
         """No Escape among d cards drawn from n that hold k of them."""
@@ -587,13 +429,7 @@ def deck_count(player: dict) -> tuple:
 
 
 def junk_cost(fight: str, round_no: int, deck: tuple, added: int = 1) -> float:
-    """What `added` more dead cards in the deck cost over the rest of the fight, in damage.
-
-    Each comes round again with every shuffle and takes a card's place in the
-    hand: half a Strike a time, more as the deck fills up with them. A Regent
-    played Crash Landing ("Fill your Hand with Debris") on rounds 3, 8 and 9
-    of a boss fight and by round 12 drew three Debris in a hand of five.
-    """
+    """What `added` more dead cards in the deck cost over the rest of the fight, in damage: each takes a card's place in a hand, every shuffle."""
     cards, junk = deck
     turns = max(1, {"boss": 10, "elite": 6}.get(fight, 4) - round_no)
     size = max(10, cards + added)
@@ -602,20 +438,11 @@ def junk_cost(fight: str, round_no: int, deck: tuple, added: int = 1) -> float:
 
 def _bare_block(player: dict) -> int:
     """Block a relic gives when the turn ends without any (Orichalcum)."""
-    for r in player.get("relics") or []:
-        m = re.search(r"end your turn without block, gain (\d+) block", str(r.get("description") or ""), re.I)
-        if m:
-            return int(m.group(1))
-    return 0
+    return next((int(m.group(1)) for r in player.get("relics") or [] if (m := re.search(r"end your turn without block, gain (\d+) block", str(r.get("description") or ""), re.I))), 0)
 
 
 def _draw_worth(player: dict) -> tuple:
-    """What drawing a card is worth right now, from what is left to draw.
-
-    A flat 2 points a card made "Draw 6 cards" for 2 energy look worse than
-    two Strikes whatever the deck held, and made drawing into a pile of
-    Wounds look as good as drawing into a pile of free attacks.
-    """
+    """What drawing a card is worth right now, from what is left to draw: (points if free, share that cost energy, points per energy)."""
     pile = list(player.get("draw_pile") or [])
     if len(pile) < 3:
         pile += list(player.get("discard_pile") or [])  # it is about to be shuffled back in
@@ -639,34 +466,20 @@ def _draw_worth(player: dict) -> tuple:
 
 
 def _next_wither(player: dict, round_no: int = 1) -> int:
-    """Damage the next Wither does if it is still in the hand when the turn ends.
-
-    A plain Wither does 3. Every third round Aeonglass makes all of them one
-    step worse, the ones in our deck and the ones still to come, and a step is
-    3 more damage: "Wither+2" does 9, not 5. (Measured from HP lost with
-    Withers in hand; a bot on 35 HP that expected to lose 31 died of it.)
-    """
+    """Damage the next Wither does if still in the hand when the turn ends: 3 a level ("Wither+2" does 9); Aeonglass adds a level every third round."""
     level = max(0, (round_no - 1) // 3)
     for pile in ("hand", "draw_pile", "discard_pile", "exhaust_pile"):
         for c in player.get(pile) or []:
-            m = _WITHER.match(str(c.get("name") or ""))
-            if m:
+            if m := _WITHER.match(str(c.get("name") or "")):
                 level = max(level, int(m.group(1) or 0))
     return 3 * (level + 1)
 
 
-WITHER_FIGHT = 11  # the round an Aeonglass fight is over by when it is won (10 and 11; the lost ones end on 7)
+WITHER_FIGHT = 11  # the round an Aeonglass fight is over by when it is won
 
 
 def _wither_bill(player: dict, round_no: int, wither_hp: int) -> float:
-    """What each card played costs in Withers still to come, in points: a sixth of what one does after its first turn.
-
-    A Wither goes round with the deck, so it burns again (a level worse by then, and Block may stop it)
-    and takes a card's place for as often as it is drawn before the fight ends: once or twice for one
-    made on round 2, hardly at all for one made on round 8. Until 2026-11-21 this was (4 x its damage
-    + 20) / 6 whatever the round, which grows as the fight runs out: 5.3 a card on rounds 1-3, 7.3 on
-    4-6 and 9.3 from round 7, when a Strike is worth 9 and six of nine lost fights ended.
-    """
+    """What each card played costs in Withers still to come, in points: a sixth of what one does as it comes round again with the deck."""
     deck = len(player.get("hand") or []) + sum(int(player.get(p + "_count") or len(player.get(p) or [])) for p in ("draw_pile", "discard_pile"))
     again = min(1.5, max(1, WITHER_FIGHT - round_no) / max(3.0, deck / 5.0))  # times it comes round again
     return again * (2.5 * (wither_hp + 3) + 6.0) / 6.0
@@ -679,17 +492,13 @@ def cards_left_this_turn(state: dict) -> int | None:
     limits = []
     if _has_power(player, "RINGING"):  # "You can only play 1 card this turn."
         limits.append(1)
-    if _has_power(player, "SLOTH"):  # "You cannot play more than 3 cards each turn."
-        # (By the game's own count, the number on the power: a card that is played twice counts twice.)
+    if _has_power(player, "SLOTH"):  # "You cannot play more than 3 cards each turn." (by the number on the power: a card played twice counts twice)
         limits.append(played + 3 - max(0, _shown(player, "SLOTH", 0) or 0))
     for c in [*(player.get("hand") or []), *(player.get("relics") or [])]:  # (a relic too: Velvet Choker, 6 a turn)
-        m = re.search(r"cannot play more than (\d+) cards", str(c.get("description") or ""), re.I)
-        if m:
+        if m := re.search(r"cannot play more than (\d+) cards", str(c.get("description") or ""), re.I):
             limits.append(int(m.group(1)))
     left = [max(0, n - played) for n in limits]
-    # The first game's Time Eater counts every card we play (Time Warp, kept from turn to turn): the 12th ends our turn
-    # and gives it 2 Strength. Not counted (2026-11-24 21:26), the Defect on 30 HP and 11 cards played, in front of a 31 hit,
-    # spent its one card left on Cold Snap: the turn ended there with 4 energy and a Defend unplayed, 30 -> 8 HP.
+    # The first game's Time Eater counts every card we play (Time Warp, kept from turn to turn): the 12th ends our turn.
     left += [12 - max(0, warp) for e in (state.get("battle") or {}).get("enemies") or [] if (warp := _shown(e, "TIME_WARP", 0)) is not None]
     encore = _shown(player, "ENCORE", 1)  # "You can only play 1 more card this turn": the game counts it down, 1 then 0
     if encore is not None:
@@ -698,14 +507,8 @@ def cards_left_this_turn(state: dict) -> int | None:
 
 
 def next_room(state: dict) -> tuple:
-    """(Energy the next hand can spend beyond what it will have already, what each card kept in the hand adds to that).
-
-    The next hand is five cards of the draw pile at their mean cost (X and dearer than 3 as 3, Unplayable as 0), against the
-    turn's energy and any already coming. Priced at a flat 6 damage each, the Fool's next-turn energy went mostly unspent
-    (fresh profile, 20:17-22:10 on 2026-11-23): after Ki Rest+ (6) the next turn began on 9.4 and ended on 4.6, its hand
-    costing 5.8 to play out; after Ki Whip+ (3), 6.7 and 2.3. Before a Ringing turn none of it can be spent: a lost Ceremonial
-    Beast fight played Ki Rest+ before each of its four Ringing turns and spent 9 energy on one card each time.
-    """
+    """(Energy the next hand can spend beyond what it will have already, what each card kept in the hand adds to that): five cards
+    of the draw pile at their mean cost (X and over 3 as 3, Unplayable as 0) against the energy coming. None before a Ringing turn."""
     player = state.get("player") or {}
     for e in (state.get("battle") or {}).get("enemies") or []:
         if re.sub(r"_\d+$", "", str(e.get("entity_id"))) in RINGERS and any("debuff" in str(i.get("type", "")).lower() for i in e.get("intents") or []):
@@ -714,7 +517,7 @@ def next_room(state: dict) -> tuple:
     if len(pile) < 5:
         pile += list(player.get("discard_pile") or [])  # (shuffled back in before the hand is drawn)
     if not pile:
-        return (99.0, 1.0)  # (no piles in the state: as before, every energy counts)
+        return (99.0, 1.0)  # (no piles in the state: every energy counts)
 
     def cost(c: dict) -> float:
         if re.search(r"\bunplayable\b", str(c.get("description") or ""), re.I):
@@ -728,11 +531,7 @@ def next_room(state: dict) -> tuple:
     caps = [3] if _has_power(player, "SLOTH") else []  # (the Knowledge Demon's: "You cannot play more than 3 cards each turn")
     caps += [int(m.group(1)) for r in player.get("relics") or [] if (m := re.search(r"cannot play more than (\d+) cards", str(r.get("description") or ""), re.I))]
     if caps and draws >= min(caps):
-        # The cards a turn may play are used up by what it draws, so a hand Retained from this turn adds no play to
-        # the next, it only stands in for a card drawn. Counted as plays, Ki Rest+ ("Next turn, gain 6 energy ...
-        # Retain your Hand") won a Sloth turn of the Knowledge Demon (live, 2026-11-24 20:16) over Bow Smack+, Strike
-        # and Cho Ki: 17 damage given up for a next turn of 9 energy that could play three cards, 4 energy's worth;
-        # the Demon died 28 short.
+        # The plays a turn allows are used up by what it draws: a Retained hand adds no play, it only stands in for a card drawn.
         return (min(caps) * per - have, 0.0)
     return (draws * per - have, per)
 
@@ -744,9 +543,7 @@ def next_energy_worth(gained: int, room: tuple, kept: int = 0) -> float:
 
 
 def free_plays(state: dict) -> int:
-    """Void Form ("The first 2 cards you play each turn are free to play"): how many of the next cards cost nothing.
-
-    The game shows every card in the hand as costing 0 until they are used up, so a cost on show means none is left."""
+    """Void Form ("The first 2 cards you play each turn are free to play"): how many of the next cards cost nothing (a cost on show: none)."""
     player = state.get("player") or {}
     if any(str(c.get("cost") or "0").strip() not in ("0", "X") for c in player.get("hand") or []):
         return 0
@@ -754,8 +551,7 @@ def free_plays(state: dict) -> int:
 
 
 def _resists(e: Enemy) -> bool:
-    """Artifact swallows a debuff. Mangle on an enemy with Artifact took none
-    of its Strength away, and the bot walked into the full attack."""
+    """Artifact swallows a debuff (and a charge goes with it)."""
     if e.artifact > 0:
         e.artifact -= 1
         return True
@@ -771,32 +567,18 @@ def _poison_total(stack: int, turns: int) -> int:
 
 
 def _power_worth(c: CardInfo, long_fight: bool = True) -> float:
-    """What playing a Power is worth in an ordinary fight: from the table, else a guess from its cost.
-
-    In a boss or elite fight not less than other players' results say (crowd.py): a Power they
-    win with and the bot will not pay for is a dead card in the deck. An Ironclad took Barricade
-    (3 energy, 4 points here) and Dark Embrace as its best rewards and held them unplayed through
-    the fight it died in. (Not in an ordinary fight, four rounds long: with the floor there too,
-    act 2 rooms took 6.3 rounds instead of 4.5 for a quarter of an hour.)
-    """
+    """What playing a Power is worth in an ordinary fight: from the table, else a guess from its cost; in a long fight, not less than crowd.py says."""
     worth = POWER_VALUE.get(c.key, 5.0 + 2.0 * max(c.cost, 0))
     crowd = crowd_rating(c.key) if long_fight else None
     return worth if crowd is None else max(worth, 2.5 * max(c.cost, 1) + 2.0 * (crowd - 4.0))
 
 
 def _set_up(playable: list[CardInfo], energy: int) -> tuple | None:
-    """A card worth playing with nobody to aim at: the enemy is gone for the turn and comes back.
-
-    Between two of the Test Subject's forms the bot used to end the turn with
-    energy in hand and Powers unplayed (Child of the Stars, Prowess, Loop).
-    Whatever lasts is worth playing now: Powers, orbs, Strength, next turn's
-    energy; and cards drawn while there is energy to use what they bring.
-    """
+    """A card worth playing with nobody to aim at (the enemy is gone for the turn and comes back): whatever lasts, and draws while energy is left."""
     best, best_worth = None, 0.0
     for c in playable:
         if c.needs_target or c.type in ("Status", "Curse") or c.deadly or c.block_lock or (c.is_x and energy <= 0):
             continue
-        # (X cards too: Dirge, "Summon 3 X times", stayed in the hand with 2 energy spare and Osty all that stood before 30 damage.)
         x, cost = (energy, energy) if c.is_x else (1, c.cost)
         worth = _power_worth(c) if c.type == "Power" else 0.0
         worth += (4.0 * len(c.channel) + c.summon + 1.5 * c.souls) * x + 0.5 * c.forge + 2.5 * c.star_gain
@@ -812,26 +594,13 @@ def _set_up(playable: list[CardInfo], energy: int) -> tuple | None:
 
 
 def _respawns(foes: list[Enemy]) -> None:
-    """Stock: an enemy that dies while it has Stock is summoned again in its place at full HP.
-
-    The death is not a kill: no win, no kill bonus, and the damage it took
-    goes for nothing once it is back. Axebot came back at 85 HP after the
-    bot had counted its death at 5 HP as the fight nearly won.
-    """
+    """Stock: an enemy that dies while it has Stock is summoned again at full HP (not a kill). Adaptable: gone for the turn, back stronger."""
     for e in foes:
         if not e.alive and e.respawns > 0 and e.max_hp > 0:
             e.hp, e.block = e.max_hp, 0
             e.respawns -= 1
-            # The new one spends this turn on Defend+Buff: the attack of the one we killed is gone.
-            # (Seen 2026-11-21: Axebot on 22 about to hit for 13x2, killed, and 3 Block lost nothing.
-            # Counted as still coming, a kill for the whole hand lost to 10 damage and a Block card.)
-            e.incoming = e.incoming_hits = 0
-        elif not e.alive and e.adapts:
-            # The Test Subject's first two forms: beating one is not the fight
-            # won. It leaves for the rest of the turn (nothing more can be
-            # aimed at it, and its attack does not happen) and comes back next
-            # turn with 100 HP more. Counted as a win, the kill used to come
-            # before the Powers that the next 500 HP were going to need.
+            e.incoming = e.incoming_hits = 0  # the new one spends this turn on Defend and Buff: the attack of the one we killed is gone
+        elif not e.alive and e.adapts:  # the Test Subject's first two forms: out of reach for the rest of the turn, and its attack with it
             e.hp, e.block, e.spent, e.damage_mult = BEYOND_REACH, 0, True, 0.0
             e.incoming = e.incoming_hits = 0
             e.poison = e.doom = 0
@@ -839,13 +608,7 @@ def _respawns(foes: list[Enemy]) -> None:
 
 
 def _rage_blocks(foes: list[Enemy], known_dead: set) -> None:
-    """Crab Rage, as the line plays out: each ally that dies gives the crabs still standing 99 Block.
-
-    The Block is only there until their next turn, so the damage we aim at
-    them for the rest of this turn is absorbed. In one lost fight the bot hit
-    a Rocket four times with 93 Block on it: its Block fell to 76 and its HP
-    stayed at 113.
-    """
+    """Crab Rage, as the line plays out: each ally that dies gives the crabs still standing 99 Block for the rest of this turn."""
     newly = [e for e in foes if not e.alive and e.entity_id not in known_dead]
     if not newly:
         return
@@ -857,26 +620,18 @@ def _rage_blocks(foes: list[Enemy], known_dead: set) -> None:
 
 def loss_cap(player: dict) -> int:
     """Beating Remnant: "You cannot lose more than 20 HP in a single turn." (0: no such relic)"""
-    for r in player.get("relics") or []:
-        m = re.search(r"cannot lose more than (\d+) HP in a single turn", str(r.get("description") or ""), re.I)
-        if m:
-            return int(m.group(1))
-    return 0
+    return next((int(m.group(1)) for r in player.get("relics") or [] if (m := re.search(r"cannot lose more than (\d+) HP in a single turn", str(r.get("description") or ""), re.I))), 0)
 
 
-# Whom an attack goes at (moved from combat.py on 2026-11-23, when that file reached its 1000 lines).
 THREAT_FLOOR = 6.0  # damage a turn every enemy is taken to do at least, when choosing whom to hit first
 
 
 def _pick_target(enemies: list[Enemy], dmg_per_hit: int, hits: int, double_if_vulnerable: bool = False) -> Enemy | None:
+    """Whom an attack goes at."""
     alive = [e for e in enemies if e.alive]
     if not alive:
         return None
-
-    # Reattach (the Decimillipede, 130 HP in three segments): one killed while another lives is back two
-    # turns later on 25 HP, so killing them one by one never ends. A Regent went in on 85/85, killed a
-    # segment seven times in twelve rounds and died with two of them on 25. Until the others are within
-    # reach the healthiest one is hit and none is finished: they come down together and die together.
+    # Reattach: a segment killed while another lives comes back, so until the others are within reach none is finished: they die together.
     segs = [e for e in alive if e.reattach]
     stay = {e.entity_id for e in segs if sum(o.hp + o.block for o in segs if o is not e) > REATTACH_REACH} if len(segs) > 1 else set()
     if stay:
@@ -885,29 +640,13 @@ def _pick_target(enemies: list[Enemy], dmg_per_hit: int, hits: int, double_if_vu
             return max(spare or segs, key=lambda e: e.hp + e.block)
     killable = [e for e in alive if e.entity_id not in stay and _would_kill(e, dmg_per_hit, hits, double_if_vulnerable)]
     if killable:
-        # Remove the biggest threat first; waste the least damage on ties.
-        # Killing something that revives only pays off if it is about to hit us.
+        # The biggest threat first, wasting the least damage; not one that revives unless it is about to hit us, nor an idle minion hit with twice its size.
         useful = [e for e in killable if e.worth > 0 or e.incoming > 0]
-        # (Not a minion that is not even attacking, with an attack more than twice its size: the
-        # leader's death takes it along. Squeeze, 35 damage, went into a 17-HP egg three times while
-        # the Ovicopter that lays them stood at 105, and that fight was lost from 69 HP.)
         size = dmg_per_hit * hits
         useful = [e for e in useful if not (e.minion and not e.main_threat and not e.incoming and size > 2 * (e.hp + e.block) and any(o.worth >= 1.0 for o in alive))]
         if useful:
             return max(useful, key=lambda e: (e.worth > 0, e.incoming, e.hp + e.block))
-    # Otherwise focus whoever dies soonest, counting Vulnerable as less health;
-    # leaders before their minions, never something that just comes back.
-    # (Not one whose Block would swallow the whole attack, when another would lose HP to it.)
-    # ... and, where the enemies are known to differ, the one that does the most damage for
-    # its health: least is lost in all by killing in that order. Lowest health first left the
-    # Slumbering Beetle (86 HP, 16 a turn and 2 more every turn once awake) until both Bowlbugs
-    # were dead: 5 runs in 24 died in that room, two of them from over 50 HP. Enemies that have
-    # shown under 6 a turn count as 6, so equals are still taken lowest first.
-    # Doom is health already gone (it dies at the end of its turn once Doom covers its HP), and one
-    # that Doom has finished needs nothing more. Read as plain HP, the Necrobinder put Scourge on one
-    # Nibbit and its attacks on the other, then went on hitting the one already done for: seven rounds
-    # and 34 of 49 HP for two 42-HP enemies. (15 of its 44 act 1 bosses were met on under 75% HP,
-    # 7 of those won; of the 29 met on more, 24.)
+    # Else whoever dies soonest for the damage it does (Doom as health gone), leaders first, not one Doomed already or whose Block swallows it all.
     soaks = lambda e: e.block >= dmg_per_hit * hits and not e.keeps_block
     left = lambda e: (max(1, e.hp - e.doom) + e.block) / (1.5 if e.vulnerable else 1.0)
     return min(alive, key=lambda e: (_fated(e), -e.worth, soaks(e), left(e) / max(e.threat, THREAT_FLOOR), -e.incoming))
