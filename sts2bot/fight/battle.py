@@ -94,6 +94,9 @@ class Enemy:
     shell: int = -1  # Hardened Shell (the Skulking Colony): HP it can still lose this turn (-1: no limit)
     focus: float = 1.0  # what a point of damage on it is worth next to one on the enemy to kill first (KNOWN_THREAT fights only)
     impaled: int = 0  # Impaled: our Arrow stands in it until this many more hits land (or it dies); 0: none
+    beat: int = 0  # Beat of Death (the first game's Heart): damage we take for every card we play, once it has resolved (Block takes it)
+    malleable: int = 0  # Malleable (the first game's Snake Plant, Writhing Mass): Block after each hit that hurts it, 1 more each time this turn
+    soft: int = 0  # ... that Block, still to come: it lands once the card being played has done its hits
 
     @property
     def worth(self) -> float:
@@ -260,6 +263,7 @@ def read_enemies(state: dict) -> list[Enemy]:
                 hang=_stacks(e, "HANG"), threat=threat, hive=_stacks(e, "PERSONAL_HIVE"), flutter=_stacks(e, "FLUTTER"), thief=_has_power(e, "SWIPE"), reattach=_stacks(e, "REATTACH"),
                 grows=max(float(_stacks(e, "RITUAL") + _stacks(e, "TERRITORIAL")), _stacks(e, "STRENGTH") / rounds),
                 skittish=0 if int(e.get("block") or 0) else _stacks(e, "SKITTISH") or _stacks(e, "CURL_UP"), max_hp=int(e.get("max_hp") or 0), impaled=_stacks(e, "IMPALED"),
+                beat=_stacks(e, "BEAT_OF_DEATH"), malleable=_stacks(e, "MALLEABLE"),
             )
         )
     # Surrounded: we face whoever we targeted last, and the one behind us hits 50% harder. The fight starts with us facing right.
@@ -268,8 +272,8 @@ def read_enemies(state: dict) -> list[Enemy]:
         for e in out:
             left = _has_power(raw[e.entity_id], "BACK_ATTACK_LEFT")
             e.flanker = left or _has_power(raw[e.entity_id], "BACK_ATTACK_RIGHT")
-            if e.flanker:
-                e.behind = e.entity_id != facing if facing in raw else left
+            if e.flanker:  # (the first game's mod says who is behind: CommunicationMod's play turns us as a click would, see speedmod.py)
+                e.behind = bool(raw[e.entity_id]["behind"]) if "behind" in raw[e.entity_id] else e.entity_id != facing if facing in raw else left
     # Minions leave when their leader dies, so he is normally the target; not when a minion with far less HP deals all the damage.
     _set_focus(out)
     leaders = [e for e in out if not e.minion]
@@ -348,6 +352,8 @@ def _hit(e: Enemy, dmg_per_hit: int, hits: int, double_if_vulnerable: bool = Fal
             e.shell -= lost
         e.hp -= lost
         removed += lost
+        if e.malleable and lost and e.hp > 0 and not raw:  # (an Attack's hit that hurts without killing; orbs and Poison do not count)
+            e.soft, e.malleable = e.soft + e.malleable, e.malleable + 1
         if e.stun_at and e.hp <= e.stun_at:
             e.stun_at = 0
             e.incoming = 0  # Stunned: its attack this turn never happens

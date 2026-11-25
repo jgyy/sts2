@@ -154,6 +154,7 @@ def simulate(
     span *= 1.0 if round_no <= late else 0.4
     ft, st = FoolTurn(arrows, aiming, stretch, tune, chord, boom, fool, foes), Stance(stance0)  # the Fool's Arrows, Aim, Stretch and Melodies; the Watcher's stance
     known_dead = {e.entity_id for e in foes if not e.alive}
+    beating, softens = any(e.beat for e in foes), any(e.malleable for e in foes)  # (the first game's Heart; its Snake Plant)
     # (Only Stock and Adaptable enemies come back and only crabs hand on Block: for the rest both are skipped.)
     respawn, rage_blocks = (_respawns if any(e.respawns > 0 or e.adapts for e in foes) else _idle), (_rage_blocks if any(e.rage for e in foes) else _idle)
 
@@ -416,6 +417,11 @@ def simulate(
         elif not c.known and c.key not in triggers.READ:
             score += 2.5 + max(c.cost, 0)
         future += triggers.kept(c, dmg_value) * span  # (an Ethereal card not played now is Exhausted)
+        if beating and (beat := sum(e.beat for e in foes if e.alive) * k):  # Beat of Death: each play hits us once it has resolved, Block first
+            soak = min(max(0, block), beat)
+            block, self_loss = block - soak, self_loss + beat - soak
+        for e in foes if softens else ():  # Malleable: the Block its hits earned it comes once the card is done
+            e.block, e.soft = e.block + e.soft, 0
 
     if healed:  # HP given back is HP not lost, at the price HP has right now; and it is there for this turn's blow
         healed = min(healed, max(0, max_hp - hp))

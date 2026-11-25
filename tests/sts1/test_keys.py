@@ -1,7 +1,12 @@
 """The first game: the numbers the game works out for a card in hand, its powers in the planner's words, the three keys
 that open act 4 (games/sts1/keys.py), and fights the first game's own words once misled the planner in."""
 
+import json
+import tempfile
+from pathlib import Path
+
 from sts2bot import cards
+from sts2bot.bot import Bot
 from sts2bot.fight import battle, closing, combat
 from sts2bot.fight.bossfight import BossWatch
 from sts2bot.fightrecord import FightWatch
@@ -14,8 +19,12 @@ from ..helpers import DEFEND, STRIKE, combat_state, enemy
 from .helpers import Sts1Case
 
 
+AHEAD = [{"x": 3, "y": 14, "symbol": "E", "emerald_key": True, "children": []}]  # (the act's burning elite, on its last row: act 4 still possible)
+
+
 def _game(**kw) -> dict:
-    return {"act": 3, "floor": 40, "current_hp": 70, "max_hp": 80, "final_act_available": True, "keys": {"ruby": False, "emerald": False, "sapphire": False}, **kw}
+    return {"act": 3, "floor": 40, "current_hp": 70, "max_hp": 80, "final_act_available": True, "keys": {"ruby": False, "emerald": False, "sapphire": False},
+            "map": AHEAD, **kw}
 
 
 def screens(**game):
@@ -79,9 +88,11 @@ class Powers(Sts1Case):
 class Keys(Sts1Case):
     def test_recall_in_act_3_with_hp_to_spare_and_no_key_while_act_4_is_shut(self):
         self.assertEqual(keys.missing(_game(final_act_available=False)), set())
-        # Not before the heal (40 HP), but on the last rest site (floor 49) there is no other chance.
-        for game, wanted in [({"final_act_available": False}, False), ({}, True), ({"current_hp": 40}, False), ({"current_hp": 37, "floor": 49}, True), ({"current_hp": 35, "floor": 49}, False),
-                             ({"act": 2}, False), ({"keys": {"ruby": True}}, False)]:
+        # Not before the heal (40 HP), but on the last rest site (floor 49) there is no other chance (once the Emerald is held: nothing
+        # but the boss is left on the map after it).
+        emerald = {"ruby": False, "emerald": True, "sapphire": False}
+        for game, wanted in [({"final_act_available": False}, False), ({}, True), ({"current_hp": 40}, False), ({"current_hp": 37, "floor": 49, "keys": emerald}, True),
+                             ({"current_hp": 35, "floor": 49, "keys": emerald}, False), ({"current_hp": 37, "floor": 49}, False), ({"act": 2}, False), ({"keys": {"ruby": True}}, False)]:
             with self.subTest(**game):
                 self.assertIs(keys.wants_ruby(_game(**game)), wanted)
 
@@ -122,6 +133,25 @@ class Keys(Sts1Case):
         self.assertAlmostEqual(burning - plain, strategy.EMERALD_WORTH[1])
         s.raw["game_state"]["keys"]["emerald"] = True
         self.assertNotIn("EmeraldElite", [n["type"] for n in s._map()["map"]["nodes"]])
+
+
+    def test_the_keys_held_are_logged_and_kept_with_the_run(self):
+        self.assertEqual(screens(keys={"ruby": True, "emerald": False, "sapphire": True})._run()["keys"], ["ruby", "sapphire"])
+        self.assertNotIn("keys", screens(final_act_available=False)._run())  # (act 4 shut: nothing to collect)
+
+        class Profile:
+            def profile(self):
+                return {"total_wins": 0, "characters": []}
+
+        with tempfile.TemporaryDirectory() as d:
+            bot = Bot(Profile(), clock=lambda: 0.0, sleep=lambda s: None, log_dir=Path(d))
+            run = {"act": 1, "floor": 6, "keys": []}
+            with self.assertLogs("sts2bot", level="INFO") as logs:
+                bot._note_state({"state_type": "rest_site", "run": run, "player": {"hp": 70, "max_hp": 80}})
+                bot._note_state({"state_type": "map", "run": {**run, "keys": ["ruby"]}, "player": {"hp": 70, "max_hp": 80}})
+                bot._note_state({"state_type": "game_over", "run": {**run, "floor": 20, "keys": ["ruby"]}, "player": {"hp": 0, "max_hp": 80}})
+            self.assertEqual([line for line in logs.output if "keys" in line], ["INFO:sts2bot:keys: ruby"])
+            self.assertEqual(json.loads(Path(d, "runs.jsonl").read_text())["keys"], ["ruby"])
 
 
 class RunEnd(Sts1Case):
@@ -253,3 +283,24 @@ class AwakenedOne(Sts1Case):
         (boss,) = battle.read_enemies({"battle": {"enemies": [e], "round": 9}, "player": {"hp": 50}, "state_type": "boss"})
         self.assertEqual((boss.respawns, boss.curious), (1, 1))
         self.assertEqual(closing.discount(30.0, 10, 50, [boss]), 1.0)  # (20 HP is not "dying next turn": 300 more come after)
+
+
+class NoWayToAct4(Sts1Case):
+    def test_without_the_emerald_and_its_elite_behind_us_the_chest_keeps_its_relic(self):
+        relic = {"id": "Anchor", "name": "Anchor"}
+        rewards = [{"reward_type": "RELIC", "relic": relic}, {"reward_type": "SAPPHIRE_KEY", "link": relic}]
+        behind = [{"x": 1, "y": 3, "symbol": "E", "emerald_key": True, "children": []}]
+        ahead = [{"x": 1, "y": 12, "symbol": "E", "emerald_key": True, "children": []}]
+        for nodes, held, want in ((behind, False, ["relic"]), (ahead, False, ["sapphire_key"]), (behind, True, ["sapphire_key"])):
+            with self.subTest(ahead=nodes is ahead, emerald=held):
+                s = screens(floor=43, map=nodes, keys={"ruby": True, "emerald": held, "sapphire": False}, screen_type="COMBAT_REWARD", screen_state={"rewards": rewards})
+                self.assertEqual([r["type"] for r in s._combat_reward()["rewards"]["items"]], want)
+        self.assertTrue(keys.emerald_ahead(_game(act=2, floor=30)))  # (another act, another burning elite)
+
+    def test_nor_does_an_act_3_rest_site_give_up_its_rest_for_the_ruby(self):
+        rest = {"rest_options": ["rest", "smith", "recall"]}
+        behind = [{"x": 1, "y": 3, "symbol": "E", "emerald_key": True, "children": []}]
+        s = screens(floor=47, current_hp=75, map=behind, screen_type="REST", screen_state=rest)
+        self.assertEqual([o["id"] for o in s._rest()["rest_site"]["options"]], ["rest", "smith"])
+        s.raw["game_state"]["map"] = [{**behind[0], "y": 13}]
+        self.assertEqual([o["id"] for o in s._rest()["rest_site"]["options"]], ["recall"])

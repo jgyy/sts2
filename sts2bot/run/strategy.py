@@ -211,7 +211,9 @@ LATE_ROW = 5  # from this row of acts 2 and 3 an ordinary fight costs more than 
 LATE_COST = {2: (0.85, 1.2), 3: (0.93, 1.08)}
 BAD_LUCK = 1.7  # how much more than average a fight costs when the draws go wrong
 BOSS_WORTH = 16.0  # what getting past the boss is worth, in the units of the room rewards below
-EMERALD_WORTH = {1: 8.0, 2: 11.0, 3: 16.0}  # the first game's burning elite, which holds the Emerald Key for act 4 (games/sts1/keys.py): more as the chances run out
+# The first game's burning elite, which holds the Emerald Key for act 4 (games/sts1/keys.py): the key comes first (user, 2026-11-25:
+# "focus more collecting all keys"), and in acts 1-2 its elite kills seldom (3 of 58 fights) where act 3's kill one in six.
+EMERALD_WORTH = {1: 16.0, 2: 18.0, 3: 16.0}
 MAX_PATHS = 1500
 ELITE_FLOOR = 0.35  # share of Max HP under which an elite is never chosen while there is another way on
 # The act 2 boss win chance by the HP it is met on, as a share of that from full HP (even HP above 85% counts there).

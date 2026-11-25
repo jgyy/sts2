@@ -279,10 +279,48 @@ index 0000000..02cf6e5
 +        return false;
 +    }
 +}
+diff --git a/McpMod.Helpers.cs b/McpMod.Helpers.cs
+index 3eb9b38..cb634f7 100644
+--- a/McpMod.Helpers.cs
++++ b/McpMod.Helpers.cs
+@@ -435,7 +435,24 @@ public static partial class McpMod
+         }
+     }
+ 
++    // sts2bot: the scans below walk the whole scene tree three or four times, 24 of every 27 ms a state took (2026-11-25), and
++    // a combat state is asked for every few dozen ms. A scan that found nothing is trusted for PopupScanMs of real time; any
++    // action sent clears it (an action is what opens a popup), so a popup shows by the next look after it or within that time.
++    internal static long NoPopupUntilMs;
++    private const long PopupScanMs = 200;
++
+     private static Dictionary<string, object?>? BuildVisibleFtueState(Node root)
++    {
++        long now = System.Environment.TickCount64;
++        if (now < NoPopupUntilMs)
++            return null;
++        var found = ScanVisibleFtueState(root);
++        if (found == null)
++            NoPopupUntilMs = now + PopupScanMs;
++        return found;
++    }
++
++    private static Dictionary<string, object?>? ScanVisibleFtueState(Node root)
+     {
+         var tutorialFtue = FindVisibleAcceptTutorialsFtue(root);
+         if (tutorialFtue != null && IsFtueNodeActive(tutorialFtue))
 diff --git a/McpMod.StateBuilder.cs b/McpMod.StateBuilder.cs
-index 76eee84..ff161de 100644
+index 76eee84..bc19fe1 100644
 --- a/McpMod.StateBuilder.cs
 +++ b/McpMod.StateBuilder.cs
+@@ -65,7 +65,7 @@ public static partial class McpMod
+ 
+         if (tree?.Root != null)
+         {
+-            var ftueState = BuildVisibleFtueState(tree.Root);
++            var ftueState = Prof.Time("ftue", () => BuildVisibleFtueState(tree.Root));
+             if (ftueState != null)
+                 return ftueState;
+         }
 @@ -351,18 +351,7 @@ public static partial class McpMod
                                          clickable.Visible &&
                                          clickable.IsVisibleInTree())
@@ -335,6 +373,30 @@ index 76eee84..ff161de 100644
              };
          }
          else if (topOverlay is IOverlayScreen
+@@ -489,12 +491,12 @@ public static partial class McpMod
+                 {
+                     result["state_type"] = "hand_select";
+                     result["hand_select"] = BuildHandSelectState(playerHand, runState);
+-                    result["battle"] = BuildBattleState(runState, combatRoom);
++                    result["battle"] = Prof.Time("battle", () => BuildBattleState(runState, combatRoom));
+                 }
+                 else
+                 {
+                     result["state_type"] = combatRoom.RoomType.ToString().ToLower(); // monster, elite, boss
+-                    result["battle"] = BuildBattleState(runState, combatRoom);
++                    result["battle"] = Prof.Time("battle", () => BuildBattleState(runState, combatRoom));
+                 }
+             }
+             else
+@@ -614,7 +616,7 @@ public static partial class McpMod
+         var _player = LocalContext.GetMe(runState);
+         if (_player != null)
+         {
+-            result["player"] = BuildPlayerState(_player);
++            result["player"] = Prof.Time("player", () => BuildPlayerState(_player));
+         }
+ 
+         return result;
 @@ -749,6 +751,18 @@ public static partial class McpMod
          }
          catch { }
@@ -394,7 +456,103 @@ index 76eee84..ff161de 100644
                          bool isReady = false;
                          try { isReady = lobby.IsPlayerReady(sp.NetId); } catch { }
                          players.Add(new Dictionary<string, object?>
-@@ -1564,7 +1576,8 @@ public static partial class McpMod
+@@ -1077,13 +1089,17 @@ public static partial class McpMod
+         // Enemies
+         var enemies = new List<Dictionary<string, object?>>();
+         var entityCounts = new Dictionary<string, int>();
+-        foreach (var creature in combatState.Enemies)
++        Prof.Time("enemies", () =>
+         {
+-            if (creature.IsAlive)
++            foreach (var creature in combatState.Enemies)
+             {
+-                enemies.Add(BuildEnemyState(creature, entityCounts));
++                if (creature.IsAlive)
++                {
++                    enemies.Add(BuildEnemyState(creature, entityCounts));
++                }
+             }
+-        }
++            return 0;
++        });
+         battle["enemies"] = enemies;
+ 
+         return battle;
+@@ -1115,13 +1131,17 @@ public static partial class McpMod
+             }
+ 
+             // Hand
+-            var hand = new List<Dictionary<string, object?>>();
+-            int cardIndex = 0;
+-            foreach (var card in combatState.Hand.Cards)
++            var hand = Prof.Time("hand", () =>
+             {
+-                hand.Add(BuildCardState(card, cardIndex));
+-                cardIndex++;
+-            }
++                var cards = new List<Dictionary<string, object?>>();
++                int cardIndex = 0;
++                foreach (var card in combatState.Hand.Cards)
++                {
++                    cards.Add(BuildCardState(card, cardIndex));
++                    cardIndex++;
++                }
++                return cards;
++            });
+             state["hand"] = hand;
+ 
+             // Pile counts
+@@ -1134,9 +1154,9 @@ public static partial class McpMod
+             drawCards.Sort((c1, c2) => c1.Rarity != c2.Rarity
+                 ? c1.Rarity.CompareTo(c2.Rarity)
+                 : string.Compare(c1.Id.Entry, c2.Id.Entry, StringComparison.Ordinal));
+-            state["draw_pile"] = BuildPileCardList(drawCards, PileType.Draw);
+-            state["discard_pile"] = BuildPileCardList(combatState.DiscardPile.Cards, PileType.Discard);
+-            state["exhaust_pile"] = BuildPileCardList(combatState.ExhaustPile.Cards, PileType.Exhaust);
++            state["draw_pile"] = Prof.Time("piles", () => BuildPileCardList(drawCards, PileType.Draw));
++            state["discard_pile"] = Prof.Time("piles", () => BuildPileCardList(combatState.DiscardPile.Cards, PileType.Discard));
++            state["exhaust_pile"] = Prof.Time("piles", () => BuildPileCardList(combatState.ExhaustPile.Cards, PileType.Exhaust));
+ 
+             // Orbs
+             var orbQueue = combatState.OrbQueue;
+@@ -1181,21 +1201,25 @@ public static partial class McpMod
+         state["gold"] = player.Gold;
+ 
+         // Powers (status effects)
+-        state["status"] = BuildPowersState(creature);
++        state["status"] = Prof.Time("powers", () => BuildPowersState(creature));
+ 
+         // Relics
+-        var relics = new List<Dictionary<string, object?>>();
+-        foreach (var relic in player.Relics)
++        var relics = Prof.Time("relics", () =>
+         {
+-            relics.Add(new Dictionary<string, object?>
++            var list = new List<Dictionary<string, object?>>();
++            foreach (var relic in player.Relics)
+             {
+-                ["id"] = relic.Id.Entry,
+-                ["name"] = SafeGetText(() => relic.Title),
+-                ["description"] = SafeGetText(() => relic.DynamicDescription),
+-                ["counter"] = relic.ShowCounter ? relic.DisplayAmount : null,
+-                ["keywords"] = BuildHoverTips(relic.HoverTipsExcludingRelic)
+-            });
+-        }
++                list.Add(new Dictionary<string, object?>
++                {
++                    ["id"] = relic.Id.Entry,
++                    ["name"] = SafeGetText(() => relic.Title),
++                    ["description"] = SafeGetText(() => relic.DynamicDescription),
++                    ["counter"] = relic.ShowCounter ? relic.DisplayAmount : null,
++                    ["keywords"] = BuildHoverTips(relic.HoverTipsExcludingRelic)
++                });
++            }
++            return list;
++        });
+         state["relics"] = relics;
+ 
+         // Potions
+@@ -1564,7 +1588,8 @@ public static partial class McpMod
      {
          var state = new Dictionary<string, object?>();
  
@@ -404,7 +562,7 @@ index 76eee84..ff161de 100644
          if (inventory == null)
          {
              state["items"] = new List<Dictionary<string, object?>>();
-@@ -1933,6 +1946,12 @@ public static partial class McpMod
+@@ -1933,6 +1958,12 @@ public static partial class McpMod
          bool previewShowing = (previewSingle?.Visible ?? false)
                              || (previewMulti?.Visible ?? false)
                              || (previewGeneric?.Visible ?? false);
@@ -418,7 +576,7 @@ index 76eee84..ff161de 100644
          if (previewShowing)
          {
 diff --git a/McpMod.cs b/McpMod.cs
-index 3b5ed64..60823f0 100644
+index 3b5ed64..7410e6a 100644
 --- a/McpMod.cs
 +++ b/McpMod.cs
 @@ -84,6 +84,7 @@ public static partial class McpMod
@@ -429,10 +587,21 @@ index 3b5ed64..60823f0 100644
  
              // Connect to main thread process frame for action execution
              var tree = (SceneTree)Engine.GetMainLoop();
-@@ -450,6 +451,157 @@ public static partial class McpMod
+@@ -388,7 +389,7 @@ public static partial class McpMod
+ 
+         try
+         {
+-            var stateTask = RunOnMainThread(() => BuildGameState());
++            var stateTask = RunOnMainThread(() => Prof.Build(BuildGameState));
+             var state = stateTask.GetAwaiter().GetResult();
+ 
+             if (format == "markdown")
+@@ -449,6 +450,158 @@ public static partial class McpMod
+         }
  
          string action = actionElem.GetString() ?? "";
- 
++        NoPopupUntilMs = 0;  // (sts2bot: whatever this does may open a popup; see BuildVisibleFtueState)
++
 +        // sts2bot: set the animation speed for this session ("normal", "fast", "instant").
 +        // Same effect as the Fast Mode / Instant Mode tickboxes in Settings.
 +        if (action == "set_fast_mode")
@@ -583,7 +752,45 @@ index 3b5ed64..60823f0 100644
 +            }
 +            return;
 +        }
-+
+ 
          // Handle menu actions separately (no run required)
          if (action == "menu_select")
-         {
+@@ -480,3 +633,38 @@ public static partial class McpMod
+         }
+     }
+ }
++
++/// <summary>Where a state request's time goes on the main thread (sts2bot): section totals, printed every 400 builds.</summary>
++internal static class Prof
++{
++    private static readonly Dictionary<string, double[]> _t = new();
++    private static int _builds;
++
++    internal static T Time<T>(string key, Func<T> f)
++    {
++        var sw = System.Diagnostics.Stopwatch.StartNew();
++        try { return f(); }
++        finally { Add(key, sw.Elapsed.TotalMilliseconds); }
++    }
++
++    internal static void Add(string key, double ms)
++    {
++        if (!_t.TryGetValue(key, out var v)) _t[key] = v = new double[3];
++        v[0] += ms; v[1] += 1; v[2] = Math.Max(v[2], ms);
++    }
++
++    internal static Dictionary<string, object?> Build(Func<Dictionary<string, object?>> build)
++    {
++        var state = Time("build", build);
++        if (++_builds % 400 == 0)
++        {
++            var sb = new StringBuilder("[STS2 MCP] state build ms over 400 (total/calls, mean, max): ");
++            foreach (var kv in _t)
++                sb.Append($"{kv.Key} {kv.Value[0]:F0}/{kv.Value[1]:F0} {kv.Value[0] / Math.Max(1, kv.Value[1]):F2} {kv.Value[2]:F1}; ");
++            GD.Print(sb.ToString());
++            _t.Clear();
++        }
++        return state;
++    }
++}
++
