@@ -84,6 +84,10 @@ on turns the enemy does not attack; block only what is coming.
 
 ## 4. Characters
 
+In the bot's model runs ([simulation.md](simulation.md), Ascension 0) the Ironclad wins most (8.1%), then the Defect
+(5.2%), the Watcher (2.7%) and the Silent (2.0%); the Champ is the boss that ends the most runs. The cards that went
+with deeper runs for each character are listed there.
+
 **Ironclad** (80 HP; 5 Strike, 4 Defend, Bash; Burning Blood heals 6 after each fight). Strength (Inflame, Spot
 Weakness, Demon Form, Limit Break, Heavy Blade, Twin Strike), Exhaust (Corruption with Feel No Pain and Dark Embrace,
 Second Wind, Burning Pact, Fiend Fire, True Grit), Block (Barricade, Entrench, Body Slam, Impervious, Flame Barrier).
