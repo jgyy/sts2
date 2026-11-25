@@ -57,6 +57,8 @@ class Fight:
         self.plays = 0  # cards the planner has played (for the trace)
         self.digest: list[str] = []
         self.triggers: list[tuple] = []  # Slay the Spire 2's Powers, read from their text: (when, what, card key)
+        self.fresh: set[str] = set()  # debuffs an enemy gave us this round: the round's end passes them by once
+        self.bound: set[int] = set()  # Chains of Binding: the cards Bound this turn (one of them can be played)
 
     # ------------------------------------------------------------------ numbers
 
@@ -76,6 +78,8 @@ class Fight:
         d = base + (self.pw.get("CALCIFY", 0) if osty else self.strength() + self.pw.get("VIGOR", 0))
         if self.pw.get("WEAK") and not osty:
             d *= 0.75
+        if self.pw.get("SHRINK") and not osty:
+            d *= 0.7
         d *= 1.0 if osty else self.stance_mult()
         if foe is not None:
             if foe.powers.get("VULNERABLE"):
@@ -84,6 +88,8 @@ class Fight:
                 d *= 1.5
             if foe.powers.get("FLUTTER") or foe.powers.get("SOAR"):
                 d *= 0.5
+            if foe.powers.get("SLOW"):  # 10% more for each card played before this one this turn
+                d *= 1 + 0.1 * max(0, len(self.turn_cards) - 1)
         return max(0, math.floor(d))
 
     def block_value(self, base: float) -> int:
@@ -117,7 +123,7 @@ class Fight:
     def playable(self, c: Card) -> bool:
         cost = self.cost_of(c)
         if (cost == -2 or not effects.can_play(self, c) or self.pw.get("ENTANGLED") and c.type == "Attack" or self.pw.get("SMOGGY") and c.type == "Skill" and self.skills_turn
-                or self.limit_left() == 0 or c.star_cost is not None and c.star_cost > self.stars):
+                or self.limit_left() == 0 or c.star_cost is not None and c.star_cost > self.stars or id(c) in self.bound and self.pw.get("BOUND_PLAYED")):
             return False
         return cost < 0 or cost <= self.energy
 
@@ -132,7 +138,7 @@ class Fight:
             return cost
         if c.type == "Skill" and self.pw.get("CORRUPTION") or c.type == "Attack" and self.free_attack or self.pw.get("VOID_FREE"):
             return 0
-        return cost + self.pw.get("SURCHARGE", 0)
+        return cost + self.pw.get("SURCHARGE", 0) + (1 if c.type == "Attack" and self.pw.get("TANGLED") else 0)
 
     def state(self) -> dict:
         hand = []
@@ -427,6 +433,8 @@ class Fight:
             self.facing = foe.eid
         self.hand.pop(index)
         self.turn_cards.append(c.name)
+        if id(c) in self.bound:
+            self.pw["BOUND_PLAYED"] = 1
         times = 1
         if c.type == "Attack" and self.double_next:
             self.double_next, times = self.double_next - 1, 2
@@ -501,7 +509,10 @@ class Fight:
         self.energy = max(0, self.run.energy - self.pw.get("ENERGY_DOWN", 0)) + self.pw.pop("ENERGY_NEXT_TURN", 0)
         effects.turn_start(self)
         draw = 5 + self.pw.pop("DRAW_CARDS_NEXT_TURN", 0) + effects.extra_draw(self) - self.pw.pop("DRAW_REDUCTION", 0)
+        held = len(self.hand)
         self.draw_cards(max(0, draw))
+        self.pw.pop("BOUND_PLAYED", None)
+        self.bound = {id(c) for c in self.hand[held:held + self.pw.get("CHAINS_OF_BINDING", 0)]}
         effects.after_draw(self)
 
     def player_turn_end(self) -> None:
@@ -509,13 +520,15 @@ class Fight:
         keep_all = self.pw.pop("KEEP_HAND", 0) or self.run.has("RUNIC_PYRAMID")
         planned = sorted((c for c in self.hand if c.type not in ("Status", "Curse") and not c.has("Retain")), key=lambda c: -c.cost())
         kept = set(map(id, planned[: self.pw.get("WELL_LAID_PLANS", 0)]))
+        hexed = any(x.alive and x.powers.get("HEX") for x in self.foes)  # (the Spectral Knight: all our cards are Ethereal)
         for c in list(self.hand):
-            if c.has("Retain") or id(c) in kept or keep_all and c.type not in ("Status", "Curse") and not c.has("Ethereal"):
+            ethereal = hexed or c.has("Ethereal")
+            if c.has("Retain") or id(c) in kept or keep_all and c.type not in ("Status", "Curse") and not ethereal:
                 c.retained += 1
                 effects.retained(self, c)
                 continue
             self.hand.remove(c)
-            if c.has("Ethereal"):
+            if ethereal:
                 self.exhaust(c)
             else:
                 self.discard.append(c)
@@ -557,7 +570,7 @@ class Fight:
         for f in self.foes:  # Strength lost "this turn" (Piercing Wail, Shifting) is back once the enemies have acted
             f.powers["STRENGTH"] = f.powers.get("STRENGTH", 0) + f.mem.pop("str_back", 0)
         for k in ("WEAK", "VULNERABLE", "FRAIL", "INTANGIBLE"):
-            if self.pw.get(k):
+            if self.pw.get(k) and k not in self.fresh:
                 self.pw[k] -= 1
         if self.pw.get("REGEN"):
             self.heal(self.pw["REGEN"])
@@ -570,6 +583,7 @@ class Fight:
                     f.powers[k] -= 1
             effects.foe_round_end(self, f)
         self.game.ROUND_END(self)
+        self.fresh.clear()
         for f in self.foes:
             if f.alive:
                 f.choose(self.rng)

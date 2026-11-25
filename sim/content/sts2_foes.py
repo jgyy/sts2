@@ -214,8 +214,19 @@ def _adaptable_death(f, foe):
     foe.half_dead, foe.hp = True, 0
     foe.mem["revive"] = 1
     foe.mem["form_hp"] = foe.max_hp + 100
-    foe.mem["force"] = ("MULTI_CLAW", "PHASE3_LACERATE")[n]
+    foe.mem["force"] = "RESPAWN"  # (which gives it Nemesis and Painful Stabs; its state machine then picks the form's moves)
     return True
+
+
+def slumber(foe, turn: bool = False) -> None:
+    """The Slumbering Beetle wakes after its Slumber's count of turns, or once it has lost HP three times."""
+    if turn:
+        foe.powers["SLUMBER"] -= 1
+    else:
+        foe.mem["slumber_hits"] = foe.mem.get("slumber_hits", 0) + 1
+    if foe.powers.get("SLUMBER", 0) <= 0 or foe.mem.get("slumber_hits", 0) >= 3:
+        foe.powers.pop("SLUMBER", None)
+        foe.mem["force"] = "WAKE_UP_MOVE"
 
 
 def _giant_death(f, foe):
@@ -260,6 +271,7 @@ HOOKS = {
     "SPINY_TOAD": {"acted": lambda f, foe: foe.powers.pop("THORNS", None) if foe.move_name == "SPIKE_EXPLOSION" else None},
     "TERROR_EEL": {"hit": _shriek_hit},
     "TEST_SUBJECT": {"death": _adaptable_death},
+    "SLUMBERING_BEETLE": {"hit": lambda f, foe, amount, attack: slumber(foe) if foe.powers.get("SLUMBER") else None},
     "AXEBOT": {"death": _stock_death},
     "EYE_WITH_TEETH": {"death": _illusion_death},
     "PARAFRIGHT": {"death": _illusion_death},
@@ -273,7 +285,8 @@ SUMMONS = {"FABRICATOR": "ZAPBOT", "OVICOPTER": "TOUGH_EGG", "TWO_TAILED_RAT": "
 
 
 def revive_round(f) -> None:
-    """The half-dead come back: Illusions at full HP, Decimillipede segments on their Reattach HP, the Test Subject in its next form."""
+    """The half-dead come back: Illusions at full HP, Decimillipede segments on their Reattach HP, the Test Subject in its next form
+    (the round's end then picks their move with everyone else's)."""
     for x in f.foes:
         if x.half_dead and not x.gone:
             x.mem["revive"] = x.mem.get("revive", 1) - 1
@@ -282,7 +295,6 @@ def revive_round(f) -> None:
                 x.hp = x.powers.get("REATTACH") or x.max_hp
                 if x.key == "TEST_SUBJECT":
                     x.max_hp = x.hp = x.mem.pop("form_hp", x.max_hp)
-                x.choose(f.rng)
 
 
 def new_foe(spec: Spec, n: int, hp: int, slot: int, alone: bool) -> Foe:

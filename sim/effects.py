@@ -588,6 +588,11 @@ def foe_acts(f, foe, m) -> None:
                     f.channel("LIGHTNING")
             if lost and (foe.mem.get("painful_stabs") or foe.powers.get("PAINFUL_STABS")):
                 f.add_new("WOUND", 1, "discard")
+            if lost and foe.powers.get("SUCK"):
+                add(foe.powers, "STRENGTH", foe.powers["SUCK"])
+            if lost and foe.powers.get("PAPER_CUTS"):
+                f.run.max_hp -= foe.powers["PAPER_CUTS"]
+                f.run.hp = min(f.run.hp, f.run.max_hp)
         if foe.powers.get("IMBALANCED") and f.run.hp == hp0:
             foe.mem["off_balance"] = True
     if m.block:
@@ -617,7 +622,10 @@ def do(f, foe, fx: tuple) -> None:
         for x in alive:
             x.block += n
     elif word in ("weak", "vuln", "frail"):
-        debuff_me(f, {"weak": "WEAK", "vuln": "VULNERABLE", "frail": "FRAIL"}[word], n)
+        power = {"weak": "WEAK", "vuln": "VULNERABLE", "frail": "FRAIL"}[word]
+        if not f.pw.get(power):
+            f.fresh.add(power)
+        debuff_me(f, power, n)
     elif word == "status":
         key, count, pile = args[0], args[1], args[2] if len(args) > 2 else "discard"
         f.add_new(key, count, pile, up=bool(foe.mem.get("burn_up")) and key == "BURN")
@@ -657,6 +665,8 @@ def do(f, foe, fx: tuple) -> None:
     elif word == "power":
         add(foe.powers, args[0], args[1])
     elif word == "player_power":
+        if not f.pw.get(args[0]):
+            f.fresh.add(args[0])
         add(f.pw, args[0], args[1])
 
 

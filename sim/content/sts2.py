@@ -291,11 +291,17 @@ def TURN_START(f) -> None:
     f.pw.pop("DRAWN_TURN", None)
     if f.pw.get("NEUROSURGE"):
         add(f.pw, "DOOM", f.pw["NEUROSURGE"])
+    for foe in f.alive():  # Rampart: the Living Shield's Turret Operator gains 25 Block as our turn starts
+        if foe.powers.get("RAMPART"):
+            for x in f.alive():
+                x.block += foe.powers["RAMPART"] if x.key == "TURRET_OPERATOR" else 0
     trigger(f, "start")
 
 
 def TURN_END(f) -> None:
     trigger(f, "end")
+    if f.pw.get("PLATING"):  # (its Block is in: Plating wears off by 1 a turn)
+        f.pw["PLATING"] -= 1
     if f.pw.get("DISINTEGRATION"):
         f.take(f.pw["DISINTEGRATION"], attack=False)
     if f.pw.get("DOOM") and f.pw["DOOM"] >= f.run.hp:
@@ -320,8 +326,17 @@ def ROUND_END(f) -> None:
             foe.powers["SANDPIT"] -= 1
             if foe.powers["SANDPIT"] <= 0:
                 f.lose_hp(f.run.hp)
-        if foe.powers.get("TERRITORIAL"):
-            add(foe.powers, "STRENGTH", foe.powers["TERRITORIAL"])
+        for k in ("TERRITORIAL", "HIGH_VOLTAGE"):
+            if foe.powers.get(k):
+                add(foe.powers, "STRENGTH", foe.powers[k])
+        if foe.powers.get("PLATING"):
+            foe.powers["PLATING"] -= 1
+        if foe.powers.get("NEMESIS"):  # Intangible every other turn
+            foe.mem["nemesis"] = not foe.mem.get("nemesis")
+            if foe.mem["nemesis"]:
+                add(foe.powers, "INTANGIBLE", 1)
+        if foe.powers.get("SLUMBER"):
+            sts2_foes.slumber(foe, turn=True)
         if foe.powers.get("ESCAPE_ARTIST"):
             foe.powers["ESCAPE_ARTIST"] -= 1
             if foe.powers["ESCAPE_ARTIST"] <= 0:
@@ -329,8 +344,8 @@ def ROUND_END(f) -> None:
         if foe.powers.get("ASLEEP"):
             foe.powers["ASLEEP"] -= 1
         foe.mem.pop("spark", None)
-    for k in ("RINGING", "SMOGGY", "TENDER"):
-        if f.pw.get(k):
+    for k in ("RINGING", "SMOGGY", "TENDER", "TANGLED"):
+        if f.pw.get(k) and k not in f.fresh:
             f.pw[k] -= 1
     if not any(x.alive and not x.minion for x in f.foes):
         f.won = True
