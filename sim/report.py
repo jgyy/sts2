@@ -42,6 +42,22 @@ def boss_record(runs: list[dict]) -> list[str]:
     return cells
 
 
+def boss_table(groups: dict, game: str) -> list[str]:
+    """Each boss's win rate per character: how often a fight with it was won."""
+    chars = [ch for (g, ch, _a) in sorted(groups) if g == game]
+    rec: dict = defaultdict(lambda: defaultdict(lambda: [0, 0]))
+    for (g, ch, _a), rs in groups.items():
+        for f in (f for r in rs for f in r["fights"] if g == game and f["kind"] == "boss"):
+            for key in (ch, "All"):
+                cell = rec[(f["act"], "+".join(sorted(set(f["foes"]))))][key]
+                cell[0], cell[1] = cell[0] + f["won"], cell[1] + 1
+    lines = ["| Act | Boss | " + " | ".join(chars) + " | All |", "|---|---|" + "---|" * (len(chars) + 1)]
+    for (act, boss), cells in sorted(rec.items()):
+        row = [f"{100 * cells[c][0] / cells[c][1]:.0f}%" if cells[c][1] else "" for c in chars]
+        lines.append(f"| {act} | {boss} | " + " | ".join(row) + f" | {pct(*cells['All'])} of {cells['All'][1]} |")
+    return lines
+
+
 def effects(runs: list[dict]) -> dict:
     """setting -> value -> (score over the setting's average in these runs, its standard error, runs)."""
     out: dict = {}
@@ -135,7 +151,9 @@ def deaths(runs: list[dict], top: int = 6) -> list[tuple]:
 
 
 def habits(runs: list[dict]) -> str:
-    won, lost = [r for r in runs if r["won"]], [r for r in runs if not r["won"]]
+    """Won runs next to the runs that got as far and lost to the last boss (runs that end early do less of everything)."""
+    won = [r for r in runs if r["won"]]
+    lost = [r for r in runs if not r["won"] and r["fights"] and r["fights"][-1]["kind"] == "boss" and r["act"] == max(x["act"] for x in runs)]
     avg = lambda rs, k: sum(len(v) if isinstance(v := r.get(k, 0), list) else v for r in rs) / max(1, len(rs))
     return ", ".join(f"{k} {avg(won, k):.1f} / {avg(lost, k):.1f}" for k in ("elites", "rests", "smiths", "removals", "skips", "potions", "deck"))
 
@@ -156,12 +174,13 @@ def report(files: list[str], min_runs: int = 30) -> str:
         out += ["", f"## {game}: settings", "", "Score over the setting's average, per character and pooled (* 95%, ** 99%):", ""]
         out += settings_table(groups, game)
         out += ["", "Best value where it beats the runner-up at 95%:", "", *recommendations(groups, game)]
+        out += ["", f"## {game}: bosses", "", "Share of boss fights won:", "", *boss_table(groups, game)]
     for (game, ch, asc), rs in sorted(groups.items()):
-        out += ["", f"## {game} {ch} (Ascension {asc}, {len(rs)} runs)", "", "Won / lost runs, per run: " + habits(rs)]
+        out += ["", f"## {game} {ch} (Ascension {asc}, {len(rs)} runs)", "", "Won runs / runs lost to the last boss, per run: " + habits(rs)]
         good, bad = card_table(rs)
         if good:
-            out += ["", "Cards that went with the deepest runs (score over runs that left the same floor alive; picks):",
-                    ", ".join(f"{k} {d:+.1f} ({n})" for d, k, n, _s in good), "", "... and the shallowest:",
-                    ", ".join(f"{k} {d:+.1f} ({n})" for d, k, n, _s in bad)]
+            out += ["", "Cards that went with the deepest runs (score over runs that left the same floor alive, * 95%; picks):",
+                    ", ".join(f"{k} {d:+.1f}{mark(d, se)} ({n})" for d, k, n, se in good), "", "... and the shallowest:",
+                    ", ".join(f"{k} {d:+.1f}{mark(d, se)} ({n})" for d, k, n, se in bad)]
         out += ["", "Where runs ended: " + ", ".join(f"act {a} {kind} {foes} {n}" for (a, kind, foes), n in deaths(rs))]
     return "\n".join(out) + "\n"
