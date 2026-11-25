@@ -172,7 +172,7 @@ CHOICES = {
     "weak_want": [0.0, 1.0],  # rating points for a card that applies Weak while the deck holds fewer than two (decks.deck_fit)
     "free_lean": [0.0, 1.0],  # how much of its kind's start a free attack gets (learn.CardStats.shift)
     "attack_room": [3.0],  # damage cards a deck holds before that lean lets go (gone three later; 99: never): attack-heavy decks lost the act 2 boss
-    "block_want": [0.0],  # rating points for a card with 5 Block or more while the deck holds few beyond its Defends (decks.deck_fit)
+    "block_want": [0.0, 1.5],  # rating points for a card with 5 Block or more while the deck holds few beyond its Defends (decks.deck_fit; model runs: 1.5 ahead in both games)
     "cards_first": [0.0, 1.0],  # 1.0: an early card removal has to beat the cards on a Merchant's shelf (strategy.shop)
     "debuff_worth": [1.0, 2.0, 3.0],  # a lasting turn of Vulnerable or Weak in the combat planner, as a multiple of its old worth (model runs: 1.0 best in the first game)
 }

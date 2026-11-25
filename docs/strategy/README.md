@@ -30,12 +30,18 @@ they disagree, and the model runs are where a rule is tried before it goes live.
 
 ## Open questions worth testing
 
-1. **Act 2 survival.** Most model and live runs end in act 2 (hallway fights and the boss). Candidates: count AoE and
-   Block cards as roles in `deck_fit` for act 2; route around act 2 elites without AoE.
-2. **Which card to remove.** `_removal_rank` goes by rating: guides say Strikes, then Defends only once Block is
+1. **Act 2 survival.** The act 2 boss ends a third or more of the model's runs in both games (the Knowledge Demon is
+   beaten 20-48% of the time, the Champ 24-42%). Candidates: count AoE and Block cards as roles in `deck_fit` for act 2;
+   route around act 2 elites without AoE.
+2. **Slay the Spire 2's act 3 bosses** stop even the best decks in the model (Queen 13%, Test Subject 21%, Aeonglass 18%
+   beaten). The Test Subject and Aeonglass rules now match the bot's logs; the Queen has no log-built model fight yet.
+3. **Settings the model runs favour** (`caution` 1.35, `crowd` 0, `debuff_worth` 1, `block_want` 1.5) are now among
+   `learn.CHOICES`; the live runs decide whether they stay.
+4. **Cards the model runs flag** ([simulation.md](simulation.md), per character: Refract, Hailstorm, Unmovable and
+   Aggression low in Slay the Spire 2; Hyperbeam, Concentrate and Reaper low in the first game) are candidates for
+   `cards._TIER` and the first game's tables, once `learn.CardStats` agrees on live runs.
+5. **Which card to remove.** `_removal_rank` goes by rating: guides say Strikes, then Defends only once Block is
    covered (not early for the Defect and Necrobinder).
-3. **One-turn potions** (Flex, Energy, Swift, Duplicator) are drunk on round 1 of a boss like the rest; pricing each by
+6. **One-turn potions** (Flex, Energy, Swift, Duplicator) are drunk on round 1 of a boss like the rest; pricing each by
    the planner's score with and without it would hold them for a turn that uses them.
-4. **Unknown rooms** count a flat 0.9 on the map; they are a fight about one time in five by the act's end.
-5. **Settings the model runs favour** (see [simulation.md](simulation.md)): try them live through `learn.CHOICES`
-   before changing a default.
+7. **Unknown rooms** count a flat 0.9 on the map; they are a fight about one time in five by the act's end.

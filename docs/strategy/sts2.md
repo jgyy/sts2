@@ -89,8 +89,8 @@ or capped turns (Soul Fysh, Skulking Colony, Test Subject) spend energy on Block
 - **Orbs** (Defect): Lightning, Frost, Dark, Plasma as in the first game, plus Glass (damage to all enemies).
 - **Enchantments** stay on a card for the run (don't remove an enchanted card); **afflictions** are put on cards by
   enemies for a fight (the Queen's Chains of Binding, the Ceremonial Beast's Ringing).
-- **Plating**: Block at the end of each turn; **Slippery**: the next N hits do 1 damage each; **Hardened Shell**: HP
-  lost per turn is capped.
+- **Plating**: Block at the end of each turn, 1 less each turn; **Slippery**: the next N hits do 1 damage each;
+  **Hardened Shell**: HP lost per turn is capped.
 
 ## 3. Elites and bosses
 
@@ -105,7 +105,7 @@ or capped turns (Soul Fysh, Skulking Colony, Test Subject) spend energy on Block
 | 1 boss | Ceremonial Beast | 252 (262) | Stamp gives Plow 150: Plow 18 +2 Str every turn; below 150 HP it is stunned and loses its Strength, then Beast Cry (Ringing: one card a turn), Stomp 15, Crush 17 +3 Str | set up, then cross 150 HP in one big turn; under Ringing play the single best card |
 | 1 boss | The Kin | Priest 190 (199) + 2 Followers | Priest: 8 + Frail, 8 + Weak, 3×3, +2 Str. Followers buff and hit | AoE; the bot's model fights say Followers first (92% vs 31% won) |
 | 1 boss | Vantom | 173 (183) | Slippery 8 (9); Ink Blot 7, Inky Lance 6×2, Dismember 26 + 3 Wounds, +2 Str | strip Slippery with small hits, block Dismember |
-| 1 boss | Lagavulin Matriarch | 222 (233) | Asleep 3 turns behind 12 Plating; Slash 19, Disembowel 9×2, 12 + 12 Block, +2 Str | powers while she sleeps, then end it fast |
+| 1 boss | Lagavulin Matriarch | 222 (233) | Asleep 3 turns behind 12 Plating (1 less each turn); Slash 19, Disembowel 9×2, 12 + 12 Block, +2 Str | powers while she sleeps, then end it fast |
 | 1 boss | Soul Fysh | 211 (221) | Beckon cards (6 HP if held), De-Gas 16, Gaze 7, Fade (Intangible 2), Scream 13 + 3 Vulnerable | play or discard Beckons; block on Intangible turns |
 | 1 boss | Waterfall Giant | 240 (250) | Builds Steam Eruption every turn; when killed it stands one more turn and explodes for it | keep Block for the turn after the kill |
 | 2 | Decimillipede | 3 segments ~40-52 | Segments Reattach two turns after dying while another lives | bring all low, kill them together |
@@ -118,10 +118,14 @@ or capped turns (Soul Fysh, Skulking Colony, Test Subject) spend energy on Block
 | 3 | Mecha Knight | ~300 | Flamethrower: 4 Burns into the hand and 8 (12) damage | block and race |
 | 3 | Soul Nexus | — | summons | AoE |
 | 3 boss | Queen | 400 (419) + Amalgam 199 | Puppet Strings (Chains of Binding), You Are Mine (99 Weak/Frail/Vulnerable), then a 3×5 / 15 / +2 Str cycle | kill the Amalgam first in defensive decks |
-| 3 boss | Test Subject | three forms, ~100 / 200 / 300 | Enrage (Str per Skill); Bite 20, Skull Bash 14 + Vulnerable; later forms Multi-Claw, Lacerate 10×3, Big Pounce 45 | scaling damage; don't spend skills carelessly |
-| 3 boss | Aeonglass | 512 (535) | Ebb 22 + 33 Block, Eye Lasers 11×2, Increasing Intensity (Wither + Str) | end it fast; fewer cards played means fewer Withers |
+| 3 boss | Test Subject | three forms, ~100 / 200 / 300 | Form 1: Enrage (Str per Skill), Bite 20, Skull Bash 14 + Vulnerable. Form 2: Painful Stabs, Multi-Claw 10 × 3 hits, one more each round. Form 3: Nemesis (Intangible on its first round and every other), Lacerate 10×3, Big Pounce 45, Burns + Str. Strength resets between forms; a form killed does not attack | few Skills in form 1; Block for form 2's growing claws; damage on the turns it is not Intangible |
+| 3 boss | Aeonglass | 512 (535) | Artifact 3; Withering Presence: a Wither into the hand every 6 cards played (3 damage at end of turn, 3 more for each buff); Ebb 22 + 33 Block, Eye Lasers 11×2, Increasing Intensity (a Wither, every Wither a level up, Str 3 then 4, 5 ...) | end it fast; fewer cards played means fewer Withers |
 
 ## 4. Characters
+
+In the bot's model runs ([simulation.md](simulation.md)) the Silent wins most (8.7% at A5), then the Ironclad and
+Defect (6-7%); the Regent and Necrobinder rarely get past the act 2 boss. The cards that went with deeper runs for each
+character are listed there.
 
 **Ironclad** (80 HP; 5 Strike, 4 Defend, Bash; Burning Blood heals 6 after each fight). The healing relic makes HP a
 resource: fight more, smith more. Archetypes: Exhaust (Burning Pact, Stoke, True Grit, Fiend Fire, Havoc with Dark
