@@ -402,6 +402,12 @@ def card_reward(state: dict, mem: Memory) -> list[Action]:
         return v
 
     ranked = sorted(cards, key=worth, reverse=True)
+    if cr.get("in_combat"):
+        # A card a potion (or Discovery) offers in a fight is for this fight only: the one the turn makes most of, never none (2026-11-25:
+        # the Silent drank an Attack Potion on round 1 of Donu and Deca and skipped all three for "need 4.0").
+        ranked = afflictions.offered(ranked, state.get("_fight_state"))
+        log.debug("card offer in a fight: %s", ", ".join(str(c.get("name")) for c in ranked))
+        return [("select_card_reward", {"card_index": int(c.get("index", 0))}) for c in ranked] + [("skip_card_reward", {})]
     threshold = reward_bar(mem.deck_size, act)
     if log.isEnabledFor(logging.DEBUG):
         log.debug("card reward (deck %d, need %.1f): %s", mem.deck_size, threshold, ", ".join(f"{c.get('name')} {worth(c):.1f}" for c in ranked))

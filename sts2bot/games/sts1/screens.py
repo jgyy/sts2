@@ -32,6 +32,7 @@ POWER_ID = {
     "UNAWAKENED": "STOCK",  # the Awakened One's first form: killed, it rises again at full HP
     "LIFE_LINK": "REATTACH",  # the Darklings' (revive in 2 turns at 50% HP while others live): StS2's Reattach, whose number is the HP it comes back on
 }
+STANCE_CHOICE = {"WRATH": "Enter Wrath.", "CALM": "Enter Calm."}  # the Stance Potion's choice cards (ChooseWrath, ChooseCalm), by name
 AMOUNT = {"UNAWAKENED": 1}  # powers that show no number where the planner needs one
 INTENT_TYPE = {"BUFF": "Buff", "DEBUFF": "Debuff", "STRONG_DEBUFF": "Debuff", "DEFEND": "Defend", "ESCAPE": "Escape",
                "SLEEP": "Sleep", "STUN": "Stun", "MAGIC": "Buff", "UNKNOWN": "Unknown", "NONE": "Unknown", "DEBUG": "Unknown"}
@@ -260,8 +261,11 @@ class Screens:
     def _card_reward(self) -> dict:
         ss = self.game.get("screen_state") or {}
         cards = [self.card(c, i) for i, c in enumerate(ss.get("cards") or [])]
+        fight = self.game.get("room_phase") == "COMBAT"
+        if fight:  # the Stance Potion's two choices: as the planner can weigh them (a free Skill that changes the stance)
+            cards = [{**c, "type": "Skill", "cost": "0", "description": STANCE_CHOICE[key_of(c["name"])], "target_type": "Self"} if key_of(c["name"]) in STANCE_CHOICE else c for c in cards]
         state = self._wrap("card_reward", card_reward={"cards": cards, "can_skip": "skip" in self.commands or bool(ss.get("skip_available"))})
-        if self.game.get("room_phase") == "COMBAT":  # a card offered in a fight (Discovery, Attack Potion): for this turn
+        if fight:  # a card offered in a fight (Discovery, Attack Potion): for this turn
             state["card_reward"]["in_combat"] = True
         return state
 

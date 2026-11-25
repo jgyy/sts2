@@ -109,6 +109,24 @@ def turn_damage(card: dict, deck: list) -> float:
     return 0.0
 
 
+# The Fool's Sadness stays in the hand all fight (fight/fool/sadness.py): what a deck's makers put there a cycle, Ennui a turn.
+SAD_ROOM = 3  # Sadness a cycle of the deck that a hand of 5 still has room for
+SAD_ENNUI = 4  # Ennui's share of that: one a turn, all fight
+SAD_JOY = 2  # Sadness each Joy maker (Punch of Joy, Ecstasy) takes off the count
+SAD_PRICE, SAD_MOST = 1.0, 4.0  # rating points a maker loses for each Sadness over the room, and at most
+
+
+def sadness_made(card: dict) -> int:
+    """Sadness a card puts in the hand over a cycle of the deck (Ennui: SAD_ENNUI)."""
+    info = _parse(card)
+    return max(0, info.sadness) + (SAD_ENNUI if info.sad_turn and info.sad_turn[0] > 0 else 0)
+
+
+def makes_joy(card: dict) -> bool:
+    info = _parse(card)
+    return info.sadness < 0 or bool(info.sad_turn and info.sad_turn[0] < 0)
+
+
 TIMES_UP_KEYS = ("TIMES_UP", "TIME_S_UP")  # "Deal damage equal to the enemy's Doom" (the key is spelt both ways)
 
 
@@ -218,6 +236,12 @@ def deck_fit(card: dict, deck: list, act: int | None = None, energy: int = 3) ->
             fit += min(2.5, 0.5 * (demand - supply))
         elif give and supply - STARS_AT_START >= demand + 3:
             fit -= min(2.0, 0.5 * give)  # Stars nothing in the deck spends
+    if made := sadness_made(card):
+        # Sadness beyond what the hands have room for is a card not drawn every turn after (2026-11-25: the Kin won on ten Sadness).
+        over = sum(map(sadness_made, deck)) + made - SAD_ROOM - SAD_JOY * sum(map(makes_joy, deck))
+        fit -= min(SAD_MOST, SAD_PRICE * min(made, max(0, over)))
+    elif makes_joy(card):
+        fit += min(2.0, 0.5 * sum(map(sadness_made, deck)))  # (a deck with nothing to turn into Joy: none)
     key = _card_key(card)
     copies = sum(1 for c in deck if _card_key(c) == key)
     fit -= 0.6 * copies

@@ -125,7 +125,12 @@ Collect. Smith Eruption (cost 1) first. Never end a turn in Wrath in front of an
 - Card text comes from `sts2bot/games/sts1/text/` (CommunicationMod sends none); the hand shows live numbers
   (Strength, Weak, Dexterity, Frail, stance) through the bot's own mod.
 - The planner knows stances (`games/sts1/stance.py`): a stance change inside a turn, the energy it gives and the hit it
-  doubles. It does not plan Mantra or Scry; it plays those cards for what they do outright.
+  doubles. A turn ended in Wrath is charged when the next hand may hold no way out (no Calm, exit or Divinity card in
+  the next five draws) and the enemies' usual blows, doubled, would kill her: a Hyper Beam of 104 and the Champ's
+  Execute of 54×2 ended two runs that way. Mantra counts toward Divinity (at 10, mid-turn: 3 energy, Attacks tripled); it
+  does not plan Scry.
+- A card a potion or Discovery offers in a fight is taken by what it does for that turn (the planner's line with it
+  free in the hand), never skipped; the Stance Potion's Wrath or Calm the same way.
 - The hand-made card ratings and the crowd's win rates are Slay the Spire 2's, so here cards are rated from their text
   and corrected by `learn.py` from the bot's own runs.
 - CommunicationMod cannot resume a run: a crash starts a new one.

@@ -131,15 +131,15 @@ class FullLoop(unittest.TestCase):
         state = combat_state([STRIKE(0)], [enemy("BUG_0", 46, attack=15), enemy("BEETLE_0", 86)])
         bot._combat(state)
         bot._combat(state)  # the same turn seen again counts once
-        self.assertEqual(bot._threat, {"BUG_0": [15, 1], "BEETLE_0": [0, 1]})
+        self.assertEqual(bot._threat, {"BUG_0": [15, 1, 15.0, 1], "BEETLE_0": [0, 1, 0.0, 0]})
         state["battle"]["round"] = 2
         state["battle"]["enemies"] = [enemy("BUG_0", 46), enemy("BEETLE_0", 86, attack=16)]
         bot._combat(state)
-        self.assertEqual(bot._threat, {"BUG_0": [15, 2], "BEETLE_0": [16, 2]})
+        self.assertEqual(bot._threat, {"BUG_0": [15, 2, 15.0, 1], "BEETLE_0": [16, 2, 16.0, 1]})  # (damage, rounds, blows, turns attacked)
         state["run"]["floor"] = 4  # the next fight starts from nothing
         state["battle"]["round"] = 1
         bot._combat(state)
-        self.assertEqual(bot._threat, {"BUG_0": [0, 1], "BEETLE_0": [16, 1]})
+        self.assertEqual(bot._threat, {"BUG_0": [0, 1, 0.0, 0], "BEETLE_0": [16, 1, 16.0, 1]})
 
     def test_a_purchase_that_never_happens_is_given_up(self):
         """The shop said yes to a potion a relic forbids; the bot must leave in the end."""
@@ -385,6 +385,15 @@ class LiveGameLessons(unittest.TestCase):
         odd = card(0, "NEW_THING", "New Thing", "Skill", 1, "Do something the bot has never seen.", rarity="Rare")
         state = {"state_type": "card_reward", "run": {"act": 2}, "card_reward": {"cards": [odd], "can_skip": True}}
         self.assertEqual(strategy.card_reward(state, Memory())[0][0], "skip_card_reward")
+
+    def test_a_card_offered_in_a_fight_is_always_taken_and_is_no_pick(self):
+        # (2026-11-25: an Attack Potion on round 1 of Donu and Deca, its three cards skipped as a reward below the bar.)
+        odd = card(0, "NEW_THING", "New Thing", "Skill", 1, "Do something the bot has never seen.", rarity="Rare")
+        state = {"state_type": "card_reward", "run": {"act": 2}, "card_reward": {"cards": [odd], "can_skip": True, "in_combat": True}}
+        self.assertEqual(strategy.card_reward(state, Memory())[0], ("select_card_reward", {"card_index": 0}))
+        bot = make_bot(FakeGame())
+        bot._after_success({**state, "card_reward": {**state["card_reward"], "cards": [dict(odd, index=0)]}}, "select_card_reward", {"card_index": 0})
+        self.assertEqual((bot.mem.deck, bot.mem.picks), ([], []))
 
     def test_a_burrowed_enemy_is_dug_out_instead_of_blocked_forever(self):
         burrowed = [{"id": "BURROWED_POWER", "amount": 1}]

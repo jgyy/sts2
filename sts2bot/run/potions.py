@@ -7,6 +7,7 @@ import re
 from ..fight.battle import end_of_turn_block, expected_loss, osty_hp, read_enemies
 from .. import games
 from ..cards import parse
+from ..games.sts1.stance import read as read_stance
 
 Action = tuple[str, dict]
 BOSS_FLOORS = (17, 33, 48)
@@ -201,4 +202,6 @@ def describe(state: dict) -> str:
         extra += " orbs " + ("".join(str(o.get("name") or "?")[0] for o in player.get("orbs") or []) or "-")
     if player.get("pets"):
         extra += f" osty {osty_hp(player)}"
+    if read_stance(player.get("stance")):
+        extra += f" stance {read_stance(player.get('stance'))}"  # (the Watcher's: intents and card numbers already show it)
     return f"r{battle.get('round')} hp {player.get('hp')}/{player.get('max_hp')} blk {player.get('block')} en {player.get('energy')}{extra} [{mine}] | {' ; '.join(foes)} | hand {hand}"

@@ -81,7 +81,9 @@ def cmd_run(a) -> int:
     jobs = [(a.game, ch, a.seed + n, {**knobs_for(a.seed + n, a.vary), **fixed(a, ch)}, a.ascension) for n in range(a.runs) for ch in chars]
     out = open(a.out, "a") if a.out else sys.stdout
     t0, done, errors = time.time(), 0, 0
-    with multiprocessing.Pool(a.jobs) as pool:
+    # Forked workers: under forkserver or spawn (Python 3.14's default on Linux) a worker cannot find _job, which lives in __main__.
+    ctx = multiprocessing.get_context("fork" if "fork" in multiprocessing.get_all_start_methods() else None)
+    with ctx.Pool(a.jobs) as pool:
         for r in pool.imap_unordered(_job, jobs, chunksize=1):
             done += 1
             errors += "error" in r

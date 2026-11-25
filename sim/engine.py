@@ -150,6 +150,8 @@ class Fight:
                 view["unplayable_reason"] = "EnergyCostTooHigh"
             hand.append(view)
         status = [{"id": f"{k}_POWER", "amount": v, "description": ""} for k, v in {**self.pw, **self.temp_view()}.items() if v and k not in INTERNAL]
+        if self.mantra:
+            status.append({"id": "MANTRA_POWER", "amount": self.mantra, "description": ""})  # (the game shows Mantra as a power)
         player = {
             "character": self.run.title, "hp": self.run.hp, "max_hp": self.run.max_hp, "block": self.block, "energy": self.energy,
             "max_energy": self.run.energy, "stars": self.stars, "gold": self.run.gold, "status": status, "hand": hand,
@@ -162,12 +164,13 @@ class Fight:
         if self.osty >= 0:
             player["pets"] = [{"name": "Osty", "hp": self.osty, "alive": self.osty > 0}]
         enemies = [self.foe_view(f) for f in self.foes if not f.gone]
-        threat = {k: total / rounds for k, (total, rounds) in self.threat.items()}
+        threat = {k: total / rounds for k, (total, rounds, _b, _n) in self.threat.items()}
+        blow = {k: (blows / attacks, attacks / rounds) for k, (_t, rounds, blows, attacks) in self.threat.items() if attacks}
         return {
             "state_type": self.kind, "run": self.run.where(), "player": player,
             "battle": {"round": self.round, "turn": "player", "is_play_phase": True, "enemies": enemies},
             "_plays_this_turn": len(self.turn_cards), "_played_names": tuple(self.turn_cards), "_dislodged": False, "_facing": self.facing,
-            "_revive_pending": False, "_threat": threat, "_costs": {c.name: max(0, c.cost()) for c in self.run.deck},
+            "_revive_pending": False, "_threat": threat if self.kind == "monster" else {}, "_blow": blow, "_costs": {c.name: max(0, c.cost()) for c in self.run.deck},
         }
 
     def temp_view(self) -> dict:
@@ -589,12 +592,16 @@ class Fight:
                 f.choose(self.rng)
 
     def note_threat(self) -> None:
+        """Each foe's damage a turn so far and its blows, as the bot keeps them (`_threat`, `_blow`; a blow as it is outside Wrath)."""
         for f in self.foes:
             if f.alive:
-                seen = self.threat.setdefault(f.eid, [0, 0])
+                seen = self.threat.setdefault(f.eid, [0, 0, 0.0, 0])
                 m = f.move
-                seen[0] += self.foe_hit(f, effects.move_damage(self, f, m)) * effects.move_hits(self, f, m) if m.dmg and not m.kind else 0
+                hit = self.foe_hit(f, effects.move_damage(self, f, m)) * effects.move_hits(self, f, m) if m.dmg and not m.kind else 0
+                seen[0] += hit
                 seen[1] += 1
+                if hit:
+                    seen[2], seen[3] = seen[2] + hit / (2.0 if self.stance == "WRATH" else 1.0), seen[3] + 1
 
     def bot_turn(self) -> None:
         """Ask the planner for one action at a time until it ends the turn."""
@@ -622,7 +629,7 @@ class Fight:
             if self.round >= MAX_ROUNDS:
                 self.lost = True
                 break
-            for step in (self.player_turn_start, self.note_threat if self.kind == "monster" else lambda: None, self.bot_turn, self.player_turn_end):
+            for step in (self.player_turn_start, self.note_threat, self.bot_turn, self.player_turn_end):
                 step()
                 if self.won or self.lost:
                     break

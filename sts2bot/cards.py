@@ -90,6 +90,9 @@ class CardInfo:
     verse: int = 0  # Ki Verse: "The next (2) "Wah", "Cho", or "Ki" card(s) you play this turn ... played an additional time"
     stance: str = ""  # the first game's Watcher: the stance the card puts her in (WRATH, CALM, DIVINITY, EXIT; games/sts1/stance.py)
     energy_drain: int = 0  # a Power's energy taken away at the start of every turn from now on (the first game's Fasting)
+    mantra: int = 0  # the first game's Watcher: Mantra gained (at 10 she enters Divinity)
+    sadness: int = 0  # the Fool's Sadness it puts in the hand when played (Sorrowful Strike 2, Mourning Blow itself), less those it turns into Joy
+    sad_turn: tuple = ()  # a Power's (Sadness, cards drawn) added at the start of every turn: Ennui (1, 2); Ecstasy's Joy (-1, 0) (fight/fool/sadness.py)
 
     @property
     def is_x(self) -> bool:
@@ -309,8 +312,10 @@ def _parse(card: dict) -> CardInfo:
     aoe = target == "AllEnemies" or bool(re.search(r"all\s+enemies", text, re.I))
     random_target = bool(re.search(r"random\s+enemy", text, re.I))
     aim, stretch = _int(r"gain\s+(\d+)\s+aim", text), _int(r"gain\s+(\d+)\s+stretch", text)
+    mantra = _int(r"gain\s+(\d+)\s+mantra", text)
+    stance = m.group(1).upper() if (m := re.search(r"\benter\s+(wrath|calm|divinity)\b", text, re.I)) else "EXIT" if re.search(r"\bexit\s+your\s+stance\b", text, re.I) else ""
     known = any((damage, block, vulnerable, weak, draw, energy_gain, strength, enemy_strength_loss, poison, doom, shivs, aim, stretch, melody_block, impaled_only)
-                + (star_gain, forge, summon, dexterity, len(channel), evoke, evoke_all, next_energy, next_draw, next_block, enemy_hp_loss, souls, heal))
+                + (star_gain, forge, summon, dexterity, len(channel), evoke, evoke_all, next_energy, next_draw, next_block, enemy_hp_loss, souls, heal, stance, mantra))
     can_play = bool(card.get("can_play", True))
     return CardInfo(
         index=int(card.get("index", 0)), name=str(card.get("name") or card.get("id") or "?"), type=ctype, cost=_cost(card.get("cost")),
@@ -331,13 +336,37 @@ def _parse(card: dict) -> CardInfo:
         melody=melodies(card.get("name") or ""), melody_block=melody_block, keeps_hand=_keeps_hand(full_text), melody_hits=bool(re.search(r"additional\s+time\s+for\s+each\s+melody", text, re.I)),
         melody_twice=tuple(w.upper() for w in re.findall(r"(\w+)\s+melody", (re.search(r"if\s+you\s+have\s+an?\s+[^,.]*melody[^,.]*,\s*hits\s+twice", full_text, re.I) or re.match("", "")).group(0), re.I)),
         energy_drain=_int(r"gain\s+(\d+)\s+less\s+energy\s+at\s+the\s+start\s+of\s+(?:your|each)\s+turn", full_text) if ctype == "Power" else 0,
-        stance=(m.group(1).upper() if (m := re.search(r"\benter\s+(wrath|calm|divinity)\b", text, re.I)) else "EXIT" if re.search(r"\bexit\s+your\s+stance\b", text, re.I) else ""),
+        stance=stance,
         verse=int(m.group(1) or 1) if (m := re.search(r"the\s+next\s+(?:(\d+)\s+)?\W*wah\W+cho\W+or\s+\W*ki\W*\s+cards?\s+you\s+play\s+this\s+turn\s+(?:is|are)\s+played\s+an\s+additional\s+time", full_text, re.I)) else 0,
         osty_dies=bool(re.search(r"\b(?:Osty|he)\s+dies", full_text, re.I)), doom_kills=bool(re.search(r"kill\s+enemies\s+with\s+at\s+least\s+as\s+much\s+Doom", full_text, re.I)),  # (Sacrifice: "he dies")
         debris=-1 if re.search(r"fill\s+your\s+hand\s+with\s+debris", text, re.I) else _int(r"add\s+(\d+)\s+debris", text) or int(bool(re.search(r"add\s+a\s+debris", text, re.I))),
         bound=any(str(k.get("name")).lower() == "bound" for k in card.get("keywords") or [] if isinstance(k, dict)),
         short=not can_play and bool(card.get("unplayable_reason")) and all(r.strip() in ("EnergyCostTooHigh", "StarCostTooHigh") for r in str(card.get("unplayable_reason")).split(",")),
+        mantra=mantra, sadness=_sadness(text), sad_turn=_sad_turn(full_text) if ctype == "Power" else (),
     )
+
+
+def _count(word: str) -> int:
+    return 1 if word.lower() in ("a", "an") else int(word)
+
+
+def _sadness(text: str) -> int:
+    """Sadness a played card puts in the hand ("Add 2 Sadness into your Hand", "Transform this into Sadness and return it to your
+    Hand"), less what it turns into Joy ("Transform 1 random Sadness in your Hand into Joy")."""
+    if "sadness" not in text.lower():
+        return 0
+    added = sum(_count(n) for n in re.findall(r"add\s+(\d+|an?)\s+sadness\s+(?:in)?to\s+your\s+hand", text, re.I))
+    added += bool(re.search(r"transform\s+this\s+into\s+sadness", text, re.I))
+    return added - sum(int(n) for n in re.findall(r"transform\s+(\d+)\s+random\s+sadness\s+in\s+your\s+hand\s+into\s+joy", text, re.I))
+
+
+def _sad_turn(text: str) -> tuple:
+    """A Power's (Sadness, extra cards drawn) at the start of every turn: Ennui (1, 2), Ecstasy (-1, 0); () for the rest."""
+    if m := re.search(r"at\s+the\s+start\s+of\s+your\s+turn,\s*add\s+(\d+|an?)\s+sadness\s+to\s+your\s+hand(?:\s+and\s+draw\s+(\d+)\s+additional\s+cards?)?", text, re.I):
+        return (_count(m.group(1)), int(m.group(2) or 0))
+    if m := re.search(r"at\s+the\s+start\s+of\s+your\s+turn,\s*transform\s+(\d+)\s+random\s+sadness\s+in\s+your\s+hand\s+into\s+joy", text, re.I):
+        return (-int(m.group(1)), 0)
+    return ()
 
 
 # A nudge, on the deck_value scale (+1 is about one rarity step), for cards _TIER does not rate whose text understates or overstates them.

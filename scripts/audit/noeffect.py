@@ -26,7 +26,7 @@ def split(s: str):
 
 def scan(since: str = "") -> dict:
     stats = collections.defaultdict(lambda: [0, 0, []])  # card -> [plays, plays that changed nothing, examples]
-    for f in [LOG / n for n in ("bot.log.3", "bot.log.2", "bot.log.1", "bot.log")]:
+    for f in sorted(LOG.glob("bot.log*"), key=lambda p: -int(p.suffix[1:]) if p.suffix[1:].isdigit() else 0):  # oldest first
         if not f.exists():
             continue
         last = prev = pending = None
