@@ -153,8 +153,9 @@ def _initial(f, m: dict, states: dict, rng) -> str:
     return names[min(slot, len(names) - 1)]
 
 
-FIXES = {  # what the data leaves blank: the Test Subject's first form (the planner's notes put it at 100 HP), the Pressure Gun's 20 (23)
-    "TEST_SUBJECT": {"hp": [100, 100], "hp_a8": [110, 110]},
+FIXES = {  # what the data leaves out: the Test Subject's first form (the planner's notes put it at 100 HP), the Pressure Gun's 20 (23),
+    "TEST_SUBJECT": {"hp": [100, 100], "hp_a8": [110, 110]},  # the Aeonglass's Withering Presence (the bot's logs, scripts/bosses/aeonfight.py)
+    "AEONGLASS": {"powers": [{"power": "ARTIFACT", "amount": 3}, {"power": "WITHERING_PRESENCE", "amount": 6}]},
 }
 MOVE_FIXES = {("WATERFALL_GIANT", "PRESSURE_GUN"): {"damage": 20, "damage_a9": 23}}
 
@@ -206,7 +207,9 @@ def _shriek_hit(f, foe, amount, attack):
 
 
 def _adaptable_death(f, foe):
-    """The Test Subject: beaten, it comes back on its next turn in its next form (three forms in all: 100, 200, 300 HP)."""
+    """The Test Subject as the bot's logs have it (scripts/bosses/subjectfight.py): a form beaten does not attack, and the
+    next (100 HP more) acts the round after with its Strength and debuffs at nothing. Form 2 has Painful Stabs and a
+    Multi-Claw of 3 hits and one more each round; form 3 Nemesis, Intangible on its first round and every other one."""
     n = foe.mem.get("respawns", 0)
     if n >= 2:
         return False
@@ -214,8 +217,22 @@ def _adaptable_death(f, foe):
     foe.half_dead, foe.hp = True, 0
     foe.mem["revive"] = 1
     foe.mem["form_hp"] = foe.max_hp + 100
-    foe.mem["force"] = "RESPAWN"  # (which gives it Nemesis and Painful Stabs; its state machine then picks the form's moves)
+    foe.powers = {"ADAPTABLE": 1, "PAINFUL_STABS": 1} if n == 0 else {"NEMESIS": 1}
+    foe.mem["nemesis"] = False
+    foe.mem[("hits", "MULTI_CLAW")] = 3
+    foe.mem["force"] = ("MULTI_CLAW", "PHASE3_LACERATE")[n]
     return True
+
+
+def _intensity(f, foe):
+    """Increasing Intensity: every Wither goes up a level (3 more damage), and the Strength it gains grows by 1 each time."""
+    if foe.move_name != "INCREASING_INTENSITY":
+        return
+    foe.powers["STRENGTH"] = foe.powers.get("STRENGTH", 0) + foe.mem.get("wither_level", 0)
+    foe.mem["wither_level"] = level = foe.mem.get("wither_level", 0) + 1
+    for c in f.hand + f.draw + f.discard:
+        if c.key == "WITHER":
+            c.d = f.game.wither(level)
 
 
 def slumber(foe, turn: bool = False) -> None:
@@ -270,7 +287,9 @@ HOOKS = {
     "WATERFALL_GIANT": {"death": _giant_death, "acted": lambda f, foe: f.kill(foe) if foe.mem.get("exploded") and foe.move_name == "EXPLODE" else None},
     "SPINY_TOAD": {"acted": lambda f, foe: foe.powers.pop("THORNS", None) if foe.move_name == "SPIKE_EXPLOSION" else None},
     "TERROR_EEL": {"hit": _shriek_hit},
-    "TEST_SUBJECT": {"death": _adaptable_death},
+    "TEST_SUBJECT": {"death": _adaptable_death,
+                     "acted": lambda f, foe: foe.mem.__setitem__(("hits", "MULTI_CLAW"), foe.mem[("hits", "MULTI_CLAW")] + 1) if foe.move_name == "MULTI_CLAW" else None},
+    "AEONGLASS": {"acted": _intensity},
     "SLUMBERING_BEETLE": {"hit": lambda f, foe, amount, attack: slumber(foe) if foe.powers.get("SLUMBER") else None},
     "AXEBOT": {"death": _stock_death},
     "EYE_WITH_TEETH": {"death": _illusion_death},
