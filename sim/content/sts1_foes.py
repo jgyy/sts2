@@ -177,14 +177,17 @@ def _darkling_death(f, foe):
     return True
 
 
-def darkling_round(f):
-    """The half-dead Darklings rise again at half HP, two rounds on."""
+def revive_round(f):
+    """The half-dead rise as the enemies' turn ends: Darklings at half HP two rounds on, the Awakened One reborn at full HP."""
     for x in f.foes:
         if x.half_dead and x.key == "DARKLING":
             x.mem["revive"] -= 1
             if x.mem["revive"] <= 0:
                 x.half_dead, x.hp = False, x.max_hp // 2
                 x.choose(f.rng)
+        elif x.half_dead and x.key == "AWAKENED_ONE":
+            x.half_dead, x.hp = False, x.max_hp
+            x.mem["risen"] = True
 
 
 def _transient_end(f, foe):
@@ -210,19 +213,19 @@ def _nemesis(foe, rng):
 
 def _awakened_death(f, foe):
     if foe.mem.get("reborn"):
+        for x in f.foes:  # beaten for good: the Cultists flee
+            x.gone = True
         return False
     foe.mem["reborn"] = True
     foe.half_dead, foe.hp = True, 0
-    foe.powers = {k: v for k, v in foe.powers.items() if k in ("STRENGTH",) and v > 0}
+    # Its debuffs, Curiosity and Unawakened go; Strength and Regenerate stay. It rises as the enemies' turn ends (revive_round).
+    foe.powers = {k: v for k, v in foe.powers.items() if k == "REGEN" or k == "STRENGTH" and v > 0}
     foe.move_name = "rebirth"
     return True
 
 
 def _awakened(foe, rng):
-    if foe.half_dead:
-        foe.half_dead, foe.hp = False, foe.max_hp
-        foe.powers.pop("STOCK", None)
-        foe.powers.pop("CURIOSITY", None)
+    if foe.mem.pop("risen", False):
         return "dark_echo"
     if foe.mem.get("reborn"):
         return weighted({"sludge": 50, "tackle": 50}, {"sludge": 2, "tackle": 2})(foe, rng)
