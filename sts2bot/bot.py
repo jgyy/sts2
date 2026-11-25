@@ -92,7 +92,7 @@ class Bot:
         self._wins_seen, self._wins_asked = None, False  # the game's win counter when we last looked; asked once for a run already under way
         self._timeline_idle = 0  # Timeline clicks in a row that changed nothing
         self._facing, self._facing_fight = None, ()  # enemy we last aimed at, in this fight
-        self._threat, self._threat_fight = {}, ()  # enemy id -> [damage it has aimed at us in this fight, rounds seen]
+        self._threat, self._threat_fight = {}, ()  # enemy id -> [damage it has aimed at us in this fight, rounds seen, its blows, the turns it attacked]
         self._revive_fight = ()  # the fight in which the enemy last seen revives when beaten
         self._end_check, self._played_from = (), ()  # the hand we last thought of ending the turn on, and the one we last played from
         self._fight_kind, self._played_at = "monster", 0.0  # monster, elite or boss: the fight we were last in
@@ -134,7 +134,8 @@ class Bot:
             return strategy.shop(state, mem, key="fake_merchant")
         if kind == "hand_select":
             state = {**state, "_fight": self._fight_kind}  # the screen does not say what kind of fight it is in
-        if kind == "card_select" and self._turn_key[:2] == strategy._where(state):
+        in_fight = kind == "card_select" or (kind == "card_reward" and bool((state.get("card_reward") or {}).get("in_combat")))
+        if in_fight and self._turn_key[:2] == strategy._where(state):
             state = {**state, "_turns": [*self._turns, (self._turn_cards, self._turn_energy)]}  # ... nor how the fight has gone
             state["_fight_state"] = self._fight_state  # ... nor the enemies, the hand or the energy (a potion's offer is for this turn)
         handler = getattr(strategy, "map_screen" if kind == "map" else str(kind), None) if kind in SCREENS else None
@@ -202,10 +203,14 @@ class Bot:
             # Each enemy's damage over the fight: one intent says little, the average says who is doing the damage.
             if key[:2] != self._threat_fight:
                 self._threat_fight, self._threat = key[:2], {}
+            calm = combat.TAKEN.get(combat.read_stance(player.get("stance")), 1.0)  # (the first game's intents show Wrath's doubling)
             for e in battle.get("enemies") or []:
-                seen = self._threat.setdefault(str(e.get("entity_id")), [0, 0])
-                seen[0] += sum(combat.intent_damage(i) for i in e.get("intents") or [])
+                seen = self._threat.setdefault(str(e.get("entity_id")), [0, 0, 0.0, 0])
+                hit = sum(combat.intent_damage(i) for i in e.get("intents") or [])
+                seen[0] += hit
                 seen[1] += 1
+                if hit:  # its blows, as they would be outside Wrath (what ending a turn in Wrath risks)
+                    seen[2], seen[3] = seen[2] + hit / calm, seen[3] + 1
         self._turn_energy = int(player.get("energy") or 0)
         if key[:2] != self._facing_fight:
             self._facing_fight, self._facing = key[:2], None  # a new fight
@@ -219,9 +224,10 @@ class Bot:
         if standing:
             self._revive_fight = key[:2] if any(combat.power_amount(e, "ADAPTABLE") for e in standing) else ()
         revive = not standing and self._revive_fight == key[:2]
-        threat = {k: total / rounds for k, (total, rounds) in self._threat.items()}
+        threat = {k: total / rounds for k, (total, rounds, _b, _n) in self._threat.items()}
+        blow = {k: (blows / attacks, attacks / rounds) for k, (_t, rounds, blows, attacks) in self._threat.items() if attacks}  # (its blow, how often it attacks)
         costs = {str(c.get("name")): cards._cost(c.get("cost")) for c in self.mem.deck}  # (as the fight began: Void Form hides them)
-        self._fight_state = {**state, "_plays_this_turn": self._turn_cards, "_played_names": tuple(self._turn_names), "_dislodged": self._dislodged, "_facing": self._facing, "_revive_pending": revive, "_threat": threat, "_costs": costs}
+        self._fight_state = {**state, "_plays_this_turn": self._turn_cards, "_played_names": tuple(self._turn_names), "_dislodged": self._dislodged, "_facing": self._facing, "_revive_pending": revive, "_threat": threat, "_blow": blow, "_costs": costs}
         wanted = combat.actions(self._fight_state)
         # Drawn cards (or Reboot's new hand) show up a moment late: look once more before ending a turn with energy left.
         if wanted and wanted[0][0] == "end_turn" and self._turn_plays and int(player.get("energy") or 0) > 0:
@@ -266,7 +272,7 @@ class Bot:
         kind = state.get("state_type")
         if action == "select_card":
             self.mem.selected.add(params.get("index"))
-        elif action == "select_card_reward":
+        elif action == "select_card_reward" and not (state.get("card_reward") or {}).get("in_combat"):  # (a card for this fight only is no pick)
             for c in (state.get("card_reward") or {}).get("cards") or []:
                 if c.get("index") == params.get("card_index"):
                     self.mem.deck.append({k: v for k, v in c.items() if k not in ("index", "keywords")})

@@ -171,8 +171,11 @@ decks short of Stars lose); upgrade Glow first; remove one Strike and one Defend
 Cut, Pillar of Creation without card creation.
 
 **The Fool** (beta v0.113 only; 77 HP; 5 Strike, 4 Defend, Foolish Shot; Song Bow gives 6 Aim each fight): Arrows
-that impale enemies, Aim and Stretch, and the Wah/Cho/Ki Melodies. The bot plays it (`sts2bot/fight/fool/`); the model
-runs do not yet.
+that impale enemies, Aim and Stretch, and the Wah/Cho/Ki Melodies. Sadness ("Unplayable. Retain.") from Sorrowful Strike,
+Mourning Blow, Jest, Vitriol, Rummage and Ennui stays in the hand all fight and the hand holds 10: past five or so, every
+one is a card not drawn each turn, until Punch of Joy or Ecstasy turns it into Joy (a boss was lost on a hand of ten
+Sadness). Take the makers only with Joy to match; play Ennui in short fights. The bot plays it (`sts2bot/fight/fool/`,
+Sadness in `sadness.py`); the model runs do not yet.
 
 ## 5. Recent changes
 

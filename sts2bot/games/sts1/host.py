@@ -58,6 +58,7 @@ def prefs_dir() -> Path:
 
 
 # Each character's record in the first save slot (the game's CharStat files: the Ironclad's still has its old name).
+ACT4 = ("IRONCLAD", "THE_SILENT", "DEFECT")  # the characters whose wins open act 4 (keys.py)
 STAT_FILE = {"IRONCLAD": "STSDataVagabond", "THE_SILENT": "STSDataTheSilent", "DEFECT": "STSDataDefect", "WATCHER": "STSDataWatcher"}
 # Where the game notes that a character has been unlocked ("STSUnlocks": 0 or missing is locked; the Ironclad always is not).
 UNLOCK_KEY = {"THE_SILENT": "The Silent", "DEFECT": "Defect", "WATCHER": "Watcher"}
@@ -75,6 +76,7 @@ def read_prefs(folder: Path | None = None) -> dict:
     """Each character's highest ascension (open once it has won), the wins and who is locked, from the game's save files."""
     folder = folder or prefs_dir()
     out: dict = {"max_ascension": {}, "wins": 0, "locked": []}
+    flags = _json(folder / "STSPlayer") or {}
     for who in CHARACTERS:
         data = _json(folder / STAT_FILE[who])
         if data is None:
@@ -87,6 +89,11 @@ def read_prefs(folder: Path | None = None) -> dict:
             continue
         out["wins"] += wins
         out["max_ascension"][who] = min(20, level) if wins > 0 or level > 1 else 0
+        if who in ACT4 and str(flags.get(f"{who}_WIN", "")).lower() != "true":
+            # Act 4 opens on the three CLASS_WIN flags, which only a win the bot's mod saw sets: until then the character
+            # counts as unclimbed, so the rotation plays it (2026-11-25: the Defect's one win predates the mod; DEFECT_WIN
+            # was all act 4 lacked, and the Watcher alone, the only one on 0, played 35 runs in a row).
+            out["max_ascension"][who] = 0
     unlocks = _json(folder / "STSUnlocks") or {}
     for who, key in UNLOCK_KEY.items():
         try:

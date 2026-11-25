@@ -107,7 +107,8 @@ def main(argv: list[str] | None = None) -> int:
     fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s", DATE_FORMAT)
     screen = logging.StreamHandler(sys.stderr)
     screen.setFormatter(logging.Formatter(f"%(asctime)s {args.game} %(levelname)s %(message)s", DATE_FORMAT))
-    file = logging.handlers.RotatingFileHandler(args.log_dir / "bot.log", maxBytes=5_000_000, backupCount=3)
+    # (A run takes about three minutes now: 5 MB held under half an hour of play, and the log reports read whole sessions.)
+    file = logging.handlers.RotatingFileHandler(args.log_dir / "bot.log", maxBytes=20_000_000, backupCount=8)
     file.setFormatter(fmt)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, handlers=[screen, file])
 

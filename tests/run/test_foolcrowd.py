@@ -38,3 +38,21 @@ class FoolTiers(unittest.TestCase):
             with_tiers = rated(*QUICK_SHOT)
             with mock.patch.dict(crowd.FOOL_RATING, {}, clear=True):
                 self.assertEqual(with_tiers, rated(*QUICK_SHOT))
+
+
+SORROW = card(0, "SORROWFUL_STRIKE", "Sorrowful Strike", "Attack", 1, "Deal 13 damage. Add 2 Sadness into your Hand.", "AnyEnemy", "Common")
+ENNUI = card(0, "ENNUI", "Ennui", "Power", 1, "At the start of your turn, add 1 Sadness to your Hand and draw 2 additional cards.", "Self", "Rare")
+PUNCH = card(0, "PUNCH_OF_JOY", "Punch of Joy", "Attack", 2, "Deal 13 damage. Transform 1 random Sadness in your Hand into Joy.", "AnyEnemy", "Uncommon")
+PLAIN = [card(0, "STRIKE_FOOL", "Strike", "Attack", 1, "Deal 6 damage.", "AnyEnemy", "Basic")] * 10
+
+
+class SadnessInTheDeck(unittest.TestCase):
+    """Sadness stays in the hand all fight: a deck takes its makers only as far as the hands have room for them, or Joy to turn them into."""
+
+    def test_makers_lose_rating_as_the_sadness_piles_up(self):
+        from sts2bot.run import decks
+        first, second = decks.deck_fit(SORROW, PLAIN, 2), decks.deck_fit(SORROW, PLAIN + [SORROW], 2)
+        self.assertLess(second, first - 1.5)  # (the copy's 0.6, and a Sadness over the room)
+        self.assertLess(decks.deck_fit(ENNUI, PLAIN + [SORROW], 2), decks.deck_fit(ENNUI, PLAIN, 2))
+        self.assertGreater(decks.deck_fit(ENNUI, PLAIN + [SORROW, PUNCH, PUNCH], 2), decks.deck_fit(ENNUI, PLAIN + [SORROW], 2))  # (Joy takes them away)
+        self.assertGreater(decks.deck_fit(PUNCH, PLAIN + [SORROW, SORROW], 2), decks.deck_fit(PUNCH, PLAIN, 2))

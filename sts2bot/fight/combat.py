@@ -19,8 +19,9 @@ from .battle import (  # noqa: F401  (also the names other modules and the tests
 from ..cards import CardInfo, order_key, parse
 from ..run.potions import fortifier, describe, potion_actions
 from . import sandpit as pit, artifact, closing, triggers
+from .fool import sadness as sad_hand
 from .fool.turn import FoolTurn, arrows_owned, concerns, fool_powers, impaled_pool, played_melodies
-from ..games.sts1.stance import Stance
+from ..games.sts1.stance import MANTRA_DIVINITY, MANTRA_LATER, TAKEN, Stance, carry_cost, read as read_stance, stuck_odds
 from ..learn import knob
 
 Action = tuple[str, dict]
@@ -107,13 +108,16 @@ def simulate(
     trig: triggers.Triggers | None = None, pet: int = -1, hail: int = 0, deck: tuple = (20, 0), mastery: int = 0, might0: int = 0, holds: bool = False, strip: tuple = (0.0, 0.0),
     friends: int = 0, drained: int = 0, free: int = 0, doubled: bool = False, fortify: int = 1, pace: float = 0.0, room: tuple = (99.0, 1.0),
     arrows: int = -1, aiming: int = 0, stretch: int = 0, tune: frozenset = frozenset(), chord: int = 0, boom: int = 0, fool: tuple = (), stance0: str = "",
+    wrath: tuple = (), sadness: tuple = (), mantra0: int = 0,
 ) -> Outcome | None:
     """Score playing `line` in order (None if it cannot be afforded), in the turn _context reads. Among the keywords: end_loss: HP we lose
     at the end of the turn whatever we play; burns: (hand index, HP, stopped by Block) of cards that hurt while held; focus: aim every
     targeted card at this enemy while it lives; orbs: (kind, passive, evoke), oldest first; tender: each card played costs 1 Strength and
     1 Dexterity; vigor, giant: the next Attack only; taint: Vital Spark (each Skill makes every hit on us harder); pet: Osty's HP, already
     in `block` (-1: none); might0: Strength not in the card texts yet; holds: Barricade; free: Void Form's free plays; doubled: the next card
-    is played twice; fortify: a Fortifier's multiplier on our Block; wither_*: Withering Presence; arrows to fool: the Fool's (fool/turn.py)."""
+    is played twice; fortify: a Fortifier's multiplier on our Block; wither_*: Withering Presence; arrows to fool: the Fool's (fool/turn.py);
+    wrath: (the chance next turn's hand has no way out of Wrath, each enemy's (blow, share of turns it attacked) so far) for a Watcher (`_wrath_outlook`);
+    sadness: the Fool's Sadness and what is to come of it (fight/fool/sadness.py `outlook`); mantra0: the Watcher's Mantra."""
     if card_limit is not None and len(line) > card_limit:
         return None
     if any(c.ends_turn for c in line[:-1]):
@@ -142,6 +146,8 @@ def simulate(
     drawn, debris, dazed, tainted = 0, 0, 0, 0  # cards drawn; Debris and Dazed (Personal Hive) put in our deck; Vital Spark's extra damage a hit
     lasting, enduring, future = 0.0, 0.0, 0.0  # worth of effects that pay off over the fight (x `span`), of what stays all fight, of all that pays off after this turn
     later, nexte, kept = 0.0, 0, False  # worth of things that arrive next turn; energy next turn, and whether the hand is Retained
+    mantra = mantra0  # the Watcher's Mantra as the line goes on
+    sad, sad_rate, sad_draw = 0, 0, 0  # Sadness the line puts in the hand, and more (or fewer) each turn from its Powers, with their draw
     # What a lasting effect is still worth: boss fights go on for a dozen turns, ordinary ones are over in four.
     span = {"boss": 3.0, "elite": 2.0}.get(fight, 1.0)
     late = {"boss": 7, "elite": 5}.get(fight, 3)
@@ -343,6 +349,11 @@ def simulate(
         later, nexte = later + c.next_draw * 2.0 * dmg_value + c.next_block * 0.8, nexte + c.next_energy * xs  # (energy: priced after the line)
         kept = kept or c.keeps_hand == ("ANY",) or bool(ft.tune & set(c.keeps_hand))  # (Ki Rest with a Wah or Cho Melody)
         energy += st.enter(c.stance)  # (after the card's own damage: Eruption hits, then she is in Wrath)
+        if c.mantra:  # (the Watcher's: at 10 she enters Divinity at once, and the 10 are used up)
+            mantra += c.mantra * xs
+            if mantra >= MANTRA_DIVINITY:
+                mantra -= MANTRA_DIVINITY
+                energy += st.enter("DIVINITY")
         if c.dexterity:
             nimble += c.dexterity
             if c.dexterity_lasts:
@@ -370,6 +381,9 @@ def simulate(
             lasting -= 6.0 * sum(o[0] == "PLASMA" for o in held)
             held = []
         escapes += c.key == "FRANTIC_ESCAPE"
+        if c.sadness or c.sad_turn:
+            sad += c.sadness
+            sad_rate, sad_draw = (sad_rate + c.sad_turn[0], sad_draw + c.sad_turn[1]) if c.sad_turn else (sad_rate, sad_draw)
         if c.debris:  # (Crash Landing fills what room the hand has left: fewest when it is played first)
             debris += c.debris if c.debris > 0 else max(0, 10 - (hand_size - (n + 1) + drawn + debris))
         buffer += c.key == "BUFFER"  # played now, it stops this turn's hit
@@ -392,7 +406,9 @@ def simulate(
             score -= sum(e.curious * ENRAGE_PRICE * max(1, e.incoming_hits) * min(4.0, 1.0 + e.hp / 35.0) for e in foes if e.alive)  # (as Enrage: Curiosity)
             # (An Ethereal Power not played now is never played: more in a long fight. A second Friendship is energy the hand has no cards for.)
             again, friends = (0.5**friends, friends + 1) if c.key == "FRIENDSHIP" else (1.0, friends)
-            future += 0.0 if c.strength_lasts and c.strength > 0 else again * _power_worth(c, fight != "monster") * span * (1.6 if c.ethereal and fight != "monster" else 1.0)
+            # (Ennui's Sadness and draw: as fight/fool/sadness.py works them out over the turns left.)
+            told = (c.strength_lasts and c.strength > 0) or (sadness and c.sad_turn and c.sad_turn[0] > 0)
+            future += 0.0 if told else again * _power_worth(c, fight != "monster") * span * (1.6 if c.ethereal and fight != "monster" else 1.0)
             future -= c.energy_drain * ENERGY_DRAIN * (1 + drained) * span
             drained += c.energy_drain
         elif c.type in ("Status", "Curse"):  # only to use up energy nothing else can, unless playing it gets it out of the deck (Debris, Slimed)
@@ -420,6 +436,9 @@ def simulate(
             score += 0.9 * _orb_damage(kind, passive, foes, chip_rate, dmg_value)
     if hail and any(o[0] == "FROST" for o in held):
         score += sum(_progress(e, _hit(e, hail, 1, raw=True), chip_rate) * dmg_value * e.worth for e in foes if e.alive)
+    later += max(0, mantra - mantra0) * MANTRA_LATER  # (Mantra short of Divinity: on the way to it)
+    if sadness and (sad or sad_rate or sad_draw):
+        later += sad_hand.worth(sadness, sad, sad_rate, sad_draw)
     later += ft.later(dmg_value) + next_energy_worth(nexte + st.later_energy(), room, max(0, hand_size + drawn - len(line)) if kept else 0) * dmg_value  # (Aim, Stretch)
     future += (lasting + enduring) * span + later
     score += future
@@ -534,6 +553,11 @@ def simulate(
     price = lost * worth * (4.0 if doomed else 1.0) * knob("caution")
     price *= closing.discount(pace, lost, hp, survivors)  # (a boss about to die: the HP we keep past its death buys nothing)
     score -= price
+    if wrath and st.now == "WRATH" and survivors and lost < hp:
+        # Ending the turn in Wrath: next turn's blows land double unless the next hand holds a way out (2026-11-25: a Hyper Beam of 104).
+        odds, blows = wrath
+        seen = [blows.get(e.entity_id, (e.incoming / TAKEN.get(st.start, 1.0), 1.0)) for e in survivors]  # (a first turn: what it shows now)
+        score -= carry_cost(odds, sum(b for b, _ in seen), hp - lost, max((share for b, share in seen if b > 0), default=0.0))
     if len(line) < wither_in:  # stopping short of the next Wither only puts it off (the count carries over) to the next turn's first card
         score -= wither_hp * (1.5 + 2.5 * (1.0 - ratio)) * knob("caution")
     if lost >= hp:
@@ -556,6 +580,7 @@ def expected_end_loss(state: dict) -> int | None:
 def _context(state: dict) -> dict:
     player = state.get("player") or {}
     battle = state.get("battle") or {}
+    draws = _draw_worth(player)
     return dict(
         energy=int(player.get("energy") or 0), stars=int(player.get("stars") or 0),
         hp=max(1, int(player.get("hp") or 1) - max(0, power_amount(player, "DOOM")) - max(0, power_amount(player, "NEUROSURGE"))),  # (Doom on us kills once it reaches our HP)
@@ -565,7 +590,7 @@ def _context(state: dict) -> dict:
         burns=hand_burns(player) + tuple((-1 - n, hp, True) for n, hp in enumerate((end_of_turn_loss(player), constrict(player))) if hp),  # (damage that Block stops)
         hand_size=len(player.get("hand") or []), wither_in=max((power_amount(e, "WITHERING_PRESENCE") for e in battle.get("enemies") or []), default=0),
         wither_hp=_next_wither(player, int(battle.get("round") or 1)), wither_bill=_wither_bill(player, int(battle.get("round") or 1), _next_wither(player, int(battle.get("round") or 1))),
-        draw_worth=_draw_worth(player),
+        draw_worth=draws,
         orbs=tuple((str(o.get("id") or o.get("name") or "").upper().replace("_ORB", ""), int(o.get("passive_val") or 0), int(o.get("evoke_val") or 0)) for o in player.get("orbs") or []),
         orb_slots=int(player.get("orb_slots") or 0), bare_block=_bare_block(player), regen=max(0, power_amount(player, "REGEN")),
         focus_power=power_amount(player, "FOCUS") if _has_power(player, "FOCUS") else 0, shiv_damage=4 + max(0, power_amount(player, "ACCURACY")), tender=_has_power(player, "TENDER"),
@@ -579,8 +604,20 @@ def _context(state: dict) -> dict:
         taint=max((power_amount(e, "VITAL_SPARK") for e in [player, *(battle.get("enemies") or [])]), default=0), pace=closing.pace(state), room=next_room(state),
         arrows=arrows_owned(player), aiming=max(0, power_amount(player, "AIM")), stretch=max(0, power_amount(player, "STRETCH")),
         tune=played_melodies(state.get("_played_names")), chord=max(0, power_amount(player, "VIOLENT_CHORD")), boom=max(0, power_amount(player, "EXPLOSIVE_ARROWS")),
-        fool=fool_powers(player, bool(state.get("_dislodged"))), stance0=str(player.get("stance") or ""),
+        fool=fool_powers(player, bool(state.get("_dislodged"))), stance0=str(player.get("stance") or ""), wrath=_wrath_outlook(state),
+        sadness=sad_hand.outlook(state, draws), mantra0=max(0, power_amount(player, "MANTRA")),
     )
+
+
+def _wrath_outlook(state: dict) -> tuple:
+    """For a Watcher who is in Wrath or holds a card that enters it: the chance that next turn's hand holds no way out, and each
+    enemy's blow on the turns it attacked, as it would be outside Wrath, with how often it attacked (`_blow`, kept by the bot). Else ()."""
+    player = state.get("player") or {}
+    if player.get("stance") is None:
+        return ()  # (a game without stances)
+    if read_stance(player.get("stance")) != "WRATH" and not any(parse(c).stance == "WRATH" for c in player.get("hand") or []):
+        return ()
+    return (stuck_odds(player), dict(state.get("_blow") or {}))
 
 
 def choose_card(state: dict, plan: dict | None = None) -> Action | None:

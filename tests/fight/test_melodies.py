@@ -106,3 +106,36 @@ class FoolPowers(unittest.TestCase):
         self.assertTrue(bot._dislodged)  # (for the rest of the turn)
         bot._combat(combat_state([STRIKE(0)], [enemy("A", 294, attack=5, status=[IMPALED(3)])], energy=3, round_no=2))
         self.assertFalse(bot._dislodged)
+
+
+ENNUI = lambda i: card(i, "ENNUI", "Ennui", "Power", 1, "At the start of your turn, add 1 Sadness to your Hand and draw 2 additional cards.", "Self")
+SORROW = lambda i: card(i, "SORROWFUL_STRIKE", "Sorrowful Strike", "Attack", 1, "Deal 13 damage. Add 2 Sadness into your Hand.", "AnyEnemy")
+SADNESS = lambda i: {**card(i, "SADNESS", "Sadness", "Status", 0, "Unplayable. Retain.", "Self"), "can_play": False}
+KIN = lambda: [enemy("KIN_PRIEST_0", 190, attack=8), enemy("KIN_FOLLOWER_0", 59, attack=7), enemy("KIN_FOLLOWER_1", 59, attack=4)]
+
+
+class Sadness(unittest.TestCase):
+    """Sadness stays in the hand all fight (fight/fool/sadness.py); 2026-11-25 18:06 the Kin won on a hand of ten of them."""
+
+    def test_cards_say_what_sadness_they_make_and_take_away(self):
+        self.assertEqual(parse(SORROW(0)).sadness, 2)
+        self.assertEqual(parse(card(0, "MOURNING_BLOW", "Mourning Blow", "Attack", 0, "Deal 10 damage. Transform this into Sadness and return it to your Hand.", "AnyEnemy")).sadness, 1)
+        self.assertEqual(parse(card(0, "VITRIOL", "Vitriol", "Skill", 0, "Apply 2 Weak. Add a Sadness into your Hand.", "AnyEnemy")).sadness, 1)
+        self.assertEqual(parse(card(0, "PUNCH_OF_JOY", "Punch of Joy", "Attack", 2, "Deal 13 damage. Transform 1 random Sadness in your Hand into Joy.", "AnyEnemy")).sadness, -1)
+        self.assertEqual(parse(ENNUI(0)).sad_turn, (1, 2))
+        self.assertEqual(parse(card(0, "ECSTASY", "Ecstasy", "Power", 2, "At the start of your turn, Transform 1 random Sadness in your Hand into Joy.", "Self")).sad_turn, (-1, 0))
+
+    def test_no_ennui_at_the_start_of_a_long_fight(self):
+        state = combat_state([DEFEND(0), WAH(1, 12), STRIKE(2), STRIKE(3), ENNUI(4)], KIN(), round_no=2, kind="boss", hp=84, max_hp=84)
+        self.assertNotEqual(pick(state), 4)
+
+    def test_ennui_in_a_short_fight(self):
+        state = combat_state([STRIKE(0), DEFEND(1), ENNUI(2)], [enemy("TOADPOLE_0", 20, attack=5)])
+        self.assertEqual(pick(state), 2)
+
+    def test_a_crowded_hand_takes_no_more_sadness_in_a_long_fight(self):
+        crowded = [SADNESS(n) for n in range(6)]
+        state = combat_state([*crowded, SORROW(6), STRIKE(7), DEFEND(8)], KIN(), round_no=5, kind="boss", hp=84, max_hp=84)
+        self.assertEqual(pick(state), 7)
+        state = combat_state([SADNESS(0), SORROW(1), STRIKE(2), DEFEND(3)], KIN(), round_no=3, kind="boss", hp=84, max_hp=84)
+        self.assertEqual(pick(state), 1)  # (one in the hand: room for two more)

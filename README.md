@@ -67,7 +67,7 @@ ascension (read from the save's `preferences/`, `STS1_PREFS_DIR` for another).
   adds what CommunicationMod leaves out: live card numbers, the Watcher's stance, the act 4 keys.
 - The card ratings and crowd tables are Slay the Spire 2's, so here cards are judged from their text and corrected
   by `learn.py`. Logs and learning live in `~/.local/state/sts2bot/sts1/`.
-- The planner knows stances; it does not plan Mantra or Scry. Once the first three characters have each won, it goes
+- The planner knows stances and Mantra; it does not plan Scry. Once the first three characters have each won, it goes
   for the three keys and act 4 (`games/sts1/keys.py`).
 - CommunicationMod cannot continue a saved run: after a crash the bot starts a new one.
 

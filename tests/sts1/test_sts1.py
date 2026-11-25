@@ -158,15 +158,20 @@ class GameSwitch(Sts1Case):
 class SaveFilesAndSetup(Sts1Case):
     def test_ascension_and_wins_come_from_the_save_files(self):
         prefs = read_saves(STSDataVagabond={"WIN_COUNT": "3", "ASCENSION_LEVEL": "6"}, STSDataTheSilent={"WIN_COUNT": "0", "ASCENSION_LEVEL": "1"},
-                           STSDataDefect="not json", STSUnlocks={"The Silent": "2", "Defect": "1", "GUARDIAN": "2"})  # (Vagabond: the Ironclad)
+                           STSDataDefect="not json", STSUnlocks={"The Silent": "2", "Defect": "1", "GUARDIAN": "2"}, STSPlayer={"IRONCLAD_WIN": "true"})  # (Vagabond: the Ironclad)
         self.assertEqual(prefs["wins"], 3)
         self.assertEqual(prefs["max_ascension"], {"IRONCLAD": 6, "THE_SILENT": 0})
         self.assertEqual(prefs["locked"], ["WATCHER"])
 
     def test_a_first_win_opens_ascension_1(self):
         # The game keeps no ASCENSION_LEVEL until the first level-up and reads it as 1 once a character has won.
-        prefs = read_saves(STSDataVagabond={"WIN_COUNT": "1", "WIN_STREAK": "0"}, STSDataTheSilent={"WIN_STREAK": "0"})
+        prefs = read_saves(STSDataVagabond={"WIN_COUNT": "1", "WIN_STREAK": "0"}, STSDataTheSilent={"WIN_STREAK": "0"}, STSPlayer={"IRONCLAD_WIN": "true"})
         self.assertEqual(prefs["max_ascension"], {"IRONCLAD": 1, "THE_SILENT": 0})
+
+    def test_a_win_act_4_does_not_know_of_leaves_the_character_on_0(self):
+        # (A win from before the bot's mod set no DEFECT_WIN: the rotation plays the Defect until it wins again.)
+        prefs = read_saves(STSDataDefect={"WIN_COUNT": "1"}, STSDataWatcher={"WIN_STREAK": "0"}, STSPlayer={"IRONCLAD_WIN": "true"})
+        self.assertEqual(prefs["max_ascension"], {"DEFECT": 0, "WATCHER": 0})
 
     def test_a_new_profile_has_only_the_ironclad(self):
         prefs = read_saves()
