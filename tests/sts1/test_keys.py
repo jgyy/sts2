@@ -80,7 +80,7 @@ class Keys(Sts1Case):
     def test_recall_in_act_3_with_hp_to_spare_and_no_key_while_act_4_is_shut(self):
         self.assertEqual(keys.missing(_game(final_act_available=False)), set())
         # Not before the heal (40 HP), but on the last rest site (floor 49) there is no other chance.
-        for game, wanted in [({"final_act_available": False}, False), ({}, True), ({"current_hp": 40}, False), ({"current_hp": 46, "floor": 49}, True),
+        for game, wanted in [({"final_act_available": False}, False), ({}, True), ({"current_hp": 40}, False), ({"current_hp": 37, "floor": 49}, True), ({"current_hp": 35, "floor": 49}, False),
                              ({"act": 2}, False), ({"keys": {"ruby": True}}, False)]:
             with self.subTest(**game):
                 self.assertIs(keys.wants_ruby(_game(**game)), wanted)
@@ -88,8 +88,20 @@ class Keys(Sts1Case):
     def test_the_rest_site_shows_recall_only_when_it_is_wanted(self):
         s = screens(screen_type="REST", screen_state={"rest_options": ["rest", "smith", "recall"]})
         self.assertEqual([o["id"] for o in s._rest()["rest_site"]["options"]], ["recall"])
-        s.raw["game_state"]["current_hp"] = 30
+        s.raw["game_state"]["current_hp"] = 30  # (act 3 and hurt: beside the rest, which the rest site takes first)
+        self.assertEqual([o["id"] for o in s._rest()["rest_site"]["options"]], ["rest", "smith", "recall"])
+        s.raw["game_state"]["keys"]["ruby"] = True
         self.assertEqual([o["id"] for o in s._rest()["rest_site"]["options"]], ["rest", "smith"])
+        s.raw["game_state"].update(keys={}, final_act_available=False)
+        self.assertEqual([o["id"] for o in s._rest()["rest_site"]["options"]], ["rest", "smith"])
+
+    def test_recall_before_act_3_where_an_upgrade_would_have_been(self):
+        from sts2bot.run.strategy import Memory
+        opts = lambda: {"options": [{"index": 0, "id": "rest"}, {"index": 1, "id": "smith"}, {"index": 2, "id": "recall"}]}
+        hale = {"state_type": "rest_site", "run": {"act": 1}, "player": {"hp": 75, "max_hp": 80}, "rest_site": opts()}
+        self.assertEqual(strategy.rest_site(hale, Memory())[0], ("choose_rest_option", {"index": 2}))
+        hurt = {**hale, "player": {"hp": 30, "max_hp": 80}}
+        self.assertEqual(strategy.rest_site(hurt, Memory())[0], ("choose_rest_option", {"index": 0}))
 
     def test_the_act_3_chest_gives_the_sapphire_key_over_its_relic(self):
         relic = {"id": "Anchor", "name": "Anchor"}
@@ -107,7 +119,7 @@ class Keys(Sts1Case):
         self.assertEqual((nodes[(0, 2)], nodes[(2, 2)]), ("Elite", "EmeraldElite"))
         plain = strategy.path_value([("Monster", 9), ("Elite", 10)], 70, 80, 99, 1)
         burning = strategy.path_value([("Monster", 9), ("EmeraldElite", 10)], 70, 80, 99, 1)
-        self.assertAlmostEqual(burning - plain, strategy.EMERALD_WORTH)
+        self.assertAlmostEqual(burning - plain, strategy.EMERALD_WORTH[1])
         s.raw["game_state"]["keys"]["emerald"] = True
         self.assertNotIn("EmeraldElite", [n["type"] for n in s._map()["map"]["nodes"]])
 
