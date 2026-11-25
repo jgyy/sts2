@@ -31,7 +31,7 @@ class Run:
         start = game.CHARACTERS[character]
         self.title = start["title"]
         self.max_hp = start["hp"] - game.max_hp_penalty(ascension, character)
-        self.hp = self.max_hp if ascension < 6 else int(self.max_hp * 0.9)
+        self.hp = game.start_hp(self)
         self.gold = 99
         self.energy = 3
         self.orb_slots = start.get("orbs", 0)
@@ -193,7 +193,7 @@ class Run:
             if act == self.game.ACTS:
                 won = True
             else:
-                self.hp += int((self.max_hp - self.hp) * (1.0 if self.asc < 5 else 0.75))
+                self.hp += int((self.max_hp - self.hp) * self.game.boss_heal(self))
         return {
             "game": self.game.KEY, "character": self.character, "seed": self.seed, "ascension": self.asc, "knobs": self.knobs,
             "won": won, "act": self.act, "floor": self.floor, "hp": self.hp, "max_hp": self.max_hp, "gold": self.gold,

@@ -32,6 +32,15 @@ with open(os.path.join(os.path.dirname(__file__), "sts2_data.json")) as _f:
     DATA = json.load(_f)
 
 
+def _scarce(odds: list) -> list:
+    """A7's card odds: half the rare chance, the other half to commons."""
+    rare = dict(odds)["Rare"]
+    return [(r, p / 2 if r == "Rare" else p + rare / 2 if r == "Common" else p) for r, p in odds]
+
+
+SCARCE_ODDS = {k: _scarce(v) for k, v in CARD_ODDS.items()}
+
+
 def _defs() -> dict[str, CardDef]:
     out = {}
     for key, (name, char, ctype, cost, cost_up, rarity, target, text, text_up, kws, kws_up, star, star_up) in DATA["cards"].items():
@@ -370,6 +379,8 @@ def relic_text(rid: str) -> str:
 
 relic_pickup, fight_won, rest_options, event = sts1.relic_pickup, sts1.fight_won, sts1.rest_options, common.event
 max_hp_penalty = lambda asc, character: 0
+start_hp = lambda run: run.max_hp  # (no damaged start: StS2's A6 prices removal instead)
+boss_heal = lambda run: 0.0  # (no heal after a boss: the next act's Ancient heals, act_start)
 
 
 def random_relic(run, chest: bool = False) -> str:
@@ -499,7 +510,8 @@ def fight_gold(run, kind: str) -> int:
 def card_choices(run, kind: str) -> list[Card]:
     n = 3 + run.has("QUESTION_CARD") - 2 * run.has("BUSTED_CROWN")
     up = {1: 0.0, 2: 0.25, 3: 0.5}.get(run.act, 0.5) * (0.5 if run.asc >= 7 else 1.0)
-    return common.offer(run, pool(run.character), max(1, n), CARD_ODDS, kind if kind in CARD_ODDS or kind == "boss" else "monster", up)
+    odds = SCARCE_ODDS if run.asc >= 7 else CARD_ODDS  # (A7: rares half as common)
+    return common.offer(run, pool(run.character), max(1, n), odds, kind if kind in CARD_ODDS or kind == "boss" else "monster", up)
 
 
 def shop_stock(run) -> list[dict]:
