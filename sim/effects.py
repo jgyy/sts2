@@ -541,6 +541,8 @@ def turn_end(f) -> None:
             f.take(4 if c.up and c.key == "BURN" else 2, attack=False)
         elif c.key == "REGRET":
             f.lose_hp(len(f.hand))
+        elif c.key == "WITHER":  # 3 damage a level (Slay the Spire 2's Aeonglass): "Wither+2" does 9
+            f.take(3 + 3 * int(c.d.name.partition("+")[2] or 0), attack=False)
         elif c.key in ("DOUBT", "SHAME"):
             debuff_me(f, "WEAK" if c.key == "DOUBT" else "FRAIL", 1)
     if pw.get("WAVE_OF_THE_HAND"):

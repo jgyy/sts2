@@ -524,3 +524,17 @@ def ON(f, what: str, card=None) -> None:
     """The engine's events, for Powers read from their text: a card played, a card Exhausted, Block gained."""
     if f.triggers:
         trigger(f, what, card)
+    if what == "play":
+        for foe in f.alive():  # the Aeonglass's Withering Presence: a Wither into our hand every 6 cards played
+            if foe.powers.get("WITHERING_PRESENCE"):
+                foe.powers["WITHERING_PRESENCE"] -= 1
+                if foe.powers["WITHERING_PRESENCE"] <= 0:
+                    foe.powers["WITHERING_PRESENCE"] = 6
+                    f.add_card(Card(wither(foe.mem.get("wither_level", 0))))
+
+
+@lru_cache(maxsize=None)
+def wither(level: int) -> CardDef:
+    """A Wither of the Aeonglass's level: each time it buffs, every Wither does 3 more."""
+    d = CARDS["WITHER"]
+    return replace(d, name=f"Wither+{level}", text=f"Unplayable. At the end of your turn, if this is in your Hand, take {3 * level + 3} damage.") if level else d
