@@ -137,7 +137,7 @@ the game by Spire Codex), monsters by their move tables, and a common subset of 
 ```sh
 python3 -m sim run --game sts1 --character all --runs 1000 --vary --out runs.jsonl   # --vary: random settings per run
 python3 -m sim run --game sts2 --character NECROBINDER --runs 200 --ascension 5
-python3 -m sim report runs.jsonl                                                     # by character, setting, card
+python3 -m sim report runs.jsonl                                                     # by character, setting, boss, card
 python3 -m sim trace                                                                 # one hash per character
 ```
 
