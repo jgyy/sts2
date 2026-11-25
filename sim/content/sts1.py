@@ -360,6 +360,15 @@ def shop_stock(run) -> list[dict]:
 event = common.event
 
 
+def start_hp(run) -> int:
+    return run.max_hp if run.asc < 6 else int(run.max_hp * 0.9)  # (A6: start each run damaged)
+
+
+def boss_heal(run) -> float:
+    """The share of missing HP healed on the way to the next act (A5: 75%)."""
+    return 1.0 if run.asc < 5 else 0.75
+
+
 def max_hp_penalty(asc: int, character: str) -> int:
     return (5 if character == "IRONCLAD" else 4) if asc >= 14 else 0
 

@@ -50,3 +50,16 @@ class Sim(unittest.TestCase):
             f.run_fight()
             self.assertTrue(f.won or f.lost)
             self.assertGreater(f.round, 0)
+
+    def test_each_game_keeps_its_own_ascension_rules(self):
+        sts2 = _content("sts2")
+        run = Run(sts2, "IRONCLAD", 1, {}, 7)
+        self.assertEqual(run.hp, run.max_hp)  # (a damaged start is the first game's A6)
+        self.assertEqual(sts2.boss_heal(run), 0.0)  # (the next act's Ancient heals: act_start)
+        rare = lambda odds: dict(odds["monster"])["Rare"]
+        self.assertAlmostEqual(rare(sts2.SCARCE_ODDS), rare(sts2.CARD_ODDS) / 2)  # A7: half the rares ...
+        self.assertAlmostEqual(sum(p for _r, p in sts2.SCARCE_ODDS["elite"]), 1.0)  # ... the rest commons
+        sts1 = _content("sts1")
+        run = Run(sts1, "IRONCLAD", 1, {}, 6)
+        self.assertEqual(run.hp, int(run.max_hp * 0.9))
+        self.assertEqual(sts1.boss_heal(run), 0.75)
