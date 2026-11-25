@@ -163,18 +163,18 @@ def seed_from_history(stats: CardStats, runs_file: Path) -> None:
 # Judgement calls that are plain numbers: each run plays one setting of each, drawn by Thompson sampling from those whose runs went furthest.
 DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "crowd": 0.6, "punch": 0.9, "weak_want": 0.0, "attack_room": 99.0, "block_want": 0.0, "cards_first": 0.0, "debuff_worth": 1.0, "free_lean": 1.0}
 CHOICES = {
-    "caution": [0.75, 1.0],  # weight of HP lost in the combat planner
+    "caution": [0.75, 1.0, 1.35],  # weight of HP lost in the combat planner (model runs: 1.35 best in Slay the Spire 2, 0.75 worst)
     "elite_worth": [2.5, 6.0],  # what an elite's rewards count for when planning a route
     "upgrade_worth": [2.5, 4.0],  # what an upgrade counts for against resting in acts 2 and 3 (act 1: strategy.UPGRADE_EARLY)
     "pickiness": [-1.0, 0.0],  # added to the rating a card reward needs to be taken
-    "crowd": [0.3, 0.6],  # how much of a card's rating comes from other players' runs (crowd.py) rather than our table (cards._TIER)
+    "crowd": [0.0, 0.3, 0.6],  # share of a card's rating from other players' runs (crowd.py) over our table (cards._TIER); model runs: 0.6 best in StS1, worst in StS2
     "punch": [2.7],  # how hard a deck short of damage leans to attacks: points per damage an energy under decks.PUNCH_FLOOR (DEFAULTS: 0.9 for the tests)
     "weak_want": [0.0, 1.0],  # rating points for a card that applies Weak while the deck holds fewer than two (decks.deck_fit)
     "free_lean": [0.0, 1.0],  # how much of its kind's start a free attack gets (learn.CardStats.shift)
     "attack_room": [3.0],  # damage cards a deck holds before that lean lets go (gone three later; 99: never): attack-heavy decks lost the act 2 boss
     "block_want": [0.0],  # rating points for a card with 5 Block or more while the deck holds few beyond its Defends (decks.deck_fit)
     "cards_first": [0.0, 1.0],  # 1.0: an early card removal has to beat the cards on a Merchant's shelf (strategy.shop)
-    "debuff_worth": [2.0, 3.0],  # a lasting turn of Vulnerable or Weak in the combat planner, as a multiple of its old worth (DEFAULTS: 1.0 for the tests)
+    "debuff_worth": [1.0, 2.0, 3.0],  # a lasting turn of Vulnerable or Weak in the combat planner, as a multiple of its old worth (model runs: 1.0 best in the first game)
 }
 MIN_RUNS = 20  # runs a setting gets before the record alone decides how often it is drawn
 SPREAD = 12.0  # how far apart two runs of the same character usually end, in floors
