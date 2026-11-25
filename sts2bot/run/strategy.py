@@ -211,7 +211,7 @@ LATE_ROW = 5  # from this row of acts 2 and 3 an ordinary fight costs more than 
 LATE_COST = {2: (0.85, 1.2), 3: (0.93, 1.08)}
 BAD_LUCK = 1.7  # how much more than average a fight costs when the draws go wrong
 BOSS_WORTH = 16.0  # what getting past the boss is worth, in the units of the room rewards below
-EMERALD_WORTH = 8.0  # the first game's burning elite, which holds the Emerald Key for act 4 (games/sts1/keys.py)
+EMERALD_WORTH = {1: 8.0, 2: 11.0, 3: 16.0}  # the first game's burning elite, which holds the Emerald Key for act 4 (games/sts1/keys.py): more as the chances run out
 MAX_PATHS = 1500
 ELITE_FLOOR = 0.35  # share of Max HP under which an elite is never chosen while there is another way on
 # The act 2 boss win chance by the HP it is met on, as a share of that from full HP (even HP above 85% counts there).
@@ -256,7 +256,7 @@ def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, 
     score = 0.0
     for n, (kind, row) in enumerate(rooms):
         if kind == "EmeraldElite":
-            score, kind = score + EMERALD_WORTH, "Elite"
+            score, kind = score + EMERALD_WORTH.get(act, EMERALD_WORTH[3]), "Elite"
         if kind in ("Monster", "Elite"):
             cost = costs[kind]
             if kind == "Elite" and act == 1 and isinstance(row, int) and row < EARLY_ROWS:
@@ -444,6 +444,8 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
             return 10.0 if heal_first else 1.0
         if "smith" in oid or "upgrade" in oid:
             return 5.0
+        if oid == "recall":
+            return 5.5  # the first game's Ruby Key, offered only while it is missing (games/sts1/keys.py): over an upgrade, not over a needed rest
         # A relic's option beats the upgrade: Girya's Lift (Strength, for a deck that hits), Shovel's Dig, Pumpkin Candle's Kindle.
         if "lift" in oid:
             hitters = sum(1 for c in mem.deck if _parse(c).damage > 0 and not _parse(c).osty_attack)

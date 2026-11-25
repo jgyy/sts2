@@ -21,6 +21,10 @@ PLAYED, SPARE = 4, 0.4  # a hand's first 4 cards count whole (a turn's energy pl
 MAX_TURNS = 15
 PACE = {"boss": 28.0, "elite": 22.0}  # enemy HP a round we take off, before the fight has shown its own (an ordinary fight: 18)
 LATER = 0.7  # what a card drawn on a later turn is worth against one in the hand now (the fight may be over first)
+# Fights that run long, where a full hand costs most: a share of the price is taken over this many times the turns left.
+# (2026-11-25: in boss fights won, 20-39% of rounds at Soul Fysh, the Ceremonial Beast, the Waterfall Giant and the Knowledge
+# Demon came 1.5x or more past the estimate; 19:03 the Fool lost to Soul Fysh on 25 HP from round 8 under ten Sadness.)
+LONG, TAIL = 1.8, 0.4  # (scripts/bosses/sadfight.py: won 43.9% -> 48.8%; 0.5 x 2.5 and 1.0 x 2.0 the same)
 
 
 def held(player: dict) -> int:
@@ -68,5 +72,5 @@ def _drawn(sad: int, rate: int, extra: int, turns: float) -> float:
 def worth(view: tuple, added: int, rate_added: int, extra_added: int) -> float:
     """What a line's Sadness (and Ennui's, Ecstasy's) does to the turns to come, in planner points (negative: cards not drawn)."""
     sad, rate, extra, turns, card = view
-    gain = _drawn(sad + added, rate + rate_added, extra + extra_added, turns) - _drawn(sad, rate, extra, turns)
-    return gain * card * LATER
+    gain = lambda t: _drawn(sad + added, rate + rate_added, extra + extra_added, t) - _drawn(sad, rate, extra, t)
+    return ((1.0 - TAIL) * gain(turns) + TAIL * gain(min(float(MAX_TURNS), LONG * turns))) * card * LATER

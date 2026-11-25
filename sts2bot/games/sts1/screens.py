@@ -284,9 +284,13 @@ class Screens:
     def _rest(self) -> dict:
         ss = self.game.get("screen_state") or {}
         opts = [{"index": i, "id": str(o).lower(), "name": str(o).title(), "is_enabled": True} for i, o in enumerate(ss.get("rest_options") or [])]
-        # Recall (the Ruby Key) only when it is wanted here, and never by accident otherwise.
+        # Recall (the Ruby Key): alone when it has to be taken here, beside the rest while the key is missing (strategy.rest_site
+        # takes it over an upgrade), and never by accident once the key is held or act 4 is shut.
         recall = [o for o in opts if o["id"] == "recall"]
-        opts = recall if recall and keys.wants_ruby(self.game) else [o for o in opts if o["id"] != "recall"]
+        if recall and keys.wants_ruby(self.game):
+            opts = recall
+        elif not keys.ruby_open(self.game):
+            opts = [o for o in opts if o["id"] != "recall"]
         return self._wrap("rest_site", rest_site={"options": opts, "can_proceed": "proceed" in self.commands})
 
     def _shop_room(self) -> dict:
