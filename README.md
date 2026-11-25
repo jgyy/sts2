@@ -22,7 +22,7 @@ Slay the Spire    <-- CommunicationMod (stdin/stdout) --> relay.py <-- HTTP, loc
 | `sts2bot/run/` | everything between fights: whole-route map planning against the HP the bot would reach the boss with, rewards, shops, rest sites, events, potions; `decks.py` rates a card for the deck that would take it |
 | `sts2bot/cards.py` | reads what a card does from its text (so new and rebalanced cards work), plus hand-made ratings |
 | `sts2bot/run/crowd.py` | other players' win and pick rates per card (tierspire.com), mixed into the ratings |
-| `sts2bot/learn.py` | learns from its own runs: shifts card ratings by how far runs that took them got, and tunes a dozen settings by Thompson sampling (`tuning.json`; `--no-tuning` turns it off) |
+| `sts2bot/learn.py` | learns from its own runs: shifts card ratings by how far runs that took them got, and tunes a dozen settings by Thompson sampling (`tuning.json`; `--no-tuning` turns it off); one of them weighs in what the model runs say of each card (`run/model_cards.json`) |
 | `sts2bot/supervisor.py` | starts Steam and the game, restarts it when it hangs, rebuilds the mod after a game update, and after a crash does something different in the room it crashed in |
 | `sts2bot/games/sts1/` | the first game: translates CommunicationMod's state into the bot's and the bot's actions back, holds every card's text (CommunicationMod sends none), the Watcher's stances and the act 4 keys |
 | `sim/` | model runs of both games played by the bot's own code (see [Model runs](#model-runs)) |
@@ -102,7 +102,7 @@ service restarts it.
 | `--character` | `auto` | `auto`/`random` (lowest ascension first), a character id, or `cycle` |
 | `--first CHARACTER` | - | with `auto`: this character until its own epochs are earned |
 | `--runs N` | forever | stop after N runs (per game with `both`) |
-| `--no-tuning` | off | always play the default settings |
+| `--no-tuning` | off | always play the default settings (each game's best in the model runs, `learn.GAME_DEFAULTS`) |
 | `--no-launch` | off | never start or kill the game |
 | `--launch-cmd` | the game binary, else `steam -applaunch 2868840` | how to start the game |
 | `--fast-mode` | `instant` | animation speed (`instant`, `fast`, `normal`, `keep`) |
@@ -139,6 +139,7 @@ python3 -m sim run --game sts1 --character all --runs 1000 --vary --out runs.jso
 python3 -m sim run --game sts2 --character NECROBINDER --runs 200 --ascension 5
 python3 -m sim report runs.jsonl                                                     # by character, setting, boss, card
 python3 -m sim trace                                                                 # one hash per character
+python3 -m sim prior sts2.jsonl sts1.jsonl --out sts2bot/run/model_cards.json         # the card table the bot reads
 ```
 
 `trace` hashes every decision of seeded runs: a change that should not alter behaviour must leave the hashes as they

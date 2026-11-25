@@ -17,6 +17,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["sts2bot", "sts2bot.fight", "sts2bot.fight.fool", "sts2bot.run", "sts2bot.games", "sts2bot.games.sts1", "sts2bot.games.sts1.text"]
 
+[tool.setuptools.package-data]
+"sts2bot.run" = ["*.json"]  # model_cards.json: the model runs' card table (learn.MODEL_CARDS)
+
 [tool.ruff]
 line-length = 250
 extend-exclude = [".build"]

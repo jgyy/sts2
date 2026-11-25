@@ -1,8 +1,13 @@
 """The model-run simulator (sim/): every first-game card plays without error, and a fight of each game runs to its end."""
 
+import contextlib
 import importlib
+import io
+import json
 import logging
+import tempfile
 import unittest
+from pathlib import Path
 
 from sts2bot import games, learn
 from sim.cards import Card
@@ -63,3 +68,21 @@ class Sim(unittest.TestCase):
         run = Run(sts1, "IRONCLAD", 1, {}, 6)
         self.assertEqual(run.hp, int(run.max_hp * 0.9))
         self.assertEqual(sts1.boss_heal(run), 0.75)
+
+    def test_the_card_table_learns_only_from_runs_that_did_not_use_it(self):
+        from sim.__main__ import main
+
+        def run(floor, picks, lean=0.0):
+            return {"game": "sts2", "character": "SILENT", "floor": floor, "won": False, "picks": picks, "knobs": {}, "model_lean": lean}
+
+        runs = [run(30, [[2, "FOOTWORK"]]) for _ in range(5)] + [run(20, [[2, "DEFLECT"]]) for _ in range(5)]
+        runs += [run(48, [[2, "DEFLECT"]], lean=1.0) for _ in range(50)]  # (played with the table: left out)
+        with tempfile.TemporaryDirectory() as d:
+            src, out = Path(d) / "runs.jsonl", Path(d) / "cards.json"
+            src.write_text("".join(json.dumps(r) + "\n" for r in runs))
+            with contextlib.redirect_stderr(io.StringIO()):
+                main(["prior", str(src), "--out", str(out), "--prior", "10"])
+            table = json.loads(out.read_text())["sts2"]["SILENT"]
+        # Par is 25: Footwork's five picks 5 floors over it, Deflect's 5 under, each shrunk to 5/15 of that.
+        self.assertAlmostEqual(table["FOOTWORK"], round(25 / 15, 2))
+        self.assertAlmostEqual(table["DEFLECT"], round(-25 / 15, 2))

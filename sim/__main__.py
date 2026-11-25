@@ -4,6 +4,7 @@
     python3 -m sim run --game sts2 --character all --runs 1000 --vary      # each run draws its own value of every setting
     python3 -m sim report sim-runs.jsonl [--md docs/strategy/simulation.md]
     python3 -m sim trace --game sts1 --runs 2                             # one hash per character: changes iff a decision does
+    python3 -m sim prior sts2.jsonl sts1.jsonl --out sts2bot/run/model_cards.json   # the card table `model_lean` weighs in
 """
 
 from __future__ import annotations
@@ -36,6 +37,7 @@ GRID = {  # the settings tried with --vary: the bot's own choices (learn.CHOICES
     "block_want": [0.0, 1.5],
     "cards_first": [0.0, 1.0],
     "debuff_worth": [1.0, 2.0, 3.0],
+    "model_lean": [0.0, 1.0],
 }
 
 
@@ -110,6 +112,45 @@ def cmd_trace(a) -> int:
     return 0
 
 
+def cmd_prior(a) -> int:
+    """learn.MODEL_CARDS from run files: per game and character, the floors each card's picks gained over the runs that left the same
+    floor alive (report.card_table's measure), less the character's average pick, shrunk by `--prior` picks and capped. Runs that
+    played with the table (model_lean) are left out, so that it never learns from itself."""
+    from collections import defaultdict
+    from .report import load, score
+    from sts2bot.cards import key_of
+    groups = defaultdict(list)
+    for r in load(a.files):
+        if "error" not in r and not r.get("model_lean", (r.get("knobs") or {}).get("model_lean", 0.0)):  # (not runs that leaned on the table)
+            groups[(r["game"], r["character"])].append(r)
+    out: dict = {}
+    for (game, ch), runs in sorted(groups.items()):
+        mod = content(game)
+        usual, gained = {}, defaultdict(list)
+        for r in runs:
+            for floor, key in r.get("picks") or []:
+                if floor not in usual:
+                    alive = [score(x) for x in runs if x["floor"] > floor or x["won"]]
+                    usual[floor] = sum(alive) / max(1, len(alive))
+                gained[key].append(score(r) - usual[floor])
+        picks = sum(map(len, gained.values()))
+        par = sum(map(sum, gained.values())) / max(1, picks)
+        table = {}
+        for key, g in gained.items():
+            shift = max(-a.most, min(a.most, (sum(g) - par * len(g)) / (len(g) + a.prior)))
+            if abs(shift) >= 0.05:
+                table[key_of(mod.CARDS[key].name if key in mod.CARDS else key)] = round(shift, 2)
+        out.setdefault(game, {})[learn.who_key(mod.CHARACTERS[ch]["title"])] = dict(sorted(table.items()))
+        print(f"{game} {ch}: {len(runs)} runs, {picks} picks, {len(table)} cards", file=sys.stderr)
+    text = json.dumps(out, indent=1, sort_keys=True) + "\n"
+    if a.out:
+        with open(a.out, "w") as f:
+            f.write(text)
+    else:
+        sys.stdout.write(text)
+    return 0
+
+
 def cmd_report(a) -> int:
     from .report import report
     text = report(a.files, a.min_runs)
@@ -143,9 +184,14 @@ def main(argv=None) -> int:
     p.add_argument("files", nargs="+")
     p.add_argument("--md", default=None)
     p.add_argument("--min-runs", type=int, default=30)
+    q = sub.add_parser("prior", help="the model's card table the bot reads (learn.MODEL_CARDS) from run files")
+    q.add_argument("files", nargs="+")
+    q.add_argument("--out", default=None)
+    q.add_argument("--prior", type=float, default=40.0, help="picks before a card's own record counts for half")
+    q.add_argument("--most", type=float, default=3.0, help="no card moves further than this")
     a = ap.parse_args(argv)
     learn.KNOB.update(learn.DEFAULTS)
-    return {"run": cmd_run, "trace": cmd_trace, "report": cmd_report}[a.cmd](a)
+    return {"run": cmd_run, "trace": cmd_trace, "report": cmd_report, "prior": cmd_prior}[a.cmd](a)
 
 
 if __name__ == "__main__":
