@@ -1,11 +1,159 @@
-# Model runs: what 9,000 simulated runs say
+# Model runs: what the simulator says
 
-**Batches:** 5,000 runs of Slay the Spire 2 at Ascension 5 (the level the live bot plays) and 4,000 of the first game
-at Ascension 0, 1,000 per character, every decision made by the bot's own code. Each run draws its own value of every
-setting, so each setting is compared with every other setting averaged out. A run's **score** is the floor it ended
-on, plus 15 for a win (one point is about one floor).
+**Latest batches (2026-11-25), at the levels the live bot plays:** Slay the Spire 2 at **Ascension 7** and the first
+game at Ascension 0, every decision made by the bot's own code. A run's **score** is the floor it ended on, plus 15
+for a win (one point is about one floor). Settings are compared with `--vary` (each run draws its own value of every
+setting); the bot before and after the changes on the same seeds without it. The earlier batches (Slay the Spire 2
+at A5) are [further down](#earlier-9000-runs-at-ascension-5-and-0).
 
 ## The short version
+
+- **Ascension 7 is hard on the bot:** 0-5% wins per character in the model (the Ironclad, Silent and Defect 4-5%, the
+  Regent and Necrobinder next to none). The act 2 boss ends 33-46% of runs; the **Knowledge Demon** is beaten 27% of
+  the time and only 32% even from full HP (the Kaiser Crab and the Insatiable go from about 55% to 65-70% at full HP).
+  The act 3 bosses are beaten 9-18%.
+- **The first game at A0** is where it was: 2-8% wins, the Champ the wall (39%), act 2's hallways ending 15-25% of runs.
+- **The bot before and after, on 1,800 seeds none of it was chosen on:** Slay the Spire 2 at A7 **+5.3 ± 0.4 floors**
+  (wins 2.6% → 6.6%; every character better, the Defect +7.7, Regent +7.0, Necrobinder +6.3, Silent +3.5, Ironclad
+  +2.1; the act 2 bosses beaten 48% → 65% the Kaiser Crab, 34% → 45% the Knowledge Demon, 48% → 66% the Insatiable),
+  the first game at A0 **+3.9 ± 0.6** (wins 5.4% → 13.5%; the Silent +6.9, Defect +4.7, Ironclad +2.6, Watcher +1.5;
+  the Champ 42% → 56%).
+- **Most of it comes from rating cards by what the model runs say of them** (`model_lean`, `sts2bot/run/model_cards.json`,
+  built by `python3 -m sim prior`). On seeds the table had not learned from, Slay the Spire 2 runs with it went
+  **4.0 floors further** (99%), better for all five characters, and won 6.6% of runs instead of 2.9%; first-game runs
+  went **3.4 floors further** (99%) and won 10.6% instead of 4.1%.
+- **Per-game defaults** (`learn.GAME_DEFAULTS`: played with `--no-tuning` and by the model): Slay the Spire 2 takes
+  `crowd` 0.3 (0.6, the old default, was the worst of three in every batch) and `attack_room` 3 (0.7-1.3 floors ahead
+  in all three), the first game `elite_worth` 6 and `cards_first` 1 (1.4-1.9 floors ahead in both its batches), and
+  both `model_lean` 1.
+- **The live bot's choices** (`learn.CHOICES`) now offer `model_lean` 0/1 and `punch` 0.9 again (it only ever played 2.7;
+  0.9 was 0.2-1.3 floors ahead in all three A7 batches): its own runs decide.
+- **Tried and dropped** (no gain, or a loss): act 3 card rewards needing 1.5 or 3 more to be taken (+0.9 on one batch,
+  -1.1 and -0.9 on fresh seeds of each game), a lean to AoE cards while the deck has fewer than two (-1.1 floors, 99%),
+  a lean to Powers that scale every turn (-0.3), lasting effects counted for 4.5 turns of a boss fight instead of 3
+  (+0.2), card removal priced higher at the Merchant (-0.2), damage worth 25% more in boss fights (+0.1).
+- **The model now matches the game at A6+:** Slay the Spire 2 runs no longer start at 90% HP (the first game's A6),
+  no longer heal after a boss on top of the next Ancient's heal (at A5+ they healed 95% of missing HP, not 80%), and at
+  A7 rare cards are half as common.
+
+## What changed
+
+| | Slay the Spire 2, A7 | First game, A0 |
+|---|---|---|
+| **The bot before and after** (same seeds, no `--vary`, 200 runs a character) | **+5.3 ± 0.4 floors** (99%); wins 2.6% → 6.6% | **+3.9 ± 0.6 floors** (99%); wins 5.4% → 13.5% |
+| `model_lean` 1 against 0 (round 2: fresh seeds, `--vary`) | **+4.0 ± 0.5 floors** (99%); wins 2.9% → 6.6% | **+3.4 ± 0.7** (99%); wins 4.1% → 10.6% |
+| Defaults (`learn.GAME_DEFAULTS`) | `crowd` 0.3, `attack_room` 3, `model_lean` 1 | `elite_worth` 6, `cards_first` 1, `model_lean` 1 |
+| Live choices (`learn.CHOICES`) | `model_lean` [0, 1] added; `punch` [0.9, 2.7] (was [2.7]) | the same table |
+
+"Before" is the bot as it was, with its defaults (what `--no-tuning` played, and the model's own default); "after" is
+the bot now, with each game's defaults and the card table (seeds 9000-9199 and 10000-10199, which no table or setting
+was chosen on). The live bot plays neither exactly: it draws each setting from `learn.CHOICES`.
+
+**The card table.** `python3 -m sim prior` reads run files and writes, per game and character, the floors each card's
+picks gained over the runs that left the same floor alive (the measure of the card lists below and of
+`learn.CardStats`), less the character's average pick, shrunk by 40 picks and capped at ±3 rating points. With
+`model_lean` 1 that is added to the card's rating at rewards and on the Merchant's shelf. Slay the Spire 2's was built
+from the 3,000 runs of round 1 (seeds 5000-5299) and tested on seeds 7000-7399: every character gained (Necrobinder
++5.5, Defect +5.0, Regent +3.3, Ironclad +3.1, Silent +1.8), and every act 2 boss fell more often (the Knowledge Demon
+29% → 38%, the Kaiser Crab 52% → 64%, the Insatiable 54% → 63%). The first game's, built from its 1,200 base runs and
+tested on seeds 8000-8299, did the same for all four characters (+1.1 to +5.2). What it says agrees with the A5
+batch's card lists below, played on other seeds at another ascension: for the Defect Frost over Glass (Refract,
+Glasswork, Hailstorm low; Cold Snap, Ice Lance, Echo Form high), Bone Shards and Death March for the Necrobinder, Gamma
+Blast and Shining Strike over Hidden Cache and Child of the Stars for the Regent. The shipped table was rebuilt from
+every run that did not lean on it (3,970 of Slay the Spire 2, 1,836 of the first game); it never learns from runs that
+used it (`model_lean` is recorded per run). **Rebuild it** when the model or the bot's card play changes, or it
+describes a bot that no longer exists.
+
+**Why it may not carry over in full.** Part of the gain may be the table steering away from cards whose strength is
+what the model leaves out (events, relic synergies, Scry choices), which would not be a gain in the game. So the live
+bot draws `model_lean` 0 or 1 like any other setting, and its own runs decide.
+
+**Settings, three batches of Slay the Spire 2 at A7** (base, round 1 and round 2 with `--vary`; score difference from
+a regression on every setting at once, `*` 95%, `**` 99%):
+
+| Setting | Base (1,500) | Round 1 (1,500) | Round 2 (2,000) | Taken |
+|---|---|---|---|---|
+| `crowd` 0.6 against 0 | -1.4* | -1.3* | -1.5* | 0.3 (0 and 0.3 trade places) |
+| `attack_room` 99 against 3 | -1.1* | -1.3* | -0.7 | 3 |
+| `punch` 2.7 against 0.9 | -1.3* | -0.8 | -0.2 | 0.9 offered to the live bot again |
+| `elite_worth` 6 against 2.5 | -0.1 | +0.5 | -0.4 | unchanged (0.8 is worst) |
+| `cards_first` 1 against 0 | +0.6 | +0.9 | -0.6 | unchanged |
+| `caution` 1.35 against 1 | -0.7 | -0.5 | +1.0 | unchanged |
+| `debuff_worth` 2 against 1 | +0.1 | -0.1 | +1.7** | unchanged |
+
+`caution` 1.35, best at A5, is no better at A7; `debuff_worth` 2 and `weak_want` 0 stand out in one batch only (with
+some 20 comparisons a batch, one or two marked cells are chance).
+
+**Tried and dropped** (each a setting in `--vary`, then removed):
+
+| Rule | Effect | |
+|---|---|---|
+| Act 3 card rewards need 1.5 (or 3) more to be taken | +0.9* on round 1's seeds; -1.1 and -0.9 on fresh ones (both games) | the round 1 result was chance |
+| +1.5 for an AoE card while the deck holds fewer than two | -1.1** | worse for the Ironclad and Silent above all |
+| +1.5 for a Power that pays every turn (Inflame, Demon Form, Footwork, Afterimage, Echo Form) while fewer than two | -0.3 | their ratings already carry it |
+| Lasting effects count 4.5 turns of a boss fight, not 3 | +0.2 | |
+| Card removal +1.5 at the Merchant | -0.2 | |
+| Damage worth 25% more in boss fights | +0.1 | |
+
+## Slay the Spire 2, Ascension 7 (1,500 runs, before the changes)
+
+| Character | Wins | Mean floor | Act 1 boss beaten | Act 2 boss | Act 3 boss | Runs ended by the act 2 boss |
+|---|---:|---:|---:|---:|---:|---:|
+| Silent | 4.3% | 35.0 | 95% | 60% | 14% | 33% |
+| Defect | 4.3% | 33.4 | 92% | 54% | 14% | 35% |
+| Ironclad | **5.3%** | 31.3 | 84% | 46% | 26% | 39% |
+| Regent | 0.3% | 29.7 | 80% | 33% | 2% | 46% |
+| Necrobinder | 0.0% | 27.9 | 76% | 31% | 0% | 40% |
+
+**Where runs end.** The act 1 boss ends 5-8% of the Silent's and Defect's runs and 16-24% of the others' (the
+Lagavulin Matriarch beats the Necrobinder 42% of the time, the Waterfall Giant the Ironclad, Regent and Necrobinder about
+30%); the act 2 boss 33-46%; act 2's other rooms 11-16%; the act 3 boss 10-28%. Bosses beaten:
+
+| Boss | Silent | Defect | Ironclad | Regent | Necrobinder | All |
+|---|---:|---:|---:|---:|---:|---:|
+| Kaiser Crab (Crusher + Rocket) | 72% | 63% | 53% | 36% | 45% | 55% |
+| Knowledge Demon | 39% | 29% | 35% | 13% | 14% | 27% |
+| The Insatiable | 69% | 67% | 48% | 47% | 34% | 54% |
+| Aeonglass | 23% | 9% | 20% | 0% | 0% | 14% |
+| Queen (+ Torch Head Amalgam) | 11% | 7% | 28% | 0% | 0% | 9% |
+| Test Subject | 7% | 35% | 30% | 6% | 0% | 18% |
+
+Arriving HP matters at the Kaiser Crab and the Insatiable (53-56% beaten from 80-99% HP, 65-70% from full) more than at
+the Knowledge Demon (27%, 32%): that one is lost on the deck, not the way there.
+
+**Habits.** As at A5, the won runs fought more elites than the runs that lost to the last boss (0.6-2.0 against
+0.3-0.5) and, but for the Ironclad's, smithed more (2.9-4.0 against 2.5-2.8).
+
+**Cards** (score over the runs that left the same floor alive, `*` 95%, `**` 99%; picks in brackets):
+
+| Character | Went with deeper runs | Went with shallower runs |
+|---|---|---|
+| Silent | Noxious Fumes +1.8* (119), Footwork +1.5 (106), Afterimage +1.4 (112), Leg Sweep +1.1 (105) | Deflect -4.2** (47), Fan of Knives -2.2* (49), Echoing Slash -1.6 (89), Flick-Flack -1.4 (141) |
+| Defect | Null +2.5* (125), Echo Form +2.0 (68), Glacier +1.3 (119), Cold Snap +1.2 (257) | Refract -5.2** (60), Glasswork -4.4** (49), Hologram -2.7* (44), Focused Strike -1.9** (167), Lightning Rod -1.9* (79) |
+| Ironclad | Demon Form +2.8* (77), Fight Me +2.6 (38), Rampage +2.0 (76), Taunt +1.5 (118) | Armaments -3.6** (42), Whirlwind -2.8* (46), Howl from Beyond -2.8* (63), Blood Wall -1.6 (98) |
+| Regent | Hegemony +3.3** (35), Shining Strike +3.2** (76), Bulwark +3.1* (50), Big Bang +1.7* (67), Gather Light +1.4** (212) | Hidden Cache -2.6** (91), Crescent Spear -2.4* (71), Child of the Stars -2.2* (54), Heirloom Hammer -2.0* (50) |
+| Necrobinder | Death March +4.2** (39), Bone Shards +3.9** (76), Misery +2.1* (53), Grave Warden +1.4** (212) | Pull Aggro -3.9** (38), Severance -3.4** (39), Drain Power -1.8** (151), Capture Spirit -1.9* (54), Lethality -1.7* (81) |
+
+## The first game, Ascension 0 (1,200 runs, before the changes)
+
+| Character | Wins | Mean floor | Act 1 boss beaten | Act 2 boss | Act 3 boss | Runs ended by the act 2 boss |
+|---|---:|---:|---:|---:|---:|---:|
+| Ironclad | **8.0%** | 34.7 | 93% | 53% | 31% | 36% |
+| Defect | 5.3% | 34.0 | 95% | 48% | 28% | 39% |
+| Watcher | 3.3% | 31.8 | 90% | 56% | 26% | 27% |
+| Silent | 2.0% | 32.0 | 92% | 46% | 14% | 35% |
+
+The Champ is beaten 39% of the time (the Defect and Silent 30-32%), the Bronze Automaton 59%, the Collector 55%; in act 3
+the Awakened One 30%, Donu and Deca 21%, the Time Eater 27%. Act 2's hallways end 15-25% of runs (the Silent and Watcher
+most). Settings: `elite_worth` 6 (+2.0 over 0.8, 95%) and `cards_first` 1 (+1.4, 95%) ahead; `crowd` 0.6 the best of
+three, as before. Cards: Steam Barrier +4.5**, Go for the Eyes +4.1**, Uppercut +3.4**, Shockwave +2.8**, Adrenaline
++2.9** with the deeper runs; Aggregate -4.0**, Overclock -4.0**, Multi-Cast -3.1**, Burning Pact -4.4**, Grand
+Finale -4.3**, Unload -3.5**, Rushdown -5.0** with the shallower.
+
+## Earlier: 9,000 runs at Ascension 5 and 0
+
+5,000 runs of Slay the Spire 2 at Ascension 5 and 4,000 of the first game at Ascension 0, 1,000 per character (2026-11-25,
+before the A6+ corrections to the model above). Their short version:
 
 - **Slay the Spire 2:** play more carefully (`caution` 1.35: HP lost weighs 35% more in the combat planner; it helps
   every character) and rate cards by the bot's own table more than other players' ratings (`crowd` 0-0.3; the Ironclad
@@ -21,7 +169,7 @@ on, plus 15 for a win (one point is about one floor).
 - **Changed:** `learn.CHOICES` now also offers `caution` 1.35, `crowd` 0, `debuff_worth` 1 and `block_want` 1.5. The
   live bot keeps a tuning table per game, so each game's runs settle on what works for it.
 
-## Slay the Spire 2, Ascension 5 (5,000 runs)
+### Slay the Spire 2, Ascension 5 (5,000 runs)
 
 | Character | Wins | Mean floor | Act 1 boss beaten | Act 2 boss | Act 3 boss | Runs ended by the act 2 boss |
 |---|---:|---:|---:|---:|---:|---:|
@@ -89,7 +237,7 @@ cheap Star makers and Gamma Blast over Star-cost scaling (Child of the Stars, Cr
 Monarch's Gaze); for the Silent, Powers that pay every turn (Afterimage, Footwork, Accuracy) over one-off Block (Blur,
 Dodge and Roll).
 
-## The first game, Ascension 0 (4,000 runs)
+### The first game, Ascension 0 (4,000 runs)
 
 | Character | Wins | Mean floor | Act 1 boss beaten | Act 2 boss | Act 3 boss | Runs ended by the act 2 boss |
 |---|---:|---:|---:|---:|---:|---:|
@@ -139,16 +287,21 @@ the combat planner (`sts2bot/fight/combat.py`), the map, reward, shop, rest-site
 | Cards | every card's text from `sts2bot/games/sts1/text/`, costs and rarities from `sim/content/sts1_cards.py` | 638 cards of v0.111.1 (Spire Codex), keywords included |
 | Effects | what the planner's parser reads, plus handlers for ~150 cards whose text says more (conditions, piles, powers) | the same, and Powers read from their own text ("At the start of your turn, ...", "Whenever you play ...") |
 | Enemies | ~60 monsters, elites and bosses written from the game's rules, Ascension 0 numbers | 115 monsters with their move state machines (spire-mentor) and A8/A9 numbers, their powers acted out |
-| Run | 3 acts (no act 4), Neow, map rules, unknown-room odds, rewards, shops, rest sites, boss relics | 3 acts, Ancients (heal and a relic choice), the same, boss rewards without relics |
+| Run | 3 acts (no act 4), Neow, map rules, unknown-room odds, rewards, shops, rest sites, boss relics; ascension rules (A6: start at 90% HP, A5: heal 75% after a boss) | 3 acts, Ancients (heal and a relic choice), the same, boss rewards without relics; the A1-A10 rules (more elites, 80% Ancient heal, less gold, 2 potion slots, Ascender's Bane, dearer removal, half the rares and upgrades, then the monsters' A8-A9 numbers and two act 3 bosses) |
 | Simplified | events (a table of typical outcomes, chosen by the bot's event handler), a common subset of relics and potions, no Scry choices | the same; no enchantments, quests or the Fool; Dampen, Galvanic, Infested, Possess, Ravenous and Surprise do nothing |
 
 Each run draws its own value of every setting (`--vary`, the values in `sim/__main__.GRID`: the bot's choices and one
-on either side), so a setting's effect is the difference between the runs that drew each of its values. With 1,000
-runs a character, a value's effect has a standard error of about 0.55 for one character and 0.27 pooled.
+on either side), so a setting's effect is the difference between the runs that drew each of its values; a regression
+on every setting at once (and the character) sharpens it a little. With 300 runs a character (1,500 a game) a
+setting's effect has a standard error of about 0.5 floors pooled. A rule under test is a setting in `GRID` whose
+default is today's behaviour, so `python3 -m sim trace` shows the bot unchanged until it is adopted.
 
 ```sh
-python3 -m sim run --game sts2 --character all --runs 1000 --vary --seed 2000 --ascension 5 --out sts2.jsonl
-python3 -m sim run --game sts1 --character all --runs 1000 --vary --seed 1000 --out sts1.jsonl
+python3 -m sim run --game sts2 --character all --runs 300 --vary --seed 5000 --ascension 7 --out sts2.jsonl   # base and round 1
+python3 -m sim run --game sts1 --character all --runs 300 --vary --seed 6000 --out sts1.jsonl
+python3 -m sim prior sts2.jsonl sts1.jsonl --out sts2bot/run/model_cards.json                                # the card table
+python3 -m sim run --game sts2 --character all --runs 400 --vary --seed 7000 --ascension 7 --out round2.jsonl # fresh seeds
+python3 -m sim run --game sts2 --character all --runs 200 --seed 9000 --ascension 7 --out after.jsonl         # once per version of the bot
 python3 -m sim report sts2.jsonl sts1.jsonl
 ```
 
@@ -176,3 +329,5 @@ Three cautions when reading the tables:
 - **What the model leaves out favours what it models.** A card whose strength is something the model simplifies
   (an event, a relic synergy, a Scry choice) looks worse here than it is. That matters most for `crowd`: other
   players' ratings credit effects the model does not have, so its preference for the bot's own table may be too strong.
+  It matters as much for the card table (`model_lean`), which is that preference written down card by card: its 4
+  floors are the model's, and the live runs, which draw it at 0 or 1, are the test that counts.
