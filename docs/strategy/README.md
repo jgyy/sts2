@@ -26,20 +26,23 @@ they disagree, and the model runs are where a rule is tried before it goes live.
 | Crab claws together, Decimillipede segments together | `battle._rage_blocks`, `Enemy.reattach` |
 | Doom, Osty, Stars, orbs, Shivs, stances | the planner simulates each (`combat.simulate`) |
 | Ratings from other players' runs and its own | `crowd.py` (tierspire.com), `learn.CardStats`, mixed by the `crowd` setting |
+| ... and from the model runs | `learn.model_shift` over `run/model_cards.json` (`python3 -m sim prior`), weighed by the `model_lean` setting |
 | Never Runic Dome; avoid Coffee Dripper, Cursed Key | `games/sts1/text/potions.AVOID`, the boss relic order |
 
 ## Open questions worth testing
 
-1. **Act 2 survival.** The act 2 boss ends a third or more of the model's runs in both games (the Knowledge Demon is
-   beaten 20-48% of the time, the Champ 24-42%). Candidates: count AoE and Block cards as roles in `deck_fit` for act 2;
-   route around act 2 elites without AoE.
-2. **Slay the Spire 2's act 3 bosses** stop even the best decks in the model (Queen 13%, Test Subject 21%, Aeonglass 18%
-   beaten). The Test Subject and Aeonglass rules now match the bot's logs; the Queen has no log-built model fight yet.
-3. **Settings the model runs favour** (`caution` 1.35, `crowd` 0, `debuff_worth` 1, `block_want` 1.5) are now among
-   `learn.CHOICES`; the live runs decide whether they stay.
-4. **Cards the model runs flag** ([simulation.md](simulation.md), per character: Refract, Hailstorm, Unmovable and
-   Aggression low in Slay the Spire 2; Hyperbeam, Concentrate and Reaper low in the first game) are candidates for
-   `cards._TIER` and the first game's tables, once `learn.CardStats` agrees on live runs.
+1. **Act 2 survival.** The act 2 boss ends a third or more of the model's runs in both games (at A7 the Knowledge Demon
+   is beaten 27% of the time, 32% from full HP; the Champ 39%). A lean to AoE cards in `deck_fit` lost a floor
+   (2026-11-25); routing around act 2 elites without AoE is untried.
+2. **Slay the Spire 2's act 3 bosses** stop even the best decks in the model (at A7 the Queen 9%, Test Subject 18%,
+   Aeonglass 14% beaten). The Test Subject and Aeonglass rules match the bot's logs; the Queen now has a model fight
+   built from them (`scripts/bosses/queenfight.py`), not yet checked against the whole-run model's.
+3. **Settings the model runs favour** are among `learn.CHOICES` (`punch` 0.9 again from 2026-11-25) and, per game, in
+   `learn.GAME_DEFAULTS`; the live runs decide whether they stay. At A7 `caution` and `debuff_worth` point different ways
+   from batch to batch.
+4. **Cards the model runs flag** ([simulation.md](simulation.md)) are now a table the bot reads (`run/model_cards.json`,
+   weighed by `model_lean`, 0 or 1 in `learn.CHOICES`): in the model it is worth about 4 floors. Whether it carries over
+   is for the live runs to say; rebuild it (`python3 -m sim prior`) after the model or the bot changes.
 5. **Which card to remove.** `_removal_rank` goes by rating: guides say Strikes, then Defends only once Block is
    covered (not early for the Defect and Necrobinder).
 6. **One-turn potions** (Flex, Energy, Swift, Duplicator) are drunk on round 1 of a boss like the rest; pricing each by
