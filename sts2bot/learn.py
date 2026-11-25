@@ -8,6 +8,7 @@ import logging
 import random
 from pathlib import Path
 
+from . import games
 from .cards import key_of as card_key
 
 log = logging.getLogger("sts2bot.learn")
@@ -132,6 +133,30 @@ class CardStats:
         _save(self.path, {"finals": self.finals, "cards": self.cards, "kinds": self.kinds}, "card statistics")
 
 
+# What the model runs (sim/, `python3 -m sim prior`) say of each card for each character: floors a pick gained over the runs that
+# left the same floor alive, shrunk towards nothing. Used times the `model_lean` setting (0: not at all; see CHOICES).
+MODEL_CARDS = Path(__file__).resolve().parent / "run" / "model_cards.json"
+_model: dict | None = None
+
+
+def who_key(character) -> str:
+    """A character as the model table keys it: "The Silent", "THE_SILENT" and "SILENT" alike."""
+    key = "".join(ch if ch.isalpha() else "_" for ch in str(character or "").upper()).strip("_")
+    return key[4:] if key.startswith("THE_") else key
+
+
+def model_shift(character, name) -> float:
+    """The model runs' rating shift for this card in this character's deck, times `model_lean`."""
+    lean = knob("model_lean")
+    if not lean:
+        return 0.0
+    global _model
+    if _model is None:
+        _model = _load(MODEL_CARDS, "model card table")
+    table = (_model.get(games.active()) or {}).get(who_key(character)) or {}
+    return lean * float(table.get(card_key(name), 0.0))
+
+
 def history(runs_file: Path | None):
     """Each run in runs.jsonl as a dict, read one line at a time (the file grows by every run ever played)."""
     try:
@@ -161,21 +186,38 @@ def seed_from_history(stats: CardStats, runs_file: Path) -> None:
 
 # ----------------------------------------------------------------- knobs
 # Judgement calls that are plain numbers: each run plays one setting of each, drawn by Thompson sampling from those whose runs went furthest.
-DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "crowd": 0.6, "punch": 0.9, "weak_want": 0.0, "attack_room": 99.0, "block_want": 0.0, "cards_first": 0.0, "debuff_worth": 1.0, "free_lean": 1.0}
+DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "crowd": 0.6, "punch": 0.9, "weak_want": 0.0, "attack_room": 99.0, "block_want": 0.0, "cards_first": 0.0, "debuff_worth": 1.0, "free_lean": 1.0,
+            "model_lean": 0.0}
 CHOICES = {
-    "caution": [0.75, 1.0, 1.35],  # weight of HP lost in the combat planner (model runs: 1.35 best in Slay the Spire 2, 0.75 worst)
+    "caution": [0.75, 1.0, 1.35],  # weight of HP lost in the combat planner (model runs: 1.35 best in Slay the Spire 2 at A5, no better at A7)
     "elite_worth": [2.5, 6.0],  # what an elite's rewards count for when planning a route
     "upgrade_worth": [2.5, 4.0],  # what an upgrade counts for against resting in acts 2 and 3 (act 1: strategy.UPGRADE_EARLY)
     "pickiness": [-1.0, 0.0],  # added to the rating a card reward needs to be taken
     "crowd": [0.0, 0.3, 0.6],  # share of a card's rating from other players' runs (crowd.py) over our table (cards._TIER); model runs: 0.6 best in StS1, worst in StS2
-    "punch": [2.7],  # how hard a deck short of damage leans to attacks: points per damage an energy under decks.PUNCH_FLOOR (DEFAULTS: 0.9 for the tests)
+    "punch": [0.9, 2.7],  # how hard a deck short of damage leans to attacks: points per damage an energy under decks.PUNCH_FLOOR (model runs at A7: 0.9 a floor ahead)
     "weak_want": [0.0, 1.0],  # rating points for a card that applies Weak while the deck holds fewer than two (decks.deck_fit)
     "free_lean": [0.0, 1.0],  # how much of its kind's start a free attack gets (learn.CardStats.shift)
     "attack_room": [3.0],  # damage cards a deck holds before that lean lets go (gone three later; 99: never): attack-heavy decks lost the act 2 boss
     "block_want": [0.0, 1.5],  # rating points for a card with 5 Block or more while the deck holds few beyond its Defends (decks.deck_fit; model runs: 1.5 ahead in both games)
     "cards_first": [0.0, 1.0],  # 1.0: an early card removal has to beat the cards on a Merchant's shelf (strategy.shop)
     "debuff_worth": [1.0, 2.0, 3.0],  # a lasting turn of Vulnerable or Weak in the combat planner, as a multiple of its old worth (model runs: 1.0 best in the first game)
+    "model_lean": [0.0, 1.0],  # how much of what the model runs say of each card goes into its rating (model_shift; in the model, 1.0 went 3-4 floors further)
 }
+# What the model runs found best in each game (docs/strategy/simulation.md), over DEFAULTS: played with --no-tuning and by the
+# model runs' own default (DEFAULTS stay what the tests are written against). 2026-11-25, Slay the Spire 2 at A7 and the first game
+# at A0: model_lean 1 went 3-4 floors further in both on seeds its table had not seen; crowd 0.6 was the worst of three in StS2 four
+# batches running, the best in StS1; attack_room 3 about a floor ahead in StS2; cards_first 1 1.4-1.9 floors ahead in StS1, elite_worth 6 a little.
+GAME_DEFAULTS: dict[str, dict] = {
+    "sts2": {"crowd": 0.3, "attack_room": 3.0, "model_lean": 1.0},
+    "sts1": {"elite_worth": 6.0, "cards_first": 1.0, "model_lean": 1.0},
+}
+
+
+def defaults(game: str | None = None) -> dict:
+    """The settings to play without tuning: DEFAULTS, with this game's (the one being played if None) from GAME_DEFAULTS."""
+    return {**DEFAULTS, **GAME_DEFAULTS.get(game or games.active(), {})}
+
+
 MIN_RUNS = 20  # runs a setting gets before the record alone decides how often it is drawn
 SPREAD = 12.0  # how far apart two runs of the same character usually end, in floors
 KNOB = dict(DEFAULTS)  # the settings in force right now

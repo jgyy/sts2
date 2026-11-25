@@ -8,7 +8,7 @@ import random
 import re
 from dataclasses import dataclass, field
 
-from ..learn import knob
+from ..learn import knob, model_shift
 from .potions import boss_floors, boss_worth, saving
 from .relicworth import worth as relic_worth
 from .events import _event_option_value, event  # noqa: F401  (events live in their own module)
@@ -398,6 +398,7 @@ def card_reward(state: dict, mem: Memory) -> list[Action]:
         v = deck_value(c) + deck_fit(c, mem.deck, act if isinstance(act, int) else None, mem.max_energy)
         if mem.card_stats is not None:
             v += mem.card_stats.shift(who, str(c.get("name")), _kind(c))
+        v += model_shift(who, c.get("name"))
         # The starter deck cannot kill anything quickly: an attack first (deck_fit sees to it once the deck is known).
         if not mem.deck and act == 1 and mem.deck_size < 18 and str(c.get("type")) == "Attack" and v > 0:
             v += 0.8
@@ -513,6 +514,7 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
             v = deck_value(_shop_card(item)) + deck_fit(_shop_card(item), mem.deck, act if isinstance(act, int) else None, mem.max_energy)
             if mem.card_stats is not None:  # (what our own runs say of the card and of its kind, as at a card reward)
                 v += mem.card_stats.shift(str(player.get("character") or ""), str(item.get("card_name")), _kind(_shop_card(item)))
+            v += model_shift(player.get("character"), item.get("card_name"))
             # Only cards that make the deck better, and more freely when rich.
             bar = 4.0 if gold - price >= 200 else 4.5 if mem.deck_size < BIG_DECK else 5.5
             want, rated = (v if v >= bar else -1.0), v

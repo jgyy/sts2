@@ -11,7 +11,7 @@ from pathlib import Path
 
 from .bot import Bot
 from .client import Client
-from . import games, service
+from . import games, learn, service
 from .supervisor import DEFAULT_LAUNCH, FAST_MODES, Supervisor
 
 log = logging.getLogger("sts2bot")
@@ -100,6 +100,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.game == "both":
         return play_both(ap, args, raw)
     games.select(args.game)
+    learn.KNOB.update(learn.defaults())  # (with tuning, each run then draws its own from learn.CHOICES)
     args.port = args.port or games.DEFAULT_PORT[args.game]
     args.log_dir = args.log_dir or default_log_dir(args.game)
 

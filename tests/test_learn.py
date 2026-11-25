@@ -108,3 +108,44 @@ class AtTheMerchant(unittest.TestCase):
         self.assertEqual(strategy.shop(state, strategy.Memory())[0][0], "proceed")  # rated 3.6 by the tables: under the bar
         stats = necro({"POKE": [800.0, 2400.0], "DEFILE": [800.0, -2400.0]})  # ... and 3 floors a pick over par in our runs
         self.assertEqual(strategy.shop(state, strategy.Memory(card_stats=stats))[0], ("shop_purchase", {"index": 0}))
+
+
+class ModelTable(unittest.TestCase):
+    """learn.model_shift: what the model runs say of a card (`python3 -m sim prior`), weighed by the `model_lean` setting."""
+
+    def test_the_table_counts_only_as_far_as_the_setting_says(self):
+        table = {"sts2": {"SILENT": {"FOOTWORK": 1.5, "DEFLECT": -2.0}}, "sts1": {"SILENT": {"FOOTWORK": -1.0}}}
+        with mock.patch.object(learn, "_model", table):
+            with mock.patch.dict(learn.KNOB, {"model_lean": 0.0}):
+                self.assertEqual(learn.model_shift("The Silent", "Footwork"), 0.0)  # off: today's behaviour
+            with mock.patch.dict(learn.KNOB, {"model_lean": 1.0}):
+                self.assertEqual(learn.model_shift("The Silent", "Footwork+"), 1.5)  # (upgraded or not, by its id)
+                self.assertEqual(learn.model_shift("THE_SILENT", "Deflect"), -2.0)  # (the menu's spelling of her)
+                self.assertEqual(learn.model_shift("The Silent", "Neutralize"), 0.0)  # a card the table leaves out
+                self.assertEqual(learn.model_shift("The Defect", "Footwork"), 0.0)  # ... and a character
+                with mock.patch("sts2bot.games._active", "sts1"):
+                    self.assertEqual(learn.model_shift("The Silent", "Footwork"), -1.0)  # each game its own table
+        self.assertEqual(learn.DEFAULTS["model_lean"], 0.0)
+
+    def test_the_shipped_table_reads(self):
+        table = learn._load(learn.MODEL_CARDS, "model card table")
+        self.assertTrue(table, "run `python3 -m sim prior` to make sts2bot/run/model_cards.json")
+        for game, chars in table.items():
+            self.assertIn(game, ("sts1", "sts2"))
+            for who, cards in chars.items():
+                self.assertEqual(who, learn.who_key(who))
+                self.assertTrue(all(abs(v) <= 3.0 for v in cards.values()), who)
+
+
+class GameDefaults(unittest.TestCase):
+    def test_each_game_plays_its_own_best_settings_without_tuning(self):
+        with mock.patch.dict(learn.GAME_DEFAULTS, {"sts2": {"crowd": 0.3}, "sts1": {"crowd": 0.6}}):
+            self.assertEqual(learn.defaults("sts2")["crowd"], 0.3)
+            self.assertEqual(learn.defaults("sts1")["crowd"], 0.6)
+            with mock.patch("sts2bot.games._active", "sts1"):
+                self.assertEqual(learn.defaults(), learn.defaults("sts1"))
+            self.assertEqual(learn.defaults("sts2")["caution"], learn.DEFAULTS["caution"])  # (the rest as DEFAULTS)
+
+    def test_every_game_default_is_a_setting(self):
+        for game, table in learn.GAME_DEFAULTS.items():
+            self.assertLessEqual(set(table), set(learn.DEFAULTS), game)

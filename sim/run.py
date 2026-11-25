@@ -180,7 +180,7 @@ class Run:
     def play(self) -> dict:
         t0 = time.perf_counter()
         learn.KNOB.clear()
-        learn.KNOB.update({**learn.DEFAULTS, **self.knobs})
+        learn.KNOB.update({**learn.defaults(self.game.KEY), **self.knobs})
         self.mem.reset_run()
         self.mem.card_stats = None
         self.game.run_start(self)
@@ -196,6 +196,7 @@ class Run:
                 self.hp += int((self.max_hp - self.hp) * self.game.boss_heal(self))
         return {
             "game": self.game.KEY, "character": self.character, "seed": self.seed, "ascension": self.asc, "knobs": self.knobs,
+            "model_lean": learn.knob("model_lean"),  # (sim prior learns only from runs that did not lean on its table)
             "won": won, "act": self.act, "floor": self.floor, "hp": self.hp, "max_hp": self.max_hp, "gold": self.gold,
             "deck": sorted(c.name for c in self.deck), "relics": self.relics, "secs": round(time.perf_counter() - t0, 2), **self.log,
         }
