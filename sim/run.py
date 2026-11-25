@@ -262,11 +262,11 @@ class Run:
         foes = self.game.encounter(self, kind)
         self.note_deck()
         self.mem.boss_next = False
-        hp0 = self.hp
+        hp0, met = self.hp, sorted({x.key for x in foes})  # (the encounter as it starts: splits and summons join the list)
         f = Fight(self, foes, kind)
         won = f.run_fight()
         self.digest.append("F" + "".join(f.digest))
-        self.log["fights"].append({"act": self.act, "floor": self.floor, "kind": kind, "foes": sorted({x.key for x in foes}), "hp0": hp0,
+        self.log["fights"].append({"act": self.act, "floor": self.floor, "kind": kind, "foes": met, "hp0": hp0,
                                    "hp1": max(0, self.hp), "max_hp": self.max_hp, "rounds": f.round, "won": won})
         self.log["elites"] += kind == "elite"
         if won:

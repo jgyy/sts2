@@ -109,7 +109,7 @@ def TURN_CARDS(f) -> None:
 
 
 TURN_END = lambda f: None
-POTION_CARD, ROUND_END = common.potion_card, sts1_foes.darkling_round
+POTION_CARD, ROUND_END = common.potion_card, sts1_foes.revive_round
 
 
 # ------------------------------------------------------------------ relics
