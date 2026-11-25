@@ -16,7 +16,8 @@ _RELIC_WORD = r"\brelics?\b"
 _GOOD = [(_RELIC_WORD, 6.0), (r"\bremove\b", 4.0), (r"\bupgrade\b", 4.0), (r"\btransform\b", 2.0), (r"\bpotions?\b", 1.5), (r"\bcards?\b", 1.0), (r"\benchant\b", 3.0),
          (r"draw \d+ additional cards?", 5.0), (r"energy_icon", 5.0), (r"\bgreater rewards\b", 6.0)]  # (more draw: every turn of the run; Punch Off: relic, card, potion)
 # (The Lantern Key's fight costs about 27 HP and leaves an unplayable card; Foul Potions hit us as hard as the enemy.)
-_BAD = [(r"\bfoul potions?\b", 1.0), (r"\bfight to obtain the key\b", 6.0), (r"\bcurse\b", 6.0), (r"\bfight\b", 2.0), (r"draw \d+ fewer cards?", 4.0), (r"\bdowngrade\b", 2.0), (r"\bsacrifice\b", 5.0)]
+_BAD = [(r"\bfoul potions?\b", 1.0), (r"\bfight to obtain the key\b", 6.0), (r"\bcurse\b", 6.0), (r"\bfight\b", 2.0), (r"draw \d+ fewer cards?", 4.0), (r"\bdowngrade\b", 2.0), (r"\bsacrifice\b", 5.0),
+        (r"\bcan no longer heal\b", 14.0)]  # (the first game's Mind Bloom "I am Awake": rated 7-12 and always taken in act 3; 2026-11-25 a Watcher met the boss on 10/79 HP)
 EVENT_FIGHT_HP = [(r"\bfight them\b", 32.0)]  # HP an option that starts a fight costs, priced as "Lose N HP" is (Punch Off's constructs)
 _DUPLICATE_DECK = re.compile(r"duplicate (?:your|the) (?:whole )?deck")  # (doubles every draw pile and dilutes the good cards)
 # What something bad received costs (a relic is 6): little for a card drawn once a fight, much for one that hurts or stays (two relics too).
@@ -24,8 +25,8 @@ _CURSES = {
     "clumsy": 1.5, "guilty": 1.5, "poor sleep": 2.0, "folly": 2.5, "spore mind": 2.5, "injury": 3.0, "debt": 4.0, "decay": 4.5, "doubt": 4.5, "shame": 4.5, "greed": 5.0, "curse of the bell": 5.0, "regret": 5.0, "writhe": 5.0,
     "normality": 8.0, "enthralled": 8.0, "bad luck": 10.0, "royal poison": 9.0, "sword of stone": -0.5,
 }
-_CURSE_GAIN = re.compile(  # (the first game writes "Become Cursed - Regret.")
-    r"\b(?:receive|obtain|add|gain|become cursed)\b[^.]*?\b(" + "|".join(_CURSES) + r"|wound|burn|dazed|hex|parasite|"
+_CURSE_GAIN = re.compile(  # (the first game writes "Become Cursed - Regret." and, in Mind Bloom, "Cursed - 2 Normality.")
+    r"\b(?:receive|obtain|add|gain|become cursed|cursed -)(?:\b|\s)[^.]*?\b(" + "|".join(_CURSES) + r"|wound|burn|dazed|hex|parasite|"
     r"pain|spite|void|mind rot|sloth|waste away|disintegration|curse)\b"
 )
 _RUINOUS = re.compile(r"\blose (all|everything)\b|\bset your max hp\b|\bmax hp (to|becomes) \d\b", re.I)  # the run ended in all but name
@@ -61,8 +62,16 @@ def _lives_through(fights: int, hp: int, max_hp: int) -> float:
     return (1.0 - death) ** fights
 
 
+# The first game's Secret Portal ("IMMEDIATELY travel to the boss"): the rest of act 3 (its rest sites, rewards, the keys still
+# missing) for the boss now. Taken on a 0.5-0.5 tie at 39-42 HP three times (2026-11-25), each a lost boss; the last boss is
+# won from (nearly) full HP only (strategy.boss_odds).
+TO_BOSS = re.compile(r"\btravel to the boss\b", re.I)
+TO_BOSS_HP = 0.9
+TO_BOSS_PRICE = 4.0
+
+
 def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int | None = None, potions: list | None = None,
-                        held: list | None = None, deck: list | None = None, energy: int | None = None) -> float:
+                        held: list | None = None, deck: list | None = None, energy: int | None = None, keys_wanted: bool = False) -> float:
     text = f"{opt.get('title') or ''}. {opt.get('description') or ''}".lower()
     key = re.sub(r"[^A-Z0-9]+", "_", re.sub(r"['\u2019]", "", str(opt.get("title") or "")).upper()).strip("_")
     known = _ANCIENT.get(key)
@@ -92,7 +101,8 @@ def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int
         amount = max_hp if not m.group(1) else int(m.group(1)) * max_hp // 100 if m.group(2) else int(m.group(1))
         score += 12.0 * min(amount, max(0, max_hp - hp)) / max(1, max_hp)
     cursed = {m.group(1) for m in _CURSE_GAIN.finditer(text)}
-    score -= sum(_CURSES.get(name, 6.0) for name in cursed)
+    copies = lambda name: max([1] + [int(n) for n in re.findall(r"\b(\d+)\s+" + re.escape(name) + r"\b", text)])  # ("Cursed - 2 Normality")
+    score -= sum(_CURSES.get(name, 6.0) * copies(name) for name in cursed)
     # "Obtain the Sword of Stone", "Receive the Spoils Map": a relic by name (each judged on its own: "Receive Bad Luck" is not one).
     if not opt.get("relic_name") and "relic" not in text:
         for gain in re.finditer(r"\b(?:obtain|receive) (?:the )?(?!a\b|an\b|\d)[a-z][a-z' ]*", text):
@@ -146,11 +156,19 @@ def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int
         score -= 1000.0 if loss >= hp else 12.0 * loss / max(1, hp) * (ACT3_HP if act is not None and act >= 3 else 1.0)
         if bled >= 5:
             score -= 2.0 + 0.5 * bled  # each further bite of one event costs more, so a chain of small losses stops
+    if TO_BOSS.search(text) and (keys_wanted or hp < TO_BOSS_HP * max_hp):
+        score -= TO_BOSS_PRICE
     for pat, cost in EVENT_FIGHT_HP:
         if re.search(pat, text):
             score -= 1000.0 if cost >= hp else 12.0 * cost / max(1, hp) * (ACT3_HP if act is not None and act >= 3 else 1.0)
             break
     return score
+
+
+# Events whose way out costs HP however late it is taken (the first game's Knowing Skull: 6 HP to leave, and every purchase
+# keeps us in the room): that HP is spent already, so only the purchases are priced. Priced like the rest, leaving always looked
+# a little worse than one more purchase (2026-11-25: 47 -> 1 and 66 -> 5 HP in one visit).
+PAID_EXIT = {"KNOWING_SKULL": "How do I leave?"}
 
 
 def event(state: dict, mem) -> list[Action]:
@@ -168,8 +186,12 @@ def event(state: dict, mem) -> list[Action]:
         mem.event_id, mem.event_hp0 = eid, hp
     bled = max(0, mem.event_hp0 - hp)
     act = (state.get("run") or {}).get("act")
-    worth = lambda o: _event_option_value(o, hp, max_hp, bled, act if isinstance(act, int) else None, player.get("potions") or [],
-                                          player.get("relics") or [], getattr(mem, "deck", None), getattr(mem, "max_energy", None))
+    way_out = PAID_EXIT.get(str(ev.get("event_id") or ""))
+    held_keys = (state.get("run") or {}).get("keys")  # (the first game once act 4 is open: the keys held so far)
+    priced = lambda o: _event_option_value(o, hp, max_hp, bled, act if isinstance(act, int) else None, player.get("potions") or [],
+                                           player.get("relics") or [], getattr(mem, "deck", None), getattr(mem, "max_energy", None),
+                                           keys_wanted=held_keys is not None and len(held_keys) < 3)
+    worth = lambda o: 0.5 if way_out and o.get("title") == way_out else priced(o)  # (0.5: an option's worth before what it gives and costs)
     rest = sorted((o for o in opts if not o.get("is_proceed")), key=worth, reverse=True)
     if log.isEnabledFor(logging.DEBUG) and rest:
         log.debug("event %s: %s", ev.get("event_id"), " | ".join(f"[{worth(o):.1f}] {o.get('title')}: {o.get('description')}" for o in rest))

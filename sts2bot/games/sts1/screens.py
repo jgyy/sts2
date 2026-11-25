@@ -31,6 +31,9 @@ POWER_ID = {
     "COMPULSIVE": "REACTIVE",  # the Writhing Mass's Reactive: every Attack that hits it gives it a new intent
     "UNAWAKENED": "STOCK",  # the Awakened One's first form: killed, it rises again at full HP
     "LIFE_LINK": "REATTACH",  # the Darklings' (revive in 2 turns at 50% HP while others live): StS2's Reattach, whose number is the HP it comes back on
+    "INVINCIBLE": "HARDENED_SHELL",  # the Heart's "can only lose 300 HP per turn", counted down as it is hit: the Skulking Colony's rule
+    "BEATOFDEATH": "BEAT_OF_DEATH",  # the Heart's: every card we play deals us 1 damage once it has resolved (Block takes it)
+    "BACKATTACK": "BACK_ATTACK",  # the Spire Shield's and Spear's mark, never taken off when we turn: who is behind comes from the mod (combat)
 }
 STANCE_CHOICE = {"WRATH": "Enter Wrath.", "CALM": "Enter Calm."}  # the Stance Potion's choice cards (ChooseWrath, ChooseCalm), by name
 AMOUNT = {"UNAWAKENED": 1}  # powers that show no number where the planner needs one
@@ -75,7 +78,10 @@ class Screens:
 
     def _run(self) -> dict:
         g = self.game
-        return {"act": g.get("act"), "floor": g.get("floor"), "ascension": g.get("ascension_level")}
+        out = {"act": g.get("act"), "floor": g.get("floor"), "ascension": g.get("ascension_level")}
+        if g.get("final_act_available"):  # the act 4 keys held so far (logged as they come, kept in runs.jsonl)
+            out["keys"] = sorted(k for k in keys.KEYS if (g.get("keys") or {}).get(k))
+        return out
 
     def card(self, c: dict, index: int | None = None, live: bool = False) -> dict:
         """`live`: a card in the hand, whose numbers the game has worked out for this moment of the fight."""
@@ -85,6 +91,8 @@ class Screens:
         ctype = CARD_TYPE.get(str(c.get("type")), str(c.get("type") or "").title())
         if live and desc:
             desc = text.live_numbers(desc, ctype, c)
+        if ctype == "Curse" and c.get("is_playable") and cost != -2:  # (Blue Candle: "Whenever you play a curse, lose 1 HP and Exhaust it.")
+            desc = re.sub(r"^Unplayable\.\s*", "", desc or "") + " Lose 1 HP. Exhaust."
         target = "AnyEnemy" if c.get("has_target") else "AllEnemies" if re.search(r"\ball enemies\b", desc, re.I) else "Self"
         out = {"id": key_of(c.get("id")), "name": str(c.get("name") or ""), "type": ctype,
                "cost": "X" if cost == -1 else str(max(0, int(cost))) if isinstance(cost, (int, float)) else str(cost or 0), "star_cost": None, "description": desc,
@@ -175,8 +183,12 @@ class Screens:
                 continue
             eid = f"{key_of(m.get('id') or m.get('name'))}_{i}"
             self.targets[eid] = i
-            enemies.append({"entity_id": eid, "name": m.get("name"), "hp": 0 if m.get("half_dead") else m.get("current_hp"), "max_hp": m.get("max_hp"),
-                            "block": m.get("block", 0), "status": self.powers(m), "intents": self.intents(m)})
+            entry = {"entity_id": eid, "name": m.get("name"), "hp": 0 if m.get("half_dead") else m.get("current_hp"), "max_hp": m.get("max_hp"),
+                     "block": m.get("block", 0), "status": self.powers(m), "intents": self.intents(m)}
+            if "left" in m:  # Surrounded (the Spire Shield and Spear): its side, as STS2's crabs show theirs, and whether it is behind us (speedmod.py)
+                entry["status"].append({"id": "BACK_ATTACK_LEFT_POWER" if m["left"] else "BACK_ATTACK_RIGHT_POWER", "name": "Back Attack", "amount": 1, "description": ""})
+                entry["behind"] = bool(m.get("behind"))
+            enemies.append(entry)
         playing = "play" in self.commands or "end" in self.commands
         battle = {"round": cs.get("turn"), "turn": "player" if playing else "enemy", "is_play_phase": playing, "enemies": enemies}
         return self._wrap(ROOM_KIND.get(str(g.get("room_type")), "monster"), battle=battle)

@@ -24,6 +24,8 @@ RECENT_RUNS = 40  # runs whose characters the rotation looks back over (strategy
 # Screens strategy.py has a handler for, under the screen's own name (the map's is map_screen).
 SCREENS = {"hand_select", "rewards", "card_reward", "map", "event", "rest_site", "shop", "treasure", "card_select", "bundle_select", "relic_select", "crystal_sphere", "game_over", "overlay"}
 MAX_STRIKES = 2  # failed attempts before an action is shelved for the current state
+FRESH = 0.05  # a state the wait for the last action fetched this recently is the next step's (one request less a play)
+FIGHT_POLL = 0.08  # seconds between looks in a fight when there is nothing to send (2026-11-25: the 0.2 s poll held up every turn's start and end)
 MAX_PLAYS_PER_TURN = 40
 _VOLATILE = {"is_hovered", "is_highlighted"}
 # Cards a relic or an enemy shuffles in when a fight starts (the piles do not say what type a card is).
@@ -53,7 +55,8 @@ class Bot:
         """`tune`: try different settings from run to run and learn which work (learn.Knobs)."""
         self.client, self.character, self.log_dir, self.poll = client, character, log_dir, poll
         # Pauses after leaving a room or buying, and between looks while a room loads: faster crashed StS2 (StS1's are ~0: __main__).
-        self.room_pause, self.room_poll = 0.4, 0.15
+        self.room_pause, self.room_poll, self.fight_poll = 0.4, 0.15, FIGHT_POLL
+        self._seen: tuple = (0.0, None)  # (when, state) the last wait for an action to show ended on
         self.settle, self.travel_settle, self.quiet_settle, self.choose_settle = settle, 8.0, 0.3, 0.5
         self.careful_until, self.careful_at = 0.0, None  # after two crashes in one place (a progress()): act slowly there until then
         self._crashed: set = set()  # (act, floor, action, params) asked last before a crash: the game reloads that room, so avoid it there
@@ -88,7 +91,7 @@ class Bot:
         self._stuck, self._dislodged = set(), False  # enemies holding a Fool's Arrow, and whether one came out this turn (Yah!'s energy is spent then)
         self._fight_state: dict | None = None  # the combat state as the planner last saw it (for a potion's offer of cards)
         self._turn_energy, self._turns = 0, []  # energy when we last looked at this turn; (cards played, energy left) for each turn ended in this fight
-        self._last_where, self._seen_powers = (), set()
+        self._last_where, self._seen_powers, self._keys_seen = (), set(), None  # (the first game's act 4 keys, as last logged)
         self._wins_seen, self._wins_asked = None, False  # the game's win counter when we last looked; asked once for a run already under way
         self._timeline_idle = 0  # Timeline clicks in a row that changed nothing
         self._facing, self._facing_fight = None, ()  # enemy we last aimed at, in this fight
@@ -358,6 +361,11 @@ class Bot:
                 self._last_where = where
                 p = state.get("player") or {}
                 log.info("act %s floor %s  %s  hp %s/%s  gold %s", *where, kind, p.get("hp"), p.get("max_hp"), p.get("gold"))
+            held = state["run"].get("keys")
+            if held is not None and held != self._keys_seen:
+                if self._keys_seen is not None or held:
+                    log.info("keys: %s", ", ".join(held) or "none")
+                self._keys_seen = held
         if kind == "game_over":
             if not self._over_logged:
                 self._over_logged = True
@@ -365,6 +373,7 @@ class Bot:
                 self._record_run(state, died=prev in COMBAT_STATES or bool(ended and " lost;" in ended))
         elif self._over_logged:
             self._over_logged = False
+            self._keys_seen = None
             self.mem.reset_run()
             self._crashed.clear()
             if self.tune:
@@ -385,7 +394,7 @@ class Bot:
         epochs = self._epochs(profile)
         earned = lambda table: {k for k, v in table.items() if v in strategy._EARNED}
         new = earned(epochs) - earned(self.mem.epochs)
-        if new:
+        if new and self.mem.epochs:  # (a bot started mid-run has not seen the Timeline yet: everything would look new)
             log.info("epochs earned this run: %s", ", ".join(sorted(new)))
         self.mem.epochs = epochs
 
@@ -414,6 +423,8 @@ class Bot:
             "gold": p.get("gold"), "relics": [r.get("id") for r in p.get("relics") or []], "deck_size": self.mem.deck_size,
             "deck": sorted(str(c.get("name")) for c in self.mem.deck), "picks": self.mem.picks,
         }
+        if run.get("keys") is not None:
+            entry["keys"] = run["keys"]  # (the first game's act 4 keys, once act 4 is open)
         who = str(entry["character"] or "")
         usual = self.card_stats.usual(who, 0)
         if self._knobs_whole_run and usual is not None and isinstance(entry["floor"], int):
@@ -454,6 +465,7 @@ class Bot:
         while self.clock() < deadline:
             self.sleep(pause)
             state = self.client.state()
+            self._seen = (self.clock(), state)  # (the next step starts from it: asking again a moment later only costs the game a state)
             changed = changed or fingerprint(state) != fp
             if leave:
                 if state.get("state_type") != leave:
@@ -468,7 +480,9 @@ class Bot:
         if self.time_scale and now - self._scale_at > 3.0:
             self._scale_at = now
             self.client.act("set_time_scale", scale=self.time_scale)
-        state = self.client.state()
+        seen_at, seen = self._seen
+        self._seen = (0.0, None)
+        state = seen if seen is not None and now - seen_at <= FRESH else self.client.state()
         fp = fingerprint(state)
         if fp != self._last_fp:
             self._last_fp, self._last_change, self._last_retry = fp, now, now
@@ -521,8 +535,15 @@ class Bot:
                 if buy:
                     self._dead_buys[buy] += 1
             return True
-        self.sleep(self.poll)
+        # Nothing to send: in a fight that is the enemy's turn or a look again for late draws, and the next look comes sooner
+        # (after every card the bot already asks every 0.03 s; only a room being rebuilt needs the slow pace, see _wait_for_change).
+        fight = state.get("state_type") in COMBAT_STATES and bool(state.get("battle"))
+        self.sleep(min(self.poll, self.fight_poll) if fight else self.poll)
         return False
+
+    def forget(self) -> None:
+        """Ask the game afresh at the next step (after the game was restarted or reconnected to under the bot)."""
+        self._seen = (0.0, None)
 
     def _done(self) -> bool:
         """True once the requested number of runs is over and its end screen is dismissed."""
@@ -532,5 +553,6 @@ class Bot:
         """Play until `max_runs` runs have finished (forever if None)."""
         self.max_runs = max_runs
         self._last_change = self.clock()
+        self.forget()
         while not self._done():
             self.step()

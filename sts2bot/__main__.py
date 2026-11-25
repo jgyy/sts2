@@ -16,10 +16,12 @@ from .supervisor import DEFAULT_LAUNCH, FAST_MODES, Supervisor
 
 log = logging.getLogger("sts2bot")
 
-DEFAULT_TIME_SCALE = 3.0
-# The first game's clock, through our own mod (games/sts1/speedmod.py). It runs at 240 frames a second there, so even x8
-# leaves each frame the time step of a 30 fps game: the game's logic sees nothing unusual.
-DEFAULT_STS1_TIME_SCALE = 8.0
+# (x3 to x6 made no difference while the bot's 0.2 s waits and the mod's 27 ms state builds held up every turn; with both cut, 2026-11-25: x6.)
+DEFAULT_TIME_SCALE = 6.0
+# The first game's clock, through our own mod (games/sts1/speedmod.py). It runs at 240 frames a second there, so even x10
+# leaves each frame the time step of a 24 fps game: the game's logic sees nothing unusual. (x8 until 2026-11-25: its enemy
+# turns, 0.5-0.7 s, were then most of the time a round takes.)
+DEFAULT_STS1_TIME_SCALE = 10.0
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 STS1_SETUP_HINT = "would wait for a relay that never starts and restart the game for ever. Run `python3 -m sts2bot sts1-setup` to point CommunicationMod at the bot's relay"
 

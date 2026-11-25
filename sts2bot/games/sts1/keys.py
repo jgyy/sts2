@@ -20,14 +20,24 @@ def missing(game: dict) -> set[str]:
     return {k for k in KEYS if not held.get(k)}
 
 
+def emerald_ahead(game: dict) -> bool:
+    """The Emerald Key is held, or can still be had: before act 3 a later map brings another burning elite, in act 3 one has to be
+    on a row of this map still to come (map rows 0-14 are floors 1-15, 18-32, 35-49). Without it act 4 stays shut whatever else
+    is held, and the act 3 chest's relic and its rest sites are worth more than the other keys."""
+    if (game.get("keys") or {}).get("emerald") or int(game.get("act") or 0) < 3:
+        return True
+    row = (int(game.get("floor") or 0) - 1) % 17
+    return any(n.get("emerald_key") and int(n.get("y") or 0) > row for n in game.get("map") or [])
+
+
 def ruby_open(game: dict) -> bool:
     """Recall is on offer here in place of an upgrade (the rest-site rule still rests first when hurt)."""
-    return "ruby" in missing(game)
+    return "ruby" in missing(game) and emerald_ahead(game)
 
 
 def wants_ruby(game: dict) -> bool:
     """Recall at this rest site whatever else it offers: only in act 3 (the last chance), with HP to spare for the act 3 boss."""
-    if "ruby" not in missing(game) or game.get("act") != 3:
+    if "ruby" not in missing(game) or game.get("act") != 3 or not emerald_ahead(game):
         return False
     hp, top = float(game.get("current_hp") or 0), float(game.get("max_hp") or 1)
     last = int(game.get("floor") or 0) % 17 == BOSS_ROW_FLOOR
@@ -36,7 +46,7 @@ def wants_ruby(game: dict) -> bool:
 
 def wants_sapphire(game: dict) -> bool:
     """The key over the chest's relic, in act 3 only (its middle row is a treasure room on every road: a sure chance)."""
-    return "sapphire" in missing(game) and game.get("act") == 3
+    return "sapphire" in missing(game) and game.get("act") == 3 and emerald_ahead(game)
 
 
 def wants_emerald(game: dict) -> bool:

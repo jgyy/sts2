@@ -23,6 +23,7 @@ import com.badlogic.gdx.backends.lwjgl.LwjglGraphics;
 import com.evacipated.cardcrawl.modthespire.lib.SpireInitializer;
 import com.evacipated.cardcrawl.modthespire.lib.SpirePatch;
 import com.evacipated.cardcrawl.modthespire.lib.SpirePostfixPatch;
+import com.evacipated.cardcrawl.modthespire.lib.SpirePrefixPatch;
 import com.megacrit.cardcrawl.cards.AbstractCard;
 import com.megacrit.cardcrawl.characters.AbstractPlayer;
 import com.megacrit.cardcrawl.core.AbstractCreature;
@@ -30,6 +31,7 @@ import com.megacrit.cardcrawl.core.CardCrawlGame;
 import com.megacrit.cardcrawl.core.Settings;
 import com.megacrit.cardcrawl.dungeons.AbstractDungeon;
 import com.megacrit.cardcrawl.map.MapRoomNode;
+import com.megacrit.cardcrawl.monsters.AbstractMonster;
 import com.megacrit.cardcrawl.monsters.MonsterGroup;
 import com.megacrit.cardcrawl.powers.AbstractPower;
 import com.megacrit.cardcrawl.screens.DeathScreen;
@@ -218,6 +220,79 @@ public class TimeScale {
         }
     }
 
+    // Surrounded (the Spire Shield and Spear): a card or potion aimed at an enemy turns us to face it, as the game's own click does
+    // (AbstractPlayer.playCard, PotionPopUp). CommunicationMod's play and potion commands queue them without that turn, so the
+    // Shield, behind us from the start, would hit 50% harder all fight (its Smash: 51 for 34).
+    @SpirePatch(cls = "communicationmod.CommandExecutor", method = "executePlayCommand", requiredModId = "CommunicationMod", optional = true)
+    public static class FacePlay {
+        @SpirePrefixPatch
+        public static void Prefix(String[] tokens) {
+            try {
+                AbstractPlayer p = AbstractDungeon.player;
+                if (p == null || tokens == null || tokens.length < 3 || !p.hasPower("Surrounded")) {
+                    return;
+                }
+                int n = Integer.parseInt(tokens[1]);
+                n = n == 0 ? 10 : n;
+                if (n < 1 || n > p.hand.size()) {
+                    return;
+                }
+                AbstractCard c = p.hand.group.get(n - 1);
+                if (c.target == AbstractCard.CardTarget.ENEMY || c.target == AbstractCard.CardTarget.SELF_AND_ENEMY) {
+                    face(Integer.parseInt(tokens[2]));
+                }
+            } catch (Exception e) {
+                System.out.println("sts2botspeed: facing failed: " + e);
+            }
+        }
+    }
+
+    @SpirePatch(cls = "communicationmod.CommandExecutor", method = "executePotionCommand", requiredModId = "CommunicationMod", optional = true)
+    public static class FacePotion {
+        @SpirePrefixPatch
+        public static void Prefix(String[] tokens) {
+            try {
+                if (tokens != null && tokens.length >= 4 && "use".equals(tokens[1])) {
+                    face(Integer.parseInt(tokens[3]));
+                }
+            } catch (Exception e) {
+                System.out.println("sts2botspeed: facing failed: " + e);
+            }
+        }
+    }
+
+    static void face(int target) {
+        AbstractPlayer p = AbstractDungeon.player;
+        if (p == null || !p.hasPower("Surrounded") || AbstractDungeon.getCurrRoom() == null || AbstractDungeon.getCurrRoom().monsters == null) {
+            return;
+        }
+        ArrayList<AbstractMonster> ms = AbstractDungeon.getCurrRoom().monsters.monsters;
+        if (target < 0 || target >= ms.size()) {
+            return;
+        }
+        boolean turn = ms.get(target).drawX < p.drawX;
+        if (turn != p.flipHorizontal) {
+            p.flipHorizontal = turn;
+            System.out.println("sts2botspeed: facing " + ms.get(target).id);
+        }
+    }
+
+    // Who is behind us while Surrounded: the game works it out from where we face (AbstractMonster.applyBackAttack), and the
+    // BackAttack mark it shows stays on whoever got it first.
+    @SpirePatch(cls = "communicationmod.GameStateConverter", method = "convertMonsterToJson", requiredModId = "CommunicationMod", optional = true)
+    public static class Behind {
+        @SpirePostfixPatch
+        public static HashMap<String, Object> Postfix(HashMap<String, Object> __result, AbstractMonster m) {
+            AbstractPlayer p = AbstractDungeon.player;
+            if (m != null && p != null && p.hasPower("Surrounded")) {
+                boolean left = m.drawX < p.drawX;
+                __result.put("left", left);
+                __result.put("behind", p.flipHorizontal ? !left : left);
+            }
+            return __result;
+        }
+    }
+
     // What each power says (CommunicationMod sends its id, name and amount only).
     @SpirePatch(cls = "communicationmod.GameStateConverter", method = "convertCreaturePowersToJson", requiredModId = "CommunicationMod", optional = true)
     public static class PowerText {
@@ -243,7 +318,7 @@ MANIFEST = """{
   "modid": "sts2botspeed",
   "name": "sts2bot speed",
   "author_list": ["sts2bot"],
-  "description": "For the bot: runs the game clock faster (STS2BOT_TIME_SCALE), does what the death screen's button would (unlocks, ascension, act 4) and adds card numbers, keys and stances to CommunicationMod's state.",
+  "description": "For the bot: runs the game clock faster (STS2BOT_TIME_SCALE), does what the death screen's button would (unlocks, ascension, act 4), turns the player to face a target when surrounded and adds card numbers, keys, stances and who is behind to CommunicationMod's state.",
   "version": "1.0.0",
   "sts_version": "12-18-2022",
   "mts_version": "3.18.0",

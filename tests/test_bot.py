@@ -40,6 +40,7 @@ def restarted(**kw):
     while game.screen != "combat":
         bot.step()
     game.saved_screen, game.screen = "combat", "main"
+    bot.forget()  # (as the supervisor's restart does: bot.run starts from a fresh look)
     return game, bot
 
 
@@ -263,6 +264,38 @@ class FastMode(unittest.TestCase):
         self.assertEqual(new.calls, [("set_fast_mode", {"mode": "instant"})])
         with self.assertLogs("sts2bot.supervisor", level="WARNING"):
             self.assertFalse(supervisor.set_fast_mode(Mod({"status": "error", "error": "Unknown action"}), "instant"))
+
+
+class Pace(unittest.TestCase):
+    """2026-11-25: a fight round took about 1 s, of which the enemy's turn 0.15 s; the bot's own waits were the rest."""
+
+    def test_a_fight_with_nothing_to_send_is_looked_at_again_soon(self):
+        enemy_turn = {**combat_state([STRIKE(0)], [enemy("JAW_WORM_0", 40, attack=11)]), "battle": {"round": 2, "turn": "enemy", "is_play_phase": False,
+                                                                                                    "enemies": [enemy("JAW_WORM_0", 40, attack=11)]}}
+
+        class Game:
+            def state(self):
+                return enemy_turn
+
+        slept = []
+        bot = Bot(Game(), clock=FakeClock().now, sleep=slept.append)
+        bot.step()
+        self.assertEqual(slept, [min(bot.poll, bot.fight_poll)])
+        self.assertLess(bot.fight_poll, bot.poll)
+
+    def test_the_state_the_wait_ended_on_is_the_next_steps(self):
+        game = FakeGame(seed=6)
+        asked = []
+        state = game.state
+        game.state = lambda: asked.append(1) or state()
+        bot = make_bot(game)
+        while game.screen != "combat":
+            bot.step()
+        before = len(asked)
+        bot.step()  # a card played: the wait asks until it shows ...
+        waited = len(asked) - before
+        bot.step()  # ... and the next play starts from what it saw
+        self.assertEqual(len(asked) - before, waited + 1)  # (its own wait's one look, no fresh one before it)
 
 
 class CrashRecovery(unittest.TestCase):

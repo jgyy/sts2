@@ -100,12 +100,17 @@ def more_doom(c, e) -> int:
 
 
 BURNS_HAND = {"FIEND_FIRE", "SECOND_WIND", "STOKE"}  # "Exhaust your Hand" (Second Wind: all of it that is not an Attack)
+# The first game's Necronomicurse: playable under Blue Candle (1 HP, Exhausted), and back in the hand at once whenever Exhausted;
+# 2026-11-25 20:47 the bot played it over and over, a 0-cost card worth +0.1 to the planner, losing 1 HP each time.
+COMES_BACK = {"NECRONOMICURSE"}
 
 
 def shunned(c, state: dict) -> bool:
     """Cards the planner must not play here, whatever they seem to offer. Neurosurge puts 3 Doom on us every turn, which kills us once
     it reaches our HP: only for a fight that will be over before the Doom adds up, with our HP well above it by then."""
     battle, player = state.get("battle") or {}, state.get("player") or {}
+    if c.key in COMES_BACK:
+        return True
     if c.key in BURNS_HAND:  # the planner counts what it burns as nothing: not while a Power is in the hand beside it
         return any(str(h.get("type")) == "Power" for h in player.get("hand") or [])
     if c.key != "NEUROSURGE":

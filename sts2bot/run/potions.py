@@ -11,7 +11,7 @@ from ..games.sts1.stance import read as read_stance
 
 Action = tuple[str, dict]
 BOSS_FLOORS = (17, 33, 48)
-STS1_BOSS_FLOORS = (16, 33, 50)  # the first game's acts are 17 floors each, the boss on the last
+STS1_BOSS_FLOORS = (16, 33, 50, 54)  # the first game's acts are 17 floors each, the boss on the last; act 4: rest, shop, elite, the Heart
 
 
 def boss_floors() -> tuple:
@@ -20,7 +20,7 @@ def boss_floors() -> tuple:
 
 
 # Floors before each act's boss from which a full belt is no longer a reason to drink (a slot emptied there seldom fills in time).
-SAVE_FLOORS = {1: 6, 2: 9, 3: 15}
+SAVE_FLOORS = {1: 6, 2: 9, 3: 15, 4: 3}  # (act 4: the Spire Shield and Spear's potions are kept for the Heart unless in danger)
 SPARE_BEYOND = 3  # potions a boss fight is kept: more than that on the belt are drunk on the way
 # (Dexterity for the whole fight, the Dexterity Potion's 2, is not one of these: it goes early, like Strength.)
 _DEFENSIVE_POTION = re.compile(r"gain \d+ block|gain \d+ dexterity\. at the end of your turn|apply \d+ weak|enem(y|ies) loses? \d+ strength", re.I)
