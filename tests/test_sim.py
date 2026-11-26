@@ -86,3 +86,54 @@ class Sim(unittest.TestCase):
         # Par is 25: Footwork's five picks 5 floors over it, Deflect's 5 under, each shrunk to 5/15 of that.
         self.assertAlmostEqual(table["FOOTWORK"], round(25 / 15, 2))
         self.assertAlmostEqual(table["DEFLECT"], round(-25 / 15, 2))
+
+    def test_the_card_table_can_learn_on_top_of_itself(self):
+        from sim.__main__ import main
+
+        def run(floor, picks, lean):
+            return {"game": "sts2", "character": "SILENT", "floor": floor, "won": False, "picks": picks, "knobs": {}, "model_lean": lean}
+
+        lean = learn.GAME_DEFAULTS["sts2"]["model_lean"]
+        runs = [run(30, [[2, "FOOTWORK"]], lean) for _ in range(5)] + [run(20, [[2, "DEFLECT"]], lean) for _ in range(5)]
+        runs += [run(48, [[2, "DEFLECT"]], 0.0) for _ in range(50)]  # (not played with the table at the game's lean: left out)
+        with tempfile.TemporaryDirectory() as d:
+            src, base, out = Path(d) / "runs.jsonl", Path(d) / "base.json", Path(d) / "cards.json"
+            src.write_text("".join(json.dumps(r) + "\n" for r in runs))
+            base.write_text(json.dumps({"sts2": {"SILENT": {"FOOTWORK": 1.0, "DEFLECT": -2.5, "NOXIOUS_FUMES": 0.5}}, "sts1": {"IRONCLAD": {"BASH": 1.0}}}))
+            with contextlib.redirect_stderr(io.StringIO()):
+                main(["prior", str(src), "--out", str(out), "--prior", "10", "--onto", str(base)])
+            table = json.loads(out.read_text())
+        # What the runs still say (as above, +-25/15) is added to the base, within --most; cards and games without runs keep theirs.
+        self.assertEqual(table["sts2"]["SILENT"], {"FOOTWORK": round(1.0 + 25 / 15, 2), "DEFLECT": -3.0, "NOXIOUS_FUMES": 0.5})
+        self.assertEqual(table["sts1"], {"IRONCLAD": {"BASH": 1.0}})
+
+    def test_the_owl_magistrate_lands(self):
+        sts2 = _content("sts2")
+        run = Run(sts2, "IRONCLAD", 1, {}, 0)
+        run.act_id = "GLORY"
+        run.note_deck()
+        f = Fight(run, [sts2._new("OWL_MAGISTRATE", 0, run, "monster")], "monster")
+        f.start()
+        owl, seen = f.foes[0], []
+        for _ in range(4):
+            f.player_turn_start()
+            f.player_turn_end()
+            f.enemies_turn()
+            seen.append((owl.history[-1], bool(owl.powers.get("SOAR"))))
+        # Half damage from attacks while it flies, the round after Judicial Flight; Verdict brings it down.
+        self.assertEqual(seen, [("MAGISTRATE_SCRUTINY", False), ("PECK_ASSAULT", False), ("JUDICIAL_FLIGHT", True), ("VERDICT", False)])
+
+    def test_a_new_axebot_starts_afresh(self):
+        sts2 = _content("sts2")
+        run = Run(sts2, "IRONCLAD", 1, {}, 0)
+        run.act_id = "GLORY"
+        run.note_deck()
+        f = Fight(run, [sts2._new("AXEBOT", 0, run, "monster")], "monster")
+        f.start()
+        bot = f.foes[0]
+        bot.powers.update({"STRENGTH": 6, "VULNERABLE": 2})
+        hp = bot.max_hp
+        f.kill(bot)
+        self.assertTrue(bot.alive)
+        self.assertEqual(bot.powers, {"STOCK": 1})  # (Stock 2 at the start: one replacement used)
+        self.assertEqual(bot.max_hp, hp + 10)

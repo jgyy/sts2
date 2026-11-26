@@ -5,6 +5,8 @@
     python3 -m sim report sim-runs.jsonl [--md docs/strategy/simulation.md]
     python3 -m sim trace --game sts1 --runs 2                             # one hash per character: changes iff a decision does
     python3 -m sim prior sts2.jsonl sts1.jsonl --out sts2bot/run/model_cards.json   # the card table `model_lean` weighs in
+    python3 -m sim prior runs.jsonl --onto sts2bot/run/model_cards.json --out new.json  # ... plus what runs that played it still say
+    python3 -m sim run --game sts2 --vary --only model_table,caution --alt-cards new.json   # two tables (and caution) drawn per run
 """
 
 from __future__ import annotations
@@ -46,10 +48,15 @@ def content(game: str):
     return importlib.import_module(f"sim.content.{game}")
 
 
+TABLES: dict = {}  # model_table setting -> the card table learn.model_shift reads (1: --alt-cards)
+
+
 def _job(args: tuple) -> dict:
     game, character, seed, knobs, asc = args
     from .run import Run
     logging.disable(logging.CRITICAL)
+    if TABLES:
+        learn._model = TABLES[int(knobs.get("model_table", 0))]
     try:
         return Run(content(game), character, seed, knobs, asc).play()
     except Exception as e:  # a model bug must not end a thousand-run batch: it is counted and reported instead
@@ -78,6 +85,12 @@ def fixed(a, character: str) -> dict:
 
 def cmd_run(a) -> int:
     mod = content(a.game)
+    if a.alt_cards:  # a second card table to set against the shipped one: `--set model_table=1`, or drawn per run with --vary
+        TABLES.update({0: json.load(open(learn.MODEL_CARDS)), 1: json.load(open(a.alt_cards))})
+        GRID["model_table"] = [0, 1]
+    if a.only:  # --vary over these settings alone, the rest at each game's defaults
+        for name in set(GRID) - set(a.only.split(",")):
+            del GRID[name]
     chars = list(mod.CHARACTERS) if a.character == "all" else [c.strip().upper() for c in a.character.split(",")]
     # (Interleaved, so that every character's numbers grow together; seeds are shared by characters and arms.)
     jobs = [(a.game, ch, a.seed + n, {**knobs_for(a.seed + n, a.vary), **fixed(a, ch)}, a.ascension) for n in range(a.runs) for ch in chars]
@@ -120,10 +133,16 @@ def cmd_prior(a) -> int:
     from .report import load, score
     from sts2bot.cards import key_of
     groups = defaultdict(list)
+    base = json.load(open(a.onto)) if a.onto else None
     for r in load(a.files):
-        if "error" not in r and not r.get("model_lean", (r.get("knobs") or {}).get("model_lean", 0.0)):  # (not runs that leaned on the table)
+        lean = r.get("model_lean", (r.get("knobs") or {}).get("model_lean", 0.0))
+        if base is not None:  # --onto: only runs that played the base table at its game's own lean (learn.GAME_DEFAULTS)
+            keep = lean and lean == learn.GAME_DEFAULTS.get(r["game"], {}).get("model_lean") and (r.get("knobs") or {}).get("model_table", 0) == a.table
+        else:
+            keep = not lean  # (not runs that leaned on the table)
+        if "error" not in r and keep:
             groups[(r["game"], r["character"])].append(r)
-    out: dict = {}
+    out: dict = json.loads(json.dumps(base)) if base is not None else {}
     for (game, ch), runs in sorted(groups.items()):
         mod = content(game)
         usual, gained = {}, defaultdict(list)
@@ -135,12 +154,14 @@ def cmd_prior(a) -> int:
                 gained[key].append(score(r) - usual[floor])
         picks = sum(map(len, gained.values()))
         par = sum(map(sum, gained.values())) / max(1, picks)
-        table = {}
+        who = learn.who_key(mod.CHARACTERS[ch]["title"])
+        # On top of a base table (--onto), what the runs that leaned on it still say: a card whose picks still gained moves up.
+        table = dict((base or {}).get(game, {}).get(who, {}))
         for key, g in gained.items():
-            shift = max(-a.most, min(a.most, (sum(g) - par * len(g)) / (len(g) + a.prior)))
-            if abs(shift) >= 0.05:
-                table[key_of(mod.CARDS[key].name if key in mod.CARDS else key)] = round(shift, 2)
-        out.setdefault(game, {})[learn.who_key(mod.CHARACTERS[ch]["title"])] = dict(sorted(table.items()))
+            name = key_of(mod.CARDS[key].name if key in mod.CARDS else key)
+            shift = max(-a.most, min(a.most, table.get(name, 0.0) + (sum(g) - par * len(g)) / (len(g) + a.prior)))
+            table[name] = round(shift, 2)
+        out.setdefault(game, {})[who] = dict(sorted((k, v) for k, v in table.items() if abs(v) >= 0.05))
         print(f"{game} {ch}: {len(runs)} runs, {picks} picks, {len(table)} cards", file=sys.stderr)
     text = json.dumps(out, indent=1, sort_keys=True) + "\n"
     if a.out:
@@ -171,8 +192,10 @@ def main(argv=None) -> int:
     r.add_argument("--seed", type=int, default=1)
     r.add_argument("--ascension", type=int, default=0)
     r.add_argument("--vary", action="store_true", help="each run draws its own value of every setting in GRID")
+    r.add_argument("--only", metavar="NAMES", help="with --vary: vary only these settings (comma-separated)")
     r.add_argument("--set", action="append", metavar="NAME=VALUE", help="play every run with this setting (repeatable)")
     r.add_argument("--settings", metavar="FILE", help="JSON {character: {setting: value}} to play each character with")
+    r.add_argument("--alt-cards", metavar="FILE", help="another card table (sim prior) for runs with model_table 1")
     r.add_argument("--jobs", type=int, default=os.cpu_count() or 2)
     r.add_argument("--out", default=None)
     t = sub.add_parser("trace", help="hash every decision of a few seeded runs (a refactor must leave these unchanged)")
@@ -189,6 +212,8 @@ def main(argv=None) -> int:
     q.add_argument("--out", default=None)
     q.add_argument("--prior", type=float, default=40.0, help="picks before a card's own record counts for half")
     q.add_argument("--most", type=float, default=3.0, help="no card moves further than this")
+    q.add_argument("--onto", metavar="TABLE", help="add to this table what the runs that played it (at the game's default model_lean) still say")
+    q.add_argument("--table", type=int, default=0, help="with --onto: the runs whose model_table was this (1: run with --alt-cards TABLE)")
     a = ap.parse_args(argv)
     learn.KNOB.update(learn.DEFAULTS)
     return {"run": cmd_run, "trace": cmd_trace, "report": cmd_report, "prior": cmd_prior}[a.cmd](a)

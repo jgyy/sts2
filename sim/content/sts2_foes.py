@@ -260,7 +260,8 @@ def _giant_death(f, foe):
 
 def _stock_death(f, foe):
     if foe.powers.get("STOCK", 0) > 0:
-        foe.powers["STOCK"] -= 1
+        # "When killed, a new Axebot replaces it": the old one's Strength (Boot Up), Block and debuffs go with it.
+        foe.powers, foe.block = {**foe.spec.powers, "STOCK": foe.powers["STOCK"] - 1}, 0
         foe.max_hp += 10
         foe.hp = foe.max_hp
         return True
@@ -286,6 +287,8 @@ HOOKS = {
     "CEREMONIAL_BEAST": {"hit": _plow_hit},
     "WATERFALL_GIANT": {"death": _giant_death, "acted": lambda f, foe: f.kill(foe) if foe.mem.get("exploded") and foe.move_name == "EXPLODE" else None},
     "SPINY_TOAD": {"acted": lambda f, foe: foe.powers.pop("THORNS", None) if foe.move_name == "SPIKE_EXPLOSION" else None},
+    # Soar: "Receives 50% less attack damage until it lands" (Spire Codex): Judicial Flight takes off, Verdict comes down.
+    "OWL_MAGISTRATE": {"acted": lambda f, foe: foe.powers.pop("SOAR", None) if foe.move_name == "VERDICT" else None},
     "TERROR_EEL": {"hit": _shriek_hit},
     "TEST_SUBJECT": {"death": _adaptable_death,
                      "acted": lambda f, foe: foe.mem.__setitem__(("hits", "MULTI_CLAW"), foe.mem[("hits", "MULTI_CLAW")] + 1) if foe.move_name == "MULTI_CLAW" else None},
