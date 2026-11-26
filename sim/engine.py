@@ -68,6 +68,10 @@ class Fight:
     def dexterity(self) -> int:
         return self.pw.get("DEXTERITY", 0) + self.temp.get("DEXTERITY", 0)
 
+    def focus(self) -> int:
+        """Focus, this turn's included (Slay the Spire 2's Hotfix and Hyperbeam: until 2026-11-26 only the lasting kind counted)."""
+        return self.pw.get("FOCUS", 0) + self.temp.get("FOCUS", 0)
+
     def stance_mult(self) -> float:
         return {"WRATH": 2.0, "DIVINITY": 3.0}.get(self.stance, 1.0)
 
@@ -174,7 +178,7 @@ class Fight:
         }
 
     def temp_view(self) -> dict:
-        return {k: self.pw.get(k, 0) + v for k, v in self.temp.items() if k in ("STRENGTH", "DEXTERITY")}
+        return {k: self.pw.get(k, 0) + v for k, v in self.temp.items() if k in ("STRENGTH", "DEXTERITY", "FOCUS")}
 
     def foe_view(self, f: Foe) -> dict:
         m = f.move
@@ -196,11 +200,11 @@ class Fight:
 
     def orb_passive(self, o: list) -> int:
         base = ORB_BASE.get(o[0], (0, 0))[0]
-        return base if o[0] == "PLASMA" else max(0, base + self.pw.get("FOCUS", 0))
+        return base if o[0] == "PLASMA" else max(0, base + self.focus())
 
     def orb_evoke(self, o: list) -> int:
         base = ORB_BASE.get(o[0], (0, 0))[1]
-        return o[1] if o[0] == "DARK" else base if o[0] == "PLASMA" else max(0, base + self.pw.get("FOCUS", 0))
+        return o[1] if o[0] == "DARK" else base if o[0] == "PLASMA" else max(0, base + self.focus())
 
     # ------------------------------------------------------------------ hurting
 
@@ -364,7 +368,7 @@ class Fight:
             return
         if len(self.orbs) >= self.orb_slots:
             self.evoke()
-        self.orbs.append([kind, 6 + self.pw.get("FOCUS", 0) if kind == "DARK" else 0])
+        self.orbs.append([kind, 6 + self.focus() if kind == "DARK" else 0])
 
     def evoke(self, times: int = 1, keep: bool = False) -> None:
         if not self.orbs:
@@ -535,7 +539,7 @@ class Fight:
                 self.exhaust(c)
             else:
                 self.discard.append(c)
-        for k in ("STRENGTH", "DEXTERITY", "FLAME_BARRIER"):
+        for k in ("STRENGTH", "DEXTERITY", "FOCUS", "FLAME_BARRIER"):
             self.temp.pop(k, None)
         for k in ("RAGE", "ENTANGLED"):
             self.pw.pop(k, None)

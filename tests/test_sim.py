@@ -137,3 +137,60 @@ class Sim(unittest.TestCase):
         self.assertTrue(bot.alive)
         self.assertEqual(bot.powers, {"STOCK": 1})  # (Stock 2 at the start: one replacement used)
         self.assertEqual(bot.max_hp, hp + 10)
+
+    def test_grand_finale_waits_for_an_empty_draw_pile(self):
+        # (Until 2026-11-26 no "Can only be played if" held in Slay the Spire 2's model: 60 damage to ALL enemies whenever drawn.)
+        sts2 = _content("sts2")
+        run = Run(sts2, "SILENT", 1, {}, 0)
+        run.act_id = "OVERGROWTH"
+        run.note_deck()
+        f = Fight(run, [sts2._new("NIBBIT", 0, run, 0)], "monster")
+        f.start()
+        f.player_turn_start()
+        f.hand.append(Card(sts2.CARDS["GRAND_FINALE"]))
+        self.assertTrue(f.draw)
+        self.assertFalse(f.playable(f.hand[-1]))
+        f.draw.clear()
+        self.assertTrue(f.playable(f.hand[-1]))
+
+    def test_what_a_card_text_says_beyond_the_parse_happens(self):
+        # (2026-11-26: Bone Shards left Osty alive, Fight Me gave the enemy nothing, statuses and copies were never added, Hyperbeam
+        # cost no Focus; the first game's Reprogram gave its Strength and Dexterity twice.)
+        def played(game, character, key, setup=lambda f: None):
+            mod = _content(game)
+            run = Run(mod, character, 1, {}, 0)
+            run.act_id = "OVERGROWTH"
+            run.note_deck()
+            foe = mod._new("NIBBIT", 0, run, 0) if game == "sts2" else mod._new("JAW_WORM", 0, run, "monster")
+            f = Fight(run, [foe], "monster")
+            f.start()
+            f.player_turn_start()
+            f.energy = 6
+            setup(f)
+            f.hand.append(Card(mod.CARDS[key]))
+            f.play(len(f.hand) - 1, f.foes[0].eid)
+            return f
+
+        osty = lambda f: setattr(f, "osty", 5)
+        self.assertEqual(played("sts2", "NECROBINDER", "BONE_SHARDS", osty).osty, 0)
+        self.assertEqual(played("sts2", "NECROBINDER", "BONE_SHARDS", lambda f: setattr(f, "osty", 0)).block, 0)  # ("If Osty is alive")
+        self.assertEqual(played("sts2", "IRONCLAD", "FIGHT_ME").foes[0].powers.get("STRENGTH"), 1)
+        self.assertEqual(sum(c.key == "WOUND" for c in played("sts2", "DEFECT", "FIGHT_THROUGH").discard), 2)
+        twins = [c for c in played("sts2", "DEFECT", "ADAPTIVE_STRIKE").discard if c.key == "ADAPTIVE_STRIKE"]
+        self.assertEqual(sorted(c.cost() for c in twins), [0, 2])  # (the card itself, and its copy for nothing)
+        beam = played("sts2", "DEFECT", "HYPERBEAM", lambda f: f.channel("LIGHTNING"))
+        self.assertEqual((beam.focus(), beam.orb_passive(beam.orbs[0])), (-3, 0))
+        beam.player_turn_end()
+        self.assertEqual(beam.focus(), 0)  # ("this turn")
+        stocked = lambda f: f.discard.extend(Card(f.game.CARDS[k]) for k in ("STRIKE_NECROBINDER", "DEFEND_NECROBINDER", "UNLEASH"))
+        dredged = played("sts2", "NECROBINDER", "DREDGE", stocked)
+        self.assertEqual((len(dredged.hand), len(dredged.discard)), (8, 0))  # (Dredge itself is Exhausted)
+        thrash = played("sts2", "IRONCLAD", "THRASH")
+        self.assertEqual((len(thrash.hand), len(thrash.exhausted)), (4, 1))  # (a Strike of the five Exhausted)
+        foregone = played("sts2", "REGENT", "FOREGONE_CONCLUSION")
+        foregone.player_turn_end()
+        foregone.enemies_turn()
+        foregone.player_turn_start()
+        self.assertEqual(len(foregone.hand), 7)
+        reprogram = played("sts1", "DEFECT", "REPROGRAM")
+        self.assertEqual((reprogram.strength(), reprogram.dexterity(), reprogram.focus()), (1, 1, -1))

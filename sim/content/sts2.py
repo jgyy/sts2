@@ -19,6 +19,7 @@ from ..effects import add
 from ..monsters import Foe
 from ..run import Potion
 from . import common, sts1, sts2_foes
+from .sts1_cards import _pick
 
 KEY = "sts2"
 ACTS = 3
@@ -83,8 +84,47 @@ def _forge(f, n: int) -> None:
         f.add_card(make("SOVEREIGN_BLADE"))
 
 
+# What a card's text puts in our piles or on the enemy that the engine's generic part left out until 2026-11-26 (Fight Through's two
+# Wounds, Boost Away's Dazed, Gunk Up's Slimed, Overclock's Burn, Turbo's Void; Fight Me's Strength for the enemy).
+_STATUS_ADDED = re.compile(r"\b(?:add|shuffle)\s+(a|an|\d+)\s+(wound|dazed|slimed|burn|void|soot|toxic)s?\b[^.]*?\binto\s+your\s+(discard pile|draw pile|hand)", re.I)
+_PILES = {"discard pile": "discard", "draw pile": "draw", "hand": "hand"}
+_ENEMY_GAINS = re.compile(r"\bthe enemy gains (\d+) strength", re.I)
+# ... and what it gives (Adaptive Strike's and Undeath's copies, Bundle of Joy's and Manifest Authority's Colorless cards, Quasar's choice,
+# Stoke's new hand, Hyperbeam's lost Focus).
+_SELF_COPY = re.compile(r"\badd a (0\[energy_icon\.png\] )?copy of this card into your discard pile", re.I)
+_COLORLESS = re.compile(r"\badd (\d+) random colorless cards? into your hand", re.I)
+_QUASAR = re.compile(r"\bchoose 1 of (\d+) random colorless cards to add into your hand", re.I)
+_STOKE = re.compile(r"\bexhaust your hand\. add 1 random card into your hand for each card exhausted", re.I)
+_FOCUS_TURN = re.compile(r"\blose (\d+) focus this turn", re.I)
+
+
 def EXTRA(f, c, foe, i, xs) -> None:
-    """Stars, Forge, Osty, Doom, Souls and Debris: what Slay the Spire 2's text says that the engine's generic part leaves out."""
+    """Stars, Forge, Osty, Doom, Souls, Debris, statuses, copies and cards moved: what Slay the Spire 2's text says that the engine's generic part leaves out."""
+    for m in _STATUS_ADDED.finditer(c.text):
+        f.add_new(m.group(2).upper(), 1 if m.group(1).lower() in ("a", "an") else int(m.group(1)), _PILES[m.group(3).lower()])
+    if (m := _ENEMY_GAINS.search(c.text)) and foe is not None and foe.alive:
+        add(foe.powers, "STRENGTH", int(m.group(1)))
+    if i.osty_dies and f.osty > 0 and c.key not in AFTER:  # Bone Shards: "Osty dies" (until 2026-11-26 he lived on; Sacrifice has its own rule)
+        f.osty = 0
+    if m := _SELF_COPY.search(c.text):
+        twin = c.copy()
+        twin.cost_fight = 0 if m.group(1) else twin.cost_fight
+        f.add_card(twin, "discard")
+    if m := _COLORLESS.search(c.text):
+        for _ in range(int(m.group(1))):
+            f.add_card(Card(f.rng.choice(colorless())))
+    if m := _QUASAR.search(c.text):
+        for picked in f.pile_pick("Choose a card to add into your Hand.", [Card(d) for d in f.rng.sample(colorless(), int(m.group(1)))])[:1]:
+            f.add_card(picked)
+    if _STOKE.search(c.text):
+        burnt = [h for h in f.hand if h is not c]
+        for h in burnt:
+            f.hand.remove(h)
+            f.exhaust(h)
+        for _ in burnt:
+            f.add_card(Card(f.rng.choice(pool(f.run.character))))
+    if m := _FOCUS_TURN.search(c.text):
+        add(f.temp, "FOCUS", -int(m.group(1)))
     if i.star_gain:
         f.stars += i.star_gain
         _star_hooks(f, i.star_gain)
@@ -138,8 +178,25 @@ DAMAGE = {
 PRE = {
     "TIMES_UP": lambda f, c, foe, i: i if foe is None else replace(i, damage=foe.powers.get("DOOM", 0), hits=1),
     **dict.fromkeys(("FLATTEN", "POKE", "RATTLE", "SNAP", "SIC_EM", "UNLEASH"), lambda f, c, foe, i: replace(i, damage=0) if f.osty <= 0 and i.osty_attack else i),
+    "BONE_SHARDS": lambda f, c, foe, i: replace(i, damage=0, block=0) if f.osty <= 0 else i,  # "If Osty is alive, he deals ... and you gain ..."
     **{k: sts1.PRE[k] for k in ("FIEND_FIRE", "BURNING_PACT", "SECOND_WIND")},
 }
+
+
+def _thrash(f, c, *_):
+    """Thrash: "Exhaust a random Attack in your Hand and add its damage to this card" (a hit's worth, for the rest of the fight)."""
+    attacks = [h for h in f.hand if h.type == "Attack" and h is not c]
+    if attacks:
+        h = f.rng.choice(attacks)
+        f.hand.remove(h)
+        f.exhaust(h)
+        c.bonus += max(0, (h.info.damage or 0) + h.bonus)
+
+
+def _nightmare(f, c, *_):
+    """Nightmare: "Choose a card. Next turn, add 3 copies of that card into your Hand" (turn_start brings them)."""
+    for h in f.hand_pick("Choose a card to copy.", 1):
+        f.__dict__.setdefault("nightmares", []).append(h.copy())
 
 
 def _summon_forth(f, c, foe, x, dealt):
@@ -156,6 +213,10 @@ AFTER = {
                                   "SURVIVOR", "ACROBATICS", "DAGGER_THROW", "PREPARED", "CALCULATED_GAMBLE", "BULLET_TIME", "BURST",
                                   "STORM_OF_STEEL", "UNLOAD", "CHAOS", "DOUBLE_ENERGY", "WHITE_NOISE", "REBOOT", "SEEK", "HOLOGRAM",
                                   "STACK", "SECOND_WIND", "FEED", "ARMAMENTS", "ANGER", "HEADBUTT")},
+    # What these move between piles (until 2026-11-26 nothing: the first game's Hologram, Headbutt, All for One and Secret Technique rules).
+    "GRAVEBLAST": sts1.AFTER["HOLOGRAM"], "COSMIC_INDIFFERENCE": sts1.AFTER["HEADBUTT"], "ALL_FOR_ONE": sts1.AFTER["ALL_FOR_ONE"],
+    "SECRET_TECHNIQUE": sts1.AFTER["SECRET_TECHNIQUE"], "DREDGE": lambda f, *_: _pick(f, "Choose a card to return to your hand.", f.discard, n=3),
+    "THRASH": _thrash, "NIGHTMARE": _nightmare, "FOREGONE_CONCLUSION": lambda f, c, *_: f.__dict__.__setitem__("foregone", f.__dict__.get("foregone", 0) + (3 if c.up else 2)),
     "SACRIFICE": lambda f, *_: (setattr(f, "osty", 0), f.gain_block(3 * f.pw.get("OSTY_MAX", 0))) if f.osty > 0 else None,
     "SPUR": lambda f, *_: setattr(f, "osty", f.osty + 5) if f.osty > 0 else None,
     "EXPOSE": lambda f, c, foe, *_: (setattr(foe, "block", 0), foe.powers.pop("ARTIFACT", None)) if foe is not None else None,
@@ -170,7 +231,10 @@ AFTER = {
     "CORROSIVE_WAVE": lambda f, c, *_: add(f.pw, "CORROSIVE_WAVE", 3 if c.up else 2),
     "OBLIVION": lambda f, c, foe, *_: add(foe.mem, "oblivion", 3) if foe is not None else None, "SIGNAL_BOOST": lambda f, *_: add(f.pw, "AMPLIFY", 1),
 }
-PLAYABLE, DRAWN, RETAINED, X_PLUS = {}, {}, {}, set()
+# "Can only be played if ...": worded as in the first game (until 2026-11-26 none held here, and Grand Finale was 60 damage to ALL
+# enemies for nothing whenever drawn: +7.5 floors a pick at A8, and the card table had it at its +3 cap).
+PLAYABLE = {k: sts1.PLAYABLE[k] for k in ("CLASH", "GRAND_FINALE")}
+DRAWN, RETAINED, X_PLUS = {}, {}, set()
 
 
 # ------------------------------------------------------------------ powers, read from their text
@@ -298,6 +362,11 @@ def TURN_START(f) -> None:
     if f.pw.get("VOID_FORM"):
         f.pw["VOID_FREE"] = f.pw["VOID_FORM"]
     f.pw.pop("DRAWN_TURN", None)
+    if n := f.__dict__.pop("foregone", 0):  # Foregone Conclusion: "Next turn, put 2 cards from your Draw Pile into your Hand"
+        _pick(f, "Choose a card to put into your hand.", f.draw, n=n)
+    for h in f.__dict__.pop("nightmares", []):
+        for _ in range(3):
+            f.add_card(h.copy())
     if f.pw.get("NEUROSURGE"):
         add(f.pw, "DOOM", f.pw["NEUROSURGE"])
     for foe in f.alive():  # Rampart: the Living Shield's Turret Operator gains 25 Block as our turn starts
@@ -371,10 +440,19 @@ ANCIENT = ["SOZU", "VELVET_CHOKER", "PHILOSOPHER_S_STONE", "ECTOPLASM", "SNECKO_
            "CALLING_BELL", "EMPTY_CAGE", "PANDORA_S_BOX", "ORRERY", "WHITE_BEAST_STATUE"]
 
 
+def _data_key(rid: str) -> str:
+    """The relic's key in the game's data (the model keeps the first game's ids, "PHILOSOPHER_S_STONE")."""
+    return {"PHILOSOPHER_S_STONE": "PHILOSOPHERS_STONE", "PANDORA_S_BOX": "PANDORAS_BOX", "CAPTAIN_S_WHEEL": "CAPTAINS_WHEEL",
+            "CHARON_S_ASHES": "CHARONS_ASHES"}.get(rid, rid)
+
+
 def relic_text(rid: str) -> str:
-    key = {"PHILOSOPHER_S_STONE": "PHILOSOPHERS_STONE", "PANDORA_S_BOX": "PANDORAS_BOX", "CAPTAIN_S_WHEEL": "CAPTAINS_WHEEL",
-           "CHARON_S_ASHES": "CHARONS_ASHES"}.get(rid, rid)
-    return (_RELIC.get(key) or ["", "", ""])[2]
+    return (_RELIC.get(_data_key(rid)) or ["", "", ""])[2]
+
+
+def relic_name(rid: str) -> str:
+    """As the game prints it ("Philosopher's Stone"): what the bot's tables key an offered relic by (events._ANCIENT)."""
+    return (_RELIC.get(_data_key(rid)) or [""])[0] or rid.replace("_", " ").title()
 
 
 relic_pickup, fight_won, rest_options, event = sts1.relic_pickup, sts1.fight_won, sts1.rest_options, common.event
@@ -418,7 +496,7 @@ def random_potion(run) -> Potion:
 
 
 def _relic_options(rids: list) -> list:
-    return [(rid.replace("_", " ").title(), f"Obtain {rid.replace('_', ' ').title()}. {relic_text(rid)}", (lambda r, a, rid=rid: r.gain_relic(rid))) for rid in rids]
+    return [(relic_name(rid), f"Obtain {relic_name(rid)}. {relic_text(rid)}", (lambda r, a, rid=rid: r.gain_relic(rid))) for rid in rids]
 
 
 def run_start(run) -> None:
