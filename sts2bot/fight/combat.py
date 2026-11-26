@@ -75,6 +75,8 @@ def _debuff(e: Enemy, c: CardInfo, x: int = 1) -> None:
         _weaken(e, c.weak * x)
     if c.enemy_strength_loss and not _resists(e):  # the enemy loses Strength for this turn: every hit is that much weaker
         e.incoming = max(0, e.incoming - c.enemy_strength_loss * x * e.incoming_hits)
+    if c.enemy_strength_gain and e.incoming:  # (Fight Me: the enemy's hits this turn are that much harder too)
+        e.incoming += c.enemy_strength_gain * x * max(1, e.incoming_hits)
     if c.key == "DEBILITATE" and e.vuln_mult < 2.0 and not _resists(e):
         # "Vulnerable and Weak are twice as effective": for the attacks that follow it this turn too.
         e.incoming = int(e.incoming * 0.5 / e.weak_cut) if e.weak else e.incoming
@@ -143,7 +145,7 @@ def simulate(
     healed, nimble, might, summoned, pet0 = 0, 0, might0, 0, pet  # HP given back; Dexterity and Strength gained; HP given Osty (and his HP as the texts were written)
     faced: str | None = None  # the last enemy a card was aimed at
     held = list(orbs)  # the Defect's orbs
-    drawn, debris, dazed, tainted = 0, 0, 0, 0  # cards drawn; Debris and Dazed (Personal Hive) put in our deck; Vital Spark's extra damage a hit
+    drawn, debris, dazed, tainted, junked = 0, 0, 0, 0, 0  # cards drawn; Debris and Dazed (Personal Hive) put in our deck; Vital Spark's extra damage a hit; other statuses
     lasting, enduring, future = 0.0, 0.0, 0.0  # worth of effects that pay off over the fight (x `span`), of what stays all fight, of all that pays off after this turn
     later, nexte, kept = 0.0, 0, False  # worth of things that arrive next turn; energy next turn, and whether the hand is Retained
     mantra = mantra0  # the Watcher's Mantra as the line goes on
@@ -385,6 +387,7 @@ def simulate(
         if c.sadness or c.sad_turn:
             sad += c.sadness
             sad_rate, sad_draw = (sad_rate + c.sad_turn[0], sad_draw + c.sad_turn[1]) if c.sad_turn else (sad_rate, sad_draw)
+        junked += c.junk
         if c.debris:  # (Crash Landing fills what room the hand has left: fewest when it is played first)
             debris += c.debris if c.debris > 0 else max(0, 10 - (hand_size - (n + 1) + drawn + debris))
         buffer += c.key == "BUFFER"  # played now, it stops this turn's hit
@@ -403,6 +406,8 @@ def simulate(
                 future += c.strength * 4.0 * span
         if c.enemy_strength_lasts:  # ... and Strength taken off an enemy for good comes off every hit it has left (this turn's share: in `incoming`)
             future += sum(c.enemy_strength_loss * max(1, e.incoming_hits) * 2.0 * e.worth for e in (alive if c.aoe or t is None else [t]) if e.alive) * span
+        if c.enemy_strength_gain:  # ... and Strength given to one goes on every hit it has left (Fight Me; until 2026-11-26 not seen at all)
+            future -= sum(c.enemy_strength_gain * max(1, e.incoming_hits) * 2.0 * e.worth for e in (alive if c.aoe or t is None else [t]) if e.alive) * span
         if c.type == "Power":
             score -= sum(e.curious * ENRAGE_PRICE * max(1, e.incoming_hits) * min(4.0, 1.0 + e.hp / 35.0) for e in foes if e.alive)  # (as Enrage: Curiosity)
             # (An Ethereal Power not played now is never played: more in a long fight. A second Friendship is energy the hand has no cards for.)
@@ -452,6 +457,8 @@ def simulate(
     score += future
     if debris:
         score -= junk_cost(fight, round_no, deck, debris) * dmg_value
+    if junked:  # Wounds, Dazed, Burns and Voids the line puts in our piles (until 2026-11-26 free): dead draws for the rest of the fight
+        score -= junk_cost(fight, round_no, deck, junked) * dmg_value
     if dazed:
         # A Dazed is a draw lost (it is Ethereal): a card of ours, as far as the deck has live ones. The first two a turn cost little (a hand
         # of five has cards to spare), the rest a card each, and only as far as the fight will last long enough to draw them.

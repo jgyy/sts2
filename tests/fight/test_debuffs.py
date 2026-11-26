@@ -18,3 +18,18 @@ class DebuffWorth(unittest.TestCase):
                                           ("one Vulnerable is gone when the boss has moved: it helps nothing", once, 1.0, 1), ("... at either value", once, 2.0, 1)):
             with self.subTest(why), mock.patch.dict(learn.KNOB, {"debuff_worth": worth}):
                 self.assertEqual(pick(combat_state([debuff, STRIKE(1)], [enemy("BOSS", 300)], energy=1, kind="boss")), first)
+
+
+class PricesOfAPlay(unittest.TestCase):
+    """What a card gives away for good (until 2026-11-26 the planner saw neither): Strength to the enemy, dead cards in our piles."""
+
+    def test_strength_given_to_the_enemy_costs_every_hit_it_has_left(self):
+        hand = [card(0, "FIGHT_ME", "Fight Me!", "Attack", 1, "Deal 9 damage. The enemy gains 1 Strength.", "AnyEnemy"), STRIKE(1)]
+        boss = enemy("BOSS", 300, attack="5x3")
+        self.assertEqual(pick(combat_state(hand, [boss], energy=1, kind="boss")), 1)  # (a point of damage is not three hits a turn)
+
+    def test_a_status_put_in_our_piles_costs_a_draw_every_shuffle(self):
+        # A Wound in a deck of 25 over a boss fight: about 8 points (battle.junk_cost), a Strike's 6 damage 9.
+        wild = lambda dmg: card(0, "WILD_STRIKE", "Wild Strike", "Attack", 1, f"Deal {dmg} damage. Shuffle a Wound into your draw pile.", "AnyEnemy")
+        played = lambda dmg: pick(combat_state([wild(dmg), STRIKE(1)], [enemy("BOSS", 300)], energy=1, kind="boss", draw_pile_count=23))
+        self.assertEqual((played(7), played(14)), (1, 0))  # (a point more is not worth a Wound; eight more are)
