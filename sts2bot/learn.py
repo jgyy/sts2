@@ -201,14 +201,15 @@ CHOICES = {
     "block_want": [0.0, 1.5],  # rating points for a card with 5 Block or more while the deck holds few beyond its Defends (decks.deck_fit; model runs: 1.5 ahead in both games)
     "cards_first": [0.0, 1.0],  # 1.0: an early card removal has to beat the cards on a Merchant's shelf (strategy.shop)
     "debuff_worth": [1.0, 2.0, 3.0],  # a lasting turn of Vulnerable or Weak in the combat planner, as a multiple of its old worth (model runs: 1.0 best in the first game)
-    "model_lean": [0.0, 1.0],  # how much of what the model runs say of each card goes into its rating (model_shift; in the model, 1.0 went 3-4 floors further)
+    "model_lean": [0.0, 1.0, 2.0],  # how much of what the model runs say of each card goes into its rating (model_shift; in the model 1.0 went 3-4 floors further, 2.0 a floor more in StS2)
 }
 # What the model runs found best in each game (docs/strategy/simulation.md), over DEFAULTS: played with --no-tuning and by the
 # model runs' own default (DEFAULTS stay what the tests are written against). 2026-11-25, Slay the Spire 2 at A7 and the first game
 # at A0: model_lean 1 went 3-4 floors further in both on seeds its table had not seen; crowd 0.6 was the worst of three in StS2 four
 # batches running, the best in StS1; attack_room 3 about a floor ahead in StS2; cards_first 1 1.4-1.9 floors ahead in StS1, elite_worth 6 a little.
+# 2026-11-26: model_lean 2 another 0.9 +- 0.4 floors in StS2 on fresh seeds (3 fell back 0.6); in StS1 2 made no difference (+0.2 +- 0.55).
 GAME_DEFAULTS: dict[str, dict] = {
-    "sts2": {"crowd": 0.3, "attack_room": 3.0, "model_lean": 1.0},
+    "sts2": {"crowd": 0.3, "attack_room": 3.0, "model_lean": 2.0},
     "sts1": {"elite_worth": 6.0, "cards_first": 1.0, "model_lean": 1.0},
 }
 
