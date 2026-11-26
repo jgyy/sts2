@@ -284,7 +284,7 @@ AFTER = {
     "EQUILIBRIUM": lambda f, *_: ([setattr(h, "retained", -1) for h in f.hand], f.pw.__setitem__("KEEP_HAND", 1)),  # (kept by the end of turn)
     "GENETIC_ALGORITHM": lambda f, c, *_: setattr(c, "bonus", c.bonus + (3 if c.up else 2)), "OVERCLOCK": _to_hand("BURN", where="discard"),
     "RECYCLE": lambda f, *_: [(f.hand.remove(k), setattr(f, "energy", f.energy + max(0, k.cost())), f.exhaust(k)) for k in f.hand_pick("Choose a card to Exhaust.", 1)],
-    "REPROGRAM": _gain("FOCUS", -1, -2, "STRENGTH", 1, 2, "DEXTERITY", 1, 2), "SCRAPE": _scrape,
+    "REPROGRAM": _gain("FOCUS", -1, -2),  # (its Strength and Dexterity are the parse's: until 2026-11-26 counted twice) "SCRAPE": _scrape,
     "SUNDER": lambda f, c, foe, *_: setattr(f, "energy", f.energy + 3) if foe is not None and not foe.alive else None,
     "WHITE_NOISE": _random_card("Power"), "ALL_FOR_ONE": _all_for_one, "AMPLIFY": _gain("AMPLIFY", 1, 2), "CORE_SURGE": _gain("ARTIFACT", 1, 1),
     "FISSION": _fission, "HYPERBEAM": _gain("FOCUS", -3, -3), "MULTI_CAST": lambda f, c, foe, x, dealt: f.evoke(x),
