@@ -135,6 +135,8 @@ class CardStats:
 
 # What the model runs (sim/, `python3 -m sim prior`) say of each card for each character: floors a pick gained over the runs that
 # left the same floor alive, shrunk towards nothing. Used times the `model_lean` setting (0: not at all; see CHOICES).
+# Since 2026-11-26 corrected twice by what the runs that played it still say of each card (`sim prior --onto`): on fresh seeds
+# 2.6 floors further in Slay the Spire 2 at A7 and 3.6 in the first game at A0 (docs/strategy/simulation.md, round 4).
 MODEL_CARDS = Path(__file__).resolve().parent / "run" / "model_cards.json"
 _model: dict | None = None
 
