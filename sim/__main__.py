@@ -37,7 +37,7 @@ GRID = {  # the settings tried with --vary: the bot's own choices (learn.CHOICES
     "block_want": [0.0, 1.5],
     "cards_first": [0.0, 1.0],
     "debuff_worth": [1.0, 2.0, 3.0],
-    "model_lean": [0.0, 1.0],
+    "model_lean": [0.0, 1.0, 2.0],
 }
 
 
