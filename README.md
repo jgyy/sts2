@@ -140,6 +140,8 @@ python3 -m sim run --game sts2 --character NECROBINDER --runs 200 --ascension 5
 python3 -m sim report runs.jsonl                                                     # by character, setting, boss, card
 python3 -m sim trace                                                                 # one hash per character
 python3 -m sim prior sts2.jsonl sts1.jsonl --out sts2bot/run/model_cards.json         # the card table the bot reads
+python3 -m sim prior runs.jsonl --onto sts2bot/run/model_cards.json --out new.json     # ... corrected by runs that played it
+python3 -m sim run --game sts2 --runs 400 --vary --only model_table,caution --alt-cards new.json   # vary only these; two tables
 ```
 
 `trace` hashes every decision of seeded runs: a change that should not alter behaviour must leave the hashes as they
