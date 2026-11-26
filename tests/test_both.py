@@ -103,6 +103,20 @@ class Both(unittest.TestCase):
         gaps = [b - a for a, b in zip(starts, starts[1:])]
         self.assertEqual([round(g) for g in gaps[:4]], [11, 21, 41, 41])  # (1 s of polling on top of each pause)
 
+    def test_a_bot_told_to_reload_is_back_at_once_whatever_its_back_off(self):
+        starts = []
+
+        def script(rig):
+            for p in rig.of("sts1"):
+                if p.code is None:  # reloaded (SIGUSR1) as soon as it starts
+                    starts.append(rig.t)
+                    p.code = -signal.SIGUSR1
+
+        rig = Rig(script, until=30)
+        rig.run(["--game", "both"], games=("sts1",))
+        gaps = [b - a for a, b in zip(starts, starts[1:])]
+        self.assertTrue(gaps and all(g <= 3 for g in gaps))  # (no doubling: a second or two each time)
+
     def test_stopping_stops_every_bot(self):
         def script(rig):
             if rig.t >= 10 and not getattr(rig, "stopped", False):

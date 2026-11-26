@@ -16,13 +16,13 @@ def card(cid: str, index: int | None = None) -> dict:
     return Screens().card({"id": cid, "name": NAMES.get(cid, cid), "type": kind, "cost": cost, "has_target": aimed}, index, live=index is not None)
 
 
-def watcher(hand, draw, *, hp=31, blow=40, stance_now="Neutral", intent=None):
+def watcher(hand, draw, *, hp=31, blow=40, stance_now="Neutral", intent=None, round_no=5):
     enemy = {"entity_id": "BRONZEAUTOMATON_0", "hp": 200, "max_hp": 300, "block": 0, "status": [],
              "intents": [{"type": "Attack", "label": str(intent)}] if intent else [{"type": "Defend", "label": ""}, {"type": "Buff", "label": ""}]}
     player = {"hp": hp, "max_hp": 72, "block": 0, "energy": 2, "hand": [card(c, n) for n, c in enumerate(hand)], "draw_pile": [card(c) for c in draw],
               "discard_pile": [], "draw_pile_count": len(draw), "discard_pile_count": 0, "exhaust_pile_count": 0, "potions": [], "stance": stance_now, "orbs": []}
     return {"state_type": "boss", "run": {"act": 2, "floor": 33, "ascension": 0}, "player": player, "_blow": {"BRONZEAUTOMATON_0": (blow, 0.6)},
-            "battle": {"round": 5, "turn": "player", "is_play_phase": True, "enemies": [enemy]}}
+            "battle": {"round": round_no, "turn": "player", "is_play_phase": True, "enemies": [enemy]}}
 
 
 class WrathCarry(Sts1Case):
@@ -48,8 +48,37 @@ class WrathCarry(Sts1Case):
         self.assertEqual(combat.actions(state)[0], ("play_card", {"card_index": 0, "target": "BRONZEAUTOMATON_0"}))
 
     def test_wrath_when_the_blows_are_small(self):
-        state = watcher(["Eruption", "Strike_P", "Strike_P"], ["Strike_P"] * 5 + ["Defend_P"] * 5, hp=72, blow=4)
+        state = watcher(["Eruption", "Strike_P", "Strike_P"], ["Strike_P"] * 5 + ["Defend_P"] * 5, hp=72, blow=4, round_no=3)
         self.assertEqual(combat.actions(state)[0], ("play_card", {"card_index": 0, "target": "BRONZEAUTOMATON_0"}))
+
+
+class SimmeringFury(Sts1Case):
+    """"At the start of your next turn, enter Wrath and draw 2 cards": next turn begins in Wrath (2026-11-26 20:02: the Hyper
+    Beam came to 102 on 70 HP), which the planner had read as a card that does nothing."""
+
+    def fury(self, round_no, draw):
+        state = watcher(["Strike_P", "Strike_P"], draw, hp=70, blow=8, round_no=round_no)
+        fury = Screens().card({"id": "SimmeringFury", "name": "Simmering Fury", "type": "SKILL", "cost": 1}, 2, live=True)
+        state["player"]["hand"].append(fury)
+        state["player"]["energy"] = 3
+        return state
+
+    def test_it_is_read_as_next_turn_wrath_and_two_cards(self):
+        from sts2bot.cards import parse
+        info = parse(self.fury(3, [])["player"]["hand"][2])
+        self.assertTrue(info.wrath_next)
+        self.assertEqual((info.next_draw, info.stance), (2, ""))
+
+    def test_no_fury_before_a_blow_it_could_not_leave_wrath_for(self):
+        state = self.fury(5, ["Strike_P"] * 5 + ["Defend_P"] * 5)
+        state["_blow"] = {"BRONZEAUTOMATON_0": (45, 1.0)}  # (a 45 blow seen: doubled, it kills her on 70)
+        line = (combat.choose_card(state, plan := {}), plan)[1]["line"]
+        self.assertNotIn("Simmering Fury", [c.name for c in line])
+        # With a way out in the seven cards it draws, it is worth its 2 cards and the Calm it is not in.
+        state = self.fury(5, ["Strike_P"] * 6 + ["Vigilance"])
+        state["_blow"] = {"BRONZEAUTOMATON_0": (45, 1.0)}
+        line = (combat.choose_card(state, plan := {}), plan)[1]["line"]
+        self.assertIn("Simmering Fury", [c.name for c in line])
 
     def test_the_stance_potion_is_a_choice_the_planner_weighs(self):
         from sts2bot.run import strategy

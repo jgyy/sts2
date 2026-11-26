@@ -64,14 +64,15 @@ def leaves_wrath(card: dict) -> bool:
     return (info.stance in ("CALM", "DIVINITY", "EXIT") or bool(re.search(r"\benter\s+(?:calm|divinity)\b|\bexit\s+your\s+stance\b", words, re.I))) and not info.deadly
 
 
-def stuck_odds(player: dict) -> float:
-    """The chance that next turn's hand holds no card that leaves Wrath (none when one is Retained in the hand now). The
-    draw comes off the draw pile; what it lacks comes from the discard pile, this turn's hand in it, shuffled."""
+def stuck_odds(player: dict, extra: int = 0) -> float:
+    """The chance that next turn's hand (and `extra` cards more: Simmering Fury's) holds no card that leaves Wrath (none when
+    one is Retained in the hand now). The draw comes off the draw pile; what it lacks comes from the discard pile, this
+    turn's hand in it, shuffled."""
     hand = player.get("hand") or []
     if any(leaves_wrath(c) and re.search(r"\bretain\b", str(c.get("description") or ""), re.I) for c in hand):
         return 0.0
     draw = player.get("draw_pile") or []
-    need, pool = NEXT_HAND, draw
+    need, pool = NEXT_HAND + extra, draw
     if len(draw) < need:
         if any(map(leaves_wrath, draw)):
             return 0.0

@@ -7,6 +7,7 @@ import json
 import logging
 import time
 from collections import defaultdict
+from contextlib import contextmanager
 from pathlib import Path
 
 from . import cards, learn
@@ -25,6 +26,8 @@ RECENT_RUNS = 40  # runs whose characters the rotation looks back over (strategy
 SCREENS = {"hand_select", "rewards", "card_reward", "map", "event", "rest_site", "shop", "treasure", "card_select", "bundle_select", "relic_select", "crystal_sphere", "game_over", "overlay"}
 MAX_STRIKES = 2  # failed attempts before an action is shelved for the current state
 FRESH = 0.05  # a state the wait for the last action fetched this recently is the next step's (one request less a play)
+PACE_STEPS = 1000  # steps between pace lines in the log
+ROOM_PAUSE, ROOM_POLL = 0.1, 0.06  # after leaving a room or buying; between looks while a room loads (StS2)
 FIGHT_POLL = 0.08  # seconds between looks in a fight when there is nothing to send (2026-11-25: the 0.2 s poll held up every turn's start and end)
 MAX_PLAYS_PER_TURN = 40
 _VOLATILE = {"is_hovered", "is_highlighted"}
@@ -55,7 +58,9 @@ class Bot:
         """`tune`: try different settings from run to run and learn which work (learn.Knobs)."""
         self.client, self.character, self.log_dir, self.poll = client, character, log_dir, poll
         # Pauses after leaving a room or buying, and between looks while a room loads: faster crashed StS2 (StS1's are ~0: __main__).
-        self.room_pause, self.room_poll, self.fight_poll = 0.4, 0.15, FIGHT_POLL
+        # 0.4 and 0.15 until 2026-11-26 (user: "reduce the delay to select the next floor"): the map shows 0.25 s after a proceed and
+        # a floor took 2.3 s, a quarter of it between the rewards and the next room; the mod has guarded its scene walks since.
+        self.room_pause, self.room_poll, self.fight_poll = ROOM_PAUSE, ROOM_POLL, FIGHT_POLL
         self._seen: tuple = (0.0, None)  # (when, state) the last wait for an action to show ended on
         self.settle, self.travel_settle, self.quiet_settle, self.choose_settle = settle, 8.0, 0.3, 0.5
         self.careful_until, self.careful_at = 0.0, None  # after two crashes in one place (a progress()): act slowly there until then
@@ -63,6 +68,7 @@ class Bot:
         self._last_sent: tuple | None = None  # the last such request since the game was (re)started
         self.time_scale, self._scale_at = 0.0, 0.0  # the game clock's speed-up (0: none), re-sent every few seconds: boss fights reset it
         self.stuck_timeout, self.clock, self.sleep = stuck_timeout, clock, sleep
+        self._pace: dict = defaultdict(float)  # wall seconds by kind of work since the last pace line (`run`): where a run's time goes
 
         runs = log_dir / "runs.jsonl" if log_dir else None
         self.mem = Memory()
@@ -463,8 +469,10 @@ class Bot:
         if self._careful():
             pause = max(pause, 0.5)
         while self.clock() < deadline:
-            self.sleep(pause)
-            state = self.client.state()
+            with self._timed("wait"):
+                self.sleep(pause)
+            with self._timed("look"):
+                state = self.client.state()
             self._seen = (self.clock(), state)  # (the next step starts from it: asking again a moment later only costs the game a state)
             changed = changed or fingerprint(state) != fp
             if leave:
@@ -482,7 +490,8 @@ class Bot:
             self.client.act("set_time_scale", scale=self.time_scale)
         seen_at, seen = self._seen
         self._seen = (0.0, None)
-        state = seen if seen is not None and now - seen_at <= FRESH else self.client.state()
+        with self._timed("look"):
+            state = seen if seen is not None and now - seen_at <= FRESH else self.client.state()
         fp = fingerprint(state)
         if fp != self._last_fp:
             self._last_fp, self._last_change, self._last_retry = fp, now, now
@@ -496,7 +505,8 @@ class Bot:
         self._note_state(state)
         if self._done():
             return False
-        todo = self.candidates(state)
+        with self._timed("plan"):
+            todo = self.candidates(state)
         run = state.get("run") or {}
         suspect = lambda a, p: (run.get("act"), run.get("floor"), a, json.dumps(p, sort_keys=True)) in self._crashed
         if self._crashed and any(not suspect(a, p) for a, p in todo):
@@ -510,7 +520,8 @@ class Bot:
                 continue
             if action != "menu_select" and state.get("state_type") not in COMBAT_STATES:
                 self._last_sent = (run.get("act"), run.get("floor"), *key)
-            result = self.client.act(action, **params)
+            with self._timed("act"):
+                result = self.client.act(action, **params)
             if result.get("status") == "error" or "error" in result:
                 self._strikes[key] += 1
                 log.debug("%s %s rejected: %s", action, params, result.get("error"))
@@ -538,8 +549,24 @@ class Bot:
         # Nothing to send: in a fight that is the enemy's turn or a look again for late draws, and the next look comes sooner
         # (after every card the bot already asks every 0.03 s; only a room being rebuilt needs the slow pace, see _wait_for_change).
         fight = state.get("state_type") in COMBAT_STATES and bool(state.get("battle"))
-        self.sleep(min(self.poll, self.fight_poll) if fight else self.poll)
+        with self._timed("idle"):
+            self.sleep(min(self.poll, self.fight_poll) if fight else self.poll)
         return False
+
+    @contextmanager
+    def _timed(self, kind: str):
+        t = time.perf_counter()
+        try:
+            yield
+        finally:
+            self._pace[kind] += time.perf_counter() - t
+
+    def _pace_line(self, steps: int, since: float) -> None:
+        """Where the time went (2026-11-26: x16 on the game's clock left a floor at 2.3 s, as x6 had: the bot's own loop sets the pace)."""
+        wall = max(1e-9, time.perf_counter() - since)
+        parts = ", ".join(f"{k} {100 * v / wall:.0f}%" for k, v in sorted(self._pace.items(), key=lambda kv: -kv[1]))
+        log.info("pace: %d steps in %.0f s (%.0f ms a step): %s", steps, wall, 1000 * wall / max(1, steps), parts)
+        self._pace.clear()
 
     def forget(self) -> None:
         """Ask the game afresh at the next step (after the game was restarted or reconnected to under the bot)."""
@@ -554,5 +581,10 @@ class Bot:
         self.max_runs = max_runs
         self._last_change = self.clock()
         self.forget()
+        steps, since = 0, time.perf_counter()
         while not self._done():
             self.step()
+            steps += 1
+            if steps >= PACE_STEPS:
+                self._pace_line(steps, since)
+                steps, since = 0, time.perf_counter()

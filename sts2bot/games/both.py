@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent  # where `python3 -m sts2bo
 RESTART_DELAY = 15.0  # as the unit's RestartSec
 MAX_DELAY = 300.0  # a bot that keeps failing straight away is tried less and less often, down to this
 HEALTHY = 600.0  # a bot that ran this long before it failed is tried again after the short pause
+RELOAD_DELAY = 1.0  # a bot ended by SIGUSR1 (a deliberate reload) comes back after this, whatever its back-off (2026-11-26: five reloads in an hour had it at 240 s)
 STOP_GRACE = 10.0
 GAME_OPTIONS = ("--port", "--log-dir", "--launch-cmd")  # each game needs its own value: not allowed with both
 
@@ -76,6 +77,10 @@ def run(argv: list[str], *, games: tuple[str, ...] = GAMES, spawn=subprocess.Pop
                 if code == 0:
                     done.add(game)
                     log.info("the %s bot finished", game)
+                    continue
+                if code == -signal.SIGUSR1:  # a reload asked for (`kill -USR1 <bot>`, after a code change): back at once, no back-off
+                    due[game] = now + RELOAD_DELAY
+                    log.info("the %s bot was told to reload; starting it again", game)
                     continue
                 if now - started[game] >= HEALTHY:
                     delay[game] = RESTART_DELAY

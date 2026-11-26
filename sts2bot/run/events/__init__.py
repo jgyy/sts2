@@ -5,10 +5,13 @@ from __future__ import annotations
 import logging
 import re
 
-from . import relics
-from ..cards import deck_value, is_basic, is_known as _known_card
-from .potions import boss_worth
-from .relicworth import energy_lean, id_of as relic_id, worth as relic_worth
+from .. import relics
+from ...cards import deck_value, is_basic, is_known as _known_card
+from ..potions import boss_worth
+from ..relicworth import energy_lean, id_of as relic_id, worth as relic_worth
+from ...games import uses_sts2_tables
+from . import sts1 as rules_sts1, sts2 as rules_sts2
+from .value import Ctx
 
 Action = tuple[str, dict]
 log = logging.getLogger("sts2bot.strategy")
@@ -29,7 +32,8 @@ _CURSE_GAIN = re.compile(  # (the first game writes "Become Cursed - Regret." an
     r"\b(?:receive|obtain|add|gain|become cursed|cursed -)(?:\b|\s)[^.]*?\b(" + "|".join(_CURSES) + r"|wound|burn|dazed|hex|parasite|"
     r"pain|spite|void|mind rot|sloth|waste away|disintegration|curse)\b"
 )
-_RUINOUS = re.compile(r"\blose (all|everything)\b|\bset your max hp\b|\bmax hp (to|becomes) \d\b", re.I)  # the run ended in all but name
+# The run ended in all but name ("Lose ALL of your Gold" is not: it is the gold held, priced in the per-event rules).
+_RUINOUS = re.compile(r"\blose (?:all|everything)\b(?![^.]*\bgold\b)|\bset your max hp\b|\bmax hp (to|becomes) \d\b", re.I)
 _JUNK_NAMES = {"CLUMSY", "GUILTY", "NORMALITY", "BADLUCK", "REGRET", "POORSLEEP", "INJURY", "WOUND", "DAZED", "SOOT", "SLIMED", "INFECTION", "ENTHRALLED", "DOUBT", "SHAME", "DECAY",
                "PARASITE", "PAIN", "WRITHE"}
 # What the Ancients' relics (the event opening each act) are worth on the scale of the scores below; relics.py moves each by its runs.
@@ -132,7 +136,7 @@ def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int
     if potions is not None and len(potions) < 2 and re.search(r"\bprocure\b[^.]*\bpotions?\b", text) and "foul" not in text:
         score += 1.0  # (a belt short of two: the potion is worth more than the flat 1.5 above)
     for pat, w in _BAD:
-        if re.search(pat, text):
+        if re.search(pat, text) and not (cursed and pat == r"\bcurse\b"):  # (a curse named or "a random Curse" is charged once, above)
             score -= w
     if _RUINOUS.search(text):
         score -= 1000.0
@@ -171,6 +175,26 @@ def _event_option_value(opt: dict, hp: int, max_hp: int, bled: int = 0, act: int
 PAID_EXIT = {"KNOWING_SKULL": "How do I leave?"}
 
 
+def context(state: dict, mem, bled: int = 0) -> Ctx:
+    """The run as the per-event rules see it."""
+    player, run = state.get("player") or {}, state.get("run") or {}
+    act, floor = run.get("act"), run.get("floor")
+    return Ctx(hp=int(player.get("hp") or 1), max_hp=int(player.get("max_hp") or 1), gold=int(player.get("gold") or 0), act=act if isinstance(act, int) else 1,
+               floor=floor if isinstance(floor, int) else 1, deck=list(getattr(mem, "deck", None) or []), relics=list(player.get("relics") or []),
+               potions=list(player.get("potions") or []), slots=int(player.get("max_potion_slots") or 3), character=str(player.get("character") or ""),
+               game="sts2" if uses_sts2_tables() else "sts1", bled=bled, keys=run.get("keys"))
+
+
+def rule_value(event_id: str, opt: dict, ctx: Ctx) -> float | None:
+    """The event's own rule for this option (sts2.py, sts1.py), or None for the generic scorer."""
+    book = rules_sts2 if ctx.game == "sts2" else rules_sts1
+    try:
+        return book.value(event_id, opt, ctx)
+    except Exception as e:  # a rule that cannot read an option must not stop the run: the generic scorer takes it
+        log.debug("event rule %s failed on %s: %s", event_id, opt.get("title"), e)
+        return None
+
+
 def event(state: dict, mem) -> list[Action]:
     ev = state.get("event") or {}
     if ev.get("in_dialogue"):
@@ -191,7 +215,14 @@ def event(state: dict, mem) -> list[Action]:
     priced = lambda o: _event_option_value(o, hp, max_hp, bled, act if isinstance(act, int) else None, player.get("potions") or [],
                                            player.get("relics") or [], getattr(mem, "deck", None), getattr(mem, "max_energy", None),
                                            keys_wanted=held_keys is not None and len(held_keys) < 3)
-    worth = lambda o: 0.5 if way_out and o.get("title") == way_out else priced(o)  # (0.5: an option's worth before what it gives and costs)
+    ctx, event_id = context(state, mem, bled), str(ev.get("event_id") or "")
+
+    def worth(o: dict) -> float:
+        if way_out and o.get("title") == way_out:
+            return 0.5  # (0.5: an option's worth before what it gives and costs)
+        own = rule_value(event_id, o, ctx)
+        return own if own is not None else priced(o)
+
     rest = sorted((o for o in opts if not o.get("is_proceed")), key=worth, reverse=True)
     if log.isEnabledFor(logging.DEBUG) and rest:
         log.debug("event %s: %s", ev.get("event_id"), " | ".join(f"[{worth(o):.1f}] {o.get('title')}: {o.get('description')}" for o in rest))

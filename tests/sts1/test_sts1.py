@@ -207,6 +207,22 @@ class SaveFilesAndSetup(Sts1Case):
             host.prepare_game(False, prefs, game)
             self.assertEqual((game / "info.displayconfig").read_text().split()[3:5], ["false", "false"])  # --windowed
 
+    def test_the_bot_s_old_profile_name_becomes_the_user_s(self):
+        with tempfile.TemporaryDirectory() as d:
+            game, prefs = Path(d), Path(d) / "preferences"
+            prefs.mkdir()
+            old = {"DEFAULT_SLOT": "0", "PROFILE_NAME": "sts2bot", "COMPLETION": "37.7", "PLAYTIME": "180208"}
+            for name in ("STSSaveSlots", "STSSaveSlots.backUp"):
+                (prefs / name).write_text(json.dumps(old))
+            changed = host.prepare_game(True, prefs, game)
+            for name in ("STSSaveSlots", "STSSaveSlots.backUp"):
+                slots = json.loads((prefs / name).read_text())
+                self.assertEqual((slots["PROFILE_NAME"], slots["PLAYTIME"]), ("jegoh", "180208"))
+            self.assertIn("profile renamed 'sts2bot' -> 'jegoh'", changed)
+            (prefs / "STSSaveSlots").write_text(json.dumps({**old, "PROFILE_NAME": "Someone"}))
+            host.prepare_game(True, prefs, game)
+            self.assertEqual(json.loads((prefs / "STSSaveSlots").read_text())["PROFILE_NAME"], "Someone")  # (a name the user chose stays)
+
     def test_the_game_is_launched_with_its_clock_sped_up_and_its_output_kept(self):
         with tempfile.TemporaryDirectory() as d, mock.patch.dict("os.environ", {"STS1_GAME_DIR": d, "STS1_PREFS_DIR": str(Path(d) / "preferences")}):
             spawned = {}

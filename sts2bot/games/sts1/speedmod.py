@@ -50,7 +50,7 @@ public class TimeScale {
         String raw = System.getenv("STS2BOT_TIME_SCALE");
         if (raw != null) {
             try {
-                factor = Math.max(1.0f, Math.min(10.0f, Float.parseFloat(raw.trim())));
+                factor = Math.max(1.0f, Math.min(16.0f, Float.parseFloat(raw.trim())));
             } catch (NumberFormatException e) {
                 factor = 1.0f;
             }
