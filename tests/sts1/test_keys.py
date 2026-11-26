@@ -275,6 +275,17 @@ class WrithingMass(Sts1Case):
         self.assertTrue(action is None or action[0] != "play_card" or action[1]["card_index"] in (0, 4))
         self.assertEqual(combat.choose_card(self.state(60))[1]["card_index"], 1)  # (with HP to spare it is still to be killed)
 
+    def test_on_low_hp_a_turn_it_attacks_anyway_is_not_a_reason_to_stop(self):
+        # 2026-11-25 18:46: on 21 HP every hit was priced at its worst (32), so the bot only blocked: 11 rounds, the Mass 160 -> 120.
+        s = self.state(21)
+        s["battle"]["enemies"][0]["intents"] = [{"type": "Attack", "label": "10x3"}]
+        plan: dict = {}
+        combat.choose_card(s, plan)
+        self.assertTrue(any(c.type == "Attack" for c in plan["line"]))
+        self.assertEqual(battle.reacted(30, 20, 32), 20)  # (a new draw instead of the 30 shown)
+        self.assertEqual(battle.reacted(0, 20, 32), 32)  # (a quiet turn still stays quiet)
+        self.assertEqual(battle.reacted(32, 20, 0), 20)  # (above 40 HP: the mean in place of whatever was shown)
+
 
 class AwakenedOne(Sts1Case):
     def test_its_first_death_is_not_the_end(self):

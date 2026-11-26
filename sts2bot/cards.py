@@ -89,6 +89,7 @@ class CardInfo:
     melody_twice: tuple = ()  # Wah Blast: "If you have a Cho Melody or Ki Melody, hits twice"
     verse: int = 0  # Ki Verse: "The next (2) "Wah", "Cho", or "Ki" card(s) you play this turn ... played an additional time"
     stance: str = ""  # the first game's Watcher: the stance the card puts her in (WRATH, CALM, DIVINITY, EXIT; games/sts1/stance.py)
+    wrath_next: bool = False  # Simmering Fury: "At the start of your next turn, enter Wrath" (the next turn begins in it, as one ended in Wrath)
     energy_drain: int = 0  # a Power's energy taken away at the start of every turn from now on (the first game's Fasting)
     mantra: int = 0  # the first game's Watcher: Mantra gained (at 10 she enters Divinity)
     sadness: int = 0  # the Fool's Sadness it puts in the hand when played (Sorrowful Strike 2, Mourning Blow itself), less those it turns into Joy
@@ -238,7 +239,8 @@ def _parse(card: dict) -> CardInfo:
         aim_times = int(m.group(2) or 2) if m.group(1).lower() == "aim" else 1
         text = text[: m.start()] + text[m.end() :]
     # "Next turn, gain 4 Block." is read separately below, not as this turn's.
-    next_text = "" if ctype == "Power" else " ".join(x for x in re.split(r"(?<=[.!?])\s+", full_text) if x.strip().lower().startswith("next turn"))
+    # (and "At the start of your next turn, ..." as next turn's too: Simmering Fury's 2 cards)
+    next_text = "" if ctype == "Power" else " ".join(x for x in re.split(r"(?<=[.!?])\s+", full_text) if re.match(r"\s*(?:next turn|at the start of your next turn)\b", x, re.I))
     damage = _int(r"deals?\s+(\d+)\s+damage", text) or _int(r"\(deals\s+(\d+)\s+damage\)", text)  # (or "Deal damage equal to your Block. (Deals 14 damage)")
     hits, double_if_vulnerable = 1, False
     if damage:
@@ -336,7 +338,7 @@ def _parse(card: dict) -> CardInfo:
         melody=melodies(card.get("name") or ""), melody_block=melody_block, keeps_hand=_keeps_hand(full_text), melody_hits=bool(re.search(r"additional\s+time\s+for\s+each\s+melody", text, re.I)),
         melody_twice=tuple(w.upper() for w in re.findall(r"(\w+)\s+melody", (re.search(r"if\s+you\s+have\s+an?\s+[^,.]*melody[^,.]*,\s*hits\s+twice", full_text, re.I) or re.match("", "")).group(0), re.I)),
         energy_drain=_int(r"gain\s+(\d+)\s+less\s+energy\s+at\s+the\s+start\s+of\s+(?:your|each)\s+turn", full_text) if ctype == "Power" else 0,
-        stance=stance,
+        stance=stance, wrath_next=bool(re.search(r"\bnext\s+turn,\s*enter\s+wrath\b", next_text, re.I)),
         verse=int(m.group(1) or 1) if (m := re.search(r"the\s+next\s+(?:(\d+)\s+)?\W*wah\W+cho\W+or\s+\W*ki\W*\s+cards?\s+you\s+play\s+this\s+turn\s+(?:is|are)\s+played\s+an\s+additional\s+time", full_text, re.I)) else 0,
         osty_dies=bool(re.search(r"\b(?:Osty|he)\s+dies", full_text, re.I)), doom_kills=bool(re.search(r"kill\s+enemies\s+with\s+at\s+least\s+as\s+much\s+Doom", full_text, re.I)),  # (Sacrifice: "he dies")
         debris=-1 if re.search(r"fill\s+your\s+hand\s+with\s+debris", text, re.I) else _int(r"add\s+(\d+)\s+debris", text) or int(bool(re.search(r"add\s+a\s+debris", text, re.I))),

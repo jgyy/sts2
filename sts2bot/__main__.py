@@ -16,12 +16,13 @@ from .supervisor import DEFAULT_LAUNCH, FAST_MODES, Supervisor
 
 log = logging.getLogger("sts2bot")
 
-# (x3 to x6 made no difference while the bot's 0.2 s waits and the mod's 27 ms state builds held up every turn; with both cut, 2026-11-25: x6.)
-DEFAULT_TIME_SCALE = 6.0
+# (x3 to x6 made no difference while the bot's 0.2 s waits and the mod's 27 ms state builds held up every turn; with both cut, 2026-11-25: x6;
+# 2026-11-26, the user: "x16 the speed for both sts1 and sts2" (the mod allows up to 20).)
+DEFAULT_TIME_SCALE = 16.0
 # The first game's clock, through our own mod (games/sts1/speedmod.py). It runs at 240 frames a second there, so even x10
 # leaves each frame the time step of a 24 fps game: the game's logic sees nothing unusual. (x8 until 2026-11-25: its enemy
 # turns, 0.5-0.7 s, were then most of the time a round takes.)
-DEFAULT_STS1_TIME_SCALE = 10.0
+DEFAULT_STS1_TIME_SCALE = 16.0  # (x16 from 2026-11-26, the user's ask; speedmod.py allows up to 16: a frame's step is then a 15 fps game's)
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 STS1_SETUP_HINT = "would wait for a relay that never starts and restart the game for ever. Run `python3 -m sts2bot sts1-setup` to point CommunicationMod at the bot's relay"
 
@@ -93,7 +94,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--sts1-time-scale", type=float, default=DEFAULT_STS1_TIME_SCALE,
                     help=f"the same for the first Slay the Spire, through the bot's own ModTheSpire mod (default: {DEFAULT_STS1_TIME_SCALE:g}; 1 leaves it alone)")
     ap.add_argument("--stuck-timeout", type=float, default=300.0, help="seconds without any change before the game is restarted")
-    ap.add_argument("--poll", type=float, default=0.2, help="seconds between state polls")
+    ap.add_argument("--poll", type=float, default=0.08, help="seconds between state polls when there is nothing to do (0.2 until 2026-11-26)")
     ap.add_argument("--log-dir", type=Path, default=None, help="logs and run history (default: ~/.local/state/sts2bot, and its sts1/ for the first game)")
     ap.add_argument("-v", "--verbose", action="store_true", help="log every action")
     args = ap.parse_args(argv)

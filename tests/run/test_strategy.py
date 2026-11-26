@@ -712,6 +712,52 @@ class HandSelections(unittest.TestCase):
         boss["hp"] = 200
         self.assertNotEqual(picks(state)[0], 0)
 
+    def optional(self, prompt, hand, *, fight="monster", energy=1, selected=0, relics=()):
+        """An "any number" or "up to" selection, Confirm lit from the start: the actions the bot sends, in order."""
+        state = combat_state(hand, [enemy("A_0", 60, 12)], energy=energy, hp=60, max_hp=80, kind="hand_select")
+        state["_fight"], state["player"]["relics"] = fight, [{"id": r, "name": r} for r in relics]
+        state["hand_select"] = {"prompt": prompt, "can_confirm": True, "cards": hand, **({"selected_cards": [{"index": i} for i in range(selected)]} if selected else {})}
+        handpick._answers.clear()
+        return strategy.hand_select(state, Memory())
+
+    BANE = staticmethod(lambda i: card(i, "ASCENDERS_BANE", "Ascender's Bane", "Curse", 0, "Unplayable. Ethereal.", can_play=False))
+    WOUND = staticmethod(lambda i: card(i, "WOUND", "Wound", "Status", 0, "Unplayable.", can_play=False))
+    BURN = staticmethod(lambda i: card(i, "BURN", "Burn", "Status", 0, "Unplayable. At the end of your turn, if this is in your Hand, take 2 damage.", can_play=False))
+    BASH = staticmethod(lambda i: card(i, "BASH", "Bash", "Attack", 2, "Deal 8 damage. Apply 2 Vulnerable.", "AnyEnemy"))
+
+    def test_an_optional_exhaust_takes_the_junk_before_it_confirms(self):
+        # 2026-11-26: Purity, Ashwater, Gambler's Brew and the Gambling Chip were all confirmed with nothing chosen.
+        ash = "Choose any number of cards to Exhaust."
+        acts = self.optional(ash, [STRIKE(0), self.BANE(1), self.WOUND(2), DEFEND(3)])
+        self.assertEqual(acts[0], ("combat_select_card", {"card_index": 2}))  # the Wound first: the Bane goes by itself at the end of the turn
+        self.assertEqual(self.optional(ash, [STRIKE(0), self.BANE(1), DEFEND(2)])[0], ("combat_select_card", {"card_index": 1}))
+        # No junk left in a hallway fight: confirmed, the Strike kept.
+        self.assertEqual(self.optional(ash, [STRIKE(0), DEFEND(1)])[0], ("combat_confirm_selection", {}))
+        # Purity's "up to 3" once three are chosen.
+        self.assertEqual(self.optional("Choose up to 3 cards to Exhaust.", [self.WOUND(0), STRIKE(1)], selected=3)[0], ("combat_confirm_selection", {}))
+
+    def test_in_a_boss_fight_a_strike_the_turn_does_not_play_is_exhausted(self):
+        purity = "Choose up to 3 cards to Exhaust."
+        acts = self.optional(purity, [STRIKE(0), DEFEND(1), STRIKE(2), self.BASH(3)], fight="boss", energy=1)
+        self.assertEqual(acts[0][0], "combat_select_card")
+        self.assertIn(acts[0][1]["card_index"], (0, 2))  # one energy plays one card: the other Strike is spare
+        # A lone Strike that the turn's one energy goes to is kept.
+        self.assertEqual(self.optional(purity, [STRIKE(0), self.BASH(1)], fight="boss", energy=1)[0], ("combat_confirm_selection", {}))
+
+    def test_a_replace_trades_what_the_turn_will_not_play_for_new_cards(self):
+        brew = "Choose any number of cards to replace."
+        hand = [self.BANE(0), STRIKE(1), self.BURN(2), self.BASH(3), DEFEND(4)]
+        self.assertEqual(self.optional(brew, hand)[0], ("combat_select_card", {"card_index": 2}))  # the Burn
+        rest = [self.BANE(0), STRIKE(1), self.BASH(2), DEFEND(3)]
+        acts = self.optional(brew, rest, energy=1)
+        self.assertEqual(acts[0], ("combat_select_card", {"card_index": 1}))  # one energy goes to the Defend: the Strike is a free draw instead
+        self.assertNotIn(("combat_select_card", {"card_index": 0}), acts)  # (never the Bane: replaced, it would come back)
+        acts = self.optional(brew, [self.BANE(0), self.BASH(1), DEFEND(2)], energy=1)
+        self.assertEqual(acts[0], ("combat_select_card", {"card_index": 1}))  # ... and then Bash, which needs 2
+        self.assertEqual(self.optional(brew, [self.BANE(0), DEFEND(1)], energy=1)[0], ("combat_confirm_selection", {}))  # the Defend is the turn
+        # Under Runic Pyramid an unplayed card is next turn's: only junk goes.
+        self.assertEqual(self.optional(brew, rest, energy=1, relics=("RUNIC_PYRAMID",))[0], ("combat_confirm_selection", {}))
+
     def test_out_of_a_fight_the_rating_decides_as_before(self):
         state = self.insatiable("Choose a card to Discard.")
         state["battle"]["enemies"] = []

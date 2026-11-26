@@ -19,6 +19,14 @@ NEXT_ENERGY, SPARE_ENERGY = 6.0, 1.0  # energy next turn, in damage: while the n
 RINGERS = ("CEREMONIAL_BEAST",)  # whose Debuff leaves us Ringing ("You can only play 1 card this turn") next turn
 # The Writhing Mass draws a new intent whenever an Attack hits it: a little over the mean, or its worst when that could be the end of us.
 REACTIVE_HIT, REACTIVE_WORST, REACTIVE_SAFE_HP = 20, 32, 40
+
+
+def reacted(incoming: int, mean: int, worst: int) -> int:
+    """What the Writhing Mass's turn comes to once an Attack has hit it: a new intent drawn in place of the one shown, `mean` on the
+    whole. Under REACTIVE_SAFE_HP (`worst` set) its worst, but only on a quiet turn: when the one shown is an attack anyway, a new
+    draw is no worse on the whole, and pricing every hit at the worst stopped the attacks for good (2026-11-26: 11 rounds on 21 HP,
+    the Mass 160 -> 120, then dead; 5 of 19 fights lost)."""
+    return max(incoming, worst) if worst and incoming < mean else mean
 STAB_SCAR = 8.0  # Painful Stabs (the Test Subject's second form): what each Wound from a hit that gets through costs, in points
 
 ORB_VALUES = {"LIGHTNING": (3, 8), "FROST": (2, 5), "DARK": (6, 6), "PLASMA": (0, 0), "GLASS": (4, 8)}  # a new orb: (each turn, when evoked), before Focus
@@ -83,6 +91,7 @@ class Enemy:
     asleep: int = 0  # Asleep: turns until it wakes by itself (losing HP wakes it at once)
     imbalanced: bool = False  # Imbalanced (Bowlbug Rock): Stunned next turn if its attack is blocked whole
     reacts: int = 0  # Reactive (the first game's Writhing Mass): an Attack that hits it draws a new intent; what to expect of that
+    reacts_worst: int = 0  # ... and its worst, when that could be the end of us (`reacted`)
     skittish: int = 0  # Skittish: Block it gains the first time it is hit this turn (0 once that has happened)
     hang: int = 0  # Hang: what the Hang cards' damage on it is multiplied by (2, 4, 8 ...; 0: none played yet)
     threat: float = 0.0  # damage a turn it has been doing in this fight (ordinary fights only; 0: not known)
@@ -227,6 +236,14 @@ def _set_focus(enemies: list) -> None:
         e.focus = sum(max(o.threat, FOCUS_FLOOR) for o in order[n:]) / total
 
 
+def _reroll(e: dict, player: dict, base: int) -> int:
+    """A Reactive enemy's new intent as the shown ones are: its Strength (3 hits' worth), our Vulnerable, its Weak, Wrath."""
+    if not _has_power(e, "REACTIVE"):
+        return 0
+    hit = (base + 3 * _stacks(e, "STRENGTH")) * (1.5 if _has_power(player, "VULNERABLE") else 1.0) * (0.75 if _has_power(e, "WEAK") else 1.0)
+    return round(hit * (2.0 if str(player.get("stance") or "").upper() == "WRATH" else 1.0))
+
+
 def read_enemies(state: dict) -> list[Enemy]:
     out = []
     player = state.get("player") or {}
@@ -259,7 +276,7 @@ def read_enemies(state: dict) -> list[Enemy]:
                 vuln_mult=2.0 if _has_power(e, "DEBILITATE") else 1.5, weak_cut=0.5 if _has_power(e, "DEBILITATE") else 0.75, weak_mult=1.5 if _has_power(player, "TRACKING") else 1.0,
                 scar=8.0 * _has_power(e, "PAPER_CUTS") + STAB_SCAR * _has_power(e, "PAINFUL_STABS"), rage=_has_power(e, "CRAB_RAGE"), respawns=_stacks(e, "STOCK"),
                 adapts=_has_power(e, "ADAPTABLE"), asleep=_stacks(e, "ASLEEP"), imbalanced=_has_power(e, "IMBALANCED"),
-                reacts=(REACTIVE_HIT if int(player.get("hp") or 0) >= REACTIVE_SAFE_HP else REACTIVE_WORST) + 3 * _stacks(e, "STRENGTH") if _has_power(e, "REACTIVE") else 0,
+                reacts=_reroll(e, player, REACTIVE_HIT), reacts_worst=_reroll(e, player, REACTIVE_WORST) if int(player.get("hp") or 0) < REACTIVE_SAFE_HP else 0,
                 hang=_stacks(e, "HANG"), threat=threat, hive=_stacks(e, "PERSONAL_HIVE"), flutter=_stacks(e, "FLUTTER"), thief=_has_power(e, "SWIPE"), reattach=_stacks(e, "REATTACH"),
                 grows=max(float(_stacks(e, "RITUAL") + _stacks(e, "TERRITORIAL")), _stacks(e, "STRENGTH") / rounds),
                 skittish=0 if int(e.get("block") or 0) else _stacks(e, "SKITTISH") or _stacks(e, "CURL_UP"), max_hp=int(e.get("max_hp") or 0), impaled=_stacks(e, "IMPALED"),

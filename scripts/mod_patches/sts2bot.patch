@@ -309,7 +309,7 @@ index 3eb9b38..cb634f7 100644
          var tutorialFtue = FindVisibleAcceptTutorialsFtue(root);
          if (tutorialFtue != null && IsFtueNodeActive(tutorialFtue))
 diff --git a/McpMod.StateBuilder.cs b/McpMod.StateBuilder.cs
-index 76eee84..bc19fe1 100644
+index 76eee84..b596fb7 100644
 --- a/McpMod.StateBuilder.cs
 +++ b/McpMod.StateBuilder.cs
 @@ -65,7 +65,7 @@ public static partial class McpMod
@@ -562,7 +562,56 @@ index 76eee84..bc19fe1 100644
          if (inventory == null)
          {
              state["items"] = new List<Dictionary<string, object?>>();
-@@ -1933,6 +1958,12 @@ public static partial class McpMod
+@@ -1670,6 +1695,38 @@ public static partial class McpMod
+         return state;
+     }
+ 
++    // By reflection (the card's members are not public API): SpoilsMap.SpoilsActIndex (0-based) and SpoilsCoord (col, row).
++    private static List<Dictionary<string, object?>> BuildQuests(RunState runState)
++    {
++        var quests = new List<Dictionary<string, object?>>();
++        try
++        {
++            var me = LocalContext.GetMe(runState);
++            object? deck = me?.GetType().GetProperty("Deck")?.GetValue(me);
++            if (deck?.GetType().GetProperty("Cards")?.GetValue(deck) is not System.Collections.IEnumerable cards)
++                return quests;
++            foreach (var card in cards)
++            {
++                if (card == null || card.GetType().Name != "SpoilsMap") continue;
++                var t = card.GetType();
++                var act = t.GetProperty("SpoilsActIndex")?.GetValue(card);
++                var coord = t.GetProperty("SpoilsCoord")?.GetValue(card);
++                if (coord == null) continue;
++                var ct = coord.GetType();
++                object? Member(string name) => ct.GetField(name)?.GetValue(coord) ?? ct.GetProperty(name)?.GetValue(coord);
++                quests.Add(new Dictionary<string, object?>
++                {
++                    ["kind"] = "spoils",
++                    ["act"] = act is int a ? a + 1 : null,
++                    ["col"] = Member("col"),
++                    ["row"] = Member("row")
++                });
++            }
++        }
++        catch (Exception) { }
++        return quests;
++    }
++
+     private static Dictionary<string, object?> BuildMapState(RunState runState)
+     {
+         var state = new Dictionary<string, object?>();
+@@ -1739,6 +1796,9 @@ public static partial class McpMod
+         }
+         state["next_options"] = nextOptions;
+ 
++        // Quest cards in the deck that mark a map site (the Spoils Map: 600 Gold at a node of a later act).
++        state["quests"] = BuildQuests(runState);
++
+         // Full map - all nodes organized for planning
+         var nodes = new List<Dictionary<string, object?>>();
+ 
+@@ -1933,6 +1993,12 @@ public static partial class McpMod
          bool previewShowing = (previewSingle?.Visible ?? false)
                              || (previewMulti?.Visible ?? false)
                              || (previewGeneric?.Visible ?? false);
@@ -576,7 +625,7 @@ index 76eee84..bc19fe1 100644
          if (previewShowing)
          {
 diff --git a/McpMod.cs b/McpMod.cs
-index 3b5ed64..7410e6a 100644
+index 3b5ed64..4e02c81 100644
 --- a/McpMod.cs
 +++ b/McpMod.cs
 @@ -84,6 +84,7 @@ public static partial class McpMod
@@ -693,9 +742,9 @@ index 3b5ed64..7410e6a 100644
 +            try
 +            {
 +                double scale = parsed.TryGetValue("scale", out var sElem) && sElem.TryGetDouble(out var sc) ? sc : 1.0;
-+                if (scale < 0.25 || scale > 8.0)
++                if (scale < 0.25 || scale > 20.0)
 +                {
-+                    SendError(response, 400, "scale must be between 0.25 and 8");
++                    SendError(response, 400, "scale must be between 0.25 and 20");
 +                    return;
 +                }
 +                var resultTask = RunOnMainThread(() =>

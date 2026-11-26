@@ -13,7 +13,7 @@ from itertools import combinations, permutations
 from .battle import (  # noqa: F401  (also the names other modules and the tests reach through here)
     BEYOND_REACH, ENERGY_DRAIN, LETHAL_PENALTY, ORB_VALUES, POWER_VALUE, RAGE_BLOCK, RAGE_COST, REATTACH_REACH, SLIP_WORTH, WIN_BONUS, Enemy, clone, _has_power, _is_attack, constrict,
     end_of_turn_block, end_of_turn_loss, expected_loss, hand_burns, intent_damage, intent_hits, kill_reach, osty_hp, power_amount, read_enemies, _bare_block, _draw_worth, _escape_odds,
-    _next_wither, _sandpit, _wither_bill, deck_count, junk_cost, cards_left_this_turn, next_room, next_energy_worth, free_plays, _hit, _hit_count, _poison_total, _progress, _would_kill,
+    _next_wither, _sandpit, _wither_bill, deck_count, junk_cost, cards_left_this_turn, next_room, next_energy_worth, free_plays, _hit, _hit_count, _poison_total, _progress, _would_kill, reacted,
     _power_worth, _set_up, _rage_blocks, _resists, _respawns, loss_cap, THREAT_FLOOR, _fated, _pick_target,
 )
 from ..cards import CardInfo, order_key, parse
@@ -21,7 +21,7 @@ from ..run.potions import fortifier, describe, potion_actions
 from . import sandpit as pit, artifact, closing, triggers
 from .fool import sadness as sad_hand
 from .fool.turn import FoolTurn, arrows_owned, concerns, fool_powers, impaled_pool, played_melodies
-from ..games.sts1.stance import MANTRA_DIVINITY, MANTRA_LATER, TAKEN, Stance, carry_cost, read as read_stance, stuck_odds
+from ..games.sts1.stance import CALM_EXIT, CALM_LATER, MANTRA_DIVINITY, MANTRA_LATER, TAKEN, Stance, carry_cost, read as read_stance, stuck_odds
 from ..learn import knob
 
 Action = tuple[str, dict]
@@ -280,8 +280,8 @@ def simulate(
                     done = _fated(e)  # damage that does not kill it now changes nothing
                     gain = _progress(e, _hit(e, per, n_hits, c.double_if_vulnerable), chip_rate) * dmg_value * e.worth * e.focus
                     score += gain * (0.2 if done and e.alive else 1.0)
-                    if e.reacts and e.alive and c.type == "Attack":  # (a new intent, which may be its worst: battle.REACTIVE_HIT)
-                        e.incoming, e.incoming_hits = max(e.incoming, e.reacts), max(e.incoming_hits, 1)
+                    if e.reacts and e.alive and c.type == "Attack":  # (a new intent in place of the one shown: battle.REACTIVE_HIT)
+                        e.incoming, e.incoming_hits = reacted(e.incoming, e.reacts, e.reacts_worst), max(e.incoming_hits, 1)
                 if waves > 1:
                     rage_blocks(foes, known_dead)
             for e in struck:
@@ -445,7 +445,9 @@ def simulate(
     later += max(0, mantra - mantra0) * MANTRA_LATER  # (Mantra short of Divinity: on the way to it)
     if sadness and (sad or sad_rate or sad_draw):
         later += sad_hand.worth(sadness, sad, sad_rate, sad_draw)
-    later += ft.later(dmg_value) + next_energy_worth(nexte + st.later_energy(), room, max(0, hand_size + drawn - len(line)) if kept else 0) * dmg_value  # (Aim, Stretch)
+    fury = next((c for c in line if c.wrath_next), None)  # Simmering Fury: next turn begins in Wrath, whatever this one ends in
+    calm_out = CALM_EXIT - CALM_LATER if fury and st.now == "CALM" else 0  # (... and leaves Calm for its 2 energy then)
+    later += ft.later(dmg_value) + next_energy_worth(nexte + st.later_energy() + calm_out, room, max(0, hand_size + drawn - len(line)) if kept else 0) * dmg_value  # (Aim, Stretch)
     future += (lasting + enduring) * span + later
     score += future
     if debris:
@@ -559,9 +561,10 @@ def simulate(
     price = lost * worth * (4.0 if doomed else 1.0) * knob("caution")
     price *= closing.discount(pace, lost, hp, survivors)  # (a boss about to die: the HP we keep past its death buys nothing)
     score -= price
-    if wrath and st.now == "WRATH" and survivors and lost < hp:
+    if wrath and (st.now == "WRATH" or fury) and survivors and lost < hp:
         # Ending the turn in Wrath: next turn's blows land double unless the next hand holds a way out (2026-11-25: a Hyper Beam of 104).
-        odds, blows = wrath
+        odds, blows, odds_fury = wrath
+        odds = odds_fury if fury else odds  # (Simmering Fury's cards drawn are more chances of a way out)
         seen = [blows.get(e.entity_id, (e.incoming / TAKEN.get(st.start, 1.0), 1.0)) for e in survivors]  # (a first turn: what it shows now)
         score -= carry_cost(odds, sum(b for b, _ in seen), hp - lost, max((share for b, share in seen if b > 0), default=0.0))
     if len(line) < wither_in:  # stopping short of the next Wither only puts it off (the count carries over) to the next turn's first card
@@ -621,9 +624,11 @@ def _wrath_outlook(state: dict) -> tuple:
     player = state.get("player") or {}
     if player.get("stance") is None:
         return ()  # (a game without stances)
-    if read_stance(player.get("stance")) != "WRATH" and not any(parse(c).stance == "WRATH" for c in player.get("hand") or []):
+    hand = [parse(c) for c in player.get("hand") or []]
+    if read_stance(player.get("stance")) != "WRATH" and not any(c.stance == "WRATH" or c.wrath_next for c in hand):
         return ()
-    return (stuck_odds(player), dict(state.get("_blow") or {}))
+    fury = max((c.next_draw for c in hand if c.wrath_next), default=0)
+    return (stuck_odds(player), dict(state.get("_blow") or {}), stuck_odds(player, fury) if fury else 1.0)
 
 
 def choose_card(state: dict, plan: dict | None = None) -> Action | None:
@@ -644,6 +649,8 @@ def choose_card(state: dict, plan: dict | None = None) -> Action | None:
         # Asleep ("Awakens upon losing HP or after 3 turns"): she wakes on her own time whatever we do, so the turns before the last are for what lasts.
         return _set_up(playable, ctx["energy"])
     if not playable or not enemies:
+        if plan is not None and enemies and (base := simulate([], enemies, **ctx)):
+            plan["lost"], plan["score"], plan["line"] = base.lost, base.score, []  # (ending the turn is the plan: handpick prices a card by it)
         return None
     # Cards we cannot pay for yet can still come later in a line that first makes the energy or Stars for them (evoking a Plasma orb too).
     orbs = ctx["orbs"]

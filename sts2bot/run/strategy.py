@@ -211,9 +211,16 @@ LATE_ROW = 5  # from this row of acts 2 and 3 an ordinary fight costs more than 
 LATE_COST = {2: (0.85, 1.2), 3: (0.93, 1.08)}
 BAD_LUCK = 1.7  # how much more than average a fight costs when the draws go wrong
 BOSS_WORTH = 16.0  # what getting past the boss is worth, in the units of the room rewards below
+# Slay the Spire 2's Spoils Map marks a node of the next act's map worth 600 Gold to whoever walks through it (map_screen tags it
+# "Spoils:<type>"): the gold is spent at the shops after it (in the path's own shop value), and a little more for the rest of the run.
+SPOILS, SPOILS_GOLD, SPOILS_BONUS = "Spoils:", 600, 3.0
 # The first game's burning elite, which holds the Emerald Key for act 4 (games/sts1/keys.py): the key comes first (user, 2026-11-25:
-# "focus more collecting all keys"), and in acts 1-2 its elite kills seldom (3 of 58 fights) where act 3's kill one in six.
-EMERALD_WORTH = {1: 16.0, 2: 18.0, 3: 16.0}
+# "focus more collecting all keys"), and in acts 1-2 its elite kills seldom (3 of 58 fights) where act 3's kill one in six. Raised
+# 2026-11-26 (user: "focus even more on getting keys"): of 87 runs since act 4 opened the Ruby came in 72, the Emerald in 44; of the
+# 53 map choices with the burning elite on offer it was taken 28 times, and some of the rest went to a hallway fight by 2-13 points.
+# Raised again the same evening ("sts1 help focus even more to collect key"): the route aims for it from each act's first row; the
+# elite HP penalties and ELITE_FLOOR still keep it from being fought badly hurt (a run that dies collects no key).
+EMERALD_WORTH = {1: 30.0, 2: 32.0, 3: 28.0}
 MAX_PATHS = 1500
 ELITE_FLOOR = 0.35  # share of Max HP under which an elite is never chosen while there is another way on
 # The act 2 boss win chance by the HP it is met on, as a share of that from full HP (even HP above 85% counts there).
@@ -257,6 +264,8 @@ def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, 
     costs = FIGHT_COST.get(act, FIGHT_COST[3])
     score = 0.0
     for n, (kind, row) in enumerate(rooms):
+        if kind.startswith(SPOILS):
+            score, gold, kind = score + SPOILS_BONUS, gold + SPOILS_GOLD, kind[len(SPOILS):]
         if kind == "EmeraldElite":
             score, kind = score + EMERALD_WORTH.get(act, EMERALD_WORTH[3]), "Elite"
         if kind in ("Monster", "Elite"):
@@ -328,6 +337,11 @@ def map_screen(state: dict, mem: Memory) -> list[Action]:
     nodes = {(n.get("col"), n.get("row")): n for n in m.get("nodes") or []}
     act = (state.get("run") or {}).get("act")
     budget = [MAX_PATHS]
+    for q in m.get("quests") or []:  # the Spoils Map's 600 Gold: a node of this act's map to walk through (the mod's `quests`)
+        key = (q.get("col"), q.get("row"))
+        if q.get("kind") == "spoils" and q.get("act") == act and key in nodes and not str(nodes[key].get("type")).startswith(SPOILS):
+            nodes[key] = {**nodes[key], "type": SPOILS + str(nodes[key].get("type"))}
+            log.debug("map: the Spoils Map's gold at %s", key)
 
     def is_early(row) -> bool:
         return act == 1 and isinstance(row, int) and row < EARLY_ROWS
@@ -545,7 +559,7 @@ def shop(state: dict, mem: Memory, key: str = "shop") -> list[Action]:
 
 
 # --------------------------------------------------------------- selections
-_WORST_FIRST = re.compile(r"remove|transform|exhaust|discard|lose|purge|sacrifice|destroy", re.I)
+_WORST_FIRST = re.compile(r"remove|transform|exhaust|discard|lose|purge|sacrifice|destroy|\boffer\b|\bstore\b", re.I)  # (Bonfire Spirits, A Note For Yourself)
 KEEP_AT_ALL_COSTS = {"FRANTIC_ESCAPE"}  # the only way out of the Sandpit
 
 
@@ -645,10 +659,61 @@ def _put_back_order(cards: list[dict], energy: int | None) -> list[dict]:
     return spare + [c for c in rest if c not in spare]
 
 
+_OPTIONAL = re.compile(r"\bany number of cards\b|\bup to (\d+) cards?\b", re.I)  # Ashwater, Gambler's Brew, Gambling Chip; Purity
+_REPLACE = re.compile(r"\breplace\b", re.I)  # "Choose any number of cards to replace." (discarded, then as many drawn)
+_EXHAUST = re.compile(r"\bexhaust\b", re.I)
+
+
+def _keyword(c: dict, word: str) -> bool:
+    """The card is `word` itself ("Retain.", "Ethereal."): not a card that only names it (Salvo: "Retain your Hand this turn")."""
+    if any(str(k.get("name")).lower() == word for k in c.get("keywords") or [] if isinstance(k, dict)):
+        return True
+    return bool(re.search(rf"(?:^|\.\s*){word}\.", str(c.get("description") or ""), re.I))
+
+
+def _hand_kept(state: dict) -> bool:
+    """Unplayed cards stay in the hand this turn: Runic Pyramid, Ringing Triangle on the first turn, "Retain your Hand this turn"."""
+    player = state.get("player") or {}
+    relics = {str(r.get("id") or r.get("name") or "").upper().replace(" ", "_") for r in player.get("relics") or [] if isinstance(r, dict)}
+    first = int((state.get("battle") or {}).get("round") or 1) <= 1
+    powers = {str(p.get("id") or "").upper() for p in player.get("status") or [] if isinstance(p, dict)}
+    return "RUNIC_PYRAMID" in relics or (first and "RINGING_TRIANGLE" in relics) or bool(powers & {"RETAIN_HAND", "RETAIN_HAND_POWER"})
+
+
+def _optional_pick(state: dict, hs: dict, prompt: str) -> dict | None:
+    """The next card to give to an optional exhaust or replace (the screen opens with Confirm already lit, 2026-11-26: every one
+    had been confirmed empty, Purity, Ashwater, Gambler's Brew and the Gambling Chip doing nothing), or None to confirm now.
+    Junk first: a Status or Curse is exhausted wherever it is, and replaced unless it is Ethereal (Dazed, Ascender's Bane go
+    by themselves at the end of the turn, where a replaced one would come back). Then a card this turn's plan does not miss:
+    replaced, it is a card drawn for nothing (unplayed it is discarded anyway); exhausted, only a Strike in a boss or elite
+    fight, which the rest of the fight then draws past. Retained cards stay."""
+    cards = [c for c in hs.get("cards") or [] if _card_key(c) not in KEEP_AT_ALL_COSTS and not _keyword(c, "retain")]
+    m = _OPTIONAL.search(prompt)
+    if not cards or (m and m.group(1) and int(m.group(1)) <= len(hs.get("selected_cards") or [])):
+        return None
+    replacing = bool(_REPLACE.search(prompt))
+    junk = [c for c in cards if is_junk(c) and not (replacing and _keyword(c, "ethereal"))]
+    if junk:
+        return min(junk, key=lambda c: (_keyword(c, "ethereal"), _removal_rank(c)))  # (with few to choose, those that would stay first)
+    if not replacing and not (state.get("_fight") in ("boss", "elite")):
+        return None
+    if replacing and _hand_kept(state):
+        return None  # (what is not played now is still there next turn: not a card for nothing)
+    pool = [c for c in sorted(cards, key=_removal_rank) if not is_junk(c) and (replacing or (is_basic(c) and _card_key(c).startswith("STRIKE")))]
+    costs = handpick.turn_costs(state, pool + [c for c in cards if c not in pool]) if pool else None
+    return next((c for c in pool if costs and costs.get(int(c.get("index", 0)), handpick.UNPLANNED) <= 1e-6), None)
+
+
 def hand_select(state: dict, mem: Memory) -> list[Action]:
     hs = state.get("hand_select") or {}
     prompt = str(hs.get("prompt") or "")
     kind = "upgrade" if hs.get("mode") == "upgrade_select" else ""
+    if _OPTIONAL.search(prompt) and (_REPLACE.search(prompt) or _EXHAUST.search(prompt)) and not kind:
+        pick = _optional_pick(state, hs, prompt)
+        if pick is None:
+            return [("combat_confirm_selection", {})]
+        log.debug("hand select (%s): %s", prompt, pick.get("name"))
+        return [("combat_select_card", {"card_index": int(pick.get("index", 0))}), ("combat_confirm_selection", {})]
     if _PUT_BACK.search(prompt) and not _WORST_FIRST.search(prompt):
         energy = (state.get("player") or {}).get("energy")
         ordered = _put_back_order(hs.get("cards") or [], int(energy) if isinstance(energy, (int, float)) else None)

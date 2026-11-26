@@ -111,7 +111,8 @@ SOUND = {"Master Volume": "1.0", "Music Volume": "1.0", "Sound Volume": "1.0", "
 # The first-run tips marked seen, and NO_FTUE (no tutorial): a tip's pop-up waits for a click CommunicationMod cannot give.
 TIPS_SEEN = ("NO_FTUE", "NEOW_SKIP", "NEOW_INTRO", "COMBAT_TIP", "SHUFFLE_TIP", "POWER_TIP", "M_POWER_TIP", "INTENT_TIP", "POTION_TIP", "RELIC_TIP", "CARD_REWARD_TIP", "ENERGY_USE_TIP")
 # A profile for the first save slot when there is none (the game makes one only on a name screen CommunicationMod never shows).
-PROFILE_NAME = "sts2bot"
+PROFILE_NAME = "jegoh"  # (the user's, 2026-11-26)
+OLD_PROFILE_NAMES = ("sts2bot",)  # names the bot gave the slot before: renamed at the next launch
 
 
 def prepare_game(fullscreen: bool = True, folder: Path | None = None, game: Path | None = None) -> list[str]:
@@ -155,6 +156,12 @@ def prepare_game(fullscreen: bool = True, folder: Path | None = None, game: Path
             slots_file.write_text(json.dumps({**slots, "DEFAULT_SLOT": "0", "PROFILE_NAME": PROFILE_NAME, "COMPLETION": slots.get("COMPLETION", "0.0"),
                                               "PLAYTIME": slots.get("PLAYTIME", "0")}, indent=2))
             changed.append(f"profile {PROFILE_NAME!r} in the first save slot")
+        elif slots.get("PROFILE_NAME") in OLD_PROFILE_NAMES:
+            for f in (slots_file, folder / "STSSaveSlots.backUp"):  # (the game falls back on its backup copy)
+                kept = _json(f)
+                if kept is not None:
+                    f.write_text(json.dumps({**kept, "PROFILE_NAME": PROFILE_NAME}, indent=2))
+            changed.append(f"profile renamed {slots.get('PROFILE_NAME')!r} -> {PROFILE_NAME!r}")
     except OSError as e:
         log.warning("could not write the game's settings in %s: %s", folder, e)
     return changed
