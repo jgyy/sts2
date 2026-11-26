@@ -66,6 +66,8 @@ class CardInfo:
     osty_dies: bool = False  # Bone Shards: Osty dies, and with him the HP that stood in front of us
     doom_kills: bool = False  # End of Days: enemies with as much Doom as HP die at once, not at the end of their turn
     debris: int = 0  # Debris (1 energy: Exhaust) it adds to our hand; -1: as many as the hand has room for (Crash Landing)
+    junk: int = 0  # other statuses it puts in our piles (Wild Strike's Wound, Fight Through's two, Overclock's Burn, Turbo's Void)
+    enemy_strength_gain: int = 0  # Strength it gives the enemy for good (Fight Me: "The enemy gains 1 Strength")
     heal: int = 0  # HP it gives back when played (Not Yet)
     ethereal: bool = False  # gone for the fight if it is still in the hand when the turn ends
     ends_turn: bool = False  # "End your turn." (Void Form), "Exhaust your Hand." (Fiend Fire, Stoke): nothing in the hand can be played after it
@@ -115,6 +117,10 @@ def melodies(name) -> tuple:
 def key_of(name) -> str:
     """A card's name or id as the tables spell it: DEMON_FORM for "Demon Form+"."""
     return re.sub(r"[^A-Z0-9]+", "_", str(name or "").upper().rstrip("+")).strip("_")
+
+
+# A status a card puts in one of our piles: a dead draw for the rest of the fight (Debris, which can be played, is counted apart).
+_JUNK_ADDED = re.compile(r"\b(?:add|shuffle)\s+(a|an|\d+)\s+(?:wound|dazed|slimed|burn|void)s?\b[^.]*?\binto\s+your\s+(?:discard\s+pile|draw\s+pile|hand)", re.I)
 
 
 def _int(pattern: str, text: str) -> int:
@@ -342,6 +348,8 @@ def _parse(card: dict) -> CardInfo:
         verse=int(m.group(1) or 1) if (m := re.search(r"the\s+next\s+(?:(\d+)\s+)?\W*wah\W+cho\W+or\s+\W*ki\W*\s+cards?\s+you\s+play\s+this\s+turn\s+(?:is|are)\s+played\s+an\s+additional\s+time", full_text, re.I)) else 0,
         osty_dies=bool(re.search(r"\b(?:Osty|he)\s+dies", full_text, re.I)), doom_kills=bool(re.search(r"kill\s+enemies\s+with\s+at\s+least\s+as\s+much\s+Doom", full_text, re.I)),  # (Sacrifice: "he dies")
         debris=-1 if re.search(r"fill\s+your\s+hand\s+with\s+debris", text, re.I) else _int(r"add\s+(\d+)\s+debris", text) or int(bool(re.search(r"add\s+a\s+debris", text, re.I))),
+        junk=sum(1 if m.group(1).lower() in ("a", "an") else int(m.group(1)) for m in _JUNK_ADDED.finditer(full_text)) if ctype not in ("Power", "Status", "Curse") else 0,
+        enemy_strength_gain=_int(r"\bthe\s+enem(?:y|ies)\s+gains?\s+(\d+)\s+strength", full_text),
         bound=any(str(k.get("name")).lower() == "bound" for k in card.get("keywords") or [] if isinstance(k, dict)),
         short=not can_play and bool(card.get("unplayable_reason")) and all(r.strip() in ("EnergyCostTooHigh", "StarCostTooHigh") for r in str(card.get("unplayable_reason")).split(",")),
         mantra=mantra, sadness=_sadness(text), sad_turn=_sad_turn(full_text) if ctype == "Power" else (),
