@@ -1,12 +1,52 @@
 # Model runs: what the simulator says
 
-**Latest batches (2026-11-25), at the levels the live bot plays:** Slay the Spire 2 at **Ascension 7** and the first
-game at Ascension 0, every decision made by the bot's own code. A run's **score** is the floor it ended on, plus 15
-for a win (one point is about one floor). Settings are compared with `--vary` (each run draws its own value of every
-setting); the bot before and after the changes on the same seeds without it. The earlier batches (Slay the Spire 2
-at A5) are [further down](#earlier-9000-runs-at-ascension-5-and-0).
+**Latest round (2026-11-26):** 2,700 runs with every setting varied (Slay the Spire 2 at **Ascension 7**, the first
+game at Ascension 0) and 6,200 more with settings fixed, on seeds no table or setting was chosen on. A run's **score**
+is the floor it ended on, plus 15 for a win (one point is about one floor). The batches of 2026-11-25 follow
+[below](#batches-of-2026-11-25), and the A5 batches [further down](#earlier-9000-runs-at-ascension-5-and-0).
 
-## The short version
+## Round 3 (2026-11-26)
+
+- **Slay the Spire 2 now leans on the model card table twice as hard** (`learn.GAME_DEFAULTS["sts2"]["model_lean"]`
+  2, was 1). Same seeds (32000-32199, 200 runs a character), settings fixed: **+0.93 ± 0.42 floors** (95%), wins
+  8.2% → 9.8%; the Necrobinder +2.6, Ironclad +1.8, Regent +0.7, Silent +0.4, Defect -0.8 (each ± 0.9). The varied
+  batch said the same (+1.05 ± 0.72). Lean 3 went back 0.6 ± 0.4 from 2: 2 is the top.
+- **The first game stays at 1.** Lean 2 there: +0.20 ± 0.55 on the same seeds (33000-33199), +1.4 ± 0.9 in the varied
+  batch; lean 3 +1.1 ± 0.6 on the 644 runs it got through. Not enough to move the default; the live bot now draws
+  `model_lean` 0, 1 or 2 (`learn.CHOICES`) in both games, and its own runs decide.
+- **Four route and rest rules tried and dropped** (each a `--vary` setting, then removed; no effect in either game):
+
+| Rule | StS2 A7 (1,500) | First game (1,200) |
+|---|---|---|
+| Getting past the boss worth 24 to the route planner, not 16 (`BOSS_WORTH`) | -0.4 ± 0.6 | -0.2 ± 0.7 |
+| A rest site always heals below 65% HP, not 50% | -0.4 ± 0.6 | -0.6 ± 0.7 |
+| Routes judged 70% by how they go when fights cost 1.7 times the average, not 40% | -0.3 ± 0.6 | +0.9 ± 0.7 |
+| An act 1 upgrade worth 6 against resting, not 4 (`UPGRADE_EARLY`) | +0.5 ± 0.6 | -0.3 ± 0.7 |
+
+- **Also checked, not adopted:** Block-first picks (`block_want` 1.5) with no cap on attacks (`attack_room` 99) on top
+  of lean 2: +0.34 ± 0.36 (the Defect and Silent +1.5, the Necrobinder and Regent -0.8). In the varied batch
+  `attack_room` 99 was +1.4 ± 0.6 over 3, where three batches of 2026-11-25 had it 0.7-1.3 behind: no clear direction.
+  Without the table (`model_lean` 0) runs lose 4.4 ± 0.7 floors in Slay the Spire 2 and 3.1 ± 0.9 in the first game,
+  as before.
+- **Where the bot stands now** (Slay the Spire 2 at A7, the new defaults, 1,000 runs): wins Silent 13.5%, Defect 11%,
+  Ironclad 11%, Necrobinder 8.5%, Regent 5%; bosses beaten: Kaiser Crab 70%, Insatiable 69%, **Knowledge Demon 47%**,
+  Test Subject 25%, Aeonglass 26%, **Queen 19%**. The first game at A0 (800 runs): wins Defect 17%, Ironclad 12%,
+  Silent 10.5%, Watcher 4%; the Champ 52%, Donu and Deca 28%, Time Eater 42%. The act 2 boss and the act 3 bosses are
+  still where runs end.
+
+```sh
+python3 -m sim run --game sts2 --character all --runs 300 --vary --seed 30000 --ascension 7 --out r3_sts2.jsonl
+python3 -m sim run --game sts1 --character all --runs 300 --vary --seed 31000 --out r3_sts1.jsonl
+python3 -m sim run --game sts2 --character all --runs 200 --seed 32000 --ascension 7 --set model_lean=2 --out lean2.jsonl  # and =1, =3
+python3 -m sim run --game sts1 --character all --runs 200 --seed 33000 --set model_lean=2 --out lean2_sts1.jsonl
+```
+
+## Batches of 2026-11-25
+
+At the levels the live bot plays, every decision made by the bot's own code. Settings are compared with `--vary`
+(each run draws its own value of every setting); the bot before and after the changes on the same seeds without it.
+
+### The short version
 
 - **Ascension 7 is hard on the bot:** 0-5% wins per character in the model (the Ironclad, Silent and Defect 4-5%, the
   Regent and Necrobinder next to none). The act 2 boss ends 33-46% of runs; the **Knowledge Demon** is beaten 27% of
@@ -36,7 +76,7 @@ at A5) are [further down](#earlier-9000-runs-at-ascension-5-and-0).
   no longer heal after a boss on top of the next Ancient's heal (at A5+ they healed 95% of missing HP, not 80%), and at
   A7 rare cards are half as common.
 
-## What changed
+### What changed
 
 | | Slay the Spire 2, A7 | First game, A0 |
 |---|---|---|
@@ -95,7 +135,7 @@ some 20 comparisons a batch, one or two marked cells are chance).
 | Card removal +1.5 at the Merchant | -0.2 | |
 | Damage worth 25% more in boss fights | +0.1 | |
 
-## Slay the Spire 2, Ascension 7 (1,500 runs, before the changes)
+### Slay the Spire 2, Ascension 7 (1,500 runs, before the changes)
 
 | Character | Wins | Mean floor | Act 1 boss beaten | Act 2 boss | Act 3 boss | Runs ended by the act 2 boss |
 |---|---:|---:|---:|---:|---:|---:|
@@ -134,7 +174,7 @@ the Knowledge Demon (27%, 32%): that one is lost on the deck, not the way there.
 | Regent | Hegemony +3.3** (35), Shining Strike +3.2** (76), Bulwark +3.1* (50), Big Bang +1.7* (67), Gather Light +1.4** (212) | Hidden Cache -2.6** (91), Crescent Spear -2.4* (71), Child of the Stars -2.2* (54), Heirloom Hammer -2.0* (50) |
 | Necrobinder | Death March +4.2** (39), Bone Shards +3.9** (76), Misery +2.1* (53), Grave Warden +1.4** (212) | Pull Aggro -3.9** (38), Severance -3.4** (39), Drain Power -1.8** (151), Capture Spirit -1.9* (54), Lethality -1.7* (81) |
 
-## The first game, Ascension 0 (1,200 runs, before the changes)
+### The first game, Ascension 0 (1,200 runs, before the changes)
 
 | Character | Wins | Mean floor | Act 1 boss beaten | Act 2 boss | Act 3 boss | Runs ended by the act 2 boss |
 |---|---:|---:|---:|---:|---:|---:|

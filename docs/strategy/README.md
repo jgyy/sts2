@@ -41,7 +41,8 @@ they disagree, and the model runs are where a rule is tried before it goes live.
    `learn.GAME_DEFAULTS`; the live runs decide whether they stay. At A7 `caution` and `debuff_worth` point different ways
    from batch to batch.
 4. **Cards the model runs flag** ([simulation.md](simulation.md)) are now a table the bot reads (`run/model_cards.json`,
-   weighed by `model_lean`, 0 or 1 in `learn.CHOICES`): in the model it is worth about 4 floors. Whether it carries over
+   weighed by `model_lean`, 0, 1 or 2 in `learn.CHOICES`; Slay the Spire 2 plays 2 by default, the first game 1): in
+   the model it is worth about 4 floors, and 2 another floor in Slay the Spire 2. Whether it carries over
    is for the live runs to say; rebuild it (`python3 -m sim prior`) after the model or the bot changes.
 5. **Which card to remove.** `_removal_rank` goes by rating: guides say Strikes, then Defends only once Block is
    covered (not early for the Defect and Necrobinder).

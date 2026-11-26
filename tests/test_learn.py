@@ -125,6 +125,8 @@ class ModelTable(unittest.TestCase):
                 self.assertEqual(learn.model_shift("The Defect", "Footwork"), 0.0)  # ... and a character
                 with mock.patch("sts2bot.games._active", "sts1"):
                     self.assertEqual(learn.model_shift("The Silent", "Footwork"), -1.0)  # each game its own table
+            with mock.patch.dict(learn.KNOB, {"model_lean": 2.0}):
+                self.assertEqual(learn.model_shift("The Silent", "Deflect"), -4.0)  # (twice as far: Slay the Spire 2's default)
         self.assertEqual(learn.DEFAULTS["model_lean"], 0.0)
 
     def test_the_shipped_table_reads(self):
