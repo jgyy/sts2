@@ -19,7 +19,7 @@ they disagree, and the model runs are where a rule is tried before it goes live.
 | Rest before the boss | `strategy.rest_site`: heal below 85% (act 1) / 95% (acts 2-3) with the boss next |
 | Front-loaded damage early, then Block and scaling | `decks.deck_fit`: attacks lean while the deck deals under 5.5-6 an energy, Block and Weak cards when short |
 | Removal first in a shop, then relics | `strategy.shop` (removal priced against the shelf from A6) |
-| Keep potions for the boss, never sit on a full belt | `potions.potion_actions`, `potions.SAVE_FLOORS` |
+| Keep potions for the boss, never sit on a full belt | `potions.potion_actions`, `potions.SAVE_FLOORS`; in Slay the Spire 2 a full belt is no reason to drink in a hallway fight (`belt_spare` 0: the act 2 boss won 63% of the time in the model, not 54%) |
 | Discard Sly cards first | `strategy.hand_select` |
 | Focus the enemy doing the most for its HP | `battle._pick_target`, `battle.KNOWN_THREAT` (Kin Followers, Magi Knight, Rocket, Bowlbug Nectar first) |
 | Race enemies that gain Strength | `Enemy.grows` raises what damage is worth |
@@ -35,8 +35,8 @@ they disagree, and the model runs are where a rule is tried before it goes live.
    is beaten 27% of the time, 32% from full HP; the Champ 39%). A lean to AoE cards in `deck_fit` lost a floor
    (2026-11-25); routing around act 2 elites without AoE is untried.
 2. **Slay the Spire 2's act 3 bosses** stop even the best decks in the model (at A7 the Queen 9%, Test Subject 18%,
-   Aeonglass 14% beaten; with the corrected card table of 2026-11-26 26%, 34% and 34%, and more runs now end there than
-   at the act 2 boss). The Test Subject and Aeonglass rules match the bot's logs; the Queen now has a model fight
+   Aeonglass 14% beaten; with the corrected card table of 2026-11-26 26%, 34% and 34%; at A8, the bot as it was, 20%,
+   29% and 28%, and a third of all runs end there). The Test Subject and Aeonglass rules match the bot's logs; the Queen now has a model fight
    built from them (`scripts/bosses/queenfight.py`), not yet checked against the whole-run model's.
 3. **Settings the model runs favour** are among `learn.CHOICES` (`punch` 0.9 again from 2026-11-25) and, per game, in
    `learn.GAME_DEFAULTS`; the live runs decide whether they stay. At A7 `caution` and `debuff_worth` point different ways
@@ -46,10 +46,14 @@ they disagree, and the model runs are where a rule is tried before it goes live.
    the model it is worth about 4 floors, 2 another floor in Slay the Spire 2, and correcting it by the runs that played
    it (`sim prior --onto`, 2026-11-26) another 2.6 in Slay the Spire 2 and 3.6 in the first game. Whether it carries
    over is for the live runs to say; correct it again (`--onto`) after the model or the bot changes. Upgrades and
-   removals that lean on it gained nothing.
+   removals that lean on it gained nothing. **Round 5 found the table had learned the model's own bugs** (Grand Finale,
+   Bone Shards, Fight Me and two dozen more cards whose text the model left out, all at or near its +3 cap): before
+   trusting a card at the top or bottom of the table, check what the model does with its text
+   (`scripts/audit/simcards.py`).
 5. **Which card to remove.** `_removal_rank` goes by rating: guides say Strikes, then Defends only once Block is
    covered (not early for the Defect and Necrobinder).
 6. **One-turn potions** (Flex, Energy, Swift, Duplicator) are drunk on round 1 of a boss like the rest; pricing each by
-   the planner's score with and without it would hold them for a turn that uses them. And a quarter of the boss fights
-   lost in the model began with an empty belt (7-16% of those won): keeping one potion back for the boss is untried.
+   the planner's score with and without it would hold them for a turn that uses them. Keeping the belt full through
+   hallway fights (`belt_spare` 0) is 1.2 floors ahead in Slay the Spire 2 at A8 and 1.5 behind in the first game at A0
+   (three slots, deadlier hallways), so it is Slay the Spire 2's alone; drinking freely at elites gained nothing.
 7. **Unknown rooms** count a flat 0.9 on the map; they are a fight about one time in five by the act's end.

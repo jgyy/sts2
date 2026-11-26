@@ -136,7 +136,10 @@ class CardStats:
 # What the model runs (sim/, `python3 -m sim prior`) say of each card for each character: floors a pick gained over the runs that
 # left the same floor alive, shrunk towards nothing. Used times the `model_lean` setting (0: not at all; see CHOICES).
 # Since 2026-11-26 corrected twice by what the runs that played it still say of each card (`sim prior --onto`): on fresh seeds
-# 2.6 floors further in Slay the Spire 2 at A7 and 3.6 in the first game at A0 (docs/strategy/simulation.md, round 4).
+# 2.6 floors further in Slay the Spire 2 at A7 and 3.6 in the first game at A0 (docs/strategy/simulation.md, round 4). Round 5
+# found it had learned the model's own bugs (Grand Finale, Bone Shards, Fight Me, Fight Through, Reprogram: two dozen cards the model
+# played unlike their text, most at the +3 cap): rebuilt on the corrected model, those cards from 0. With round 5's other changes,
+# on fresh seeds: 1.8 floors further in StS2 at A8 (wins 5.7% -> 9.5%), 2.4 in the first game at A0 (17% -> 24.8%).
 MODEL_CARDS = Path(__file__).resolve().parent / "run" / "model_cards.json"
 _model: dict | None = None
 
@@ -189,7 +192,7 @@ def seed_from_history(stats: CardStats, runs_file: Path) -> None:
 # ----------------------------------------------------------------- knobs
 # Judgement calls that are plain numbers: each run plays one setting of each, drawn by Thompson sampling from those whose runs went furthest.
 DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "crowd": 0.6, "punch": 0.9, "weak_want": 0.0, "attack_room": 99.0, "block_want": 0.0, "cards_first": 0.0, "debuff_worth": 1.0, "free_lean": 1.0,
-            "model_lean": 0.0}
+            "model_lean": 0.0, "belt_spare": 1.0}
 CHOICES = {
     "caution": [0.75, 1.0, 1.35],  # weight of HP lost in the combat planner (model runs: 1.35 best in Slay the Spire 2 at A5, no better at A7)
     "elite_worth": [2.5, 6.0],  # what an elite's rewards count for when planning a route
@@ -210,8 +213,10 @@ CHOICES = {
 # at A0: model_lean 1 went 3-4 floors further in both on seeds its table had not seen; crowd 0.6 was the worst of three in StS2 four
 # batches running, the best in StS1; attack_room 3 about a floor ahead in StS2; cards_first 1 1.4-1.9 floors ahead in StS1, elite_worth 6 a little.
 # 2026-11-26: model_lean 2 another 0.9 +- 0.4 floors in StS2 on fresh seeds (3 fell back 0.6); in StS1 2 made no difference (+0.2 +- 0.55).
+# Round 5 (StS2 at A8): belt_spare 0, no potion for a hallway fight just because the belt is full, 1.2 +- 0.6 floors further in StS2
+# and 1.5 +- 0.65 short in StS1, so StS2's alone (not in CHOICES: the two games want opposite values).
 GAME_DEFAULTS: dict[str, dict] = {
-    "sts2": {"crowd": 0.3, "attack_room": 3.0, "model_lean": 2.0},
+    "sts2": {"crowd": 0.3, "attack_room": 3.0, "model_lean": 2.0, "belt_spare": 0.0},
     "sts1": {"elite_worth": 6.0, "cards_first": 1.0, "model_lean": 1.0},
 }
 

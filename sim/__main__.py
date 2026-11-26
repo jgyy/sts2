@@ -7,6 +7,7 @@
     python3 -m sim prior sts2.jsonl sts1.jsonl --out sts2bot/run/model_cards.json   # the card table `model_lean` weighs in
     python3 -m sim prior runs.jsonl --onto sts2bot/run/model_cards.json --out new.json  # ... plus what runs that played it still say
     python3 -m sim run --game sts2 --vary --only model_table,caution --alt-cards new.json   # two tables (and caution) drawn per run
+    python3 -m sim run --game sts1 --vary --only caution,belt_spare --grid caution=1,1.35       # ... caution from these two values only
 """
 
 from __future__ import annotations
@@ -40,6 +41,7 @@ GRID = {  # the settings tried with --vary: the bot's own choices (learn.CHOICES
     "cards_first": [0.0, 1.0],
     "debuff_worth": [1.0, 2.0, 3.0],
     "model_lean": [0.0, 1.0, 2.0],
+    "belt_spare": [0.0, 1.0],  # a full belt is a reason to drink in a hallway fight (round 5: 0 in Slay the Spire 2, 1 in the first game)
 }
 
 
@@ -91,6 +93,9 @@ def cmd_run(a) -> int:
     if a.only:  # --vary over these settings alone, the rest at each game's defaults
         for name in set(GRID) - set(a.only.split(",")):
             del GRID[name]
+    for item in a.grid or []:  # --grid NAME=V1,V2: the values --vary draws this setting from
+        name, values = item.split("=", 1)
+        GRID[name] = [float(v) for v in values.split(",")]
     chars = list(mod.CHARACTERS) if a.character == "all" else [c.strip().upper() for c in a.character.split(",")]
     # (Interleaved, so that every character's numbers grow together; seeds are shared by characters and arms.)
     jobs = [(a.game, ch, a.seed + n, {**knobs_for(a.seed + n, a.vary), **fixed(a, ch)}, a.ascension) for n in range(a.runs) for ch in chars]
@@ -193,6 +198,7 @@ def main(argv=None) -> int:
     r.add_argument("--ascension", type=int, default=0)
     r.add_argument("--vary", action="store_true", help="each run draws its own value of every setting in GRID")
     r.add_argument("--only", metavar="NAMES", help="with --vary: vary only these settings (comma-separated)")
+    r.add_argument("--grid", action="append", metavar="NAME=V1,V2", help="with --vary: draw this setting from these values (repeatable)")
     r.add_argument("--set", action="append", metavar="NAME=VALUE", help="play every run with this setting (repeatable)")
     r.add_argument("--settings", metavar="FILE", help="JSON {character: {setting: value}} to play each character with")
     r.add_argument("--alt-cards", metavar="FILE", help="another card table (sim prior) for runs with model_table 1")

@@ -1,10 +1,99 @@
 # Model runs: what the simulator says
 
-**Latest round (2026-11-26, round 4):** 10,800 runs (Slay the Spire 2 at **Ascension 7**, the first game at Ascension
-0): 1,800 of the bot as it was, 3,600 setting a corrected card table and two new rules against the old ones, and 5,400
-of the bot before and after on seeds nothing was chosen on. A run's **score** is the floor it ended on, plus 15 for a
-win (one point is about one floor). [Round 3](#round-3-2026-11-26) follows, then the batches of
-[2026-11-25](#batches-of-2026-11-25) and the A5 batches [further down](#earlier-9000-runs-at-ascension-5-and-0).
+**Latest round (2026-11-26, round 5):** 9,900 runs (Slay the Spire 2 at **Ascension 8**, where the live bot now plays
+every character; the first game at Ascension 0): 2,700 of the bot as it was, 3,600 drawing a corrected card table and
+three new rules against the old ones, and 3,600 of the bot before and after on seeds nothing was chosen on. The main
+finding was about **the model itself**: it was wrong about two dozen cards, and the card table had learned its mistakes.
+A run's **score** is the floor it ended on, plus 15 for a win (one point is about one floor). [Round 4](#round-4-2026-11-26)
+follows, then [round 3](#round-3-2026-11-26), the batches of [2026-11-25](#batches-of-2026-11-25) and the A5 batches
+[further down](#earlier-9000-runs-at-ascension-5-and-0).
+
+## Round 5 (2026-11-26)
+
+- **The model was wrong about two dozen cards, and the card table had learned it.** The shipped table (round 4's) had
+  the Silent's **Grand Finale** at its +3 cap: no "Can only be played if" held in Slay the Spire 2's model, so it was 60
+  damage to all enemies for nothing whenever drawn (+7.5 floors a pick at A8). At `model_lean` 2 that is 6 rating points,
+  and on the corrected model 29% of the Silent's decks took it and it beat the act 3 boss 10% of the time (2% and 25%
+  with the corrected table). An audit that plays every card with a drawback or a pile clause in a model fight
+  (`scripts/audit/simcards.py`) found the rest: **Bone Shards** left Osty alive and **Fight Me** gave the enemy no
+  Strength (both at +3); statuses cards put in our piles were never added (Fight Through's two Wounds, +3; Boost Away,
+  Gunk Up, Overclock, Turbo), nor copies (Adaptive Strike, Undeath), Colorless cards (Bundle of Joy, Manifest Authority,
+  Quasar), Stoke's new hand or cards moved between piles (Dredge, Graveblast, All for One, Secret Technique, Cosmic
+  Indifference, Thrash, Foregone Conclusion, Nightmare); this turn's Focus never counted (Hotfix, Hyperbeam). In the first
+  game Reprogram gave its Strength and Dexterity twice (+3 in the table too). The Ancients' Philosopher's Stone and
+  Pandora's Box were titled so that the bot's own relic table never knew them. All fixed; those 25 cards start again
+  from 0 in the table, and what the runs on the corrected model say of them is theirs.
+- **The planner was blind to two of them in the live game as well:** an enemy's Strength gained (Fight Me) and the
+  statuses a card puts in our piles (Wild Strike, Reckless Charge, Power Through and Immolate in the first game; Fight
+  Through, Boost Away, Gunk Up, Overclock and Turbo) now cost what a lasting Strength loss gains and what
+  `battle.junk_cost` prices a dead card at, as Debris already did.
+- **The bot before and after**, 200 runs a character on seeds nothing was chosen on (54000 and 55000), the corrected
+  model, settings fixed: "before" is the bot as it was (commit 28bddab: the round-4 table, every setting as it was),
+  "after" the bot now (the table rebuilt below, `belt_spare` 0 in Slay the Spire 2, the planner's two new prices).
+
+| | Slay the Spire 2, A8 (1,000 pairs) | First game, A0 (800 pairs) |
+|---|---|---|
+| **The bot after** | **+1.83 ± 0.97 floors** (95%); wins 5.7% → 9.5% | **+2.43 ± 1.19**; wins 17.0% → 24.8% |
+
+  In Slay the Spire 2 the Defect gains most (+5.2 ± 2.5, wins 5.5% → 13.0%), then the Silent (+2.2), Necrobinder
+  (+1.3) and Regent (+1.2, each ± 1.9-2.1; the Ironclad -0.6 ± 2.3), and every act 2 and 3 boss but the Queen falls more
+  often: **the Knowledge Demon 35% → 53%**, the Kaiser Crab 67% → 74%, the Insatiable 60% → 67%, the Test Subject 16% →
+  27%, the Aeonglass 22% → 29% (the Queen 16% → 17%); the act 2 boss ends 27% of runs, not 35%. In the first game every
+  character goes further (the Defect +3.1, Watcher +2.35, Ironclad +2.3, Silent +1.9, each ± 2.0-2.6; wins 22% → 31.5%,
+  5% → 9.5%, 24.5% → 33.5%, 16.5% → 24.5%), and the Time Eater is beaten 43% → 61%, Donu and Deca 42% → 50%, the
+  Awakened One 50% → 56%, the Champ 62% → 69%.
+
+- **The card table, rebuilt on the corrected model.** C: the shipped table plus what the 2,700 runs of the bot as it was
+  say (`sim prior --onto`; those runs were on the old model, so the 25 cards were reset). D, shipped: C plus what the
+  1,025 + 800 runs that played C on the corrected model say (`--table 1`). In the varied batch C against the shipped
+  table: Slay the Spire 2 +0.42 ± 0.56 floors, all of it the Silent's (+3.5 ± 1.2, 99%; wins 3.6% → 11.2%: Grand Finale);
+  the first game **+3.0 ± 0.65** (99%; wins 15.9% → 22.6%), every character ahead (the Silent +5.2, Defect +3.4, Ironclad
+  +2.8, Watcher +0.5). What moved most from the old table to D: Fight Through +3.0 → -0.6, Hyperbeam +1.7 → -1.2, Go for
+  the Eyes -0.6 → +2.4 and Adaptive Strike -1.6 → +0.7 for the Defect; Undeath +3.0 → +0.4, Bone Shards +3.0 → +1.5 and
+  Graveblast -0.6 → -3.0 for the Necrobinder; Fight Me +3.0 → +2.4, Inflame, Impervious and Battle Trance to +3.0, Bully
+  +1.6 → -1.0 for the Ironclad; Orbit +0.3 → -2.6 for the Regent; Grand Finale +3.0 → 0, Dash to +3.0 for the Silent; in
+  the first game Reprogram +3.0 → -0.4, Echo Form and Reinforced Body to +3.0, Barrage +1.3 → -2.1, Anger +0.4 → +2.9,
+  True Grit 0 → -2.8, Backstab and Choke to +3.0.
+- **A full belt is no reason to drink in a Slay the Spire 2 hallway fight** (`belt_spare` 0, Slay the Spire 2's
+  `learn.GAME_DEFAULTS`): **+1.23 ± 0.57 floors** (95%) in the varied batch, ahead for four characters of five. Hallway
+  fights drank half as many potions (0.11 → 0.06 a fight) for no more HP lost (9.6% of Max HP a fight either way), and
+  the act 2 boss was beaten 63% of the time instead of 54%. In the first game the same rule went **1.50 ± 0.65 floors
+  short** (95%; the Ironclad 4.4): three slots at A0, and act 2 and 3 hallways that end a quarter of its runs. So it is
+  Slay the Spire 2's default only, and not among the live choices (the two games want opposite values).
+- **Tried and dropped** (each a `--vary` setting, then removed):
+
+| Rule | StS2 A8 (2,000) | First game A0 (1,600) |
+|---|---|---|
+| An elite away from the boss gets the whole belt, as a boss does (`elite_potions`) | +0.5 ± 0.55 | +0.2 ± 0.65 |
+| What arriving hurt costs at a boss halved in the route planner, and the rest before the boss with it (`hp_fear` 0.5) | -0.3 ± 0.55 | +0.9 ± 0.65 |
+
+- **Settings** in the same batches (score against the default, one standard error): nothing reaches 95% in either game.
+  `caution` 1.35: +0.4 / -0.4; `block_want` 1.5: -0.7 / -0.5; `upgrade_worth` 2.5 and 4 against the default 1.3: +0.2
+  and -0.1 / -0.2 and -0.9 (StS2 / the first game).
+- **A8 against A7** on the same 60 seeds: 7 wins against 8, mean score 39.4 against 38.5. Enemy HP 5% up (`hp_a8`) changes
+  little; the bosses are what they were.
+- **Arriving hurt at the act 3 boss costs less than the route planner assumes** (the bot as it was, 1,500 runs at A8):
+  from 80-90% of Max HP it was won 0.66 times as often as from 90%+, from 70-80% 0.76 times (the planner's curve: 0.53
+  and 0.25). Those runs are also the weaker ones, so the true cost is lower still; but halving it in the planner
+  (`hp_fear` above) changed nothing.
+
+- **Where the bot stands now** (the after arm above): Slay the Spire 2 at A8 wins Defect 13%, Necrobinder 11%, Ironclad
+  9.5%, Silent 8%, Regent 6%; the act 2 boss ends 27% of runs and the act 3 boss 29%. The first game at A0 wins Ironclad
+  33.5%, Defect 31.5%, Silent 24.5%, Watcher 9.5%; act 3's hallways end 17% of runs. These are lower than round 4's
+  because the model is harder than it was where it had been wrong: the bot as it was won 10.7% of Slay the Spire 2 runs at
+  A8 on the old model and 5.7% on the corrected one (the Silent 16% → 5%, the Defect 14% → 5.5%), and 20.8% → 17% of the
+  first game's (the Defect 36% → 22%, Reprogram).
+
+```sh
+python3 -m sim run --game sts2 --character all --runs 300 --seed 50000 --ascension 8 --out base_sts2.jsonl   # the bot as it was
+python3 -m sim run --game sts1 --character all --runs 300 --seed 51000 --out base_sts1.jsonl
+python3 -m sim prior base_sts2.jsonl base_sts1.jsonl --onto sts2bot/run/model_cards.json --out C.json         # (the 25 cards then reset to 0)
+python3 -m sim run --game sts2 --character all --runs 400 --seed 52000 --ascension 8 --vary --alt-cards C.json \
+  --only model_table,belt_spare,elite_potions,hp_fear,caution,block_want,upgrade_worth --grid caution=1,1.35 --out var_sts2.jsonl
+python3 -m sim prior var_sts2.jsonl var_sts1.jsonl --onto C.json --table 1 --out D.json                        # (the first game alike, seed 53000; shipped)
+python3 -m sim run --game sts2 --character all --runs 200 --seed 54000 --ascension 8 --out after.jsonl          # ("before": the bot of 28bddab on this model)
+python3 scripts/audit/simcards.py sts2                                                                       # what the model does with each card's text
+```
 
 ## Round 4 (2026-11-26)
 

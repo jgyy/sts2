@@ -8,6 +8,7 @@ from ..fight.battle import end_of_turn_block, expected_loss, osty_hp, read_enemi
 from .. import games
 from ..cards import parse
 from ..games.sts1.stance import read as read_stance
+from ..learn import knob
 
 Action = tuple[str, dict]
 BOSS_FLOORS = (17, 33, 48)
@@ -106,9 +107,12 @@ def potion_actions(state: dict, planned_loss: int | None = None, line: list | No
         # Judged by what still gets through after the best cards in hand (the plan is redone after every potion).
         danger = planned_loss >= 0.5 * hp or (hp <= 0.3 * max_hp and planned_loss > 0)
     potions = player.get("potions") or []
-    # A full belt cannot take the next potion a fight drops, so one of them is free to use.
-    spare = 1 if len(potions) >= int(player.get("max_potion_slots") or 3) else 0
     kind = state.get("state_type")
+    # A full belt cannot take the next potion a fight drops, so one of them is free to use; in a hallway fight only while the
+    # `belt_spare` setting says so (0: kept for an elite or the boss, a drop taken only if worth more there). Model runs, 2026-11-26:
+    # Slay the Spire 2 at A8 (two slots) 1.2 floors further with 0, the act 2 boss won 63% of the time, not 54%; the first game at
+    # A0 (three slots, act 2 and 3 hallways that end runs) 1.5 floors short with it (learn.GAME_DEFAULTS).
+    spare = 1 if len(potions) >= int(player.get("max_potion_slots") or 3) and (kind != "monster" or knob("belt_spare")) else 0
     floor = (state.get("run") or {}).get("floor")
     if kind in ("monster", "elite") and saving(floor):
         spare = 0  # the boss is a few rooms away: what is on the belt goes there
