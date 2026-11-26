@@ -125,7 +125,7 @@ service restarts it.
 | `scripts/decklog.py [bosses]` | what a fight costs against what the deck holds (`fights.jsonl`) |
 | `scripts/relearn.py` | rebuild `card_stats.json` from `runs.jsonl` |
 | `scripts/demonfight.py`, `crabfight.py`, `kinfight.py`, `knightfight.py`, `roomfight.py`, `bosses/*.py` | model fights: one boss or room played by the real planner thousands of times (most take `NAME=VALUE` to try a constant); `demonfight.py` also solves the Knowledge Demon exactly |
-| `scripts/demon/*.py`, `scripts/audit/*.py` | relic and affliction prices at the Demon; cards played for nothing and text the parser misreads |
+| `scripts/demon/*.py`, `scripts/audit/*.py` | relic and affliction prices at the Demon; cards played for nothing and text the parser misreads; what the model runs do with each card's text (`simcards.py`) |
 
 ## Model runs
 
@@ -142,6 +142,7 @@ python3 -m sim trace                                                            
 python3 -m sim prior sts2.jsonl sts1.jsonl --out sts2bot/run/model_cards.json         # the card table the bot reads
 python3 -m sim prior runs.jsonl --onto sts2bot/run/model_cards.json --out new.json     # ... corrected by runs that played it
 python3 -m sim run --game sts2 --runs 400 --vary --only model_table,caution --alt-cards new.json   # vary only these; two tables
+python3 -m sim run --game sts1 --runs 400 --vary --only caution,belt_spare --grid caution=1,1.35      # caution drawn from these values only
 ```
 
 `trace` hashes every decision of seeded runs: a change that should not alter behaviour must leave the hashes as they

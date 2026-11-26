@@ -1,7 +1,9 @@
 """Potions kept for the boss: on the belt, at the Merchant and in events."""
 
 import unittest
+from unittest import mock
 
+from sts2bot import learn
 from sts2bot.fight import combat
 from sts2bot.run import events, strategy
 from sts2bot.run.strategy import Memory
@@ -34,6 +36,14 @@ class KeptForTheBoss(unittest.TestCase):
         self.assertEqual(self.drunk(20), 1)  # early in act 2 the spare one still goes
         self.assertEqual(self.drunk(5), 1)
         self.assertGreater(self.drunk(36, hp=12), 0)  # ... and a fight gone wrong gets them in any act
+
+    def test_slay_the_spire_2_keeps_a_full_belt_from_hallway_fights(self):
+        # (Model runs 2026-11-26: 1.2 floors further at A8, the act 2 boss won 63% of the time instead of 54%; the first game wants the opposite.)
+        with mock.patch.dict(learn.KNOB, learn.defaults("sts2")):
+            self.assertEqual(self.drunk(20), 0)
+            self.assertGreater(self.drunk(20, hp=12), 0)  # (danger still gets them)
+        with mock.patch.dict(learn.KNOB, learn.defaults("sts1")):
+            self.assertEqual(self.drunk(20), 1)
 
     def test_an_act_3_merchant_fills_the_belt_first(self):
         shelf = lambda: [{"index": 0, "category": "relic", "relic_id": "ANCHOR", "relic_name": "Anchor", "price": 150, "is_stocked": True},
