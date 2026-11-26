@@ -1,9 +1,95 @@
 # Model runs: what the simulator says
 
-**Latest round (2026-11-26):** 2,700 runs with every setting varied (Slay the Spire 2 at **Ascension 7**, the first
-game at Ascension 0) and 6,200 more with settings fixed, on seeds no table or setting was chosen on. A run's **score**
-is the floor it ended on, plus 15 for a win (one point is about one floor). The batches of 2026-11-25 follow
-[below](#batches-of-2026-11-25), and the A5 batches [further down](#earlier-9000-runs-at-ascension-5-and-0).
+**Latest round (2026-11-26, round 4):** 10,800 runs (Slay the Spire 2 at **Ascension 7**, the first game at Ascension
+0): 1,800 of the bot as it was, 3,600 setting a corrected card table and two new rules against the old ones, and 5,400
+of the bot before and after on seeds nothing was chosen on. A run's **score** is the floor it ended on, plus 15 for a
+win (one point is about one floor). [Round 3](#round-3-2026-11-26) follows, then the batches of
+[2026-11-25](#batches-of-2026-11-25) and the A5 batches [further down](#earlier-9000-runs-at-ascension-5-and-0).
+
+## Round 4 (2026-11-26)
+
+- **The card table now also learns from the runs that play it.** It was built only from runs that did not lean on it,
+  so it described cards for a bot that ignores it. `python3 -m sim prior --onto TABLE` keeps a table and adds what the
+  runs that played it (at the game's own `model_lean`) still say of each card: a card whose picks still went with
+  deeper runs than the runs that left the same floor alive moves up, one whose picks went with shallower runs moves
+  down (the same measure as before, shrunk by 40 picks, no card past ±3). Built from 1,000 + 800 runs of the bot as
+  it was (seeds 40000-40199 and 41000-41199) and set against the old table on fresh seeds, each run drawing the table
+  and every other setting under test (`--vary --only`, `--alt-cards`): Slay the Spire 2 **+1.9 ± 0.55 floors** (one
+  standard error; 99%), every character ahead (the Necrobinder +3.9, Defect +2.5, Regent +2.1, Silent +0.7, Ironclad
+  +0.6); the first game +0.9 ± 0.6 (the Defect +4.6, Ironclad -1.4).
+- **The bot before and after**, 200 runs a character on seeds nothing was chosen on (44000 and 45000), settings fixed.
+  Two tables were tried: **A**, the old table plus what all 2,015 + 1,612 runs that played it say (403 a character),
+  and **B**, a second pass: the table above plus what the 985 + 788 runs that played *it* say (197 a character).
+
+| | Slay the Spire 2, A7 (1,000 pairs) | First game, A0 (800 pairs) |
+|---|---|---|
+| **B, shipped** (`run/model_cards.json`) | **+2.6 ± 0.95 floors** (95%); wins 10.5% → 16.4% | **+3.6 ± 1.2**; wins 11.6% → 19.0% |
+| A | +2.1 ± 0.9; wins 13.9% | +3.3 ± 1.15; wins 19.4% |
+| B against A | +0.6 ± 1.0 | +0.3 ± 1.2 |
+
+  B is ahead of A in both games, though not by a clear margin; both are well ahead of the old table. With B every
+  character of Slay the Spire 2 but the Silent goes further (the Necrobinder +3.8, Defect +3.7, Ironclad +3.4, Regent
+  +2.6, each ± 1.9-2.3; the Silent -0.4), and every boss from act 2 on falls more often: the Knowledge Demon 48% →
+  62%, the Kaiser Crab 68% → 77%, the Insatiable 69% → 76%, the Test Subject 25% → 34%, the Aeonglass 28% → 34%, the
+  Queen 21% → 26%. In the first game the Defect gains most (+7.5, wins 14% → 30.5%), then the Ironclad (+3.8),
+  Watcher (+2.4) and Silent (+0.7); the Champ is beaten 49% → 63%, the Time Eater 34% → 50%, the Bronze Automaton
+  60% → 78%. What moved most (old → new rating shift, before `model_lean`): the Silent's Afterimage +1.2 → +3.0 and
+  Untouchable +0.5 → -1.1, the Defect's Scrape +0.7 → +3.0 and Adaptive Strike +0.6 → -1.6, the Ironclad's Fiend Fire
+  +0.1 → +2.5 and Drum of Battle +0.1 → -2.4, the Necrobinder's Undeath +1.0 → +3.0 and Snap +1.1 → -1.9, the Regent's
+  Knockout Blow +1.2 → +3.0 and Reflect +0.8 → -1.1; in the first game the Watcher's Tantrum and Brilliance, the
+  Ironclad's Immolate and the Silent's Masterful Stab to +3.0, Bloodletting +0.1 → -3.0, Hologram +1.4 → -1.4 and
+  Worship +0.7 → -1.9. The old table's own rule stands: correct it again when the model or the bot's card play changes.
+
+- **Two act 3 monsters of Slay the Spire 2 were harder in the model than in the game** (`sim/content/sts2_foes.py`).
+  The Owl Magistrate's Soar ("Receives 50% less attack damage until it lands", Spire Codex) lasted the rest of the
+  fight once Judicial Flight had raised it; it now ends with Verdict, the swoop that follows. A new Axebot that
+  replaces a killed one (Stock) kept the old one's Strength (Boot Up gives 3 a time) and debuffs; it now starts
+  afresh. On the bot as it was (1,000 runs before and after the fix, other seeds), an Owl fight went from 26% of Max
+  HP to 20% (the Ironclad lost 12 of 31, then 5 of 31), an Axebot fight from 30% to 22%.
+- **Tried and dropped** (each a `--vary` setting, then removed):
+
+| Rule | StS2 A7 (2,000) | First game (1,600) |
+|---|---|---|
+| Upgrades lean to the cards the table rates: its shift added to a card's worth at the smith (`model_upgrade`) | -0.9 ± 0.55 | -0.2 ± 0.6 |
+| Card removal does the same for cards beyond the starter deck (`model_removal`) | 0.0 ± 0.55 | +0.3 ± 0.6 |
+
+- **Settings** in the same batches (score against each game's default, one standard error; `*` 95%): nothing moves
+  in Slay the Spire 2; in the first game `caution` 1.35 is +1.8 ± 0.75* (the 4,000 runs at A0 of 2026-11-25 had it
+  0.4 behind, so not adopted) and `block_want` 1.5 +1.0 ± 0.6. `debuff_worth` 3 is 1.3 ± 0.7 behind 1 in Slay the
+  Spire 2, `punch` 2.7 1.15 ± 0.65 behind 0.9 in the first game: the defaults stand.
+
+| Setting | StS2 A7 | First game A0 |
+|---|---|---|
+| `caution` 0.75 / 1.35 (against 1) | -0.3 / +0.2 | +0.5 / +1.8* |
+| `block_want` 1.5 (against 0) | +0.4 | +1.0 |
+| `debuff_worth` 2 / 3 (against 1) | -0.8 / -1.3 | -1.0 / +0.5 |
+| `upgrade_worth` 2.5 / 4 (against 1.3) | -1.0 / 0.0 | -0.4 / +1.35 |
+| `punch` 2.7 (against 0.9) | -0.5 | -1.15 |
+| `attack_room` (StS2: 99 against 3; first game: 3 against 99) | -0.2 | +0.3 |
+| `elite_worth` (StS2: 0.8 / 6 against 2.5; first game: 0.8 / 2.5 against 6) | -0.3 / -0.2 | +0.7 / +0.1 |
+
+- **Where the bot stands now** (the shipped table, the corrected model; 1,000 runs of Slay the Spire 2 at A7, 800 of
+  the first game at A0): Slay the Spire 2 wins Defect 22%, Silent 21.5%, Ironclad 17.5%, Necrobinder 16%, Regent 5%;
+  runs end at the act 2 boss 25% of the time (was 32%) and at the act 3 boss 36% (was 32%): **the act 3 bosses are
+  now the wall** (the Queen beaten 26%, Test Subject 34%, Aeonglass 34%), and the Regent the weakest character (the
+  act 3 bosses 6-18%). The first game wins Defect 30.5%, Ironclad 26.5%, Silent 14.5%, Watcher 4.5%; the act 2 boss
+  ends 23% of runs (was 33%), act 3's other rooms 21%.
+- **Potions at bosses** (fights now log the potions drunk and those left, `drunk` and `left`): a lost boss fight almost
+  never leaves a potion unused (under 1.5%), but a quarter of them (23-26% in both games) began with none at all,
+  against 7-16% of the boss fights won from act 2 on. Arriving with a potion is a lead worth testing (keeping one
+  back on the way, buying one before the boss), not yet a rule.
+
+```sh
+python3 -m sim run --game sts2 --character all --runs 200 --seed 40000 --ascension 7 --out base_sts2.jsonl   # the bot as it was
+python3 -m sim run --game sts1 --character all --runs 200 --seed 41000 --out base_sts1.jsonl
+python3 -m sim prior base_sts2.jsonl base_sts1.jsonl --onto sts2bot/run/model_cards.json --out T2.json
+python3 -m sim run --game sts2 --character all --runs 400 --seed 42000 --ascension 7 --vary --alt-cards T2.json \
+  --only model_table,model_upgrade,model_removal,upgrade_worth,elite_worth,caution,debuff_worth,punch,block_want,attack_room --out p2_sts2.jsonl
+python3 -m sim prior base_sts2.jsonl p2_sts2.jsonl --onto sts2bot/run/model_cards.json --out A.json      # (the first game alike, seeds 43000)
+python3 -m sim prior p2_sts2.jsonl --onto T2.json --table 1 --out B.json                                  # (shipped)
+python3 -m sim run --game sts2 --character all --runs 200 --seed 44000 --ascension 7 --out before.jsonl
+python3 -m sim run --game sts2 --character all --runs 200 --seed 44000 --ascension 7 --alt-cards B.json --set model_table=1 --out after.jsonl
+```
 
 ## Round 3 (2026-11-26)
 
