@@ -1,0 +1,69 @@
+== sts2 cards: 242  read 112  rule 55  unseen 41  partial 29  unread 3  power 2
+   partial     42  Charge Battery             Gain 7 Block. Next turn, gain [energy_icon.png].
+   partial     36  Go for the Eyes            Deal 3 damage. If the enemy intends to attack, apply 1 Weak.
+   partial     33  Glitterstream              Gain 11 Block. Next turn, gain 5 Block.
+   partial     25  True Grit                  Gain 7 Block. Exhaust 1 card at random.
+   partial     24  Cinder                     Deal 18 damage. Exhaust 1 card at random.
+   partial     22  Guiding Star               Deal 12 damage. Next turn, draw 2 cards.
+   partial     21  Death March                Deal 8 damage. Deals 4 additional damage for each card drawn during your turn.
+   partial     21  Setup Strike               Deal 7 damage. Gain 3 Strength this turn.
+   partial     20  Crush Under                Deal 8 damage to ALL enemies. All enemies lose 1 Strength this turn.
+   partial     20  Precise Cut                Deal 13 damage. Deals 2 less damage for each other card in your Hand.
+   partial     19  Delay                      Gain 11 Block. Next turn, gain [energy_icon.png].
+   partial     19  Mangle                     Deal 20 damage. Enemy loses 10 Strength this turn.
+   unread      13  Body Slam                  Deal damage equal to your Block.
+   partial     13  Bubble Bubble              If the enemy has Poison, apply 9 Poison.
+   partial      8  Battle Trance              Draw 3 cards. You cannot draw additional cards this turn.
+   partial      7  Knockout Blow              Deal 30 damage. If this kills an enemy, gain [star_icon.png][star_icon.png][star_icon.png][star_icon.png][star_icon.png].
+   partial      6  Dodge and Roll             Gain 4 Block. Next turn, gain 4 Block.
+   partial      5  Grand Finale               Can only be played if there are no cards in your Draw Pile. Deal 60 damage to ALL enemies.
+   partial      5  Hand of Greed              Deal 20 damage. If Fatal, gain 20 Gold.
+   partial      4  Bone Shards                If Osty is alive, he deals 9 damage to ALL enemies and you gain 9 Block. Osty dies.
+   partial      4  Dominate                   Apply 1 Vulnerable. Gain 1 Strength for each Vulnerable on the enemy.
+   partial      4  Glow                       Gain [star_icon.png]. Draw 1 card. Next turn, draw 1 card.
+   unread       4  Transfigure                Add Replay to a card in your Hand. It costs an extra [energy_icon.png].
+   unread       3  White Noise                Add a random Power into your Hand. It's free to play this turn.
+   partial      2  Hegemony                   Deal 15 damage. Next turn, gain [energy_icon.png][energy_icon.png].
+== sts2 powers: 56  rule 41  unnamed 15
+   unnamed    219  Dexterity                  Smart: Dexterity: whenever this is here, things go as its name says.
+   unnamed    105  Steam Eruption             Steam Eruption: whenever this is here, things go as its name says.
+   unnamed     46  Ravenous                   Ravenous: whenever this is here, things go as its name says.
+   unnamed     43  Frail                      Frail: whenever this is here, things go as its name says.
+   unnamed     32  Suck                       Suck: whenever this is here, things go as its name says.
+   unnamed     30  Surprise                   Surprise: whenever this is here, things go as its name says.
+   unnamed     20  Shrink                     Smart: Shrink: whenever this is here, things go as its name says.
+   unnamed      4  Tangled                    Tangled: whenever this is here, things go as its name says.
+   unnamed      2  Next Block                 Next Block: whenever this is here, things go as its name says.
+   unnamed      0  Calcify                    Calcify: whenever this is here, things go as its name says.
+   unnamed      0  Consuming Shadow           Consuming Shadow: whenever this is here, things go as its name says.
+   unnamed      0  Inflame                    Inflame: whenever this is here, things go as its name says.
+   unnamed      0  Made Up                    Made Up: whenever this is here, things go as its name says.
+   unnamed      0  Nobody Has This            Smart: Nobody Has This: whenever this is here, things go as its name says.
+   unnamed      0  Rampart                    Rampart: whenever this is here, things go as its name says.
+== sts2 relics: 149  rule 90  rated 34  text 25
+   text        80  Ring of the Snake          At the start of each combat, draw 2 additional cards.
+   text         0  Black Blood                At the end of combat, heal 12 HP.
+   text         0  Bone Tea                   At the start of the next combat, Upgrade your starting hand.
+   text         0  Circlet                    It's a circlet.
+   text         0  Darkstone Periapt          Whenever you obtain a Curse, raise your Max HP by 6.
+   text         0  Daughter of the Wind       Whenever you play an Attack, gain 1 Block.
+   text         0  Demon Tongue               The first time you lose HP on your turn, heal HP equal to the amount lost.
+   text         0  Divine Destiny             At the start of each combat, gain [star_icon.png][star_icon.png][star_icon.png][star_icon.png][star_icon.png][star_icon.png][star_icon.png].
+   text         0  Ember Tea                  At the start of the next 5 combats, gain 2 Strength.
+   text         0  Forgotten Soul             Whenever you Exhaust a card, deal 1 damage to a random enemy.
+   text         0  Fresnel Lens               Whenever you add a card that gains Block to your Deck, Enchant it with Nimble 2.
+   text         0  Infused Core               At the start of each combat, Channel 3 Lightning. Lightning deals 1 additional damage.
+   text         0  Leafy Poultice             Upon pickup, Transform 1 of your Strikes and 1 of your Defends and lose 12 Max HP.
+   text         0  Maw Bank                   Whenever you climb a floor, gain 12 Gold. No longer works when you spend any Gold at the shop.
+   text         0  Neow's Sacrifice           Upon pickup, procure 1 Ambergris and add 1 Guilty to your Deck.
+   text         0  Phylactery Unbound         At the start of each combat, Summon 5. At the start of your turn, Summon 2.
+   text         0  Royal Poison               At the start of each combat, lose 4 HP.
+   text         0  Ruined Helmet              The first time you gain Strength each combat, double the amount gained.
+   text         0  Sea Glass                  See 15 cards from another character. Choose any number of them to add to your Deck.
+   text         0  Sere Talon                 Upon pickup, lose 9 Max HP. Add 3 Wishes to your Deck.
+   text         0  Silken Tress               Upon pickup, lose all Gold. Enchant all cards in your first card reward with Glam.
+   text         0  Sword of Jade              Start each combat with 3 Strength.
+   text         0  Tea of Discourtesy         At the start of the next combat, shuffle 2 Dazed into your Draw Pile.
+   text         0  The Boot                   Whenever you would deal 4 or less unblocked attack damage, increase it to 5.
+   text         0  Wongo Customer Appreciatio Does nothing.
+== sts2 monsters: 58  intents 55  rule 3

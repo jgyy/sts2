@@ -1,0 +1,12 @@
+act 1 monster LEAF_SLIME_S+TWIG_SLIME_M+TWIG_SLIME_S                   fights   4  deaths 1  cost  11% of Max HP  rounds 4.0
+act 1 monster TOADPOLE                                                 fights   7  deaths 0  cost  10% of Max HP  rounds 3.9
+act 1 monster CALCIFIED_CULTIST+SEAPUNK                                fights   6  deaths 0  cost   9% of Max HP  rounds 4.3
+act 1 monster NIBBIT                                                   fights   9  deaths 0  cost   8% of Max HP  rounds 4.2
+act 1 monster CORPSE_SLUG                                              fights   8  deaths 0  cost   8% of Max HP  rounds 3.4
+act 1 monster SEAPUNK                                                  fights   5  deaths 0  cost   7% of Max HP  rounds 3.8
+act 1 monster FUZZY_WURM_CRAWLER                                       fights   4  deaths 0  cost   3% of Max HP  rounds 3.5
+act 1 monster TWO_TAILED_RAT                                           fights   4  deaths 0  cost   3% of Max HP  rounds 2.8
+act 1 monster SEWER_CLAM                                               fights   4  deaths 0  cost   2% of Max HP  rounds 3.2
+act 1 monster SLUDGE_SPINNER                                           fights   9  deaths 0  cost   2% of Max HP  rounds 3.0
+act 1 monster SHRINKER_BEETLE                                          fights   4  deaths 0  cost   2% of Max HP  rounds 3.0
+act 2 monster EXOSKELETON                                              fights   4  deaths 4  cost   0% of Max HP  rounds 2.0

@@ -1,0 +1,9 @@
+11-21 13:56 monster PUNCH_CONSTRUCT          Ironclad    won  rounds  4  gone by  2  | 1 0 0 0
+11-21 13:57 monster CUBEX_CONSTRUCT          Necrobinder won  rounds  4  gone by  4  | 1 1 1 0
+11-21 13:58 boss    AEONGLASS                Necrobinder won  rounds  9  gone by  5  | 3 3 2 1 0 0 0 0 0
+11-22 11:56 monster PUNCH_CONSTRUCT          Silent      won  rounds  5  gone by  2  | 1 0 0 0 0
+11-22 12:00 monster PUNCH_CONSTRUCT          Regent      won  rounds  4  gone by  2  | 1 0 0 0
+11-22 12:10 elite   BYRDONIS+TOADPOLE        None        won  rounds  3  gone by  2  | 1 0 0
+boss      1 fights: Artifact stood for 4.0 of 9.0 rounds
+elite     1 fights: Artifact stood for 1.0 of 3.0 rounds
+monster   4 fights: Artifact stood for 1.5 of 4.2 rounds
