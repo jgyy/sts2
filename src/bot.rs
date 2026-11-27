@@ -1123,3 +1123,256 @@ pub fn _upgrade_gain(client: &SharedGame, upgrades: &Rc<RefCell<HashMap<String, 
     upgrades.borrow_mut().insert(cid, gain);
     gain
 }
+
+#[cfg(test)]
+mod tests {
+    //! Whole sessions of the Python `Bot`, replayed: everything it asked of its game and every wait, in order, with what the
+    //! game answered; what it logged (INFO and above) and wrote to its log directory; and where it stood at the end.
+    //! (tests/golden/bot/*.json: fake games of the tests, a few dozen screens by hand, and the states of model runs.)
+    use super::*;
+    use crate::py::Random;
+    use std::cell::Cell;
+
+    /// The recorded states and answers, as they were before the recorder folded what repeats into `atoms` (`{"@": n}`).
+    fn unpack(v: &Value, atoms: &[Value]) -> Value {
+        match v {
+            Value::Object(m) if m.len() == 1 && m.get("@").is_some_and(|n| n.is_u64()) && !atoms.is_empty() => atoms[m["@"].as_u64().unwrap() as usize].clone(),
+            Value::Object(m) => Value::Object(m.iter().map(|(k, x)| (k.clone(), unpack(x, atoms))).collect()),
+            Value::Array(a) => Value::Array(a.iter().map(|x| unpack(x, atoms)).collect()),
+            other => other.clone(),
+        }
+    }
+
+    struct Tape {
+        trace: Vec<Value>,
+        atoms: Vec<Value>,
+        at: Cell<usize>,
+        clock: Cell<f64>,
+    }
+
+    impl Tape {
+        /// The next thing the Python bot did, which must be a `what`.
+        fn next(&self, what: &str, said: &dyn Fn() -> String) -> &Value {
+            let i = self.at.get();
+            let ev = self.trace.get(i).unwrap_or_else(|| panic!("event {i}: the bot went on with {} where the Python had finished", said()));
+            assert!(ev[0] == what, "event {i}: the bot did {} where the Python did {}", said(), py::json_dumps(&unpack(ev, &self.atoms)));
+            self.at.set(i + 1);
+            ev
+        }
+
+        fn sleep(&self, seconds: f64) {
+            let ev = self.next("sleep", &|| format!("sleep({seconds})"));
+            assert!(ev[1].as_f64() == Some(seconds), "event {}: slept {} where the Python slept {}", self.at.get() - 1, seconds, ev[1]);
+            self.clock.set(self.clock.get() + seconds);
+        }
+    }
+
+    struct Replay(Rc<Tape>);
+
+    impl Game for Replay {
+        fn state(&mut self) -> Result<Value, GameUnavailable> {
+            Ok(unpack(&self.0.next("state", &|| "state()".to_string())[1], &self.0.atoms))
+        }
+
+        fn act(&mut self, action: &str, params: &Value) -> Result<Value, GameUnavailable> {
+            let said = || format!("act({}, {})", action, py::json_dumps(params));
+            let ev = self.0.next("act", &said);
+            assert!(ev[1] == action && &ev[2] == params, "event {}: the bot did {} where the Python did act({}, {})", self.0.at.get() - 1, said(), ev[1], py::json_dumps(&ev[2]));
+            Ok(ev[3].clone())
+        }
+
+        fn profile(&mut self) -> Result<Value, GameUnavailable> {
+            let ev = self.0.next("profile", &|| "profile()".to_string());
+            if ev[2] == true {
+                Err(GameUnavailable::new("no profile"))
+            } else {
+                Ok(ev[1].clone())
+            }
+        }
+
+        fn card(&mut self, card_id: &str) -> Result<Option<Value>, GameUnavailable> {
+            // (a game without `card` was never asked)
+            match self.0.trace.get(self.0.at.get()) {
+                Some(ev) if ev[0] == "card" => {
+                    assert!(ev[1] == card_id, "event {}: the bot looked up {} where the Python looked up {}", self.0.at.get(), card_id, ev[1]);
+                    self.0.at.set(self.0.at.get() + 1);
+                    let entry = unpack(&ev[2], &self.0.atoms);
+                    Ok((!entry.is_null()).then_some(entry))
+                }
+                _ => Ok(None),
+            }
+        }
+
+        fn ping(&mut self) -> bool {
+            true
+        }
+    }
+
+    fn mask(text: &str) -> String {
+        crate::re!(r#""time": ?"[^"]*""#).replace_all(text, r#""time":"T""#).into_owned()
+    }
+
+    fn replay(golden: &str) {
+        let g: Value = serde_json::from_str(golden).unwrap();
+        let game = g["game"].as_str().unwrap();
+        let _playing = crate::games::playing(game);
+        strategy::set_session(Some(12345)); // (the draw of who plays next: as the recorder set it)
+        learn::set_knobs(&learn::defaults(Some(game)));
+        for op in g["pre"].list() {
+            assert!(op[0] == "tunable" && op[1] == "SKIP_THRESHOLD");
+            crate::run::decks::SKIP_THRESHOLD.set_forever(op[2].as_f64().unwrap());
+        }
+        let mut atoms: Vec<Value> = Vec::new();
+        for a in g["atoms"].list() {
+            let whole = match a {
+                // (an atom is a dict or a list of what came before it)
+                Value::Object(m) => Value::Object(m.iter().map(|(k, x)| (k.clone(), unpack(x, &atoms))).collect()),
+                other => unpack(other, &atoms),
+            };
+            atoms.push(whole);
+        }
+        let tape = Rc::new(Tape { trace: g["trace"].list().to_vec(), atoms, at: Cell::new(0), clock: Cell::new(0.0) });
+        let dir = tempfile::tempdir().unwrap();
+        let kw = &g["kw"];
+        let log_dir = kw["log_dir"].truthy().then(|| dir.path().to_path_buf());
+        if let (Some(d), Some(history)) = (&log_dir, g["history"].as_str()) {
+            std::fs::write(d.join("runs.jsonl"), history).unwrap();
+        }
+        let (clock, sleep) = (tape.clone(), tape.clone());
+        let args = BotArgs {
+            character: kw["character"].as_str().unwrap_or("auto").to_string(),
+            log_dir: log_dir.clone(),
+            poll: kw["poll"].as_f64().unwrap_or(0.4),
+            stuck_timeout: kw["stuck_timeout"].as_f64().unwrap_or(300.0),
+            clock: Some(Box::new(move || clock.clock.get())),
+            sleep: Some(Box::new(move |s| sleep.sleep(s))),
+            ..Default::default()
+        };
+        let mut results: Vec<Value> = Vec::new();
+        let outcome = |r: Result<Value, BotError>| match r {
+            Ok(v) => v,
+            Err(BotError::Stuck(e)) => json!({"stuck": e.0}),
+            Err(e) => panic!("{e}"),
+        };
+        let (bot, records) = crate::logging::capture(|| {
+            let mut bot = Bot::new(Rc::new(RefCell::new(Replay(tape.clone()))), args);
+            for (n, op) in g["ops"].list().iter().enumerate() {
+                if op[0] != "tune" {
+                    let ev = tape.next("op", &|| format!("nothing more before {}", op));
+                    assert!(ev[1] == n, "op {n} out of step");
+                }
+                results.push(match op[0].as_str().unwrap() {
+                    "tune" => {
+                        bot.knobs.rng = Random::new(op[1].as_i64().unwrap() as i128);
+                        bot.tune = true;
+                        bot.knobs.draw();
+                        Value::Null
+                    }
+                    "step" => {
+                        let mut out = Vec::new();
+                        for _ in 0..op[1].as_i64().unwrap() {
+                            out.push(outcome(bot.step().map(Value::Bool)));
+                            if out.last().unwrap().is_object() {
+                                break;
+                            }
+                        }
+                        Value::Array(out)
+                    }
+                    "run" => outcome(bot.run(op[1].as_i64()).map(|()| json!("ok"))),
+                    "set" => {
+                        match op[1].as_str().unwrap() {
+                            "abandon_next" => bot.abandon_next = op[2].as_bool().unwrap(),
+                            "time_scale" => bot.time_scale = op[2].as_f64().unwrap(),
+                            "room_pause" => bot.room_pause = op[2].as_f64().unwrap(),
+                            "room_poll" => bot.room_poll = op[2].as_f64().unwrap(),
+                            other => panic!("{other}"),
+                        }
+                        Value::Null
+                    }
+                    "forget" => {
+                        bot.forget();
+                        Value::Null
+                    }
+                    "note_crash" => json!(bot.note_crash()),
+                    "clear_strikes" => {
+                        bot._strikes.clear();
+                        Value::Null
+                    }
+                    "careful" => {
+                        bot.careful_until = bot.clock() + op[1].as_f64().unwrap();
+                        bot.careful_at = Some(Progress(op[2][0].int(), Some((op[2][1].as_i64(), op[2][2].as_i64()))));
+                        Value::Null
+                    }
+                    other => panic!("{other}"),
+                });
+                assert!(results[n] == g["results"][n], "op {} {}: {} where the Python had {}", n, op, py::json_dumps(&results[n]), py::json_dumps(&g["results"][n]));
+            }
+            bot
+        });
+        assert_eq!(tape.at.get(), tape.trace.len(), "the Python bot went on");
+        let pace = crate::re!(r"\d+ s \(\d+ ms a step\): .*");
+        let logs: Vec<Value> = records
+            .iter()
+            .filter(|r| r.level >= Level::Info)
+            .map(|r| json!([r.level.name(), r.logger, if r.message.starts_with("pace: ") { pace.replace(&r.message, "").into_owned() } else { r.message.clone() }]))
+            .collect();
+        for (i, (ours, theirs)) in logs.iter().zip(g["logs"].list()).enumerate() {
+            assert_eq!(ours, theirs, "log line {i}");
+        }
+        assert_eq!(logs.len(), g["logs"].list().len(), "log lines");
+        let mut files: Vec<String> = log_dir.iter().flat_map(|d| std::fs::read_dir(d).unwrap()).map(|f| f.unwrap().file_name().to_string_lossy().into_owned()).collect();
+        files.sort();
+        assert_eq!(files, g["files"].entries().map(|(k, _)| k.clone()).collect::<Vec<_>>());
+        for (name, text) in g["files"].entries() {
+            let ours = mask(&std::fs::read_to_string(dir.path().join(name)).unwrap());
+            let text = mask(text.as_str().unwrap());
+            for (i, (a, b)) in ours.lines().zip(text.lines()).enumerate() {
+                assert_eq!(a, b, "{name} line {}", i + 1);
+            }
+            assert_eq!(ours, text, "{name}");
+        }
+        fn map<'a>(rows: impl Iterator<Item = (&'a String, Value)>) -> Value {
+            Value::Object(rows.map(|(k, v)| (k.clone(), v)).collect())
+        }
+        let summary = json!({
+            "runs_finished": bot.runs_finished, "wins": bot.wins, "progress": bot.progress().to_string(), "deck_size": bot.mem.deck_size,
+            "picks": bot.mem.picks.iter().map(|(floor, name)| json!([floor, name])).collect::<Vec<_>>(),
+            "deck": bot.mem.deck.iter().map(|c| py::str_of(&c["name"])).collect::<Vec<_>>(), "clock": tape.clock.get(), "recent": bot.mem.recent,
+            "max_ascension": map(bot.mem.max_ascension.iter().map(|(k, v)| (k, json!(v)))), "epochs": map(bot.mem.epochs.iter().map(|(k, v)| (k, json!(v)))), "knobs": map(learn::knobs().iter().map(|(k, v)| (k, json!(v)))), "abandon_next": bot.abandon_next,
+            "selected": bot.mem.selected.iter().collect::<Vec<_>>(), "timeline_done": bot.mem.timeline_done,
+            "turns": bot._turns.iter().map(|t| json!([t.0, t.1])).collect::<Vec<_>>(),
+            "threat": bot._threat.iter().map(|(k, v)| (k.clone(), json!([v.0, v.1, v.2, v.3]))).collect::<Map<String, Value>>(), "fight_kind": bot._fight_kind,
+            "last_result": bot.mem.last_result,
+        });
+        for (k, theirs) in g["summary"].entries() {
+            assert_eq!(&summary[k], theirs, "summary: {k}");
+        }
+        assert_eq!(summary.as_object().unwrap().len(), g["summary"].as_object().unwrap().len());
+    }
+
+    macro_rules! sessions {
+        ($($name:ident),* $(,)?) => {$(
+            #[test]
+            fn $name() {
+                // (a thread of its own: the settings, the relic record and the planners' memories are each thread's)
+                std::thread::Builder::new()
+                    .stack_size(16 << 20)
+                    .spawn(|| replay(include_str!(concat!("../tests/golden/bot/", stringify!($name), ".json"))))
+                    .unwrap()
+                    .join()
+                    .unwrap_or_else(|e| std::panic::resume_unwind(e));
+            }
+        )*};
+    }
+
+    sessions!(fake_runs3, fake_skip, fake_lose, fake_resume, fake_abandon, fake_tune, fake_long, fake_sts1, frozen, deaf_shop, idle_scale, crash_shop, travel, screens, screens_deaf, sim_a, sim_c, sim_d);
+
+    #[test]
+    fn fingerprints() {
+        let state = json!({"b": [1, 2.5, {"is_hovered": true, "x": "é"}], "a": null, "is_highlighted": 1});
+        assert_eq!(fingerprint(&state), fingerprint(&json!({"a": null, "b": [1, 2.5, {"x": "é"}]})));
+        assert_eq!(fingerprint(&json!({"a": [1, 2.5, "é"]})), "aea1637b39b59ef28d1387ccdb6df419a6125934");
+        assert_eq!(Progress(0, None).to_string(), "(0,)");
+        assert_eq!(Progress(2, Some((Some(1), None))).to_string(), "(2, 1, None)");
+    }
+}
