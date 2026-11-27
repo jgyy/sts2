@@ -102,6 +102,8 @@ seams! {
     launch_game, set_launch_game: (&str);
     kill_game, set_kill_game: (f64);
     _spawn, set_spawn: (&[String], SpawnArgs) -> std::io::Result<()>;
+    /// `self.bot.run(max_runs)` in `Supervisor.run` (a bot that does as scripted: the Python tests' mock bot).
+    bot_run, set_bot_run: (&mut Bot, Option<i64>) -> Result<(), BotError>;
 }
 
 thread_local! {
@@ -1097,7 +1099,10 @@ impl Supervisor {
             self.ensure_game().map_err(interrupted)?;
             let host = Rc::clone(&self.host);
             let played = match host.configure(self) {
-                Ok(()) => self.bot.run(max_runs),
+                Ok(()) => match seam!(bot_run) {
+                    Some(f) => (f.borrow_mut())(&mut self.bot, max_runs),
+                    None => self.bot.run(max_runs),
+                },
                 Err(e) => Err(e),
             };
             match played {
