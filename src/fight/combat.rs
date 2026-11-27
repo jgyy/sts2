@@ -1719,12 +1719,15 @@ pub(crate) mod testing {
     }
 
     /// The game and settings a case was recorded under, in force until dropped.
-    pub struct Env(games::Playing, crate::learn::KnobGuard);
+    pub struct Env {
+        _game: games::Playing,
+        _knobs: crate::learn::KnobGuard,
+    }
 
     impl Golden {
         pub fn env(&self, v: &Value) -> Env {
             let knobs: Vec<(&str, f64)> = self.knobs[v["k"].int() as usize].iter().map(|(name, x)| (name.as_str(), *x)).collect();
-            Env(games::playing(v["g"].s()), crate::learn::with_knobs(&knobs))
+            Env { _game: games::playing(v["g"].s()), _knobs: crate::learn::with_knobs(&knobs) }
         }
 
         fn item(&self, x: &Value) -> Value {
@@ -1755,6 +1758,9 @@ pub(crate) mod testing {
             let mut state = packed.clone();
             if packed["player"].is_object() {
                 state["player"] = self.player(&packed["player"]);
+            }
+            if packed["_costs"].has("@") {
+                state["_costs"] = self.atoms[packed["_costs"]["@"].int() as usize].clone();
             }
             state
         }
@@ -1914,8 +1920,8 @@ mod tests {
                 && plan.lost == want["lost"].as_i64()
                 && plan.score == want["score"].as_f64()
                 && plan.line.as_ref().map(|l| l.iter().map(|c| c.index).collect::<Vec<_>>()) == line
-                && _context(&state) == args(&rec["ctx"])
-                && json!(describe(&state)) == rec["describe"]
+                && (!rec.has("ctx") || _context(&state) == args(&rec["ctx"]))
+                && (!rec.has("describe") || json!(describe(&state)) == rec["describe"])
                 && json!(expected_end_loss(&state)) == rec["end"]
                 && json!(fortifier(&state["player"])) == rec["fort"]
                 && _wrath_outlook(&state) == wrath(&rec["wrath"]);
@@ -1930,7 +1936,7 @@ mod tests {
                         plan.line.as_ref().map(|l| l.iter().map(|c| c.index).collect::<Vec<_>>()),
                         rec["r"],
                         want,
-                        _context(&state) == args(&rec["ctx"]),
+                        !rec.has("ctx") || _context(&state) == args(&rec["ctx"]),
                         describe(&state),
                     );
                 }

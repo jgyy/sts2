@@ -8,7 +8,7 @@ pub use crate::fake_game::{card, with};
 
 /// `combat_state(hand, enemies, *, energy=3, hp=80, max_hp=80, block=0, kind="monster", potions=())`: the keywords as a dict
 /// (`combat_state!(hand, enemies, energy = 1, kind = "boss")` writes it).
-pub fn combat_state(hand: Vec<Value>, enemies: Vec<Value>, kw: Value) -> Value {
+pub fn combat_state_kw(hand: Vec<Value>, enemies: Vec<Value>, kw: Value) -> Value {
     for k in kw.as_object().expect("keywords").keys() {
         assert!(["energy", "hp", "max_hp", "block", "kind", "potions"].contains(&k.as_str()), "combat_state() got an unexpected keyword argument '{k}'");
     }
@@ -19,16 +19,18 @@ pub fn combat_state(hand: Vec<Value>, enemies: Vec<Value>, kw: Value) -> Value {
            "battle": {"round": 1, "turn": "player", "is_play_phase": true, "enemies": enemies}, "player": player})
 }
 
-/// `helpers.combat_state(hand, enemies, energy=1, ...)`.
-macro_rules! helpers_combat_state {
+/// `helpers.combat_state(hand, enemies, energy=1, ...)` (tests/all/fight has its own, with more keywords).
+#[allow(unused_macros)]
+macro_rules! combat_state {
     ($hand:expr, $enemies:expr $(, $k:ident = $v:expr)* $(,)?) => {
-        $crate::helpers::combat_state(Vec::from($hand), Vec::from($enemies), serde_json::json!({$((stringify!($k)): $v),*}))
+        $crate::helpers::combat_state_kw(Vec::from($hand), Vec::from($enemies), serde_json::json!({$((stringify!($k)): $v),*}))
     };
 }
-pub(crate) use helpers_combat_state;
+#[allow(unused_imports)]
+pub(crate) use combat_state;
 
 /// `enemy(eid, hp, attack=None, block=0, status=())`: the keywords as a dict (`enemy!("A", 30, attack = 12)` writes it).
-pub fn enemy(eid: &str, hp: i64, kw: Value) -> Value {
+pub fn enemy_kw(eid: &str, hp: i64, kw: Value) -> Value {
     for k in kw.as_object().expect("keywords").keys() {
         assert!(["attack", "block", "status"].contains(&k.as_str()), "enemy() got an unexpected keyword argument '{k}'");
     }
@@ -40,7 +42,7 @@ pub fn enemy(eid: &str, hp: i64, kw: Value) -> Value {
 /// `enemy("A", 30, attack=12, status=[...])`.
 macro_rules! enemy {
     ($eid:expr, $hp:expr $(, $k:ident = $v:expr)* $(,)?) => {
-        $crate::helpers::enemy($eid, $hp, serde_json::json!({$((stringify!($k)): $v),*}))
+        $crate::helpers::enemy_kw($eid, $hp, serde_json::json!({$((stringify!($k)): $v),*}))
     };
 }
 pub(crate) use enemy;

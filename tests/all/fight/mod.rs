@@ -20,7 +20,7 @@ mod test_poison_if_poisoned;
 
 /// helpers.combat_state in one call: also the round (`round_no`), the floor, "_" keys on the state and any other keyword on the player.
 /// The keywords as a dict (`combat_state!(hand, enemies, energy = 1, round_no = 3, status = [power("VIGOR", 8)])` writes it).
-pub fn combat_state(hand: Vec<Value>, enemies: Vec<Value>, kw: Value) -> Value {
+pub fn combat_state_kw(hand: Vec<Value>, enemies: Vec<Value>, kw: Value) -> Value {
     let mut own = serde_json::Map::new();
     let mut rest = Vec::new();
     for (k, v) in kw.as_object().expect("keywords") {
@@ -30,7 +30,7 @@ pub fn combat_state(hand: Vec<Value>, enemies: Vec<Value>, kw: Value) -> Value {
             rest.push((k, v));
         }
     }
-    let mut s = helpers::combat_state(hand, enemies, Value::Object(own));
+    let mut s = helpers::combat_state_kw(hand, enemies, Value::Object(own));
     s["battle"]["round"] = json!(1);
     for (k, v) in rest {
         if k == "round_no" {
@@ -51,7 +51,7 @@ pub fn combat_state(hand: Vec<Value>, enemies: Vec<Value>, kw: Value) -> Value {
 /// `combat_state(hand, enemies, energy=1, kind="boss", ...)`.
 macro_rules! combat_state {
     ($hand:expr, $enemies:expr $(, $k:ident = $v:expr)* $(,)?) => {
-        $crate::fight::combat_state(Vec::from($hand), Vec::from($enemies), serde_json::json!({$((stringify!($k)): $v),*}))
+        $crate::fight::combat_state_kw(Vec::from($hand), Vec::from($enemies), serde_json::json!({$((stringify!($k)): $v),*}))
     };
 }
 pub(crate) use combat_state;
@@ -68,14 +68,13 @@ pub fn potion(slot: i64, name: &str, text: &str, target: &str) -> Value {
 
 /// helpers.enemy dicts as the planner reads them.
 pub fn read_foes(enemies: &[Value]) -> Vec<Enemy> {
-    combat::read_enemies(&combat_state(vec![], enemies.to_vec(), json!({})))
+    combat::read_enemies(&combat_state_kw(vec![], enemies.to_vec(), json!({})))
 }
 
 /// combat.simulate's keywords for a turn with no Stars (energy 3, hp 60, max_hp 80, block 0), and whatever else is given:
 /// `ctx!(energy = 1, arrows = 1, fight = "boss")`.
 macro_rules! ctx {
     ($($k:ident = $v:expr),* $(,)?) => {
-        #[allow(clippy::needless_update, clippy::useless_conversion)]
         { sts2bot::fight::combat::SimulateArgs { $($k: ($v).into(),)* ..$crate::fight::ctx_base() } }
     };
 }

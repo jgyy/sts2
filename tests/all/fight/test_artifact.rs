@@ -21,7 +21,7 @@ fn DOOM_DECK() -> Vec<Value> {
 
 /// (The Python's default: 3 charges; its other keywords: the energy.)
 fn state(hand: Vec<Value>, pile: Vec<Value>, charges: i64, energy: i64) -> Value {
-    combat_state!(hand, [enemy!("BOSS", 480, status = [power("ARTIFACT", charges)])], kind = "boss", draw_pile = pile, discard_pile = [], energy = energy)
+    combat_state!(hand, [enemy!("BOSS", 480, status = [power("ARTIFACT", charges)])], kind = "boss", draw_pile = pile, discard_pile = json!([]), energy = energy)
 }
 
 fn approx(a: f64, b: f64) {
