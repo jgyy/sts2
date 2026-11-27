@@ -119,9 +119,17 @@ impl Default for ViewArgs {
     }
 }
 
+thread_local! {
+    static UID: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
 /// A copy of a card. `cost_fight`/`cost_turn` override the printed cost (Madness, Infernal Blade, Swivel).
+///
+/// Python tells cards apart by identity (`c in f.hand`, `f.hand.remove(c)`, `h is not c`, `id(c)`): here every card made
+/// (`Card::new`, `copy`) gets its own `uid`, and `clone()` is another handle on the SAME card (the same `uid`).
 #[derive(Clone, Debug)]
 pub struct Card {
+    pub uid: u64,
     pub d: Rc<CardDef>,
     pub up: bool,
     pub cost_fight: Option<i64>,
@@ -132,7 +140,11 @@ pub struct Card {
 
 impl Card {
     pub fn new(d: &Rc<CardDef>, up: bool) -> Card {
-        Card { d: d.clone(), up, cost_fight: None, cost_turn: None, bonus: 0, retained: 0 }
+        let uid = UID.with(|u| {
+            u.set(u.get() + 1);
+            u.get()
+        });
+        Card { uid, d: d.clone(), up, cost_fight: None, cost_turn: None, bonus: 0, retained: 0 }
     }
 
     pub fn key(&self) -> &str {
