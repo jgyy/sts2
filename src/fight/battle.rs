@@ -1,7 +1,7 @@
 //! What a combat state says: the enemies, their intents and powers, and what our own hand will cost us (for combat.rs's planner).
 
 use std::borrow::Borrow;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::{Arc, LazyLock};
 
@@ -274,6 +274,9 @@ impl Enemy {
     /// How much damaging this enemy brings the fight closer to its end.
     #[inline]
     pub fn worth(&self) -> f64 {
+        if let Some(value) = _MINION_WORTH.with(|w| w.get()) {
+            return if self.minion { value } else { 1.0 };
+        }
         if self.revives || self.spent {
             return 0.0;
         }
@@ -496,8 +499,16 @@ pub static KNOWN_THREAT: LazyLock<IndexMap<&'static str, f64>> =
 pub const MAIN_MINIONS: [&str; 1] = ["KIN_FOLLOWER"];
 
 thread_local! {
+    // scripts/bosses/queenfight.rs's MW=X: `worth` is X for a minion and 1.0 for anyone else while this is set
+    // (the script's `mock.patch.object(battle.Enemy, "worth", property(lambda e: value if e.minion else 1.0))`)
+    static _MINION_WORTH: Cell<Option<f64>> = const { Cell::new(None) };
     static _KNOWN_THREAT: RefCell<Option<IndexMap<String, f64>>> = const { RefCell::new(None) };
     static _MAIN_MINIONS: RefCell<Option<BTreeSet<String>>> = const { RefCell::new(None) };
+}
+
+/// Another `Enemy::worth` on this thread from now on: `value` for a minion, 1.0 for any other enemy (None: the rule as written).
+pub fn set_minion_worth(value: Option<f64>) -> Option<f64> {
+    _MINION_WORTH.with(|w| w.replace(value))
 }
 
 /// KNOWN_THREAT as it is in force on this thread.

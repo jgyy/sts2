@@ -1,0 +1,173 @@
+$ trace
+r1 F1 hand AABABH hp 75 boss 111 intent (22, 1)
+   play H  F1 67hp st 0 en 3 blk 0
+   play A  F1 47hp st 0 en 2 blk 0
+   play A  F1 27hp st 0 en 1 blk 0
+   play A  F1 7hp st 0 en 0 blk 0
+r1 F1 took 22 hp 53 | boss 7 st 0 | deck 19 wounds 0 burns 0
+r2 F1 hand VHBBWA hp 53 boss 7 intent (16, 1)
+   play V  F1 0hp st 0 en 3 blk 0
+r2 form 1 killed: no attack | hp 53
+r3 F2 hand WABFFA hp 53 boss 212 intent (11, 3)
+   play A  F2 192hp st 0 en 4 blk 0
+   play A  F2 172hp st 0 en 3 blk 0
+   play W  F2 162hp st 0 en 2 blk 0
+   play B  F2 162hp st 0 en 1 blk 14
+r3 F2 took 10 hp 43 | boss 162 st 0 | deck 21 wounds 2 burns 0
+r4 F2 hand BWBHAW hp 43 boss 162 intent (11, 4)
+   play H  F2 118hp st 0 en 3 blk 0
+   play A  F2 98hp st 0 en 2 blk 0
+   play B  F2 98hp st 0 en 1 blk 14
+   play B  F2 98hp st 0 en 0 blk 28
+r4 F2 took 4 hp 39 | boss 98 st 0 | deck 22 wounds 3 burns 0
+r5 F2 hand HUABUA hp 39 boss 98 intent (11, 5)
+   play H  F2 54hp st 0 en 3 blk 0
+   play A  F2 34hp st 0 en 2 blk 0
+   play A  F2 14hp st 0 en 1 blk 0
+   play B  F2 14hp st 0 en 0 blk 14
+r5 F2 took 41 hp -2 | boss 14 st 0 | deck 26 wounds 7 burns 0
+(False, 0, 5, 2, {1: 22, 2: 55, 3: 0})
+$ trace 4 2 FORM_WORTH=0+STAB_SCAR=30
+r1 F1 hand BBAHFA hp 75 boss 111 intent (22, 1)
+   play H  F1 50hp st 0 en 2 blk 0
+   play A  F1 22hp st 0 en 1 blk 0
+   play A  F1 0hp st 0 en 0 blk 0
+r1 form 1 killed: no attack | hp 75
+r2 F2 hand AWABBA hp 75 boss 212 intent (11, 3)
+   play A  F2 184hp st 0 en 3 blk 0
+   play A  F2 156hp st 0 en 2 blk 0
+   play B  F2 156hp st 0 en 1 blk 18
+   play B  F2 156hp st 0 en 0 blk 36
+r2 F2 took 0 hp 75 | boss 156 st 0 | deck 19 wounds 0 burns 0
+r3 F2 hand FBBHVA hp 75 boss 156 intent (11, 4)
+   play H  F2 95hp st 0 en 2 blk 0
+   play B  F2 95hp st 0 en 1 blk 18
+   play B  F2 95hp st 0 en 0 blk 36
+r3 F2 took 8 hp 67 | boss 95 st 0 | deck 20 wounds 1 burns 0
+r4 F2 hand WBBAHB hp 67 boss 95 intent (11, 5)
+   play H  F2 34hp st 0 en 2 blk 0
+   play W  F2 20hp st 0 en 1 blk 0
+   play A  F2 0hp st 0 en 0 blk 0
+r4 form 2 killed: no attack | hp 67
+r5 F3 hand WHBAUA hp 67 boss 313 intent (11, 3) INTANGIBLE
+   play A  F3 312hp st 0 en 3 blk 0
+   play A  F3 311hp st 0 en 2 blk 0
+   play W  F3 310hp st 0 en 1 blk 0
+   play B  F3 310hp st 0 en 0 blk 18
+r5 F3 took 6 hp 61 | boss 310 st 0 | deck 20 wounds 1 burns 0
+r6 F3 hand BAFVFA hp 61 boss 310 intent (45, 1)
+   play V  F3 302hp st 0 en 2 blk 0
+   play A  F3 260hp st 0 en 1 blk 0
+   play B  F3 260hp st 0 en 0 blk 18
+r6 F3 took 15 hp 46 | boss 260 st 0 | deck 20 wounds 1 burns 0
+r7 F3 hand ABVFAA hp 46 boss 260 intent (0, 0) INTANGIBLE
+   play V  F3 259hp st 0 en 2 blk 0
+   play A  F3 258hp st 0 en 1 blk 0
+   play A  F3 257hp st 0 en 0 blk 0
+r7 F3 took 0 hp 46 | boss 257 st 3 | deck 25 wounds 1 burns 5
+r8 F3 hand BFBWWU hp 46 boss 257 intent (14, 3)
+   play W  F3 236hp st 3 en 3 blk 0
+   play W  F3 215hp st 3 en 2 blk 0
+   play B  F3 215hp st 3 en 1 blk 18
+   play B  F3 215hp st 3 en 0 blk 36
+r8 F3 took 0 hp 46 | boss 215 st 3 | deck 25 wounds 1 burns 5
+r9 F3 hand HBBAHA hp 46 boss 215 intent (48, 1) INTANGIBLE
+   play A  F3 214hp st 3 en 3 blk 0
+   play A  F3 213hp st 3 en 2 blk 0
+   play B  F3 213hp st 3 en 1 blk 18
+   play B  F3 213hp st 3 en 0 blk 36
+r9 F3 took 0 hp 46 | boss 213 st 3 | deck 25 wounds 1 burns 5
+r10 F3 hand BABRBB hp 46 boss 213 intent (0, 0)
+   play A  F3 185hp st 3 en 3 blk 0
+   play B  F3 185hp st 3 en 2 blk 18
+r10 F3 took 0 hp 46 | boss 185 st 6 | deck 30 wounds 1 burns 10
+r11 F3 hand ARHRBW hp 46 boss 185 intent (17, 3) INTANGIBLE
+   play H  F3 184hp st 6 en 2 blk 0
+   play W  F3 183hp st 6 en 1 blk 0
+   play B  F3 183hp st 6 en 0 blk 18
+r11 F3 took 22 hp 24 | boss 183 st 6 | deck 30 wounds 1 burns 10
+r12 F3 hand VAHAFU hp 24 boss 183 intent (51, 1)
+   play H  F3 122hp st 6 en 2 blk 0
+   play A  F3 94hp st 6 en 1 blk 0
+   play A  F3 66hp st 6 en 0 blk 0
+r12 F3 took 38 hp -14 | boss 66 st 6 | deck 30 wounds 1 burns 10
+(False, 0, 12, 3, {1: 0, 2: 8, 3: 81})
+$ trace 9 5 K.caution=1.35+ENRAGE_PRICE=0
+r1 F1 hand VBBAA hp 75 boss 111 intent (22, 1)
+   play V  F1 103hp st 0 en 3 blk 0
+   play A  F1 61hp st 0 en 2 blk 0
+   play A  F1 19hp st 0 en 1 blk 0
+   play B  F1 19hp st 3 en 0 blk 16
+r1 F1 took 9 hp 66 | boss 19 st 3 | deck 19 wounds 0 burns 0
+r2 F1 hand HBAAW hp 66 boss 19 intent (19, 1)
+   play H  F1 0hp st 3 en 3 blk 0
+r2 form 1 killed: no attack | hp 66
+r3 F2 hand BAFWH hp 66 boss 212 intent (11, 3)
+   play H  F2 151hp st 0 en 3 blk 0
+   play A  F2 123hp st 0 en 2 blk 0
+   play W  F2 109hp st 0 en 1 blk 0
+   play B  F2 109hp st 0 en 0 blk 16
+r3 F2 took 8 hp 58 | boss 109 st 0 | deck 20 wounds 1 burns 0
+r4 F2 hand FBBAH hp 58 boss 109 intent (11, 4)
+   play H  F2 48hp st 0 en 3 blk 0
+   play A  F2 20hp st 0 en 2 blk 0
+   play B  F2 20hp st 0 en 1 blk 16
+   play B  F2 20hp st 0 en 0 blk 32
+r4 F2 took 0 hp 58 | boss 20 st 0 | deck 20 wounds 1 burns 0
+r5 F2 hand AAFBA hp 58 boss 20 intent (11, 5)
+   play A  F2 0hp st 0 en 4 blk 0
+r5 form 2 killed: no attack | hp 58
+r6 F3 hand HBVBA hp 58 boss 313 intent (11, 3) INTANGIBLE
+   play V  F3 312hp st 0 en 3 blk 0
+   play A  F3 311hp st 0 en 2 blk 0
+   play B  F3 311hp st 0 en 1 blk 16
+   play B  F3 311hp st 0 en 0 blk 32
+r6 F3 took 1 hp 57 | boss 311 st 0 | deck 20 wounds 1 burns 0
+r7 F3 hand BWWUA hp 57 boss 311 intent (45, 1)
+   play A  F3 269hp st 0 en 4 blk 0
+   play W  F3 248hp st 0 en 3 blk 0
+   play W  F3 227hp st 0 en 2 blk 0
+   play B  F3 227hp st 0 en 1 blk 16
+r7 F3 took 17 hp 40 | boss 227 st 0 | deck 20 wounds 1 burns 0
+r8 F3 hand BAAFB hp 40 boss 227 intent (0, 0) INTANGIBLE
+   play A  F3 226hp st 0 en 4 blk 0
+   play A  F3 225hp st 0 en 3 blk 0
+r8 F3 took 0 hp 40 | boss 225 st 3 | deck 25 wounds 1 burns 5
+r9 F3 hand HABFU hp 40 boss 225 intent (14, 3)
+   play H  F3 164hp st 3 en 3 blk 0
+   play A  F3 136hp st 3 en 2 blk 0
+   play B  F3 136hp st 3 en 1 blk 16
+r9 F3 took 14 hp 26 | boss 136 st 3 | deck 25 wounds 1 burns 5
+r10 F3 hand WAABH hp 26 boss 136 intent (48, 1) INTANGIBLE
+   play H  F3 135hp st 3 en 3 blk 0
+   play A  F3 134hp st 3 en 2 blk 0
+   play W  F3 133hp st 3 en 1 blk 0
+   play B  F3 133hp st 3 en 0 blk 16
+r10 F3 took 20 hp 6 | boss 133 st 3 | deck 25 wounds 1 burns 5
+r11 F3 hand AWBVB hp 6 boss 133 intent (0, 0)
+   play V  F3 125hp st 3 en 3 blk 0
+   play A  F3 83hp st 3 en 2 blk 0
+   play W  F3 62hp st 3 en 1 blk 0
+r11 F3 took 0 hp 6 | boss 62 st 6 | deck 30 wounds 1 burns 10
+r12 F3 hand RBRHB hp 6 boss 62 intent (17, 3) INTANGIBLE
+   play H  F3 61hp st 6 en 3 blk 0
+   play B  F3 61hp st 6 en 2 blk 16
+   play B  F3 61hp st 6 en 1 blk 32
+r12 F3 took 8 hp -2 | boss 61 st 6 | deck 30 wounds 1 burns 10
+(False, 0, 12, 3, {1: 9, 2: 8, 3: 60})
+$ 3 on ENRAGE_PRICE=9+K.debuff_worth=1 STAB_SCAR=0
+on                          : won 0.167  hp left   3.9  rounds 10.7  died in form {1: 0, 2: 1, 3: 14}  hp lost by form 8 27 50
+ENRAGE_PRICE=9+K.debuff_worth=1: won 0.167  hp left   4.2  rounds  9.6  died in form {1: 0, 2: 2, 3: 13}  hp lost by form 15 28 39
+STAB_SCAR=0                 : won 0.111  hp left   2.3  rounds 10.8  died in form {1: 0, 2: 1, 3: 15}  hp lost by form 8 27 54
+(24, 15, 6, 5, 2, 1, 1, 2, 4, 6) on: won 0.00 hp  0.0  ENRAGE_PRICE=9+K.debuff_worth=1: won 0.00 hp  0.0  STAB_SCAR=0: won 0.00 hp  0.0
+(20, 14, 6, 6, 2, 1, 2, 2, 5, 6) on: won 0.00 hp  0.0  ENRAGE_PRICE=9+K.debuff_worth=1: won 0.00 hp  0.0  STAB_SCAR=0: won 0.00 hp  0.0
+(28, 18, 6, 6, 2, 1, 2, 2, 4, 6) on: won 0.33 hp  0.7  ENRAGE_PRICE=9+K.debuff_worth=1: won 0.33 hp  0.7  STAB_SCAR=0: won 0.33 hp  0.7
+(30, 18, 6, 6, 2, 1, 1, 2, 4, 6) on: won 0.33 hp  9.3  ENRAGE_PRICE=9+K.debuff_worth=1: won 0.33 hp  9.3  STAB_SCAR=0: won 0.00 hp  0.0
+(24, 16, 6, 6, 2, 1, 2, 2, 5, 6) on: won 0.33 hp 13.3  ENRAGE_PRICE=9+K.debuff_worth=1: won 0.33 hp 15.3  STAB_SCAR=0: won 0.33 hp 13.3
+(28, 16, 6, 6, 2, 1, 2, 2, 5, 5) on: won 0.00 hp  0.0  ENRAGE_PRICE=9+K.debuff_worth=1: won 0.00 hp  0.0  STAB_SCAR=0: won 0.00 hp  0.0
+$ flips 2 on FORM_WORTH=0
+9026317 {'on': (False, 0, 12, 3), 'FORM_WORTH=0': (True, 1, 13, 3)}
+9026368 {'on': (True, 1, 12, 3), 'FORM_WORTH=0': (False, 0, 10, 3)}
+9026382 {'on': (False, 0, 11, 3), 'FORM_WORTH=0': (True, 6, 11, 3)}
+9026458 {'on': (False, 0, 12, 3), 'FORM_WORTH=0': (True, 11, 13, 3)}
+9026503 {'on': (True, 19, 13, 3), 'FORM_WORTH=0': (False, 0, 13, 3)}
