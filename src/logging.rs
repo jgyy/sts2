@@ -94,7 +94,7 @@ impl RotatingFile {
     }
 
     fn write_line(&mut self, line: &str) {
-        if self.max_bytes > 0 && self.size > 0 && self.size + line.len() as u64 + 1 > self.max_bytes {
+        if self.max_bytes > 0 && self.size > 0 && self.size + line.len() as u64 + 1 >= self.max_bytes {
             self.rotate();
         }
         if let Some(f) = self.file.as_mut() {
