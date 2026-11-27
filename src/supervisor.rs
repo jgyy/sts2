@@ -1207,9 +1207,11 @@ mod tests {
 
     use super::testing::*;
     use super::*;
+    use crate::bot::{BotArgs, Stuck};
     use crate::client::GameUnavailable;
 
     const GOLDEN: &str = include_str!("../tests/golden/supervisor/supervisor.json");
+    const SEQUENCES: &str = include_str!("../tests/golden/supervisor/sequences.json");
 
     fn golden(part: &str) -> Vec<Value> {
         let all: Value = serde_json::from_str(GOLDEN).unwrap();
@@ -1570,6 +1572,284 @@ mod tests {
             kill_game(case["sc"]["grace"].as_f64().unwrap_or(10.0)).unwrap();
             let got = json!({"sc": case["sc"], "trace": world.borrow().trace, "running": world.borrow().alive("SlayTheSpire2")});
             assert_eq!(got, case);
+        }
+    }
+
+    /// The scripted world of sequences.json (the Python's `World` and `Bot` in the script that made it): time that moves
+    /// only in sleeps; Steam and the game as processes; the game's API as its boot says; the bot as its script says.
+    struct Scripted {
+        sc: Value,
+        tmp: PathBuf,
+        t: f64,
+        trace: Vec<Value>,
+        steam_at: Option<f64>,
+        /// (how it boots, when it was started, killed)
+        game: Option<(Value, f64, bool)>,
+        boots: Vec<Value>,
+        rebuilds: Vec<Value>,
+        script: Vec<Value>,
+        replies: serde_json::Map<String, Value>,
+        down_until: f64,
+        fingerprint: Option<String>,
+        asked: i64,
+    }
+
+    /// The first of the list while there is more than one, then the last one for ever; None for an empty list.
+    fn next(list: &mut Vec<Value>) -> Option<Value> {
+        match list.len() {
+            0 => None,
+            1 => Some(list[0].clone()),
+            _ => Some(list.remove(0)),
+        }
+    }
+
+    impl Scripted {
+        fn list(v: &Value) -> Vec<Value> {
+            v.as_array().cloned().unwrap_or_default()
+        }
+
+        fn new(sc: &Value, tmp: &Path) -> Rc<RefCell<Scripted>> {
+            let mut world = Scripted {
+                sc: sc.clone(),
+                tmp: tmp.to_path_buf(),
+                t: 0.0,
+                trace: Vec::new(),
+                steam_at: if sc["steam"] == true { Some(0.0) } else { None },
+                game: None,
+                boots: Self::list(&sc["boots"]),
+                rebuilds: Self::list(&sc["rebuilds"]),
+                script: Self::list(&sc["bot"]),
+                replies: sc["replies"].as_object().cloned().unwrap_or_default(),
+                down_until: 0.0,
+                fingerprint: opt(&sc["fingerprint"]),
+                asked: 0,
+            };
+            if sc["external"] == true {
+                world.start_game();
+            }
+            Rc::new(RefCell::new(world))
+        }
+
+        fn start_game(&mut self) {
+            let spec = next(&mut self.boots).unwrap_or(json!({"api_after": 5.0}));
+            let game_log = self.tmp.join("godot.log");
+            match spec["log"].as_str() {
+                None => {
+                    let _ = std::fs::remove_file(&game_log);
+                }
+                Some(text) => std::fs::write(&game_log, text).unwrap(),
+            }
+            self.game = Some((spec, self.t, false));
+        }
+
+        fn alive(&self, name: &str) -> bool {
+            match name {
+                "steam" => self.steam_at.is_some() || self.sc["steam_appears"].as_f64().is_some_and(|at| self.t >= at),
+                "steamwebhelper" => self.steam_at.is_some_and(|at| self.t >= at + self.sc["webhelper_after"].as_f64().unwrap_or(0.0)),
+                "SlayTheSpire2" => match &self.game {
+                    Some((spec, at, killed)) => !killed && spec["dies_after"].as_f64().is_none_or(|after| self.t < at + after),
+                    None => false,
+                },
+                _ => false,
+            }
+        }
+
+        fn api(&self) -> bool {
+            match &self.game {
+                Some((spec, at, _)) => self.alive("SlayTheSpire2") && spec["api_after"].as_f64().is_some_and(|after| self.t >= at + after) && self.t >= self.down_until,
+                None => false,
+            }
+        }
+
+        fn note(&mut self, entry: Value) {
+            self.trace.push(entry);
+            assert!(self.trace.len() < 5000, "the scenario does not end");
+        }
+
+        fn patch(world: &Rc<RefCell<Scripted>>, script: &Path, stamp: &Path) -> Patched {
+            patch(|s| {
+                let w = Rc::clone(world);
+                s.set_run(move |argv, _| {
+                    let mut w = w.borrow_mut();
+                    w.note(json!(["run", argv]));
+                    match argv[0].as_str() {
+                        "ps" => Ok(Completed { stdout: if w.alive(&argv[2]) { "Sl\n" } else { "" }.to_string(), ..Default::default() }),
+                        "pkill" => {
+                            let hard = argv.iter().any(|a| a == "-9");
+                            if let Some((spec, _, killed)) = w.game.as_mut() {
+                                if hard || spec["ignores_term"] != true {
+                                    *killed = true;
+                                }
+                            }
+                            Ok(Completed::default())
+                        }
+                        "bash" => {
+                            let r = next(&mut w.rebuilds).unwrap_or(json!({"returncode": 0}));
+                            if let Some(text) = r["raise"].as_str() {
+                                return Err(text.to_string());
+                            }
+                            if let Some(fingerprint) = r["fingerprint"].as_str() {
+                                w.fingerprint = Some(fingerprint.to_string());
+                            }
+                            Ok(Completed { returncode: r["returncode"].as_i64().unwrap(), stdout: r["stdout"].as_str().unwrap_or("").to_string(), stderr: r["stderr"].as_str().unwrap_or("").to_string() })
+                        }
+                        other => panic!("{other}"),
+                    }
+                });
+                let w = Rc::clone(world);
+                s.set_popen(move |argv, kw| {
+                    let mut w = w.borrow_mut();
+                    let shown = kw.env.as_ref().map(|e| {
+                        let mut some = serde_json::Map::new();
+                        for k in ["SteamAppId", "SteamGameId", "INVOCATION_ID"] {
+                            some.insert(k.to_string(), json!(e.get(k)));
+                        }
+                        some
+                    });
+                    w.note(json!(["popen", argv, kw.cwd.as_ref().map(|c| c.to_string_lossy()), shown]));
+                    let program = if argv[0] == "systemd-run" { &argv[argv.iter().position(|a| a == "--").unwrap() + 1] } else { &argv[0] };
+                    let name = Path::new(program).file_name().unwrap().to_string_lossy().into_owned();
+                    if name == "steam" {
+                        w.steam_at = Some(w.t);
+                    }
+                    if name == "SlayTheSpire2" || argv.iter().any(|a| a == "-applaunch") {
+                        w.start_game();
+                    }
+                    Ok(Box::new(Running))
+                });
+                let w = Rc::clone(world);
+                s.set_which(move |name| w.borrow().sc["which"][name].as_str().map(|p| p.to_string()));
+                let w = Rc::clone(world);
+                s.set_sleep(move |dt| {
+                    let mut w = w.borrow_mut();
+                    w.note(json!(["sleep", dt]));
+                    w.t += dt;
+                    Ok(())
+                });
+                let w = Rc::clone(world);
+                s.set_monotonic(move || w.borrow().t);
+                let w = Rc::clone(world);
+                s.set_time(move || 1000.0 + w.borrow().t);
+                let w = Rc::clone(world);
+                s.set_game_fingerprint(move || w.borrow().fingerprint.clone());
+                let w = Rc::clone(world);
+                s.set_bot_run(move |bot, max_runs| {
+                    let mut w = w.borrow_mut();
+                    let careful_at = bot.careful_at.as_ref().map(|at| json!([at.0, at.1.unwrap().0, at.1.unwrap().1]));
+                    w.note(json!(["bot.run", max_runs, bot.abandon_next, bot.time_scale, bot.careful_until, careful_at]));
+                    let step = if w.script.is_empty() { json!({"runs": 1}) } else { w.script.remove(0) };
+                    bot.abandon_next = false;
+                    bot.runs_finished += step["runs"].as_i64().unwrap_or(0);
+                    if let Some(at) = step["where"].as_array() {
+                        bot._last_where = Some((at[0].as_i64(), at[1].as_i64()));
+                    }
+                    // (asked something that may have crashed the game: `note_crash` then says there is another way, once)
+                    w.asked += 1;
+                    bot._last_sent = step["sent"].truthy().then(|| (json!(0), json!(0), "play".to_string(), w.asked.to_string()));
+                    if step["kill"] == true {
+                        w.game.as_mut().unwrap().2 = true;
+                    }
+                    if let Some(down) = step["down"].as_f64() {
+                        w.down_until = w.t + down;
+                    }
+                    match step["raise"].as_str() {
+                        Some("unavailable") => Err(BotError::GameUnavailable(GameUnavailable::new("Connection refused"))),
+                        Some("stuck") => Err(BotError::Stuck(Stuck(format!("no progress for 300s at {}", py::repr_of(&step["where"]))))),
+                        _ => Ok(()),
+                    }
+                });
+                let mut e = env(&[]);
+                for (k, v) in world.borrow().sc["env"].as_object().into_iter().flatten() {
+                    e.insert(k.clone(), v.as_str().unwrap().to_string());
+                }
+                s.environ = Some(e);
+                s.GAME_LOG = Some(world.borrow().tmp.join("godot.log"));
+                s.MOD_STAMP = Some(stamp.to_path_buf());
+                s.INSTALL_SCRIPT = Some(script.to_path_buf());
+            })
+        }
+    }
+
+    /// The game as the supervisor and the settings see it.
+    struct Api(Rc<RefCell<Scripted>>);
+
+    impl Game for Api {
+        fn state(&mut self) -> Result<Value, GameUnavailable> {
+            unreachable!()
+        }
+        fn act(&mut self, action: &str, params: &Value) -> Result<Value, GameUnavailable> {
+            let mut w = self.0.borrow_mut();
+            w.note(json!(["act", action, params]));
+            let reply = match w.replies.get_mut(action).and_then(|r| r.as_array_mut()).filter(|r| !r.is_empty()) {
+                Some(replies) => next(replies).unwrap(),
+                None => json!({"status": "ok", "fullscreen": true, "maximized": true, "fps_before": 60}),
+            };
+            if reply == "unavailable" {
+                return Err(GameUnavailable::new("the mod is gone"));
+            }
+            Ok(reply)
+        }
+        fn profile(&mut self) -> Result<Value, GameUnavailable> {
+            unreachable!()
+        }
+        fn card(&mut self, _card_id: &str) -> Result<Option<Value>, GameUnavailable> {
+            unreachable!()
+        }
+        fn ping(&mut self) -> bool {
+            self.0.borrow().api()
+        }
+    }
+
+    #[test]
+    fn the_supervisor_does_as_python_did_in_a_scripted_world() {
+        let cases: Vec<Value> = serde_json::from_str(SEQUENCES).unwrap();
+        assert!(cases.len() >= 26);
+        for case in cases {
+            let sc = &case["sc"];
+            let d = tempfile::tempdir().unwrap();
+            let world = Scripted::new(sc, d.path());
+            let script = d.path().join("install_mod.sh");
+            if sc["script"] != false {
+                std::fs::write(&script, "#!/bin/sh\n").unwrap();
+            }
+            let stamp = d.path().join("build").join("mod_built_for");
+            if let Some(text) = sc["stamp"].as_str() {
+                std::fs::create_dir(stamp.parent().unwrap()).unwrap();
+                std::fs::write(&stamp, text).unwrap();
+            }
+            let _p = Scripted::patch(&world, &script, &stamp);
+            _children(|c| c.clear());
+            let clock = Rc::clone(&world);
+            // (try_borrow: the bot's clock is read while the scripted bot holds the world)
+            let mut bot = Bot::new(Rc::new(RefCell::new(Api(Rc::clone(&world)))), BotArgs { clock: Some(Box::new(move || clock.try_borrow().map(|w| w.t).unwrap_or(f64::NAN))), sleep: Some(Box::new(|_| {})), ..Default::default() });
+            bot._last_where = Some((Some(1), Some(1)));
+            let a = &sc["args"];
+            let d_args = SupervisorArgs::default();
+            let args = SupervisorArgs {
+                host: None,
+                launch_cmd: sc["cmd"].as_str().unwrap_or("/games/sts2/SlayTheSpire2").to_string(),
+                manage_game: a["manage_game"].as_bool().unwrap_or(d_args.manage_game),
+                fast_mode: if a.has("fast_mode") { opt(&a["fast_mode"]) } else { d_args.fast_mode.clone() },
+                light_graphics: a["light_graphics"].as_bool().unwrap_or(d_args.light_graphics),
+                small_window: a["small_window"].as_bool().unwrap_or(d_args.small_window),
+                fullscreen: a["fullscreen"].as_bool().unwrap_or(d_args.fullscreen),
+                time_scale: a["time_scale"].as_f64().unwrap_or(d_args.time_scale),
+                boot_timeout: a["boot_timeout"].as_f64().unwrap_or(d_args.boot_timeout),
+                outage_grace: a["outage_grace"].as_f64().unwrap_or(d_args.outage_grace),
+                heal_mod: a["heal_mod"].as_bool().unwrap_or(d_args.heal_mod),
+            };
+            let mut sup = Supervisor::new(bot, Rc::new(RefCell::new(Api(Rc::clone(&world)))), args);
+            let (ended, logs) = logged(|| sup.run(Some(sc["max_runs"].as_i64().unwrap_or(1))));
+            ended.unwrap();
+            let careful_at = sup.bot.careful_at.as_ref().map(|at| json!([at.0, at.1.unwrap().0, at.1.unwrap().1]));
+            let end = json!({"restarts": sup.restarts, "runs": sup.bot.runs_finished, "abandon_next": sup.bot.abandon_next, "careful_until": sup.bot.careful_until, "careful_at": careful_at,
+                             "time_scale": sup.bot.time_scale, "mod_retry_at": sup._mod_retry_at, "mod_backoff": sup._mod_backoff, "crash_repeats": sup._crash_repeats, "heal_mod": sup.heal_mod,
+                             "t": world.borrow().t, "stamp": std::fs::read_to_string(&stamp).ok(), "children": _children(|c| c.len())});
+            _children(|c| c.clear());
+            let got = norm(json!({"sc": sc, "trace": world.borrow().trace, "logs": logs, "end": end}), d.path());
+            for part in ["trace", "logs", "end"] {
+                assert_eq!(got[part], case[part], "{}: {}", sc["name"], part);
+            }
         }
     }
 }
