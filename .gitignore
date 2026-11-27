@@ -13,3 +13,6 @@ dist/
 
 # Worktrees made by Claude Code agents
 .claude/worktrees/
+
+# Rust
+target/

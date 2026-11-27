@@ -1,0 +1,9 @@
+mod test_arrows;
+mod test_artifact;
+mod test_closing;
+mod test_combat;
+mod test_counted;
+mod test_debuffs;
+mod test_melodies;
+mod test_offers;
+mod test_poison_if_poisoned;

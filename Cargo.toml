@@ -1,0 +1,47 @@
+[package]
+name = "sts2bot"
+version = "0.1.0"
+edition = "2021"
+description = "A bot that plays Slay the Spire 2 (or the first Slay the Spire) around the clock"
+license = "MIT"
+readme = "README.md"
+default-run = "sts2bot"
+
+[lib]
+name = "sts2bot"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sts2bot"
+path = "src/main.rs"
+
+[[bin]]
+name = "sim"
+path = "src/bin/sim.rs"
+
+[[bin]]
+name = "scripts"
+path = "src/bin/scripts.rs"
+
+[[test]]
+name = "all"
+path = "tests/all/main.rs"
+
+[dependencies]
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+regex = "1"
+fancy-regex = "0.14"
+sha1 = "0.10"
+sha2 = "0.10"
+libc = "0.2"
+indexmap = "2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+opt-level = 3
+debug = 1
