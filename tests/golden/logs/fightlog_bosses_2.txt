@@ -1,0 +1,15 @@
+act 1 CEREMONIAL_BEAST             all          1/1
+act 1 CEREMONIAL_BEAST             Necrobinder  1/1
+act 1 LAGAVULIN_MATRIARCH          all          1/2
+act 1 LAGAVULIN_MATRIARCH          Necrobinder  1/1
+act 1 LAGAVULIN_MATRIARCH          Regent       0/1
+act 1 VANTOM                       all          1/1
+act 1 VANTOM                       Defect       1/1
+act 1 WATERFALL_GIANT              all          2/2
+act 1 WATERFALL_GIANT              Ironclad     1/1
+act 1 WATERFALL_GIANT              Silent       1/1
+act 2 THE_INSATIABLE               all          2/2
+act 2 THE_INSATIABLE               Ironclad     1/1
+act 2 THE_INSATIABLE               Necrobinder  1/1
+act 3 AEONGLASS                    all          1/1
+act 3 AEONGLASS                    Necrobinder  1/1

@@ -1,0 +1,68 @@
+free      8 cards,    17 picks, -1.53 floors a pick beyond par: its cards start at -0.08
+energy    7 cards,    12 picks, -1.36 floors a pick beyond par: its cards start at -0.05
+draw      1 cards,     1 picks, +0.00 floors a pick beyond par: its cards start at +0.00
+The Defect: 44 picks, par +0.00 floors a pick
+   BEAM_CELL                   3 picks  +0.15 -> +0.12  free
+   GO_FOR_THE_EYES             4 picks  +0.13 -> +0.10  free
+   SCRAPE                      1 picks  +0.30 -> +0.28  draw
+   BALL_LIGHTNING              7 picks  +0.21 -> +0.21  
+   BOOST_AWAY                  1 picks  +0.28 -> +0.28  
+   CAPACITOR                   1 picks  +0.28 -> +0.28  
+   RAINBOW                     1 picks  +0.28 -> +0.28  
+   SHADOW_SHIELD               2 picks  +0.21 -> +0.21  
+   STORM                       1 picks  +0.28 -> +0.28  
+   SWEEPING_BEAM               2 picks  +0.23 -> +0.23  
+   SUPERCRITICAL               2 picks  +0.14 -> +0.17  energy
+   CHARGE_BATTERY              1 picks  +0.20 -> +0.23  energy
+The Ironclad: 34 picks, par +0.00 floors a pick
+   BATTLE_TRANCE               2 picks  +0.23 -> +0.23  
+   BLUDGEON                    1 picks  +0.29 -> +0.29  
+   BREAKTHROUGH                1 picks  +0.32 -> +0.32  
+   CINDER                      2 picks  +0.24 -> +0.24  
+   CONFLAGRATION               1 picks  +0.28 -> +0.28  
+   CRIMSON_MANTLE              1 picks  +0.28 -> +0.28  
+   TAUNT                       1 picks  +0.29 -> +0.29  
+   THRASH                      2 picks  +0.27 -> +0.27  
+   THUNDERCLAP                 1 picks  +0.29 -> +0.29  
+   TRUE_GRIT                   2 picks  +0.27 -> +0.27  
+   UPPERCUT                    1 picks  +0.28 -> +0.28  
+   FORGOTTEN_RITUAL            1 picks  +0.20 -> +0.23  energy
+The Necrobinder: 65 picks, par +5.31 floors a pick
+   DREDGE                      1 picks  +0.31 -> +0.25  
+   MISERY                      1 picks  +0.24 -> +0.21  free
+   FETCH                       1 picks  +0.24 -> +0.21  free
+   POKE                        2 picks  +0.15 -> +0.13  free
+   CAPTURE_SPIRIT              1 picks  +0.30 -> +0.30  
+   BLIGHT_STRIKE               1 picks  +0.38 -> +0.38  
+   SQUEEZE                     2 picks  +0.23 -> +0.23  
+   UNDEATH                     2 picks  +0.31 -> +0.31  
+   VEILPIERCER                 1 picks  +0.27 -> +0.27  
+   BORROWED_TIME               2 picks  +0.15 -> +0.18  energy
+   DELAY                       2 picks  +0.16 -> +0.19  energy
+   WISP                        1 picks  +0.20 -> +0.26  
+The Regent: 61 picks, par +2.81 floors a pick
+   GAMMA_BLAST                 3 picks  +0.17 -> +0.13  free
+   COLLISION_COURSE            2 picks  +0.18 -> +0.16  free
+   STARDUST                    1 picks  +0.23 -> +0.20  free
+   BOMBARDMENT                 1 picks  +0.31 -> +0.31  
+   BULWARK                     1 picks  +0.31 -> +0.31  
+   CELESTIAL_MIGHT             1 picks  +0.28 -> +0.28  
+   SOLAR_STRIKE                3 picks  +0.17 -> +0.17  
+   TYRANNY                     1 picks  +0.27 -> +0.27  
+   VOID_FORM                   1 picks  +0.28 -> +0.28  
+   PROPHESIZE                  1 picks  +0.29 -> +0.31  
+   BIG_BANG                    2 picks  +0.15 -> +0.18  energy
+   MAKE_IT_SO                  1 picks  +0.23 -> +0.28  
+The Silent: 35 picks, par +0.00 floors a pick
+   REFLEX                      1 picks  +0.30 -> +0.28  
+   ACROBATICS                  2 picks  +0.25 -> +0.23  
+   ANTICIPATE                  1 picks  +0.29 -> +0.29  
+   BACKFLIP                    2 picks  +0.24 -> +0.24  
+   BLADE_DANCE                 1 picks  +0.28 -> +0.28  
+   BOUNCING_FLASK              1 picks  +0.29 -> +0.29  
+   SPEEDSTER                   1 picks  +0.29 -> +0.29  
+   STRANGLE                    1 picks  +0.29 -> +0.29  
+   SUCKER_PUNCH                1 picks  +0.28 -> +0.28  
+   UNTOUCHABLE                 2 picks  +0.24 -> +0.24  
+   UP_MY_SLEEVE                1 picks  +0.28 -> +0.28  
+   ADRENALINE                  2 picks  +0.15 -> +0.18  energy

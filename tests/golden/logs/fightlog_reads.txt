@@ -1,0 +1,42 @@
+Dualcast                 n   12  damage read   0.0 did  14.7   Block read   0.0 got   1.0
+Glacier                  n    5  damage read   0.0 did   1.6   Block read   5.8 got  12.0
+Unleash                  n   20  damage read   6.3 did  11.9   Block read   0.0 got   0.8
+Zap                      n   13  damage read   0.0 did   4.5   Block read   0.0 got   1.2
+Cold Snap                n    9  damage read   6.7 did   8.7   Block read   0.0 got   2.2
+Rampage                  n    6  damage read  18.0 did  21.8   Block read   0.0 got   0.0
+Blight Strike            n    5  damage read   8.0 did   8.2   Block read   0.0 got   3.2
+Null                     n    6  damage read   9.3 did   7.7   Block read   0.0 got   0.8
+Ball Lightning           n    6  damage read   7.2 did   8.5   Block read   0.0 got   1.0
+Grave Warden             n   11  damage read   0.0 did   1.9   Block read   9.2 got   9.5
+Defy                     n   10  damage read   0.0 did   0.6   Block read   8.7 got   9.7
+Putrefy                  n    6  damage read   0.0 did   0.0   Block read   0.0 got   1.3
+Falling Star             n   13  damage read   9.2 did  10.4   Block read   0.0 got   0.0
+Sculpting Strike         n    7  damage read   9.7 did   9.7   Block read   0.0 got   1.1
+Bodyguard                n   35  damage read   0.0 did   0.3   Block read   0.0 got   0.4
+Defend                   n  137  damage read   0.0 did   0.3   Block read   5.0 got   4.8
+Strike                   n  222  damage read   6.5 did   6.4   Block read   0.0 got   0.3
+Soul                     n   19  damage read   0.0 did   0.0   Block read   0.0 got   0.3
+Neutralize               n   21  damage read   3.2 did   3.3   Block read   0.0 got   0.0
+Venerate                 n   10  damage read   0.0 did   0.0   Block read   0.0 got   0.0
+Collision Course         n    7  damage read  13.7 did  13.7   Block read   0.0 got   0.0
+Crush Under              n    6  damage read   9.0 did   9.0   Block read   0.0 got   0.0
+Debris                   n    5  damage read   0.0 did   0.0   Block read   0.0 got   0.0
+Gather Light             n   13  damage read   0.0 did   0.0   Block read   8.2 got   8.2
+Frantic Escape           n    6  damage read   0.0 did   0.0   Block read   0.0 got   0.0
+Glitterstream            n    5  damage read   0.0 did   0.0   Block read  10.6 got  10.6
+Go for the Eyes          n    5  damage read   2.8 did   2.8   Block read   0.0 got   0.0
+Bash                     n    6  damage read   8.8 did   8.8   Block read   0.0 got   0.0
+Taunt                    n    5  damage read   0.0 did   0.0   Block read   6.0 got   6.0
+Accuracy                 n    5  damage read   0.0 did   0.0   Block read   0.0 got   0.0
+Survivor                 n   12  damage read   0.0 did   0.0   Block read   8.1 got   8.1
+Sucker Punch             n    9  damage read   8.7 did   8.7   Block read   0.0 got   0.0
+Slice                    n   11  damage read   6.4 did   6.4   Block read   0.0 got   0.0
+Deadly Poison            n    5  damage read   0.0 did   0.0   Block read   0.0 got   0.0
+Cloak and Dagger         n    5  damage read   0.0 did   0.0   Block read   6.0 got   6.0
+Shiv                     n    5  damage read   7.2 did   7.2   Block read   0.0 got   0.0
+Precise Cut              n    9  damage read  12.6 did  12.6   Block read   0.0 got   0.0
+Charge Battery           n    6  damage read   0.0 did   0.0   Block read   7.0 got   7.0
+Beckon                   n    8  damage read   0.0 did   0.0   Block read   0.0 got   0.0
+Reave                    n   10  damage read   9.4 did   9.4   Block read   0.0 got   0.0
+Debilitate               n    7  damage read   8.7 did   8.7   Block read   0.0 got   0.0
+Sweeping Beam            n    7  damage read   6.0 did   6.0   Block read   0.0 got   0.0
