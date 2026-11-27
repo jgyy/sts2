@@ -557,9 +557,13 @@ pub fn rebuild_mod() -> bool {
     }
     if let Some(fingerprint) = fingerprint.filter(|f| !f.is_empty()) {
         let stamp = MOD_STAMP();
-        let wrote = stamp.parent().map(std::fs::create_dir_all).unwrap_or(Ok(())).and_then(|_| std::fs::write(&stamp, format!("{fingerprint}\n")));
+        let made = match stamp.parent() {
+            Some(parent) => std::fs::create_dir_all(parent).map_err(|e| os_error(&e, &parent.to_string_lossy())),
+            None => Ok(()),
+        };
+        let wrote = made.and_then(|_| std::fs::write(&stamp, format!("{fingerprint}\n")).map_err(|e| os_error(&e, &stamp.to_string_lossy())));
         if let Err(e) = wrote {
-            log_debug!(log, "could not record the mod build: {}", os_error(&e, &stamp.to_string_lossy()));
+            log_debug!(log, "could not record the mod build: {}", e);
         }
     }
     log_info!(log, "bridge mod rebuilt and installed");
@@ -1136,5 +1140,436 @@ impl Supervisor {
             }
         }
         Ok(())
+    }
+}
+
+/// What the golden tests of this module and of games/sts1/host.rs share.
+#[cfg(test)]
+pub(crate) mod testing {
+    use super::*;
+
+    /// What `f` returned, and the lines logged on sts2bot.supervisor meanwhile as `[level, message]`.
+    pub fn logged<T>(f: impl FnOnce() -> T) -> (T, Vec<Value>) {
+        let (out, records) = crate::logging::capture(f);
+        (out, records.iter().filter(|r| r.logger == "sts2bot.supervisor").map(|r| json!([r.level.name(), r.message])).collect())
+    }
+
+    /// The environment the golden cases were made in, and `more` (a null value: not set).
+    pub fn env(more: &[(&str, Value)]) -> IndexMap<String, String> {
+        let mut env: IndexMap<String, String> = IndexMap::new();
+        env.insert("HOME".to_string(), "/nonexistent-home".to_string());
+        env.insert("PATH".to_string(), "/usr/bin:/bin".to_string());
+        for (k, v) in more {
+            if let Some(v) = v.as_str() {
+                env.insert(k.to_string(), v.to_string());
+            }
+        }
+        env
+    }
+
+    /// The command that starts the relay, as this program writes it (the golden files have `{RELAY}` in its place).
+    pub fn relay() -> String {
+        format!("{} relay", crate::games::sts1::host::executable())
+    }
+
+    /// The value with the temporary directory written `<T>` and the relay's command `{RELAY}`, as the golden files have them.
+    pub fn norm(v: Value, tmp: &Path) -> Value {
+        serde_json::from_str(&v.to_string().replace(&*tmp.to_string_lossy(), "<T>").replace(&relay(), "{RELAY}")).unwrap()
+    }
+
+    pub fn words(v: &Value) -> Vec<String> {
+        v.as_array().unwrap().iter().map(|w| w.as_str().unwrap().to_string()).collect()
+    }
+
+    /// A process that never ends.
+    pub struct Running;
+
+    impl Proc for Running {
+        fn pid(&self) -> i64 {
+            1
+        }
+        fn poll(&mut self) -> Option<i64> {
+            None
+        }
+        fn send_signal(&mut self, _sig: i32) {}
+        fn kill(&mut self) {}
+        fn wait(&mut self) -> Option<i64> {
+            None
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! Against Python: tests/golden/supervisor/supervisor.json (each function over made-up inputs, the machine faked on
+    //! both sides) and sequences.json (whole `Supervisor.run`s in a scripted world: every program run or started, every
+    //! sleep, every request to the game and every line logged).
+
+    use super::testing::*;
+    use super::*;
+    use crate::client::GameUnavailable;
+
+    const GOLDEN: &str = include_str!("../tests/golden/supervisor/supervisor.json");
+
+    fn golden(part: &str) -> Vec<Value> {
+        let all: Value = serde_json::from_str(GOLDEN).unwrap();
+        all[part].as_array().unwrap().clone()
+    }
+
+    fn opt(v: &Value) -> Option<String> {
+        v.as_str().map(|s| s.to_string())
+    }
+
+    #[test]
+    fn shlex_as_python_has_it() {
+        let cases = golden("shlex");
+        assert!(cases.len() >= 60);
+        for case in cases {
+            let s = case["s"].as_str().unwrap();
+            assert_eq!(json!(shlex_quote(s)), case["quote"], "{s:?}");
+            let split = match shlex_split(s) {
+                Ok(words) => json!(words),
+                Err(e) => json!({"error": e}),
+            };
+            assert_eq!(split, case["split"], "{s:?}");
+        }
+    }
+
+    #[test]
+    fn the_game_log_is_read_as_python_read_it() {
+        for case in golden("mod_load_error") {
+            let d = tempfile::tempdir().unwrap();
+            let _p = patch(|s| {
+                s.GAME_LOG = Some(d.path().join("godot.log"));
+                s.set_process_running(|_| false);
+            });
+            if let Some(text) = case["text"].as_str() {
+                std::fs::write(d.path().join("godot.log"), text).unwrap();
+            }
+            let got = json!({"text": case["text"], "want": mod_load_error(0.0), "future": mod_load_error(4e9), "missing_steam": Sts2Host.missing_steam(0.0)});
+            assert_eq!(got, case);
+        }
+    }
+
+    #[test]
+    fn the_game_files_give_the_same_fingerprint() {
+        for case in golden("game_fingerprint") {
+            let d = tempfile::tempdir().unwrap();
+            let game = d.path().join("game");
+            let _p = patch(|s| s.environ = Some(env(&[("STS2_GAME_DIR", json!(game.to_string_lossy()))])));
+            if let Some(layout) = case["layout"].as_array() {
+                std::fs::create_dir(&game).unwrap();
+                for row in layout {
+                    let folder = game.join(row[0].as_str().unwrap());
+                    std::fs::create_dir(&folder).unwrap();
+                    std::fs::write(folder.join("sts2.dll"), "x".repeat(row[1].as_u64().unwrap() as usize)).unwrap();
+                    let ns = row[2].as_u64().unwrap();
+                    let when = std::time::UNIX_EPOCH + std::time::Duration::new(ns / 1_000_000_000, (ns % 1_000_000_000) as u32);
+                    File::options().write(true).open(folder.join("sts2.dll")).unwrap().set_modified(when).unwrap();
+                }
+                std::fs::write(game.join("data_sts2_file"), "not a folder").unwrap();
+                std::fs::create_dir(game.join("data_sts2_empty")).unwrap();
+            }
+            assert_eq!(json!(game_fingerprint()), case["want"], "{}", case["layout"]);
+        }
+    }
+
+    #[test]
+    fn a_stale_mod_is_told_as_in_python() {
+        let cases = golden("mod_is_stale");
+        assert!(cases.len() >= 42);
+        for case in cases {
+            let d = tempfile::tempdir().unwrap();
+            if case["script"] == true {
+                std::fs::write(d.path().join("install.sh"), "#!/bin/sh\n").unwrap();
+            }
+            if let Some(stamp) = case["stamp"].as_str() {
+                std::fs::write(d.path().join("stamp"), stamp).unwrap();
+            }
+            let fingerprint = opt(&case["fingerprint"]);
+            let _p = patch(|s| {
+                s.MOD_STAMP = Some(d.path().join("stamp"));
+                s.INSTALL_SCRIPT = Some(d.path().join("install.sh"));
+                s.set_game_fingerprint(move || fingerprint.clone());
+            });
+            assert_eq!(json!(mod_is_stale()), case["want"], "{case}");
+        }
+    }
+
+    #[test]
+    fn the_mod_is_rebuilt_as_in_python() {
+        let cases = golden("rebuild_mod");
+        assert!(cases.len() >= 40);
+        for case in cases {
+            let d = tempfile::tempdir().unwrap();
+            let ran: Rc<RefCell<Vec<Value>>> = Rc::default();
+            if case["script"] == true {
+                std::fs::write(d.path().join("install.sh"), "#!/bin/sh\n").unwrap();
+            }
+            let stamp = d.path().join(if case["stamp_dir"] == true { "build" } else { "install.sh" }).join("stamp");
+            let (fingerprint, run, seen) = (opt(&case["fingerprint"]), case["run"].clone(), Rc::clone(&ran));
+            let _p = patch(|s| {
+                s.MOD_STAMP = Some(stamp.clone());
+                s.INSTALL_SCRIPT = Some(d.path().join("install.sh"));
+                s.set_game_fingerprint(move || fingerprint.clone());
+                s.set_run(move |argv, timeout| {
+                    seen.borrow_mut().push(json!([argv, timeout.map(|t| t as i64)]));
+                    match run["raise"].as_str() {
+                        Some(text) => Err(text.to_string()),
+                        None => Ok(Completed { returncode: run["returncode"].as_i64().unwrap(), stdout: run["stdout"].as_str().unwrap().to_string(), stderr: run["stderr"].as_str().unwrap().to_string() }),
+                    }
+                });
+            });
+            let (want, logs) = logged(rebuild_mod);
+            let got = json!({"run": case["run"], "script": case["script"], "fingerprint": case["fingerprint"], "stamp_dir": case["stamp_dir"], "want": want, "ran": *ran.borrow(), "logs": logs,
+                             "stamp": std::fs::read_to_string(&stamp).ok()});
+            assert_eq!(norm(got, d.path()), case);
+        }
+    }
+
+    #[test]
+    fn a_running_process_is_told_from_a_zombie() {
+        for case in golden("process_running") {
+            let stdout = case["stdout"].as_str().unwrap().to_string();
+            let _p = patch(|s| s.set_run(move |_, _| Ok(Completed { stdout: stdout.clone(), ..Default::default() })));
+            assert_eq!(json!(_process_running("x")), case["want"], "{case}");
+        }
+    }
+
+    /// The bridge mod as a list of answers (the last one from then on; "unavailable": the game is gone).
+    struct Mod {
+        replies: Vec<Value>,
+        calls: Vec<Value>,
+    }
+
+    impl Game for Mod {
+        fn state(&mut self) -> Result<Value, GameUnavailable> {
+            unreachable!()
+        }
+        fn act(&mut self, action: &str, params: &Value) -> Result<Value, GameUnavailable> {
+            self.calls.push(json!([action, params]));
+            let reply = if self.replies.len() > 1 { self.replies.remove(0) } else { self.replies[0].clone() };
+            if reply == "unavailable" {
+                return Err(GameUnavailable::new("gone"));
+            }
+            Ok(reply)
+        }
+        fn profile(&mut self) -> Result<Value, GameUnavailable> {
+            unreachable!()
+        }
+        fn card(&mut self, _card_id: &str) -> Result<Option<Value>, GameUnavailable> {
+            unreachable!()
+        }
+        fn ping(&mut self) -> bool {
+            true
+        }
+    }
+
+    #[test]
+    fn the_session_settings_are_sent_as_in_python() {
+        let cases = golden("settings");
+        assert!(cases.len() >= 29);
+        for case in cases {
+            let mut game = Mod { replies: case["replies"].as_array().unwrap().clone(), calls: Vec::new() };
+            let sleeps: Rc<RefCell<Vec<f64>>> = Rc::default();
+            let slept = Rc::clone(&sleeps);
+            let _p = patch(|s| {
+                s.set_sleep(move |dt| {
+                    slept.borrow_mut().push(dt);
+                    Ok(())
+                })
+            });
+            let kw = &case["kw"];
+            let (done, logs) = logged(|| match case["fn"].as_str().unwrap() {
+                "set_fast_mode" => set_fast_mode(&mut game, kw["mode"].as_str().unwrap()),
+                "set_time_scale" => set_time_scale(&mut game, kw["scale"].as_f64().unwrap()),
+                _ => {
+                    let d = SetLightGraphicsArgs::default();
+                    let args = SetLightGraphicsArgs {
+                        width: kw["width"].as_i64().unwrap_or(d.width),
+                        height: kw["height"].as_i64().unwrap_or(d.height),
+                        maximize: kw["maximize"].as_bool().unwrap_or(d.maximize),
+                        fullscreen: kw["fullscreen"].as_bool().unwrap_or(d.fullscreen),
+                    };
+                    set_light_graphics(&mut game, args)
+                }
+            });
+            let want = match done {
+                Ok(done) => json!(done),
+                Err(BotError::GameUnavailable(e)) => json!({"unavailable": e.to_string()}),
+                Err(e) => panic!("{e}"),
+            };
+            let failed: Vec<bool> = case["replies"].as_array().unwrap().iter().filter(|r| r.is_object()).map(_failed).collect();
+            let got = json!({"fn": case["fn"], "kw": kw, "replies": case["replies"], "want": want, "calls": game.calls, "sleeps": *sleeps.borrow(), "logs": logs, "failed": failed});
+            assert_eq!(got, case);
+        }
+    }
+
+    #[test]
+    fn a_scope_of_its_own_under_systemd_as_in_python() {
+        let cases = golden("detached");
+        assert!(cases.len() >= 27);
+        for case in cases {
+            let which = opt(&case["which"]);
+            let _p = patch(|s| {
+                s.environ = Some(env(&[("INVOCATION_ID", case["invocation"].clone())]));
+                s.set_which(move |_| which.clone());
+            });
+            assert_eq!(json!(_detached(&words(&case["argv"]))), case["want"], "{case}");
+        }
+    }
+
+    #[test]
+    fn the_game_is_found_as_in_python() {
+        use std::os::unix::fs::PermissionsExt;
+        let cases = golden("default_launch");
+        assert!(cases.len() >= 14);
+        for case in cases {
+            let d = tempfile::tempdir().unwrap();
+            if !case["game_dir"].is_null() {
+                let _p = patch(|s| {
+                    let mut e = env(&[("STS2_GAME_DIR", case["folder"].clone())]);
+                    e.insert("HOME".to_string(), "/home/someone".to_string());
+                    s.environ = Some(e);
+                });
+                assert_eq!(json!({"folder": case["folder"], "exe": null, "want": default_launch(), "game_dir": game_dir().to_string_lossy()}), case);
+                continue;
+            }
+            let folder = d.path().join(case["folder"].as_str().unwrap());
+            let _p = patch(|s| s.environ = Some(env(&[("STS2_GAME_DIR", json!(folder.to_string_lossy()))])));
+            std::fs::create_dir(&folder).unwrap();
+            let path = folder.join("SlayTheSpire2");
+            match case["exe"].as_str() {
+                Some("dir") => std::fs::create_dir(&path).unwrap(),
+                Some(kind) => {
+                    std::fs::write(&path, "x").unwrap();
+                    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(if kind == "exe" { 0o755 } else { 0o644 })).unwrap();
+                }
+                None => {}
+            }
+            assert_eq!(norm(json!({"folder": case["folder"], "exe": case["exe"], "want": default_launch()}), d.path()), case);
+        }
+    }
+
+    /// A small world of processes (the Python's `World` in the script that made the golden file).
+    struct World {
+        sc: Value,
+        t: f64,
+        trace: Vec<Value>,
+        steam_at: Option<f64>,
+        game: Value,
+        term_at: Option<f64>,
+    }
+
+    impl World {
+        fn new(sc: &Value) -> Rc<RefCell<World>> {
+            Rc::new(RefCell::new(World { sc: sc.clone(), t: 0.0, trace: Vec::new(), steam_at: if sc["steam"] == true { Some(0.0) } else { None }, game: sc["game"].clone(), term_at: None }))
+        }
+
+        fn alive(&self, name: &str) -> bool {
+            match name {
+                "steam" => self.steam_at.is_some(),
+                "steamwebhelper" => match (self.steam_at, self.sc["webhelper_after"].as_f64()) {
+                    (Some(at), Some(after)) => self.t >= at + after,
+                    _ => false,
+                },
+                "SlayTheSpire2" => {
+                    let died = self.term_at.is_some_and(|at| self.game["ignores_term"] != true && self.t >= at + self.game["dies_after"].as_f64().unwrap_or(0.0));
+                    !self.game.is_null() && self.game["dead"] != true && !died
+                }
+                _ => false,
+            }
+        }
+
+        fn patch(world: &Rc<RefCell<World>>) -> Patched {
+            patch(|s| {
+                let w = Rc::clone(world);
+                s.set_run(move |argv, _| {
+                    let mut w = w.borrow_mut();
+                    w.trace.push(json!(["run", argv]));
+                    let mut stdout = "";
+                    if argv[0] == "ps" {
+                        stdout = if w.alive(&argv[2]) { "Sl\n" } else { "" };
+                    } else if argv[0] == "pkill" {
+                        if argv.iter().any(|a| a == "-9") && !w.game.is_null() {
+                            w.game["dead"] = json!(true);
+                        } else if w.term_at.is_none() {
+                            w.term_at = Some(w.t);
+                        }
+                    }
+                    Ok(Completed { stdout: stdout.to_string(), ..Default::default() })
+                });
+                let w = Rc::clone(world);
+                s.set_popen(move |argv, kw| {
+                    let mut w = w.borrow_mut();
+                    let shown = kw.env.as_ref().map(|e| {
+                        let mut some = serde_json::Map::new();
+                        for k in ["SteamAppId", "SteamGameId", "STS2_DEV_SKIP", "KEPT"] {
+                            some.insert(k.to_string(), json!(e.get(k)));
+                        }
+                        some
+                    });
+                    // (always a session of its own and no input; no output kept unless a file is given)
+                    w.trace.push(json!(["popen", argv, kw.cwd.as_ref().map(|c| c.to_string_lossy()), shown, true, [true, kw.out.is_none(), kw.out.is_none()]]));
+                    let program = if argv[0] == "systemd-run" { &argv[argv.iter().position(|a| a == "--").unwrap() + 1] } else { &argv[0] };
+                    let name = Path::new(program).file_name().unwrap().to_string_lossy().into_owned();
+                    if w.sc["fails"].as_array().is_some_and(|f| f.contains(&json!(name))) {
+                        return Err(std::io::Error::from_raw_os_error(2));
+                    }
+                    if name == "steam" {
+                        w.steam_at = Some(w.t);
+                    }
+                    Ok(Box::new(Running))
+                });
+                let w = Rc::clone(world);
+                s.set_which(move |name| w.borrow().sc["which"][name].as_str().map(|p| p.to_string()));
+                let w = Rc::clone(world);
+                s.set_sleep(move |dt| {
+                    let mut w = w.borrow_mut();
+                    w.trace.push(json!(["sleep", dt]));
+                    w.t += dt;
+                    Ok(())
+                });
+                let w = Rc::clone(world);
+                s.set_monotonic(move || w.borrow().t);
+                let mut e = env(&[("KEPT", json!("yes"))]);
+                for (k, v) in world.borrow().sc["env"].as_object().into_iter().flatten() {
+                    e.insert(k.clone(), v.as_str().unwrap().to_string());
+                }
+                s.environ = Some(e);
+            })
+        }
+    }
+
+    #[test]
+    fn the_game_is_launched_as_in_python() {
+        let cases = golden("launch_game");
+        assert!(cases.len() >= 14);
+        for case in cases {
+            let d = tempfile::tempdir().unwrap();
+            std::fs::create_dir(d.path().join("game dir")).unwrap();
+            let world = World::new(&case["sc"]);
+            let _p = World::patch(&world);
+            _children(|c| c.clear());
+            let cmd = case["sc"]["cmd"].as_str().unwrap().replace("{T}", &d.path().to_string_lossy());
+            let (_, logs) = logged(|| launch_game(&cmd).unwrap());
+            let children = _children(|c| c.len());
+            _children(|c| c.clear());
+            let got = json!({"sc": case["sc"], "trace": world.borrow().trace, "logs": logs, "children": children});
+            assert_eq!(norm(got, d.path()), case);
+        }
+    }
+
+    #[test]
+    fn the_game_is_killed_as_in_python() {
+        let cases = golden("kill_game");
+        assert!(cases.len() >= 9);
+        for case in cases {
+            let world = World::new(&case["sc"]);
+            let _p = World::patch(&world);
+            kill_game(case["sc"]["grace"].as_f64().unwrap_or(10.0)).unwrap();
+            let got = json!({"sc": case["sc"], "trace": world.borrow().trace, "running": world.borrow().alive("SlayTheSpire2")});
+            assert_eq!(got, case);
+        }
     }
 }

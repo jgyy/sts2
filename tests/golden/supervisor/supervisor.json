@@ -1,0 +1,8058 @@
+{
+"shlex": [
+{
+"s": "",
+"quote": "''",
+"split": []
+},
+{
+"s": "a",
+"quote": "a",
+"split": [
+"a"
+]
+},
+{
+"s": "a b",
+"quote": "'a b'",
+"split": [
+"a",
+"b"
+]
+},
+{
+"s": "  a   b  ",
+"quote": "'  a   b  '",
+"split": [
+"a",
+"b"
+]
+},
+{
+"s": "a\tb\nc",
+"quote": "'a\tb\nc'",
+"split": [
+"a",
+"b",
+"c"
+]
+},
+{
+"s": "'a b' c",
+"quote": "''\"'\"'a b'\"'\"' c'",
+"split": [
+"a b",
+"c"
+]
+},
+{
+"s": "\"a b\" c",
+"quote": "'\"a b\" c'",
+"split": [
+"a b",
+"c"
+]
+},
+{
+"s": "a'b c'd",
+"quote": "'a'\"'\"'b c'\"'\"'d'",
+"split": [
+"ab cd"
+]
+},
+{
+"s": "a\"b c\"d",
+"quote": "'a\"b c\"d'",
+"split": [
+"ab cd"
+]
+},
+{
+"s": "''",
+"quote": "''\"'\"''\"'\"''",
+"split": [
+""
+]
+},
+{
+"s": "\"\"",
+"quote": "'\"\"'",
+"split": [
+""
+]
+},
+{
+"s": "a '' b",
+"quote": "'a '\"'\"''\"'\"' b'",
+"split": [
+"a",
+"",
+"b"
+]
+},
+{
+"s": "'' ''",
+"quote": "''\"'\"''\"'\"' '\"'\"''\"'\"''",
+"split": [
+"",
+""
+]
+},
+{
+"s": "a\\ b",
+"quote": "'a\\ b'",
+"split": [
+"a b"
+]
+},
+{
+"s": "a\\\\b",
+"quote": "'a\\\\b'",
+"split": [
+"a\\b"
+]
+},
+{
+"s": "\"a\\\"b\"",
+"quote": "'\"a\\\"b\"'",
+"split": [
+"a\"b"
+]
+},
+{
+"s": "\"a\\b\"",
+"quote": "'\"a\\b\"'",
+"split": [
+"a\\b"
+]
+},
+{
+"s": "'a\\'b'",
+"quote": "''\"'\"'a\\'\"'\"'b'\"'\"''",
+"split": {
+"error": "No closing quotation"
+}
+},
+{
+"s": "\"a\\\\b\"",
+"quote": "'\"a\\\\b\"'",
+"split": [
+"a\\b"
+]
+},
+{
+"s": "a\\'b",
+"quote": "'a\\'\"'\"'b'",
+"split": [
+"a'b"
+]
+},
+{
+"s": "a#b",
+"quote": "'a#b'",
+"split": [
+"a#b"
+]
+},
+{
+"s": "# c",
+"quote": "'# c'",
+"split": [
+"#",
+"c"
+]
+},
+{
+"s": "steam -applaunch 2868840",
+"quote": "'steam -applaunch 2868840'",
+"split": [
+"steam",
+"-applaunch",
+"2868840"
+]
+},
+{
+"s": "/games/sts2/SlayTheSpire2",
+"quote": "/games/sts2/SlayTheSpire2",
+"split": [
+"/games/sts2/SlayTheSpire2"
+]
+},
+{
+"s": "'/home/u/Slay the Spire 2/SlayTheSpire2' --x=1",
+"quote": "''\"'\"'/home/u/Slay the Spire 2/SlayTheSpire2'\"'\"' --x=1'",
+"split": [
+"/home/u/Slay the Spire 2/SlayTheSpire2",
+"--x=1"
+]
+},
+{
+"s": "java -jar mts.jar --skip-launcher --mods basemod,CommunicationMod",
+"quote": "'java -jar mts.jar --skip-launcher --mods basemod,CommunicationMod'",
+"split": [
+"java",
+"-jar",
+"mts.jar",
+"--skip-launcher",
+"--mods",
+"basemod,CommunicationMod"
+]
+},
+{
+"s": "'unclosed",
+"quote": "''\"'\"'unclosed'",
+"split": {
+"error": "No closing quotation"
+}
+},
+{
+"s": "\"unclosed",
+"quote": "'\"unclosed'",
+"split": {
+"error": "No closing quotation"
+}
+},
+{
+"s": "trailing\\",
+"quote": "'trailing\\'",
+"split": {
+"error": "No escaped character"
+}
+},
+{
+"s": "\"a\\",
+"quote": "'\"a\\'",
+"split": {
+"error": "No escaped character"
+}
+},
+{
+"s": "a'b",
+"quote": "'a'\"'\"'b'",
+"split": {
+"error": "No closing quotation"
+}
+},
+{
+"s": "é ü",
+"quote": "'é ü'",
+"split": [
+"é",
+"ü"
+]
+},
+{
+"s": "a=b c:d e@f g%h i+j k,l m/n o-p q.r",
+"quote": "'a=b c:d e@f g%h i+j k,l m/n o-p q.r'",
+"split": [
+"a=b",
+"c:d",
+"e@f",
+"g%h",
+"i+j",
+"k,l",
+"m/n",
+"o-p",
+"q.r"
+]
+},
+{
+"s": "$HOME",
+"quote": "'$HOME'",
+"split": [
+"$HOME"
+]
+},
+{
+"s": "a;b",
+"quote": "'a;b'",
+"split": [
+"a;b"
+]
+},
+{
+"s": "a|b",
+"quote": "'a|b'",
+"split": [
+"a|b"
+]
+},
+{
+"s": "a&b",
+"quote": "'a&b'",
+"split": [
+"a&b"
+]
+},
+{
+"s": "~",
+"quote": "'~'",
+"split": [
+"~"
+]
+},
+{
+"s": "*",
+"quote": "'*'",
+"split": [
+"*"
+]
+},
+{
+"s": "a\r\nb",
+"quote": "'a\r\nb'",
+"split": [
+"a",
+"b"
+]
+},
+{
+"s": "'\"'",
+"quote": "''\"'\"'\"'\"'\"''",
+"split": [
+"\""
+]
+},
+{
+"s": "\"'\"",
+"quote": "'\"'\"'\"'\"'",
+"split": [
+"'"
+]
+},
+{
+"s": "a\\\nb",
+"quote": "'a\\\nb'",
+"split": [
+"a\nb"
+]
+},
+{
+"s": "x'y'\"z\"w",
+"quote": "'x'\"'\"'y'\"'\"'\"z\"w'",
+"split": [
+"xyzw"
+]
+},
+{
+"s": " ",
+"quote": "' '",
+"split": []
+},
+{
+"s": "\t",
+"quote": "'\t'",
+"split": []
+},
+{
+"s": "'",
+"quote": "''\"'\"''",
+"split": {
+"error": "No closing quotation"
+}
+},
+{
+"s": "\"",
+"quote": "'\"'",
+"split": {
+"error": "No closing quotation"
+}
+},
+{
+"s": "\\",
+"quote": "'\\'",
+"split": {
+"error": "No escaped character"
+}
+},
+{
+"s": "a\u000bb",
+"quote": "'a\u000bb'",
+"split": [
+"a\u000bb"
+]
+},
+{
+"s": "a b",
+"quote": "'a b'",
+"split": [
+"a b"
+]
+},
+{
+"s": "--mods basemod,CommunicationMod,sts2botspeed",
+"quote": "'--mods basemod,CommunicationMod,sts2botspeed'",
+"split": [
+"--mods",
+"basemod,CommunicationMod,sts2botspeed"
+]
+},
+{
+"s": "_",
+"quote": "_",
+"split": [
+"_"
+]
+},
+{
+"s": "a_b",
+"quote": "a_b",
+"split": [
+"a_b"
+]
+},
+{
+"s": "(x)",
+"quote": "'(x)'",
+"split": [
+"(x)"
+]
+},
+{
+"s": "a b\\",
+"quote": "'a b\\'",
+"split": {
+"error": "No escaped character"
+}
+},
+{
+"s": "'a''b'",
+"quote": "''\"'\"'a'\"'\"''\"'\"'b'\"'\"''",
+"split": [
+"ab"
+]
+},
+{
+"s": "it's",
+"quote": "'it'\"'\"'s'",
+"split": {
+"error": "No closing quotation"
+}
+},
+{
+"s": "\"it's\"",
+"quote": "'\"it'\"'\"'s\"'",
+"split": [
+"it's"
+]
+},
+{
+"s": "a\\ b\\ c d",
+"quote": "'a\\ b\\ c d'",
+"split": [
+"a b c",
+"d"
+]
+}
+],
+"mod_load_error": [
+{
+"text": null,
+"want": null,
+"future": null,
+"missing_steam": false
+},
+{
+"text": "",
+"want": null,
+"future": null,
+"missing_steam": false
+},
+{
+"text": "[INFO] Loading assembly DLL mods/STS2_MCP.dll\n[INFO]  --- RUNNING MODDED! --- Loaded 1 mods\n",
+"want": null,
+"future": null,
+"missing_steam": false
+},
+{
+"text": "[ERROR] Exception thrown while loading mod STS2_MCP: System.Reflection.ReflectionTypeLoadException: x\n   at System.Reflection.RuntimeModule.GetTypes()\nSystem.TypeLoadException: Could not load type 'A.LobbyPlayer' from assembly 'sts2'.\n",
+"want": "System.TypeLoadException: Could not load type 'A.LobbyPlayer' from assembly 'sts2'.",
+"future": null,
+"missing_steam": false
+},
+{
+"text": "[ERROR] Exception thrown while loading mod STS2_MCP: System.Reflection.ReflectionTypeLoadException: x\n",
+"want": "the game log does not say why",
+"future": null,
+"missing_steam": false
+},
+{
+"text": "[ERROR] Exception thrown while loading mod STS2_MCP: System.Reflection.ReflectionTypeLoadException: x",
+"want": "the game log does not say why",
+"future": null,
+"missing_steam": false
+},
+{
+"text": "[ERROR] Exception thrown while loading mod STS2_MCP: System.Reflection.ReflectionTypeLoadException: x\n\n\n   at A\n  at B\n",
+"want": "the game log does not say why",
+"future": null,
+"missing_steam": false
+},
+{
+"text": "[ERROR] Exception thrown while loading mod STS2_MCP: System.Reflection.ReflectionTypeLoadException: x\n   at line0\n   at line1\n   at line2\n   at line3\n   at line4\n   at line5\n   at line6\n   at line7\n   at line8\n   at line9\n   at line10\nthe twelfth\n",
+"want": "the game log does not say why",
+"future": null,
+"missing_steam": false
+},
+{
+"text": "[ERROR] Exception thrown while loading mod STS2_MCP: System.Reflection.ReflectionTypeLoadException: x\n   at line0\n   at line1\n   at line2\n   at line3\n   at line4\n   at line5\n   at line6\n   at line7\n   at line8\n   at line9\nthe eleventh\n",
+"want": "the eleventh",
+"future": null,
+"missing_steam": false
+},
+{
+"text": "before\n[ERROR] Exception thrown while loading mod STS2_MCP: System.Reflection.ReflectionTypeLoadException: x\n  why \t\nmore\n",
+"want": "why",
+"future": null,
+"missing_steam": false
+},
+{
+"text": "[ERROR] Exception thrown while loading mod OtherMod: System.Reflection.ReflectionTypeLoadException: x\nx\n",
+"want": null,
+"future": null,
+"missing_steam": false
+},
+{
+"text": "[ERROR] Exception thrown while loading mod STS2_MCP: System.Reflection.ReflectionTypeLoadException: x\nat the start\nreal reason\n",
+"want": "real reason",
+"future": null,
+"missing_steam": false
+},
+{
+"text": "[ERROR] Exception thrown while loading mod STS2_MCP: System.Reflection.ReflectionTypeLoadException: x\n\r\n   at X\r\nWindows reason\r\n",
+"want": "Windows reason",
+"future": null,
+"missing_steam": false
+},
+{
+"text": "[ERROR] Exception thrown while loading mod STS2_MCP: System.Reflection.ReflectionTypeLoadException: x\n\f\u001c   reason after odd breaks\n",
+"want": "reason after odd breaks",
+"future": null,
+"missing_steam": false
+},
+{
+"text": "Exception thrown while loading mod STS2_MCP\nat\nat \n at x\nwhy\n",
+"want": "at",
+"future": null,
+"missing_steam": false
+},
+{
+"text": "[ERROR] Exception thrown while loading mod STS2_MCP: System.Reflection.ReflectionTypeLoadException: x\né: ünïcödé\n",
+"want": "é: ünïcödé",
+"future": null,
+"missing_steam": false
+},
+{
+"text": "Steam is probably not running\n",
+"want": null,
+"future": null,
+"missing_steam": true
+},
+{
+"text": "x\n[ERROR] Exception thrown while loading mod STS2_MCP: System.Reflection.ReflectionTypeLoadException: x\ny\n[ERROR] Exception thrown while loading mod STS2_MCP: System.Reflection.ReflectionTypeLoadException: x\nz\n",
+"want": "y",
+"future": null,
+"missing_steam": false
+}
+],
+"game_fingerprint": [
+{
+"layout": null,
+"want": null
+},
+{
+"layout": [],
+"want": null
+},
+{
+"layout": [
+[
+"data_sts2_linuxbsd_x86_64",
+5,
+1700000000123456789
+]
+],
+"want": "data_sts2_linuxbsd_x86_64:5:1700000000123456789"
+},
+{
+"layout": [
+[
+"data_sts2_b",
+0,
+1
+],
+[
+"data_sts2_a",
+123456,
+1764243000000000000
+],
+[
+"data_other",
+3,
+5
+],
+[
+"data_sts2_",
+7,
+999999999
+]
+],
+"want": "data_sts2_:7:999999999;data_sts2_a:123456:1764243000000000000;data_sts2_b:0:1"
+},
+{
+"layout": [
+[
+"data_sts2_Z",
+1,
+2000000000000000001
+],
+[
+"data_sts2_a",
+2,
+2000000000000000002
+],
+[
+"data_sts2_é",
+3,
+3
+]
+],
+"want": "data_sts2_Z:1:2000000000000000001;data_sts2_a:2:2000000000000000002;data_sts2_é:3:3"
+},
+{
+"layout": [
+[
+"other",
+1,
+1
+]
+],
+"want": null
+}
+],
+"mod_is_stale": [
+{
+"fingerprint": null,
+"script": true,
+"stamp": null,
+"want": false
+},
+{
+"fingerprint": null,
+"script": true,
+"stamp": "v1\n",
+"want": false
+},
+{
+"fingerprint": null,
+"script": true,
+"stamp": "v1",
+"want": false
+},
+{
+"fingerprint": null,
+"script": true,
+"stamp": "  v1 \n\n",
+"want": false
+},
+{
+"fingerprint": null,
+"script": true,
+"stamp": "v2\n",
+"want": false
+},
+{
+"fingerprint": null,
+"script": true,
+"stamp": "",
+"want": false
+},
+{
+"fingerprint": null,
+"script": true,
+"stamp": "a:1:2;b:3:4\n",
+"want": false
+},
+{
+"fingerprint": null,
+"script": false,
+"stamp": null,
+"want": false
+},
+{
+"fingerprint": null,
+"script": false,
+"stamp": "v1\n",
+"want": false
+},
+{
+"fingerprint": null,
+"script": false,
+"stamp": "v1",
+"want": false
+},
+{
+"fingerprint": null,
+"script": false,
+"stamp": "  v1 \n\n",
+"want": false
+},
+{
+"fingerprint": null,
+"script": false,
+"stamp": "v2\n",
+"want": false
+},
+{
+"fingerprint": null,
+"script": false,
+"stamp": "",
+"want": false
+},
+{
+"fingerprint": null,
+"script": false,
+"stamp": "a:1:2;b:3:4\n",
+"want": false
+},
+{
+"fingerprint": "v1",
+"script": true,
+"stamp": null,
+"want": true
+},
+{
+"fingerprint": "v1",
+"script": true,
+"stamp": "v1\n",
+"want": false
+},
+{
+"fingerprint": "v1",
+"script": true,
+"stamp": "v1",
+"want": false
+},
+{
+"fingerprint": "v1",
+"script": true,
+"stamp": "  v1 \n\n",
+"want": false
+},
+{
+"fingerprint": "v1",
+"script": true,
+"stamp": "v2\n",
+"want": true
+},
+{
+"fingerprint": "v1",
+"script": true,
+"stamp": "",
+"want": true
+},
+{
+"fingerprint": "v1",
+"script": true,
+"stamp": "a:1:2;b:3:4\n",
+"want": true
+},
+{
+"fingerprint": "v1",
+"script": false,
+"stamp": null,
+"want": false
+},
+{
+"fingerprint": "v1",
+"script": false,
+"stamp": "v1\n",
+"want": false
+},
+{
+"fingerprint": "v1",
+"script": false,
+"stamp": "v1",
+"want": false
+},
+{
+"fingerprint": "v1",
+"script": false,
+"stamp": "  v1 \n\n",
+"want": false
+},
+{
+"fingerprint": "v1",
+"script": false,
+"stamp": "v2\n",
+"want": false
+},
+{
+"fingerprint": "v1",
+"script": false,
+"stamp": "",
+"want": false
+},
+{
+"fingerprint": "v1",
+"script": false,
+"stamp": "a:1:2;b:3:4\n",
+"want": false
+},
+{
+"fingerprint": "a:1:2;b:3:4",
+"script": true,
+"stamp": null,
+"want": true
+},
+{
+"fingerprint": "a:1:2;b:3:4",
+"script": true,
+"stamp": "v1\n",
+"want": true
+},
+{
+"fingerprint": "a:1:2;b:3:4",
+"script": true,
+"stamp": "v1",
+"want": true
+},
+{
+"fingerprint": "a:1:2;b:3:4",
+"script": true,
+"stamp": "  v1 \n\n",
+"want": true
+},
+{
+"fingerprint": "a:1:2;b:3:4",
+"script": true,
+"stamp": "v2\n",
+"want": true
+},
+{
+"fingerprint": "a:1:2;b:3:4",
+"script": true,
+"stamp": "",
+"want": true
+},
+{
+"fingerprint": "a:1:2;b:3:4",
+"script": true,
+"stamp": "a:1:2;b:3:4\n",
+"want": false
+},
+{
+"fingerprint": "a:1:2;b:3:4",
+"script": false,
+"stamp": null,
+"want": false
+},
+{
+"fingerprint": "a:1:2;b:3:4",
+"script": false,
+"stamp": "v1\n",
+"want": false
+},
+{
+"fingerprint": "a:1:2;b:3:4",
+"script": false,
+"stamp": "v1",
+"want": false
+},
+{
+"fingerprint": "a:1:2;b:3:4",
+"script": false,
+"stamp": "  v1 \n\n",
+"want": false
+},
+{
+"fingerprint": "a:1:2;b:3:4",
+"script": false,
+"stamp": "v2\n",
+"want": false
+},
+{
+"fingerprint": "a:1:2;b:3:4",
+"script": false,
+"stamp": "",
+"want": false
+},
+{
+"fingerprint": "a:1:2;b:3:4",
+"script": false,
+"stamp": "a:1:2;b:3:4\n",
+"want": false
+}
+],
+"rebuild_mod": [
+{
+"run": {
+"returncode": 0,
+"stdout": "built\n",
+"stderr": ""
+},
+"script": true,
+"fingerprint": "v9",
+"stamp_dir": true,
+"want": true,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"INFO",
+"bridge mod rebuilt and installed"
+]
+],
+"stamp": "v9\n"
+},
+{
+"run": {
+"returncode": 0,
+"stdout": "built\n",
+"stderr": ""
+},
+"script": true,
+"fingerprint": null,
+"stamp_dir": true,
+"want": true,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"INFO",
+"bridge mod rebuilt and installed"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 0,
+"stdout": "built\n",
+"stderr": ""
+},
+"script": false,
+"fingerprint": "v9",
+"stamp_dir": true,
+"want": false,
+"ran": [],
+"logs": [
+[
+"ERROR",
+"cannot rebuild the bridge mod: <T>/install.sh is missing"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 0,
+"stdout": "built\n",
+"stderr": ""
+},
+"script": true,
+"fingerprint": "v9",
+"stamp_dir": false,
+"want": true,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"DEBUG",
+"could not record the mod build: [Errno 17] File exists: '<T>/install.sh'"
+],
+[
+"INFO",
+"bridge mod rebuilt and installed"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 0,
+"stdout": "built\n",
+"stderr": ""
+},
+"script": true,
+"fingerprint": "",
+"stamp_dir": true,
+"want": true,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"INFO",
+"bridge mod rebuilt and installed"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"raise": "[Errno 2] No such file or directory: 'bash'"
+},
+"script": true,
+"fingerprint": "v9",
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"rebuilding the bridge mod failed: [Errno 2] No such file or directory: 'bash'"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"raise": "[Errno 2] No such file or directory: 'bash'"
+},
+"script": true,
+"fingerprint": null,
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"rebuilding the bridge mod failed: [Errno 2] No such file or directory: 'bash'"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"raise": "[Errno 2] No such file or directory: 'bash'"
+},
+"script": false,
+"fingerprint": "v9",
+"stamp_dir": true,
+"want": false,
+"ran": [],
+"logs": [
+[
+"ERROR",
+"cannot rebuild the bridge mod: <T>/install.sh is missing"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"raise": "[Errno 2] No such file or directory: 'bash'"
+},
+"script": true,
+"fingerprint": "v9",
+"stamp_dir": false,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"rebuilding the bridge mod failed: [Errno 2] No such file or directory: 'bash'"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"raise": "[Errno 2] No such file or directory: 'bash'"
+},
+"script": true,
+"fingerprint": "",
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"rebuilding the bridge mod failed: [Errno 2] No such file or directory: 'bash'"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"raise": "Command '['bash', 'x']' timed out after 900 seconds"
+},
+"script": true,
+"fingerprint": "v9",
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"rebuilding the bridge mod failed: Command '['bash', 'x']' timed out after 900 seconds"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"raise": "Command '['bash', 'x']' timed out after 900 seconds"
+},
+"script": true,
+"fingerprint": null,
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"rebuilding the bridge mod failed: Command '['bash', 'x']' timed out after 900 seconds"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"raise": "Command '['bash', 'x']' timed out after 900 seconds"
+},
+"script": false,
+"fingerprint": "v9",
+"stamp_dir": true,
+"want": false,
+"ran": [],
+"logs": [
+[
+"ERROR",
+"cannot rebuild the bridge mod: <T>/install.sh is missing"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"raise": "Command '['bash', 'x']' timed out after 900 seconds"
+},
+"script": true,
+"fingerprint": "v9",
+"stamp_dir": false,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"rebuilding the bridge mod failed: Command '['bash', 'x']' timed out after 900 seconds"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"raise": "Command '['bash', 'x']' timed out after 900 seconds"
+},
+"script": true,
+"fingerprint": "",
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"rebuilding the bridge mod failed: Command '['bash', 'x']' timed out after 900 seconds"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 1,
+"stdout": "ok line\n/src/A.cs(3,4): error CS0117: 'X' has no 'Y' [/src/Mod.csproj]\n  /src/B.cs(1,1): Error CS1: bad   [/x y/z.csproj]  \nwarning: fine\n/src/A.cs(3,4): error CS0117: 'X' has no 'Y' [/src/Mod.csproj]\n",
+"stderr": "Build FAILED with 2 error(s) [not a path]\n"
+},
+"script": true,
+"fingerprint": "v9",
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  /src/A.cs(3,4): error CS0117: 'X' has no 'Y'\n  /src/B.cs(1,1): Error CS1: bad\n  Build FAILED with 2 error(s) [not a path]"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 1,
+"stdout": "ok line\n/src/A.cs(3,4): error CS0117: 'X' has no 'Y' [/src/Mod.csproj]\n  /src/B.cs(1,1): Error CS1: bad   [/x y/z.csproj]  \nwarning: fine\n/src/A.cs(3,4): error CS0117: 'X' has no 'Y' [/src/Mod.csproj]\n",
+"stderr": "Build FAILED with 2 error(s) [not a path]\n"
+},
+"script": true,
+"fingerprint": null,
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  /src/A.cs(3,4): error CS0117: 'X' has no 'Y'\n  /src/B.cs(1,1): Error CS1: bad\n  Build FAILED with 2 error(s) [not a path]"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 1,
+"stdout": "ok line\n/src/A.cs(3,4): error CS0117: 'X' has no 'Y' [/src/Mod.csproj]\n  /src/B.cs(1,1): Error CS1: bad   [/x y/z.csproj]  \nwarning: fine\n/src/A.cs(3,4): error CS0117: 'X' has no 'Y' [/src/Mod.csproj]\n",
+"stderr": "Build FAILED with 2 error(s) [not a path]\n"
+},
+"script": false,
+"fingerprint": "v9",
+"stamp_dir": true,
+"want": false,
+"ran": [],
+"logs": [
+[
+"ERROR",
+"cannot rebuild the bridge mod: <T>/install.sh is missing"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 1,
+"stdout": "ok line\n/src/A.cs(3,4): error CS0117: 'X' has no 'Y' [/src/Mod.csproj]\n  /src/B.cs(1,1): Error CS1: bad   [/x y/z.csproj]  \nwarning: fine\n/src/A.cs(3,4): error CS0117: 'X' has no 'Y' [/src/Mod.csproj]\n",
+"stderr": "Build FAILED with 2 error(s) [not a path]\n"
+},
+"script": true,
+"fingerprint": "v9",
+"stamp_dir": false,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  /src/A.cs(3,4): error CS0117: 'X' has no 'Y'\n  /src/B.cs(1,1): Error CS1: bad\n  Build FAILED with 2 error(s) [not a path]"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 1,
+"stdout": "ok line\n/src/A.cs(3,4): error CS0117: 'X' has no 'Y' [/src/Mod.csproj]\n  /src/B.cs(1,1): Error CS1: bad   [/x y/z.csproj]  \nwarning: fine\n/src/A.cs(3,4): error CS0117: 'X' has no 'Y' [/src/Mod.csproj]\n",
+"stderr": "Build FAILED with 2 error(s) [not a path]\n"
+},
+"script": true,
+"fingerprint": "",
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  /src/A.cs(3,4): error CS0117: 'X' has no 'Y'\n  /src/B.cs(1,1): Error CS1: bad\n  Build FAILED with 2 error(s) [not a path]"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 2,
+"stdout": "line 0\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\n",
+"stderr": "the end\n\nlast\n"
+},
+"script": true,
+"fingerprint": "v9",
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  line 29\n  line 30\n  line 31\n  line 32\n  line 33\n  line 34\n  line 35\n  line 36\n  line 37\n  line 38\n  line 39\n  \n  the end\n  \n  last"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 2,
+"stdout": "line 0\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\n",
+"stderr": "the end\n\nlast\n"
+},
+"script": true,
+"fingerprint": null,
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  line 29\n  line 30\n  line 31\n  line 32\n  line 33\n  line 34\n  line 35\n  line 36\n  line 37\n  line 38\n  line 39\n  \n  the end\n  \n  last"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 2,
+"stdout": "line 0\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\n",
+"stderr": "the end\n\nlast\n"
+},
+"script": false,
+"fingerprint": "v9",
+"stamp_dir": true,
+"want": false,
+"ran": [],
+"logs": [
+[
+"ERROR",
+"cannot rebuild the bridge mod: <T>/install.sh is missing"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 2,
+"stdout": "line 0\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\n",
+"stderr": "the end\n\nlast\n"
+},
+"script": true,
+"fingerprint": "v9",
+"stamp_dir": false,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  line 29\n  line 30\n  line 31\n  line 32\n  line 33\n  line 34\n  line 35\n  line 36\n  line 37\n  line 38\n  line 39\n  \n  the end\n  \n  last"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 2,
+"stdout": "line 0\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\n",
+"stderr": "the end\n\nlast\n"
+},
+"script": true,
+"fingerprint": "",
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  line 29\n  line 30\n  line 31\n  line 32\n  line 33\n  line 34\n  line 35\n  line 36\n  line 37\n  line 38\n  line 39\n  \n  the end\n  \n  last"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 1,
+"stdout": "",
+"stderr": ""
+},
+"script": true,
+"fingerprint": "v9",
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  "
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 1,
+"stdout": "",
+"stderr": ""
+},
+"script": true,
+"fingerprint": null,
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  "
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 1,
+"stdout": "",
+"stderr": ""
+},
+"script": false,
+"fingerprint": "v9",
+"stamp_dir": true,
+"want": false,
+"ran": [],
+"logs": [
+[
+"ERROR",
+"cannot rebuild the bridge mod: <T>/install.sh is missing"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 1,
+"stdout": "",
+"stderr": ""
+},
+"script": true,
+"fingerprint": "v9",
+"stamp_dir": false,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  "
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 1,
+"stdout": "",
+"stderr": ""
+},
+"script": true,
+"fingerprint": "",
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  "
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": -9,
+"stdout": "error 20 [/p20]\nerror 19 [/p19]\nerror 18 [/p18]\nerror 17 [/p17]\nerror 16 [/p16]\nerror 15 [/p15]\nerror 14 [/p14]\nerror 13 [/p13]\nerror 12 [/p12]\nerror 11 [/p11]\nerror 10 [/p10]\nerror 09 [/p9]\nerror 08 [/p8]\nerror 07 [/p7]\nerror 06 [/p6]\nerror 05 [/p5]\nerror 04 [/p4]\nerror 03 [/p3]\nerror 02 [/p2]\nerror 01 [/p1]\n",
+"stderr": "ERROR zz\n"
+},
+"script": true,
+"fingerprint": "v9",
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  ERROR zz\n  error 01\n  error 02\n  error 03\n  error 04\n  error 05\n  error 06\n  error 07\n  error 08\n  error 09\n  error 10\n  error 11\n  error 12\n  error 13\n  error 14"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": -9,
+"stdout": "error 20 [/p20]\nerror 19 [/p19]\nerror 18 [/p18]\nerror 17 [/p17]\nerror 16 [/p16]\nerror 15 [/p15]\nerror 14 [/p14]\nerror 13 [/p13]\nerror 12 [/p12]\nerror 11 [/p11]\nerror 10 [/p10]\nerror 09 [/p9]\nerror 08 [/p8]\nerror 07 [/p7]\nerror 06 [/p6]\nerror 05 [/p5]\nerror 04 [/p4]\nerror 03 [/p3]\nerror 02 [/p2]\nerror 01 [/p1]\n",
+"stderr": "ERROR zz\n"
+},
+"script": true,
+"fingerprint": null,
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  ERROR zz\n  error 01\n  error 02\n  error 03\n  error 04\n  error 05\n  error 06\n  error 07\n  error 08\n  error 09\n  error 10\n  error 11\n  error 12\n  error 13\n  error 14"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": -9,
+"stdout": "error 20 [/p20]\nerror 19 [/p19]\nerror 18 [/p18]\nerror 17 [/p17]\nerror 16 [/p16]\nerror 15 [/p15]\nerror 14 [/p14]\nerror 13 [/p13]\nerror 12 [/p12]\nerror 11 [/p11]\nerror 10 [/p10]\nerror 09 [/p9]\nerror 08 [/p8]\nerror 07 [/p7]\nerror 06 [/p6]\nerror 05 [/p5]\nerror 04 [/p4]\nerror 03 [/p3]\nerror 02 [/p2]\nerror 01 [/p1]\n",
+"stderr": "ERROR zz\n"
+},
+"script": false,
+"fingerprint": "v9",
+"stamp_dir": true,
+"want": false,
+"ran": [],
+"logs": [
+[
+"ERROR",
+"cannot rebuild the bridge mod: <T>/install.sh is missing"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": -9,
+"stdout": "error 20 [/p20]\nerror 19 [/p19]\nerror 18 [/p18]\nerror 17 [/p17]\nerror 16 [/p16]\nerror 15 [/p15]\nerror 14 [/p14]\nerror 13 [/p13]\nerror 12 [/p12]\nerror 11 [/p11]\nerror 10 [/p10]\nerror 09 [/p9]\nerror 08 [/p8]\nerror 07 [/p7]\nerror 06 [/p6]\nerror 05 [/p5]\nerror 04 [/p4]\nerror 03 [/p3]\nerror 02 [/p2]\nerror 01 [/p1]\n",
+"stderr": "ERROR zz\n"
+},
+"script": true,
+"fingerprint": "v9",
+"stamp_dir": false,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  ERROR zz\n  error 01\n  error 02\n  error 03\n  error 04\n  error 05\n  error 06\n  error 07\n  error 08\n  error 09\n  error 10\n  error 11\n  error 12\n  error 13\n  error 14"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": -9,
+"stdout": "error 20 [/p20]\nerror 19 [/p19]\nerror 18 [/p18]\nerror 17 [/p17]\nerror 16 [/p16]\nerror 15 [/p15]\nerror 14 [/p14]\nerror 13 [/p13]\nerror 12 [/p12]\nerror 11 [/p11]\nerror 10 [/p10]\nerror 09 [/p9]\nerror 08 [/p8]\nerror 07 [/p7]\nerror 06 [/p6]\nerror 05 [/p5]\nerror 04 [/p4]\nerror 03 [/p3]\nerror 02 [/p2]\nerror 01 [/p1]\n",
+"stderr": "ERROR zz\n"
+},
+"script": true,
+"fingerprint": "",
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  ERROR zz\n  error 01\n  error 02\n  error 03\n  error 04\n  error 05\n  error 06\n  error 07\n  error 08\n  error 09\n  error 10\n  error 11\n  error 12\n  error 13\n  error 14"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 1,
+"stdout": "one\r\ntwo error\fthree Error\n",
+"stderr": "x"
+},
+"script": true,
+"fingerprint": "v9",
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  three Error\n  two error"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 1,
+"stdout": "one\r\ntwo error\fthree Error\n",
+"stderr": "x"
+},
+"script": true,
+"fingerprint": null,
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  three Error\n  two error"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 1,
+"stdout": "one\r\ntwo error\fthree Error\n",
+"stderr": "x"
+},
+"script": false,
+"fingerprint": "v9",
+"stamp_dir": true,
+"want": false,
+"ran": [],
+"logs": [
+[
+"ERROR",
+"cannot rebuild the bridge mod: <T>/install.sh is missing"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 1,
+"stdout": "one\r\ntwo error\fthree Error\n",
+"stderr": "x"
+},
+"script": true,
+"fingerprint": "v9",
+"stamp_dir": false,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  three Error\n  two error"
+]
+],
+"stamp": null
+},
+{
+"run": {
+"returncode": 1,
+"stdout": "one\r\ntwo error\fthree Error\n",
+"stderr": "x"
+},
+"script": true,
+"fingerprint": "",
+"stamp_dir": true,
+"want": false,
+"ran": [
+[
+[
+"bash",
+"<T>/install.sh"
+],
+900
+]
+],
+"logs": [
+[
+"WARNING",
+"rebuilding the bridge mod against the current game files"
+],
+[
+"ERROR",
+"the bridge mod does not build against this game version; scripts/mod_patches needs a fix for the game's changed code. Compiler said:\n  three Error\n  two error"
+]
+],
+"stamp": null
+}
+],
+"process_running": [
+{
+"stdout": "",
+"want": false
+},
+{
+"stdout": "\n",
+"want": false
+},
+{
+"stdout": "Z\n",
+"want": false
+},
+{
+"stdout": "Sl\n",
+"want": true
+},
+{
+"stdout": "Z\nZ\n",
+"want": false
+},
+{
+"stdout": "Z\nR\n",
+"want": true
+},
+{
+"stdout": "  Z\n",
+"want": false
+},
+{
+"stdout": " S \n",
+"want": true
+},
+{
+"stdout": "\n\nT\n",
+"want": true
+},
+{
+"stdout": "Zs\n",
+"want": false
+},
+{
+"stdout": "z\n",
+"want": true
+},
+{
+"stdout": "S",
+"want": true
+},
+{
+"stdout": "Z+\nZ<\n",
+"want": false
+}
+],
+"settings": [
+{
+"fn": "set_fast_mode",
+"kw": {
+"mode": "instant"
+},
+"replies": [
+{
+"status": "ok"
+}
+],
+"want": true,
+"calls": [
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"INFO",
+"fast mode: instant"
+]
+],
+"failed": [
+false
+]
+},
+{
+"fn": "set_fast_mode",
+"kw": {
+"mode": "fast"
+},
+"replies": [
+{
+"status": "error",
+"error": "Unknown action"
+}
+],
+"want": false,
+"calls": [
+[
+"set_fast_mode",
+{
+"mode": "fast"
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"WARNING",
+"could not set fast mode 'fast' (Unknown action); re-run scripts/install_mod.sh to update the mod"
+]
+],
+"failed": [
+true
+]
+},
+{
+"fn": "set_fast_mode",
+"kw": {
+"mode": "it's"
+},
+"replies": [
+{
+"error": null
+}
+],
+"want": false,
+"calls": [
+[
+"set_fast_mode",
+{
+"mode": "it's"
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"WARNING",
+"could not set fast mode \"it's\" (None); re-run scripts/install_mod.sh to update the mod"
+]
+],
+"failed": [
+true
+]
+},
+{
+"fn": "set_fast_mode",
+"kw": {
+"mode": "normal"
+},
+"replies": [
+{
+"error": "preferences not loaded yet"
+},
+{
+"error": "preferences not loaded yet"
+},
+{
+"status": "ok"
+}
+],
+"want": true,
+"calls": [
+[
+"set_fast_mode",
+{
+"mode": "normal"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "normal"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "normal"
+}
+]
+],
+"sleeps": [
+1.0,
+1.0
+],
+"logs": [
+[
+"INFO",
+"fast mode: normal"
+]
+],
+"failed": [
+true,
+true,
+false
+]
+},
+{
+"fn": "set_fast_mode",
+"kw": {
+"mode": "instant"
+},
+"replies": [
+{
+"error": "preferences not loaded yet"
+}
+],
+"want": false,
+"calls": [
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+]
+],
+"sleeps": [
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0
+],
+"logs": [
+[
+"WARNING",
+"could not set fast mode 'instant' (preferences not loaded yet); re-run scripts/install_mod.sh to update the mod"
+]
+],
+"failed": [
+true
+]
+},
+{
+"fn": "set_fast_mode",
+"kw": {
+"mode": "instant"
+},
+"replies": [
+{
+"error": "preferences not loaded yet"
+},
+"unavailable"
+],
+"want": {
+"unavailable": "gone"
+},
+"calls": [
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+]
+],
+"sleeps": [
+1.0
+],
+"logs": [],
+"failed": [
+true
+]
+},
+{
+"fn": "set_fast_mode",
+"kw": {
+"mode": "instant"
+},
+"replies": [
+"unavailable"
+],
+"want": {
+"unavailable": "gone"
+},
+"calls": [
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+]
+],
+"sleeps": [],
+"logs": [],
+"failed": []
+},
+{
+"fn": "set_fast_mode",
+"kw": {
+"mode": "instant"
+},
+"replies": [
+{
+"status": "error"
+}
+],
+"want": false,
+"calls": [
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"WARNING",
+"could not set fast mode 'instant' (None); re-run scripts/install_mod.sh to update the mod"
+]
+],
+"failed": [
+true
+]
+},
+{
+"fn": "set_fast_mode",
+"kw": {
+"mode": "instant"
+},
+"replies": [
+{
+"error": 12
+}
+],
+"want": false,
+"calls": [
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"WARNING",
+"could not set fast mode 'instant' (12); re-run scripts/install_mod.sh to update the mod"
+]
+],
+"failed": [
+true
+]
+},
+{
+"fn": "set_fast_mode",
+"kw": {
+"mode": "instant"
+},
+"replies": [
+{
+"error": [
+"not loaded"
+]
+}
+],
+"want": false,
+"calls": [
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+],
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+]
+],
+"sleeps": [
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0,
+1.0
+],
+"logs": [
+[
+"WARNING",
+"could not set fast mode 'instant' (['not loaded']); re-run scripts/install_mod.sh to update the mod"
+]
+],
+"failed": [
+true
+]
+},
+{
+"fn": "set_fast_mode",
+"kw": {
+"mode": "instant"
+},
+"replies": [
+{
+"error": ""
+}
+],
+"want": false,
+"calls": [
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"WARNING",
+"could not set fast mode 'instant' (); re-run scripts/install_mod.sh to update the mod"
+]
+],
+"failed": [
+true
+]
+},
+{
+"fn": "set_fast_mode",
+"kw": {
+"mode": "instant"
+},
+"replies": [
+{}
+],
+"want": true,
+"calls": [
+[
+"set_fast_mode",
+{
+"mode": "instant"
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"INFO",
+"fast mode: instant"
+]
+],
+"failed": [
+false
+]
+},
+{
+"fn": "set_light_graphics",
+"kw": {},
+"replies": [
+{
+"status": "ok",
+"maximized": true,
+"fps_before": 59.6
+}
+],
+"want": true,
+"calls": [
+[
+"set_light_graphics",
+{
+"width": 960,
+"height": 540,
+"maximize": true,
+"fullscreen": false
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"INFO",
+"light graphics: maximised window (was 60 fps)"
+]
+],
+"failed": [
+false
+]
+},
+{
+"fn": "set_light_graphics",
+"kw": {},
+"replies": [
+{
+"status": "ok"
+}
+],
+"want": true,
+"calls": [
+[
+"set_light_graphics",
+{
+"width": 960,
+"height": 540,
+"maximize": true,
+"fullscreen": false
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"WARNING",
+"the installed mod cannot maximise the window; re-run scripts/install_mod.sh"
+],
+[
+"INFO",
+"light graphics: maximised window (was 0 fps)"
+]
+],
+"failed": [
+false
+]
+},
+{
+"fn": "set_light_graphics",
+"kw": {
+"fullscreen": true
+},
+"replies": [
+{
+"fullscreen": true,
+"fps_before": 144
+}
+],
+"want": true,
+"calls": [
+[
+"set_light_graphics",
+{
+"width": 960,
+"height": 540,
+"maximize": true,
+"fullscreen": true
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"WARNING",
+"the installed mod cannot maximise the window; re-run scripts/install_mod.sh"
+],
+[
+"INFO",
+"light graphics: full screen (was 144 fps)"
+]
+],
+"failed": [
+false
+]
+},
+{
+"fn": "set_light_graphics",
+"kw": {
+"fullscreen": true
+},
+"replies": [
+{
+"maximized": true,
+"fps_before": "30.5"
+}
+],
+"want": true,
+"calls": [
+[
+"set_light_graphics",
+{
+"width": 960,
+"height": 540,
+"maximize": true,
+"fullscreen": true
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"WARNING",
+"the installed mod cannot go full screen; re-run scripts/install_mod.sh"
+],
+[
+"INFO",
+"light graphics: maximised window (was 30 fps)"
+]
+],
+"failed": [
+false
+]
+},
+{
+"fn": "set_light_graphics",
+"kw": {
+"maximize": false
+},
+"replies": [
+{
+"fps_before": 0.5
+}
+],
+"want": true,
+"calls": [
+[
+"set_light_graphics",
+{
+"width": 960,
+"height": 540,
+"maximize": false,
+"fullscreen": false
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"INFO",
+"light graphics: 960x540 (was 0 fps)"
+]
+],
+"failed": [
+false
+]
+},
+{
+"fn": "set_light_graphics",
+"kw": {
+"maximize": false,
+"width": 1280,
+"height": 720
+},
+"replies": [
+{
+"fps_before": 1.5
+}
+],
+"want": true,
+"calls": [
+[
+"set_light_graphics",
+{
+"width": 1280,
+"height": 720,
+"maximize": false,
+"fullscreen": false
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"INFO",
+"light graphics: 1280x720 (was 2 fps)"
+]
+],
+"failed": [
+false
+]
+},
+{
+"fn": "set_light_graphics",
+"kw": {
+"maximize": false,
+"fullscreen": true
+},
+"replies": [
+{
+"fps_before": 2.5
+}
+],
+"want": true,
+"calls": [
+[
+"set_light_graphics",
+{
+"width": 960,
+"height": 540,
+"maximize": false,
+"fullscreen": true
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"WARNING",
+"the installed mod cannot go full screen; re-run scripts/install_mod.sh"
+],
+[
+"INFO",
+"light graphics: 960x540 (was 2 fps)"
+]
+],
+"failed": [
+false
+]
+},
+{
+"fn": "set_light_graphics",
+"kw": {},
+"replies": [
+{
+"status": "error",
+"error": "Unknown action"
+}
+],
+"want": false,
+"calls": [
+[
+"set_light_graphics",
+{
+"width": 960,
+"height": 540,
+"maximize": true,
+"fullscreen": false
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"WARNING",
+"could not switch to light graphics (Unknown action); re-run scripts/install_mod.sh"
+]
+],
+"failed": [
+true
+]
+},
+{
+"fn": "set_light_graphics",
+"kw": {},
+"replies": [
+"unavailable"
+],
+"want": {
+"unavailable": "gone"
+},
+"calls": [
+[
+"set_light_graphics",
+{
+"width": 960,
+"height": 540,
+"maximize": true,
+"fullscreen": false
+}
+]
+],
+"sleeps": [],
+"logs": [],
+"failed": []
+},
+{
+"fn": "set_light_graphics",
+"kw": {
+"fullscreen": true,
+"maximize": true
+},
+"replies": [
+{
+"fullscreen": 1,
+"maximized": 0,
+"fps_before": null
+}
+],
+"want": true,
+"calls": [
+[
+"set_light_graphics",
+{
+"width": 960,
+"height": 540,
+"maximize": true,
+"fullscreen": true
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"WARNING",
+"the installed mod cannot maximise the window; re-run scripts/install_mod.sh"
+],
+[
+"INFO",
+"light graphics: full screen (was 0 fps)"
+]
+],
+"failed": [
+false
+]
+},
+{
+"fn": "set_time_scale",
+"kw": {
+"scale": 16.0
+},
+"replies": [
+{
+"status": "ok"
+}
+],
+"want": true,
+"calls": [
+[
+"set_time_scale",
+{
+"scale": 16.0
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"INFO",
+"time scale: x16"
+]
+],
+"failed": [
+false
+]
+},
+{
+"fn": "set_time_scale",
+"kw": {
+"scale": 2.5
+},
+"replies": [
+{
+"status": "ok"
+}
+],
+"want": true,
+"calls": [
+[
+"set_time_scale",
+{
+"scale": 2.5
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"INFO",
+"time scale: x2.5"
+]
+],
+"failed": [
+false
+]
+},
+{
+"fn": "set_time_scale",
+"kw": {
+"scale": 1e-05
+},
+"replies": [
+{
+"status": "ok"
+}
+],
+"want": true,
+"calls": [
+[
+"set_time_scale",
+{
+"scale": 1e-05
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"INFO",
+"time scale: x1e-05"
+]
+],
+"failed": [
+false
+]
+},
+{
+"fn": "set_time_scale",
+"kw": {
+"scale": 1e+16
+},
+"replies": [
+{
+"x": 1
+}
+],
+"want": true,
+"calls": [
+[
+"set_time_scale",
+{
+"scale": 1e+16
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"INFO",
+"time scale: x1e+16"
+]
+],
+"failed": [
+false
+]
+},
+{
+"fn": "set_time_scale",
+"kw": {
+"scale": 6.0
+},
+"replies": [
+{
+"status": "error",
+"error": "Unknown action"
+}
+],
+"want": false,
+"calls": [
+[
+"set_time_scale",
+{
+"scale": 6.0
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"WARNING",
+"could not set the time scale (Unknown action); re-run scripts/install_mod.sh to update the mod"
+]
+],
+"failed": [
+true
+]
+},
+{
+"fn": "set_time_scale",
+"kw": {
+"scale": 6.0
+},
+"replies": [
+{
+"error": {
+"code": 5,
+"why": "no"
+}
+}
+],
+"want": false,
+"calls": [
+[
+"set_time_scale",
+{
+"scale": 6.0
+}
+]
+],
+"sleeps": [],
+"logs": [
+[
+"WARNING",
+"could not set the time scale ({'code': 5, 'why': 'no'}); re-run scripts/install_mod.sh to update the mod"
+]
+],
+"failed": [
+true
+]
+},
+{
+"fn": "set_time_scale",
+"kw": {
+"scale": 0.1
+},
+"replies": [
+"unavailable"
+],
+"want": {
+"unavailable": "gone"
+},
+"calls": [
+[
+"set_time_scale",
+{
+"scale": 0.1
+}
+]
+],
+"sleeps": [],
+"logs": [],
+"failed": []
+}
+],
+"detached": [
+{
+"invocation": null,
+"which": null,
+"argv": [
+"game"
+],
+"want": [
+"game"
+]
+},
+{
+"invocation": null,
+"which": null,
+"argv": [
+"game",
+"-x",
+"a b"
+],
+"want": [
+"game",
+"-x",
+"a b"
+]
+},
+{
+"invocation": null,
+"which": null,
+"argv": [],
+"want": []
+},
+{
+"invocation": null,
+"which": "",
+"argv": [
+"game"
+],
+"want": [
+"game"
+]
+},
+{
+"invocation": null,
+"which": "",
+"argv": [
+"game",
+"-x",
+"a b"
+],
+"want": [
+"game",
+"-x",
+"a b"
+]
+},
+{
+"invocation": null,
+"which": "",
+"argv": [],
+"want": []
+},
+{
+"invocation": null,
+"which": "/usr/bin/systemd-run",
+"argv": [
+"game"
+],
+"want": [
+"game"
+]
+},
+{
+"invocation": null,
+"which": "/usr/bin/systemd-run",
+"argv": [
+"game",
+"-x",
+"a b"
+],
+"want": [
+"game",
+"-x",
+"a b"
+]
+},
+{
+"invocation": null,
+"which": "/usr/bin/systemd-run",
+"argv": [],
+"want": []
+},
+{
+"invocation": "",
+"which": null,
+"argv": [
+"game"
+],
+"want": [
+"game"
+]
+},
+{
+"invocation": "",
+"which": null,
+"argv": [
+"game",
+"-x",
+"a b"
+],
+"want": [
+"game",
+"-x",
+"a b"
+]
+},
+{
+"invocation": "",
+"which": null,
+"argv": [],
+"want": []
+},
+{
+"invocation": "",
+"which": "",
+"argv": [
+"game"
+],
+"want": [
+"game"
+]
+},
+{
+"invocation": "",
+"which": "",
+"argv": [
+"game",
+"-x",
+"a b"
+],
+"want": [
+"game",
+"-x",
+"a b"
+]
+},
+{
+"invocation": "",
+"which": "",
+"argv": [],
+"want": []
+},
+{
+"invocation": "",
+"which": "/usr/bin/systemd-run",
+"argv": [
+"game"
+],
+"want": [
+"game"
+]
+},
+{
+"invocation": "",
+"which": "/usr/bin/systemd-run",
+"argv": [
+"game",
+"-x",
+"a b"
+],
+"want": [
+"game",
+"-x",
+"a b"
+]
+},
+{
+"invocation": "",
+"which": "/usr/bin/systemd-run",
+"argv": [],
+"want": []
+},
+{
+"invocation": "abc",
+"which": null,
+"argv": [
+"game"
+],
+"want": [
+"game"
+]
+},
+{
+"invocation": "abc",
+"which": null,
+"argv": [
+"game",
+"-x",
+"a b"
+],
+"want": [
+"game",
+"-x",
+"a b"
+]
+},
+{
+"invocation": "abc",
+"which": null,
+"argv": [],
+"want": []
+},
+{
+"invocation": "abc",
+"which": "",
+"argv": [
+"game"
+],
+"want": [
+"game"
+]
+},
+{
+"invocation": "abc",
+"which": "",
+"argv": [
+"game",
+"-x",
+"a b"
+],
+"want": [
+"game",
+"-x",
+"a b"
+]
+},
+{
+"invocation": "abc",
+"which": "",
+"argv": [],
+"want": []
+},
+{
+"invocation": "abc",
+"which": "/usr/bin/systemd-run",
+"argv": [
+"game"
+],
+"want": [
+"systemd-run",
+"--user",
+"--scope",
+"--quiet",
+"--collect",
+"--",
+"game"
+]
+},
+{
+"invocation": "abc",
+"which": "/usr/bin/systemd-run",
+"argv": [
+"game",
+"-x",
+"a b"
+],
+"want": [
+"systemd-run",
+"--user",
+"--scope",
+"--quiet",
+"--collect",
+"--",
+"game",
+"-x",
+"a b"
+]
+},
+{
+"invocation": "abc",
+"which": "/usr/bin/systemd-run",
+"argv": [],
+"want": [
+"systemd-run",
+"--user",
+"--scope",
+"--quiet",
+"--collect",
+"--"
+]
+}
+],
+"default_launch": [
+{
+"folder": "game",
+"exe": null,
+"want": "steam -applaunch 2868840"
+},
+{
+"folder": "game",
+"exe": "file",
+"want": "steam -applaunch 2868840"
+},
+{
+"folder": "game",
+"exe": "exe",
+"want": "<T>/game/SlayTheSpire2"
+},
+{
+"folder": "game",
+"exe": "dir",
+"want": "<T>/game/SlayTheSpire2"
+},
+{
+"folder": "Slay the Spire 2",
+"exe": null,
+"want": "steam -applaunch 2868840"
+},
+{
+"folder": "Slay the Spire 2",
+"exe": "file",
+"want": "steam -applaunch 2868840"
+},
+{
+"folder": "Slay the Spire 2",
+"exe": "exe",
+"want": "'<T>/Slay the Spire 2/SlayTheSpire2'"
+},
+{
+"folder": "Slay the Spire 2",
+"exe": "dir",
+"want": "'<T>/Slay the Spire 2/SlayTheSpire2'"
+},
+{
+"folder": "it's",
+"exe": null,
+"want": "steam -applaunch 2868840"
+},
+{
+"folder": "it's",
+"exe": "file",
+"want": "steam -applaunch 2868840"
+},
+{
+"folder": "it's",
+"exe": "exe",
+"want": "'<T>/it'\"'\"'s/SlayTheSpire2'"
+},
+{
+"folder": "it's",
+"exe": "dir",
+"want": "'<T>/it'\"'\"'s/SlayTheSpire2'"
+},
+{
+"folder": null,
+"exe": null,
+"want": "steam -applaunch 2868840",
+"game_dir": "/home/someone/.local/share/Steam/steamapps/common/Slay the Spire 2"
+},
+{
+"folder": "",
+"exe": null,
+"want": "steam -applaunch 2868840",
+"game_dir": "/home/someone/.local/share/Steam/steamapps/common/Slay the Spire 2"
+}
+],
+"launch_game": [
+{
+"sc": {
+"cmd": "/games/sts2/SlayTheSpire2",
+"steam": true
+},
+"trace": [
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"popen",
+[
+"/games/sts2/SlayTheSpire2"
+],
+null,
+{
+"SteamAppId": "2868840",
+"SteamGameId": "2868840",
+"STS2_DEV_SKIP": null,
+"KEPT": "yes"
+},
+true,
+[
+true,
+true,
+true
+]
+]
+],
+"logs": [
+[
+"INFO",
+"launching game: /games/sts2/SlayTheSpire2"
+]
+],
+"children": 1
+},
+{
+"sc": {
+"cmd": "/games/sts2/SlayTheSpire2",
+"which": {
+"steam": "/usr/bin/steam"
+},
+"webhelper_after": 5.0
+},
+"trace": [
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"popen",
+[
+"/usr/bin/steam",
+"-silent"
+],
+null,
+null,
+true,
+[
+true,
+true,
+true
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+10.0
+],
+[
+"popen",
+[
+"/games/sts2/SlayTheSpire2"
+],
+null,
+{
+"SteamAppId": "2868840",
+"SteamGameId": "2868840",
+"STS2_DEV_SKIP": null,
+"KEPT": "yes"
+},
+true,
+[
+true,
+true,
+true
+]
+]
+],
+"logs": [
+[
+"INFO",
+"Steam is not running; starting it"
+],
+[
+"INFO",
+"Steam is up"
+],
+[
+"INFO",
+"launching game: /games/sts2/SlayTheSpire2"
+]
+],
+"children": 2
+},
+{
+"sc": {
+"cmd": "/games/sts2/SlayTheSpire2",
+"which": {
+"steam": "/usr/bin/steam"
+},
+"webhelper_after": 0.0
+},
+"trace": [
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"popen",
+[
+"/usr/bin/steam",
+"-silent"
+],
+null,
+null,
+true,
+[
+true,
+true,
+true
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+10.0
+],
+[
+"popen",
+[
+"/games/sts2/SlayTheSpire2"
+],
+null,
+{
+"SteamAppId": "2868840",
+"SteamGameId": "2868840",
+"STS2_DEV_SKIP": null,
+"KEPT": "yes"
+},
+true,
+[
+true,
+true,
+true
+]
+]
+],
+"logs": [
+[
+"INFO",
+"Steam is not running; starting it"
+],
+[
+"INFO",
+"Steam is up"
+],
+[
+"INFO",
+"launching game: /games/sts2/SlayTheSpire2"
+]
+],
+"children": 2
+},
+{
+"sc": {
+"cmd": "/games/sts2/SlayTheSpire2 --x 'a b'",
+"which": {}
+},
+"trace": [
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"popen",
+[
+"/games/sts2/SlayTheSpire2",
+"--x",
+"a b"
+],
+null,
+{
+"SteamAppId": "2868840",
+"SteamGameId": "2868840",
+"STS2_DEV_SKIP": null,
+"KEPT": "yes"
+},
+true,
+[
+true,
+true,
+true
+]
+]
+],
+"logs": [
+[
+"ERROR",
+"Steam is not running and no `steam` command was found to start it"
+],
+[
+"INFO",
+"launching game: /games/sts2/SlayTheSpire2 --x 'a b'"
+]
+],
+"children": 1
+},
+{
+"sc": {
+"cmd": "/games/sts2/SlayTheSpire2",
+"which": {
+"steam": ""
+}
+},
+"trace": [
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"popen",
+[
+"/games/sts2/SlayTheSpire2"
+],
+null,
+{
+"SteamAppId": "2868840",
+"SteamGameId": "2868840",
+"STS2_DEV_SKIP": null,
+"KEPT": "yes"
+},
+true,
+[
+true,
+true,
+true
+]
+]
+],
+"logs": [
+[
+"ERROR",
+"Steam is not running and no `steam` command was found to start it"
+],
+[
+"INFO",
+"launching game: /games/sts2/SlayTheSpire2"
+]
+],
+"children": 1
+},
+{
+"sc": {
+"cmd": "/games/sts2/SlayTheSpire2",
+"which": {
+"steam": "/usr/bin/steam"
+},
+"webhelper_after": null
+},
+"trace": [
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"popen",
+[
+"/usr/bin/steam",
+"-silent"
+],
+null,
+null,
+true,
+[
+true,
+true,
+true
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"popen",
+[
+"/games/sts2/SlayTheSpire2"
+],
+null,
+{
+"SteamAppId": "2868840",
+"SteamGameId": "2868840",
+"STS2_DEV_SKIP": null,
+"KEPT": "yes"
+},
+true,
+[
+true,
+true,
+true
+]
+]
+],
+"logs": [
+[
+"INFO",
+"Steam is not running; starting it"
+],
+[
+"ERROR",
+"Steam did not come up within 180s (is it logged in?)"
+],
+[
+"INFO",
+"launching game: /games/sts2/SlayTheSpire2"
+]
+],
+"children": 2
+},
+{
+"sc": {
+"cmd": "/games/sts2/SlayTheSpire2",
+"which": {
+"steam": "/usr/bin/steam"
+},
+"fails": [
+"steam"
+]
+},
+"trace": [
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"popen",
+[
+"/usr/bin/steam",
+"-silent"
+],
+null,
+null,
+true,
+[
+true,
+true,
+true
+]
+],
+[
+"popen",
+[
+"/games/sts2/SlayTheSpire2"
+],
+null,
+{
+"SteamAppId": "2868840",
+"SteamGameId": "2868840",
+"STS2_DEV_SKIP": null,
+"KEPT": "yes"
+},
+true,
+[
+true,
+true,
+true
+]
+]
+],
+"logs": [
+[
+"INFO",
+"Steam is not running; starting it"
+],
+[
+"ERROR",
+"could not start Steam: [Errno 2] No such file or directory: '/usr/bin/steam'"
+],
+[
+"INFO",
+"launching game: /games/sts2/SlayTheSpire2"
+]
+],
+"children": 1
+},
+{
+"sc": {
+"cmd": "steam -applaunch 2868840"
+},
+"trace": [
+[
+"popen",
+[
+"steam",
+"-applaunch",
+"2868840"
+],
+null,
+{
+"SteamAppId": "2868840",
+"SteamGameId": "2868840",
+"STS2_DEV_SKIP": null,
+"KEPT": "yes"
+},
+true,
+[
+true,
+true,
+true
+]
+]
+],
+"logs": [
+[
+"INFO",
+"launching game: steam -applaunch 2868840"
+]
+],
+"children": 1
+},
+{
+"sc": {
+"cmd": "SlayTheSpire2",
+"steam": true,
+"env": {
+"STS2_DEV_SKIP": "1",
+"SteamAppId": "7"
+}
+},
+"trace": [
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"popen",
+[
+"SlayTheSpire2"
+],
+null,
+{
+"SteamAppId": "2868840",
+"SteamGameId": "2868840",
+"STS2_DEV_SKIP": null,
+"KEPT": "yes"
+},
+true,
+[
+true,
+true,
+true
+]
+]
+],
+"logs": [
+[
+"INFO",
+"launching game: SlayTheSpire2"
+]
+],
+"children": 1
+},
+{
+"sc": {
+"cmd": "'{T}/game dir/SlayTheSpire2' --flag",
+"steam": true,
+"env": {
+"INVOCATION_ID": "abc"
+},
+"which": {
+"systemd-run": "/usr/bin/systemd-run"
+}
+},
+"trace": [
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"popen",
+[
+"systemd-run",
+"--user",
+"--scope",
+"--quiet",
+"--collect",
+"--",
+"<T>/game dir/SlayTheSpire2",
+"--flag"
+],
+"<T>/game dir",
+{
+"SteamAppId": "2868840",
+"SteamGameId": "2868840",
+"STS2_DEV_SKIP": null,
+"KEPT": "yes"
+},
+true,
+[
+true,
+true,
+true
+]
+]
+],
+"logs": [
+[
+"INFO",
+"launching game: '<T>/game dir/SlayTheSpire2' --flag"
+]
+],
+"children": 1
+},
+{
+"sc": {
+"cmd": "/games/sts2/SlayTheSpire2",
+"which": {
+"steam": "/opt/steam",
+"systemd-run": "/usr/bin/systemd-run"
+},
+"webhelper_after": 3.0,
+"env": {
+"INVOCATION_ID": "abc"
+}
+},
+"trace": [
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"popen",
+[
+"systemd-run",
+"--user",
+"--scope",
+"--quiet",
+"--collect",
+"--",
+"/opt/steam",
+"-silent"
+],
+null,
+null,
+true,
+[
+true,
+true,
+true
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+2.0
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"steamwebhelper",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+10.0
+],
+[
+"popen",
+[
+"systemd-run",
+"--user",
+"--scope",
+"--quiet",
+"--collect",
+"--",
+"/games/sts2/SlayTheSpire2"
+],
+null,
+{
+"SteamAppId": "2868840",
+"SteamGameId": "2868840",
+"STS2_DEV_SKIP": null,
+"KEPT": "yes"
+},
+true,
+[
+true,
+true,
+true
+]
+]
+],
+"logs": [
+[
+"INFO",
+"Steam is not running; starting it"
+],
+[
+"INFO",
+"Steam is up"
+],
+[
+"INFO",
+"launching game: /games/sts2/SlayTheSpire2"
+]
+],
+"children": 2
+},
+{
+"sc": {
+"cmd": "{T}/nowhere/SlayTheSpire2",
+"steam": true,
+"env": {
+"INVOCATION_ID": "abc"
+}
+},
+"trace": [
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"popen",
+[
+"<T>/nowhere/SlayTheSpire2"
+],
+null,
+{
+"SteamAppId": "2868840",
+"SteamGameId": "2868840",
+"STS2_DEV_SKIP": null,
+"KEPT": "yes"
+},
+true,
+[
+true,
+true,
+true
+]
+]
+],
+"logs": [
+[
+"INFO",
+"launching game: <T>/nowhere/SlayTheSpire2"
+]
+],
+"children": 1
+},
+{
+"sc": {
+"cmd": "relative/dir/SlayTheSpire2",
+"steam": true
+},
+"trace": [
+[
+"run",
+[
+"ps",
+"-C",
+"steam",
+"-o",
+"stat="
+]
+],
+[
+"popen",
+[
+"relative/dir/SlayTheSpire2"
+],
+null,
+{
+"SteamAppId": "2868840",
+"SteamGameId": "2868840",
+"STS2_DEV_SKIP": null,
+"KEPT": "yes"
+},
+true,
+[
+true,
+true,
+true
+]
+]
+],
+"logs": [
+[
+"INFO",
+"launching game: relative/dir/SlayTheSpire2"
+]
+],
+"children": 1
+},
+{
+"sc": {
+"cmd": "{T}/game dir/other-game",
+"steam": false
+},
+"trace": [
+[
+"popen",
+[
+"<T>/game",
+"dir/other-game"
+],
+"<T>",
+{
+"SteamAppId": "2868840",
+"SteamGameId": "2868840",
+"STS2_DEV_SKIP": null,
+"KEPT": "yes"
+},
+true,
+[
+true,
+true,
+true
+]
+]
+],
+"logs": [
+[
+"INFO",
+"launching game: <T>/game dir/other-game"
+]
+],
+"children": 1
+}
+],
+"kill_game": [
+{
+"sc": {
+"game": null
+},
+"trace": [
+[
+"run",
+[
+"pkill",
+"-x",
+"SlayTheSpire2"
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+]
+],
+"running": false
+},
+{
+"sc": {
+"game": {}
+},
+"trace": [
+[
+"run",
+[
+"pkill",
+"-x",
+"SlayTheSpire2"
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+]
+],
+"running": false
+},
+{
+"sc": {
+"game": {
+"dies_after": 2.0
+}
+},
+"trace": [
+[
+"run",
+[
+"pkill",
+"-x",
+"SlayTheSpire2"
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+]
+],
+"running": false
+},
+{
+"sc": {
+"game": {
+"dies_after": 9.5
+}
+},
+"trace": [
+[
+"run",
+[
+"pkill",
+"-x",
+"SlayTheSpire2"
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+]
+],
+"running": false
+},
+{
+"sc": {
+"game": {
+"dies_after": 10.0
+}
+},
+"trace": [
+[
+"run",
+[
+"pkill",
+"-x",
+"SlayTheSpire2"
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+]
+],
+"running": false
+},
+{
+"sc": {
+"game": {
+"ignores_term": true
+}
+},
+"trace": [
+[
+"run",
+[
+"pkill",
+"-x",
+"SlayTheSpire2"
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"pkill",
+"-9",
+"-x",
+"SlayTheSpire2"
+]
+],
+[
+"sleep",
+1.0
+]
+],
+"running": false
+},
+{
+"sc": {
+"game": {
+"dies_after": 0.5
+},
+"grace": 0.4
+},
+"trace": [
+[
+"run",
+[
+"pkill",
+"-x",
+"SlayTheSpire2"
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+]
+],
+"running": false
+},
+{
+"sc": {
+"game": {
+"ignores_term": true
+},
+"grace": 1.2
+},
+"trace": [
+[
+"run",
+[
+"pkill",
+"-x",
+"SlayTheSpire2"
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"sleep",
+0.5
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"pkill",
+"-9",
+"-x",
+"SlayTheSpire2"
+]
+],
+[
+"sleep",
+1.0
+]
+],
+"running": false
+},
+{
+"sc": {
+"game": {
+"dies_after": 1.0
+},
+"grace": 0.0
+},
+"trace": [
+[
+"run",
+[
+"pkill",
+"-x",
+"SlayTheSpire2"
+]
+],
+[
+"run",
+[
+"ps",
+"-C",
+"SlayTheSpire2",
+"-o",
+"stat="
+]
+],
+[
+"run",
+[
+"pkill",
+"-9",
+"-x",
+"SlayTheSpire2"
+]
+],
+[
+"sleep",
+1.0
+]
+],
+"running": false
+}
+]
+}
