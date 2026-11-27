@@ -1,9 +1,11 @@
 //! The act 3 knights (Flail, Spectral and Magi Knight) as a model fight, played by the bot's own planner.
 //!
-//!     scripts knightfight [FIGHTS A DECK] [ARMS]          arms: "off" (without battle::KNOWN_THREAT), "on" (as the
-//!                                                         bot plays), NAME=VALUE ("on" with that constant); default off on
-//!     scripts knightfight trace [SEED] [DECK] [off]       one fight, play by play (DECK: its place in DECKS)
-//!     scripts knightfight flips [DECK]                    the fights one arm wins and the other loses
+//! ```text
+//! scripts knightfight [FIGHTS A DECK] [ARMS]          arms: "off" (without battle::KNOWN_THREAT), "on" (as the
+//!                                                     bot plays), NAME=VALUE ("on" with that constant); default off on
+//! scripts knightfight trace [SEED] [DECK] [off]       one fight, play by play (DECK: its place in DECKS)
+//! scripts knightfight flips [DECK]                    the fights one arm wins and the other loses
+//! ```
 //!
 //! The fight is the Ascension 8 logs' (HP, `intent`): the Spectral Knight's Hex makes every card Ethereal while it lives.
 

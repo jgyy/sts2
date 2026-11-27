@@ -1,10 +1,12 @@
 //! The Test Subject (the act 3 boss in three forms) as a model fight, played by the bot's own planner.
 //!
-//!     scripts bosses/subjectfight [FIGHTS ARM ...]   arms: "on" (as the bot plays), NAME=VALUE (a constant of
-//!                                                    battle/combat/triggers), K.name=VALUE (a setting of
-//!                                                    learn::CHOICES), joined by "+" for several
-//!     scripts bosses/subjectfight trace [SEED] [DECK] [ARM]   one fight, play by play
-//!     scripts bosses/subjectfight flips DECK ARM [ARM]        the fights one arm wins and the other loses
+//! ```text
+//! scripts bosses/subjectfight [FIGHTS ARM ...]   arms: "on" (as the bot plays), NAME=VALUE (a constant of
+//!                                                battle/combat/triggers), K.name=VALUE (a setting of
+//!                                                learn::CHOICES), joined by "+" for several
+//! scripts bosses/subjectfight trace [SEED] [DECK] [ARM]   one fight, play by play
+//! scripts bosses/subjectfight flips DECK ARM [ARM]        the fights one arm wins and the other loses
+//! ```
 //!
 //! The fight is the Ascension 9 logs' (`intent`): form 1 (111 HP) Enrage, form 2 (212) Painful Stabs (a Wound for each hit
 //! that gets through), form 3 (313) Nemesis (Intangible every other round) and Burns. A form killed does not attack; the

@@ -1,0 +1,98 @@
+$ trace
+A6H4Z2B6F2P0 hit 15 block 11 hp 75 energy 4 perfect play wins 0.605
+r 1 hp  75 demon 379 coming  0 hand AABBH | ours 63 dmg  0 blk 0 P (0.693)  best 63 dmg  0 blk 0 P (0.693)
+r 2 hp  75 demon 316 coming 17 hand ABBH  | ours 48 dmg 11 blk 0 P (0.769)  best 48 dmg 11 blk 0 P (0.769)
+r 3 hp  69 demon 268 coming 24 hand ABBH  | ours 33 dmg 22 blk 0 P (0.869)  best 33 dmg 22 blk 0 P (0.869)
+r 4 hp  67 demon 235 coming 11 hand AABH  | ours 48 dmg 11 blk 0 P (0.928)  best 48 dmg 11 blk 0 P (0.928)
+r 5 hp  67 demon 217 coming  0 hand AAFF  | ours 30 dmg  0 blk 0 P (0.901)  best 30 dmg  0 blk 0 P (0.901)
+r 6 hp  67 demon 187 coming 19 hand AFHZ  | ours 55 dmg  0 blk 0 P (0.903)  best 55 dmg  0 blk 0 P (0.903)
+r 7 hp  48 demon 132 coming 30 hand AAHH  | ours 66 dmg  0 blk 0 P (0.945)  best 66 dmg  0 blk 0 P (0.945)
+r 8 hp  18 demon  66 coming 13 hand AAAH  | ours 63 dmg  0 blk 0 P (0.993)  best 63 dmg  0 blk 0 P (0.993)
+r 9 hp   5 demon  33 coming  0 hand AABH  | ours 33 dmg  0 blk 0 P (1.000)  best 63 dmg  0 blk 0 P (1.000)
+(True, 9)
+$ trace 2 3
+A6H3Z3B6F2P2 hit 17 block 12 hp 75 energy 3 perfect play wins 0.508
+r 1 hp  75 demon 379 coming  0 hand AAFPP | ours 23 dmg  0 blk 2 P (0.813)  best 23 dmg  0 blk 2 P (0.813)
+r 2 hp  75 demon 356 coming 17 hand BBBH  | ours 43 dmg 12 blk 0 P (0.821)  best 43 dmg 12 blk 0 P (0.821)
+r 3 hp  70 demon 313 coming 24 hand ABHZ  | ours 56 dmg 12 blk 0 P (0.882)  best 56 dmg 12 blk 0 P (0.882)
+r 4 hp  58 demon 257 coming 11 hand BFFH  | ours 43 dmg 12 blk 0 P (0.908)  best 43 dmg 12 blk 0 P (0.908)
+r 5 hp  58 demon 244 coming  0 hand AAHZ  | ours 79 dmg  0 blk 0 P (0.987)  best 79 dmg  0 blk 0 P (0.987)
+r 6 hp  58 demon 165 coming 19 hand AHHZ  | ours 79 dmg  0 blk 0 P (0.996)  best 79 dmg  0 blk 0 P (0.996)
+r 7 hp  39 demon  86 coming 30 hand ABZZ  | ours 36 dmg 12 blk 0 P (0.995)  best 36 dmg 12 blk 0 P (0.995)
+r 8 hp  21 demon  50 coming 13 hand AAHZ  | ours 66 dmg  0 blk 0 P (1.000)  best 79 dmg  0 blk 0 P (1.000)
+(True, 8)
+$ trace 5 5 CLOSE_REACH=0 HP_BASE=2.5
+A4H3Z5B7F3P3 hit 14 block 11 hp 66 energy 4 perfect play wins 0.303
+r 1 hp  66 demon 379 coming  0 hand BBBFP | ours  0 dmg  0 blk 1 P (0.193)  best  0 dmg 33 blk 1 P (0.193)
+r 2 hp  66 demon 379 coming 17 hand APPZ  | ours 39 dmg  0 blk 2 P (0.327)  best 39 dmg  0 blk 2 P (0.327)
+r 3 hp  49 demon 340 coming 24 hand ABFZ  | ours 39 dmg 11 blk 0 P (0.234)  best 39 dmg 11 blk 0 P (0.234)
+r 4 hp  36 demon 301 coming 11 hand ABHZ  | ours 78 dmg 11 blk 0 P (0.449)  best 78 dmg 11 blk 0 P (0.449)
+r 5 hp  36 demon 253 coming  0 hand BFHH  | ours 78 dmg  0 blk 0 P (0.616)  best 78 dmg  0 blk 0 P (0.616)
+r 6 hp  36 demon 175 coming 19 hand AABB  | ours 46 dmg 11 blk 0 P (0.615)  best 23 dmg 22 blk 0 P (0.813)
+r 7 hp  28 demon 129 coming 30 hand AAFH  | ours 85 dmg  0 blk 0 P (0.000)  best 85 dmg  0 blk 0 P (0.000)
+(False, 7)
+$ 2
+afflictions: M Mind Rot, S Sloth, W Waste Away, b the burn instead; each cell: planner won / perfect play wins
+A6H4Z2B6F2P0 hit 15 block 11 hp 75 energy 4      MSW 1.00/0.61  MSb 0.50/0.55
+A6H3Z3B6F2P0 hit 19 block 12 hp 75 energy 3      MSW 0.50/0.46  MSb 0.50/0.52
+A6H4Z2B6F2P2 hit 13 block 10 hp 75 energy 4      MSW 0.50/0.47  MSb 1.00/0.45
+A6H3Z3B6F2P2 hit 17 block 12 hp 75 energy 3      MSW 0.50/0.51  MSb 0.50/0.55
+A5H4Z3B6F2P3 hit 15 block 11 hp 90 energy 3      MSW 0.00/0.60  MSb 0.50/0.63
+A4H3Z5B7F3P3 hit 14 block 11 hp 66 energy 4      MSW 0.00/0.30  MSb 0.00/0.23
+all: planner 0.458, perfect play 0.490, chance given away a fight 0.0158
+$ regret 3 HP_SLOPE=6
+chance of winning given away a fight: 0.017 over 10.4 turns
+
+by what the Demon was doing
+  17                                                           turns a fight  2.86  given away a fight 0.009  a turn 0.003
+  8x3                                                          turns a fight  2.61  given away a fight 0.007  a turn 0.003
+
+by our HP
+  HP 70%+                                                      turns a fight  4.72  given away a fight 0.007  a turn 0.002
+  HP under 40%                                                 turns a fight  2.50  given away a fight 0.005  a turn 0.002
+  HP 40-70%                                                    turns a fight  3.19  given away a fight 0.005  a turn 0.001
+
+by what the planner did beside the best play
+  blocked more                                                 turns a fight  0.33  given away a fight 0.009  a turn 0.028
+  blocked less                                                 turns a fight  1.81  given away a fight 0.007  a turn 0.004
+
+by both
+  HP under 40%  17                       blocked more          turns a fight  0.17  given away a fight 0.005  a turn 0.030
+  HP 70%+       8x3                      blocked less          turns a fight  0.06  given away a fight 0.004  a turn 0.077
+  HP 40-70%     8x3                      blocked more          turns a fight  0.06  given away a fight 0.003  a turn 0.055
+$ energy 3
+perfect play and the planner, the same deck on 3 and 4 energy a turn (relicworth.py's energy relics):
+  A6H4Z2B6F2P0 hit 15 block 11 hp 75 energy 3          perfect 0.002  planner 0.000
+  A6H4Z2B6F2P0 hit 15 block 11 hp 75 energy 4          perfect 0.605  planner 1.000
+  A6H3Z3B6F2P2 hit 17 block 12 hp 75 energy 3          perfect 0.508  planner 0.333
+  A6H3Z3B6F2P2 hit 17 block 12 hp 75 energy 4          perfect 0.896  planner 0.667
+  4 energy, perfect play by HP at the Demon's door: {50: 0.141, 60: 0.319, 75: 0.605}
+$ cards 1
+perfect play's chance of beating the Demon from full HP, the deck as it is and with one card more (planner beside it)
+  A6H4Z2B6F2P0 hit 15 block 11 hp 75 energy 3
+    + nothing                                perfect 0.002  planner 0.000
+    + Strike-like attack                     perfect 0.001  planner 0.000
+    + two-cost attack                        perfect 0.003  planner 0.000
+    + free attack                            perfect 0.004  planner 0.000
+    + Defend-like                            perfect 0.001  planner 0.000
+    + Inflame (+3 Strength)                  perfect 0.054  planner 0.000
+    + energy Power (Demesne, Pyre)           perfect 0.215  planner 0.000
+    + Friendship (+1 energy, -2 Strength)    perfect 0.061  planner 0.000
+  A6H3Z3B6F2P0 hit 19 block 12 hp 75 energy 3
+    + nothing                                perfect 0.460  planner 0.000
+    + Strike-like attack                     perfect 0.494  planner 0.000
+    + two-cost attack                        perfect 0.565  planner 0.000
+    + free attack                            perfect 0.425  planner 0.000
+    + Defend-like                            perfect 0.418  planner 0.000
+    + Inflame (+3 Strength)                  perfect 0.625  planner 0.000
+    + energy Power (Demesne, Pyre)           perfect 0.686  planner 0.000
+    + Friendship (+1 energy, -2 Strength)    perfect 0.542  planner 0.000
+  A7H3Z2B7F3P0 hit 17 block 12 hp 66 energy 3
+    + nothing                                perfect 0.028  planner 0.000
+    + Strike-like attack                     perfect 0.032  planner 0.000
+    + two-cost attack                        perfect 0.052  planner 0.000
+    + free attack                            perfect 0.031  planner 0.000
+    + Defend-like                            perfect 0.022  planner 0.000
+    + Inflame (+3 Strength)                  perfect 0.116  planner 0.000
+    + energy Power (Demesne, Pyre)           perfect 0.228  planner 0.000
+    + Friendship (+1 energy, -2 Strength)    perfect 0.100  planner 0.000

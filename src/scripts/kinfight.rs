@@ -1,8 +1,10 @@
 //! The Kin (act 1 boss: the Kin Priest and two Kin Followers) as a model fight, played by the bot's own planner.
 //!
-//!     scripts kinfight [FIGHTS A DECK] [ARMS]        each arm on the same shuffles (default arms: off on)
-//!     scripts kinfight trace [SEED] [DECK] [ARM]     one fight, play by play (DECK: its place in DECKS)
-//!     scripts kinfight flips [DECK] [ARM ARM]        the fights one arm wins and the other loses
+//! ```text
+//! scripts kinfight [FIGHTS A DECK] [ARMS]        each arm on the same shuffles (default arms: off on)
+//! scripts kinfight trace [SEED] [DECK] [ARM]     one fight, play by play (DECK: its place in DECKS)
+//! scripts kinfight flips [DECK] [ARM ARM]        the fights one arm wins and the other loses
+//! ```
 //!
 //! Arms: "on" as the bot plays (battle::MAIN_MINIONS: the Followers first), "off" without it (the Priest first), NAME=VALUE
 //! a constant of battle/combat/triggers. The fight is the Ascension 8 logs' (HP, `intent`); Frail and Weak take a quarter off.

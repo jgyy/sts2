@@ -1,10 +1,12 @@
 //! The Queen and her Torch Head Amalgam (an act 3 boss) as a model fight, played by the bot's own planner.
 //!
-//!     scripts bosses/queenfight [FIGHTS ARM ...]   arms: "on" (as the bot plays), NAME=VALUE (a constant of
-//!                                                  battle/combat/triggers), K.name=VALUE (a setting of
-//!                                                  learn::CHOICES), joined by "+" for several
-//!     scripts bosses/queenfight trace [SEED] [DECK] [ARM]   one fight, play by play
-//!     scripts bosses/queenfight flips DECK ARM [ARM]        the fights one arm wins and the other loses
+//! ```text
+//! scripts bosses/queenfight [FIGHTS ARM ...]   arms: "on" (as the bot plays), NAME=VALUE (a constant of
+//!                                              battle/combat/triggers), K.name=VALUE (a setting of
+//!                                              learn::CHOICES), joined by "+" for several
+//! scripts bosses/queenfight trace [SEED] [DECK] [ARM]   one fight, play by play
+//! scripts bosses/queenfight flips DECK ARM [ARM]        the fights one arm wins and the other loses
+//! ```
 //!
 //! The fight is the game data's and the logs' (Ascension 0-7 numbers): round 1 Puppet Strings (Chains of Binding 3: the
 //! first 3 cards drawn each turn are Bound, one Bound card a turn), round 2 You Are Mine (99 Weak, Frail and Vulnerable on

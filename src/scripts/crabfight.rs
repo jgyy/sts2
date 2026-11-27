@@ -1,10 +1,12 @@
 //! Crusher and Rocket as a model fight, played by the bot's own planner (combat::choose_card).
 //!
-//!     scripts crabfight [FIGHTS] [ARM,ARM,...]   ARM: a RAGE_COST, NAME=VALUE (a constant of battle.rs or
-//!                                                combat.rs, else a learn.rs knob: caution=1.5), or
-//!                                                threat=ROCKET/20/CRUSHER/12 (battle::KNOWN_THREAT); '+' joins
-//!     scripts crabfight FIGHTS ARMS debuff       the decks with a Bash and a Clothesline (Vulnerable, Weak)
-//!     scripts crabfight trace [SEED]
+//! ```text
+//! scripts crabfight [FIGHTS] [ARM,ARM,...]   ARM: a RAGE_COST, NAME=VALUE (a constant of battle.rs or
+//!                                            combat.rs, else a learn.rs knob: caution=1.5), or
+//!                                            threat=ROCKET/20/CRUSHER/12 (battle::KNOWN_THREAT); '+' joins
+//! scripts crabfight FIGHTS ARMS debuff       the decks with a Bash and a Clothesline (Vulnerable, Weak)
+//! scripts crabfight trace [SEED]
+//! ```
 //!
 //! The rules are the logs' (C_CYCLE, R_CYCLE): a crab hits half again from behind us, we face the one we hit last, and a
 //! crab whose ally dies gains 6 Strength and 99 Block. Trace a fight and read it before believing a table.
