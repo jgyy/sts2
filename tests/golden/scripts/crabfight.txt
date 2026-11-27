@@ -1,0 +1,76 @@
+$ trace 3
+   play H ROCKET_0 {'CRUSHER_0': 206, 'ROCKET_0': 161}
+   play A ROCKET_0 {'CRUSHER_0': 206, 'ROCKET_0': 145}
+   play B None {'CRUSHER_0': 206, 'ROCKET_0': 145}
+r1 lost 9 hp 71 | C 206 R 145 facing ROCKET_0
+   play H ROCKET_0 {'CRUSHER_0': 206, 'ROCKET_0': 110}
+   play B None {'CRUSHER_0': 206, 'ROCKET_0': 110}
+   play B None {'CRUSHER_0': 206, 'ROCKET_0': 110}
+r2 lost 0 hp 71 | C 206 R 110 facing ROCKET_0
+   play A ROCKET_0 {'CRUSHER_0': 206, 'ROCKET_0': 94}
+   play A ROCKET_0 {'CRUSHER_0': 206, 'ROCKET_0': 78}
+   play B None {'CRUSHER_0': 206, 'ROCKET_0': 78}
+r3 lost 6 hp 65 | C 206 R 78 facing ROCKET_0
+   play A ROCKET_0 {'CRUSHER_0': 206, 'ROCKET_0': 66}
+   play A ROCKET_0 {'CRUSHER_0': 206, 'ROCKET_0': 54}
+   play B None {'CRUSHER_0': 206, 'ROCKET_0': 54}
+   play B None {'CRUSHER_0': 206, 'ROCKET_0': 54}
+r4 lost 15 hp 50 | C 206 R 54 facing ROCKET_0
+   play B None {'CRUSHER_0': 206, 'ROCKET_0': 54}
+   play B None {'CRUSHER_0': 206, 'ROCKET_0': 54}
+   play B None {'CRUSHER_0': 206, 'ROCKET_0': 54}
+r5 lost 0 hp 50 | C 206 R 54 facing ROCKET_0
+   play A ROCKET_0 {'CRUSHER_0': 206, 'ROCKET_0': 38}
+   play A ROCKET_0 {'CRUSHER_0': 206, 'ROCKET_0': 22}
+   play B None {'CRUSHER_0': 206, 'ROCKET_0': 22}
+   play B None {'CRUSHER_0': 206, 'ROCKET_0': 22}
+r6 lost 2 hp 48 | C 206 R 22 facing ROCKET_0
+   play H ROCKET_0 {'CRUSHER_0': 206, 'ROCKET_0': 0}
+   play A CRUSHER_0 {'CRUSHER_0': 206, 'ROCKET_0': 0}
+   play B None {'CRUSHER_0': 206, 'ROCKET_0': 0}
+r7 lost 0 hp 48 | C 206 R 0 facing CRUSHER_0
+   play A CRUSHER_0 {'CRUSHER_0': 190, 'ROCKET_0': 0}
+   play A CRUSHER_0 {'CRUSHER_0': 174, 'ROCKET_0': 0}
+   play A CRUSHER_0 {'CRUSHER_0': 158, 'ROCKET_0': 0}
+   play B None {'CRUSHER_0': 158, 'ROCKET_0': 0}
+r8 lost 16 hp 32 | C 158 R 0 facing CRUSHER_0
+   play A CRUSHER_0 {'CRUSHER_0': 146, 'ROCKET_0': 0}
+r9 lost 0 hp 32 | C 146 R 0 facing CRUSHER_0
+   play A CRUSHER_0 {'CRUSHER_0': 134, 'ROCKET_0': 0}
+   play B None {'CRUSHER_0': 134, 'ROCKET_0': 0}
+   play B None {'CRUSHER_0': 134, 'ROCKET_0': 0}
+   play B None {'CRUSHER_0': 134, 'ROCKET_0': 0}
+r10 lost 0 hp 32 | C 134 R 0 facing CRUSHER_0
+   play H CRUSHER_0 {'CRUSHER_0': 114, 'ROCKET_0': 0}
+   play B None {'CRUSHER_0': 114, 'ROCKET_0': 0}
+   play B None {'CRUSHER_0': 114, 'ROCKET_0': 0}
+r11 lost 0 hp 32 | C 114 R 0 facing CRUSHER_0
+   play H CRUSHER_0 {'CRUSHER_0': 79, 'ROCKET_0': 0}
+   play A CRUSHER_0 {'CRUSHER_0': 63, 'ROCKET_0': 0}
+   play B None {'CRUSHER_0': 63, 'ROCKET_0': 0}
+r12 lost 2 hp 30 | C 63 R 0 facing CRUSHER_0
+   play A CRUSHER_0 {'CRUSHER_0': 47, 'ROCKET_0': 0}
+   play A CRUSHER_0 {'CRUSHER_0': 31, 'ROCKET_0': 0}
+   play A CRUSHER_0 {'CRUSHER_0': 15, 'ROCKET_0': 0}
+   play A CRUSHER_0 {'CRUSHER_0': 0, 'ROCKET_0': 0}
+(True, 30, 13, ('ROCKET_0', 7, 206))
+$ 3 0.3,RAGE_COST=5+caution=1.5,0.9,threat=ROCKET/20/CRUSHER/12+HP_BASE=2
+0.3: won 0.556  hp left  11.6  rounds 10.7  first to die: Crusher 0, Rocket 16, neither 2
+RAGE_COST=5+caution=1.5: won 0.556  hp left  13.3  rounds 11.7  first to die: Crusher 0, Rocket 17, neither 1
+0.9: won 0.278  hp left   5.7  rounds 10.8  first to die: Crusher 0, Rocket 16, neither 2
+threat=ROCKET/20/CRUSHER/12+HP_BASE=2: won 0.556  hp left  16.6  rounds 11.1  first to die: Crusher 0, Rocket 18, neither 0
+(13, 9, 8, 7, 2, 2) 0.3: 0.00 RAGE_COST=5+caution=1.5: 0.00 0.9: 0.00 threat=ROCKET/20/CRUSHER/12+HP_BASE=2: 0.00
+(16, 9, 8, 7, 2, 2) 0.3: 0.00 RAGE_COST=5+caution=1.5: 0.00 0.9: 0.00 threat=ROCKET/20/CRUSHER/12+HP_BASE=2: 0.00
+(13, 12, 8, 7, 2, 2) 0.3: 0.67 RAGE_COST=5+caution=1.5: 0.67 0.9: 0.00 threat=ROCKET/20/CRUSHER/12+HP_BASE=2: 0.67
+(16, 12, 7, 8, 2, 2) 0.3: 1.00 RAGE_COST=5+caution=1.5: 1.00 0.9: 0.67 threat=ROCKET/20/CRUSHER/12+HP_BASE=2: 1.00
+(19, 9, 8, 7, 2, 2) 0.3: 0.67 RAGE_COST=5+caution=1.5: 0.67 0.9: 0.00 threat=ROCKET/20/CRUSHER/12+HP_BASE=2: 0.67
+(22, 12, 8, 7, 2, 2) 0.3: 1.00 RAGE_COST=5+caution=1.5: 1.00 0.9: 1.00 threat=ROCKET/20/CRUSHER/12+HP_BASE=2: 1.00
+$ 2 0.3,THREAT_FLOOR=9 debuff
+0.3: won 0.667  hp left  20.3  rounds 11.2  first to die: Crusher 0, Rocket 12, neither 0
+THREAT_FLOOR=9: won 0.667  hp left  20.3  rounds 11.2  first to die: Crusher 0, Rocket 12, neither 0
+(13, 9, 6, 7, 2, 2, 1, 1) 0.3: 0.00 THREAT_FLOOR=9: 0.00
+(16, 9, 6, 7, 2, 2, 1, 1) 0.3: 0.50 THREAT_FLOOR=9: 0.50
+(13, 12, 6, 7, 2, 2, 1, 1) 0.3: 0.50 THREAT_FLOOR=9: 0.50
+(16, 12, 5, 8, 2, 2, 1, 1) 0.3: 1.00 THREAT_FLOOR=9: 1.00
+(19, 9, 6, 7, 2, 2, 1, 1) 0.3: 1.00 THREAT_FLOOR=9: 1.00
+(22, 12, 6, 7, 2, 2, 1, 1) 0.3: 1.00 THREAT_FLOOR=9: 1.00

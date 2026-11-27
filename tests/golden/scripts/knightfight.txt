@@ -1,0 +1,142 @@
+$ trace 2 3
+   play A MAGI_KNIGHT_0 {'F': 106, 'S': 95, 'M': 67}
+   play A MAGI_KNIGHT_0 {'F': 106, 'S': 95, 'M': 47}
+   play A MAGI_KNIGHT_0 {'F': 106, 'S': 95, 'M': 27}
+r1 took 21 hp 54 | F 106 S 95 M 27
+   play A MAGI_KNIGHT_0 {'F': 106, 'S': 95, 'M': 13}
+   play A MAGI_KNIGHT_0 {'F': 106, 'S': 95, 'M': 0}
+   play B None {'F': 106, 'S': 95, 'M': 0}
+r2 took 20 hp 34 | F 106 S 95 M 0
+   play H FLAIL_KNIGHT_0 {'F': 62, 'S': 95, 'M': 0}
+   play B None {'F': 62, 'S': 95, 'M': 0}
+r3 took 11 hp 23 | F 62 S 95 M 0
+   play H FLAIL_KNIGHT_0 {'F': 18, 'S': 95, 'M': 0}
+   play B None {'F': 18, 'S': 95, 'M': 0}
+r4 took 2 hp 21 | F 18 S 95 M 0
+   play A FLAIL_KNIGHT_0 {'F': 0, 'S': 95, 'M': 0}
+   play A SPECTRAL_KNIGHT_0 {'F': 0, 'S': 75, 'M': 0}
+   play B None {'F': 0, 'S': 75, 'M': 0}
+r5 took 2 hp 19 | F 0 S 75 M 0
+   play H SPECTRAL_KNIGHT_0 {'F': 0, 'S': 31, 'M': 0}
+   play B None {'F': 0, 'S': 31, 'M': 0}
+r6 took 0 hp 19 | F 0 S 31 M 0
+   play H SPECTRAL_KNIGHT_0 {'F': 0, 'S': 0, 'M': 0}
+(True, 19, 7, 'MFS')
+$ trace 4 0 off
+   play H MAGI_KNIGHT_0 {'F': 106, 'S': 95, 'M': 52}
+   play B None {'F': 106, 'S': 95, 'M': 52}
+r1 took 9 hp 66 | F 106 S 95 M 52
+   play A FLAIL_KNIGHT_0 {'F': 90, 'S': 95, 'M': 52}
+   play B None {'F': 90, 'S': 95, 'M': 52}
+   play B None {'F': 90, 'S': 95, 'M': 52}
+r2 took 9 hp 57 | F 90 S 95 M 52
+   play A MAGI_KNIGHT_0 {'F': 90, 'S': 95, 'M': 36}
+   play B None {'F': 90, 'S': 95, 'M': 36}
+   play B None {'F': 90, 'S': 95, 'M': 36}
+r3 took 10 hp 47 | F 90 S 95 M 36
+   play A MAGI_KNIGHT_0 {'F': 90, 'S': 95, 'M': 20}
+   play A MAGI_KNIGHT_0 {'F': 90, 'S': 95, 'M': 4}
+   play B None {'F': 90, 'S': 95, 'M': 4}
+r4 took 3 hp 44 | F 90 S 95 M 4
+   play A MAGI_KNIGHT_0 {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+r5 took 9 hp 35 | F 90 S 95 M 0
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+r6 took 0 hp 35 | F 90 S 95 M 0
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+r7 took 0 hp 35 | F 90 S 95 M 0
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+r8 took 0 hp 35 | F 90 S 95 M 0
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+r9 took 0 hp 35 | F 90 S 95 M 0
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+r10 took 9 hp 26 | F 90 S 95 M 0
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+r11 took 0 hp 26 | F 90 S 95 M 0
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+r12 took 0 hp 26 | F 90 S 95 M 0
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+r13 took 3 hp 23 | F 90 S 95 M 0
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+r14 took 15 hp 8 | F 90 S 95 M 0
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+r15 took 0 hp 8 | F 90 S 95 M 0
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+r16 took 0 hp 8 | F 90 S 95 M 0
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+   play B None {'F': 90, 'S': 95, 'M': 0}
+r17 took 6 hp 2 | F 90 S 95 M 0
+r18 took 51 hp -49 | F 90 S 95 M 0
+(False, 0, 18, 'M')
+$ trace
+   play H MAGI_KNIGHT_0 {'F': 106, 'S': 95, 'M': 48}
+   play B None {'F': 106, 'S': 95, 'M': 48}
+r1 took 9 hp 66 | F 106 S 95 M 48
+   play H MAGI_KNIGHT_0 {'F': 106, 'S': 95, 'M': 15}
+   play A MAGI_KNIGHT_0 {'F': 106, 'S': 95, 'M': 0}
+r2 took 33 hp 33 | F 106 S 95 M 0
+   play A FLAIL_KNIGHT_0 {'F': 88, 'S': 95, 'M': 0}
+   play B None {'F': 88, 'S': 95, 'M': 0}
+   play B None {'F': 88, 'S': 95, 'M': 0}
+r3 took 0 hp 33 | F 88 S 95 M 0
+   play H FLAIL_KNIGHT_0 {'F': 49, 'S': 95, 'M': 0}
+   play B None {'F': 49, 'S': 95, 'M': 0}
+r4 took 3 hp 30 | F 49 S 95 M 0
+   play H FLAIL_KNIGHT_0 {'F': 10, 'S': 95, 'M': 0}
+   play A FLAIL_KNIGHT_0 {'F': 0, 'S': 95, 'M': 0}
+r5 took 15 hp 15 | F 0 S 95 M 0
+   play H SPECTRAL_KNIGHT_0 {'F': 0, 'S': 56, 'M': 0}
+   play B None {'F': 0, 'S': 56, 'M': 0}
+r6 took 0 hp 15 | F 0 S 56 M 0
+   play H SPECTRAL_KNIGHT_0 {'F': 0, 'S': 17, 'M': 0}
+   play B None {'F': 0, 'S': 17, 'M': 0}
+r7 took 3 hp 12 | F 0 S 17 M 0
+   play H SPECTRAL_KNIGHT_0 {'F': 0, 'S': 0, 'M': 0}
+(True, 12, 8, 'MFS')
+$ 3
+off                 : won 0.722  hp left  16.5  rounds  9.9  first to die {'F': 3, 'M': 15}
+on                  : won 0.833  hp left  14.9  rounds  9.7  first to die {'M': 18}
+(16, 12, 6, 5, 2, 1, 1) off: won 0.00 hp  0.0  on: won 0.00 hp  0.0
+(18, 12, 6, 5, 2, 1, 1) off: won 0.67 hp  9.0  on: won 1.00 hp 11.0
+(16, 15, 5, 6, 2, 1, 1) off: won 1.00 hp 30.0  on: won 1.00 hp 24.7
+(20, 13, 6, 5, 2, 1, 2) off: won 1.00 hp  9.3  on: won 1.00 hp  8.0
+(18, 15, 5, 5, 3, 1, 1) off: won 0.67 hp 22.0  on: won 1.00 hp 23.0
+(22, 12, 6, 5, 2, 1, 1) off: won 1.00 hp 28.7  on: won 1.00 hp 23.0
+$ 2 off on ETHEREAL_KEEP=0.9 DEBUFF_CAP=1
+off                 : won 0.667  hp left  13.8  rounds  9.8  first to die {'F': 3, 'M': 9}
+on                  : won 0.833  hp left  14.2  rounds 10.3  first to die {'M': 12}
+ETHEREAL_KEEP=0.9   : won 0.750  hp left   8.8  rounds  9.2  first to die {'M': 12}
+DEBUFF_CAP=1        : won 0.833  hp left  14.2  rounds 10.3  first to die {'M': 12}
+(16, 12, 6, 5, 2, 1, 1) off: won 0.00 hp  0.0  on: won 0.00 hp  0.0  ETHEREAL_KEEP=0.9: won 0.00 hp  0.0  DEBUFF_CAP=1: won 0.00 hp  0.0
+(18, 12, 6, 5, 2, 1, 1) off: won 0.50 hp  6.0  on: won 1.00 hp 10.5  ETHEREAL_KEEP=0.9: won 1.00 hp 12.0  DEBUFF_CAP=1: won 1.00 hp 10.5
+(16, 15, 5, 6, 2, 1, 1) off: won 1.00 hp 26.0  on: won 1.00 hp 20.5  ETHEREAL_KEEP=0.9: won 0.50 hp 16.5  DEBUFF_CAP=1: won 1.00 hp 20.5
+(20, 13, 6, 5, 2, 1, 2) off: won 1.00 hp  7.5  on: won 1.00 hp  8.0  ETHEREAL_KEEP=0.9: won 1.00 hp  6.0  DEBUFF_CAP=1: won 1.00 hp  8.0
+(18, 15, 5, 5, 3, 1, 1) off: won 0.50 hp 13.5  on: won 1.00 hp 19.5  ETHEREAL_KEEP=0.9: won 1.00 hp 15.0  DEBUFF_CAP=1: won 1.00 hp 19.5
+(22, 12, 6, 5, 2, 1, 1) off: won 1.00 hp 29.5  on: won 1.00 hp 27.0  ETHEREAL_KEEP=0.9: won 1.00 hp  3.0  DEBUFF_CAP=1: won 1.00 hp 27.0
+$ flips
+9056454 {'off': (True, 8, 6, 'FMS'), 'on': (False, 0, 5, 'M')}
+9056460 {'off': (True, 20, 6, 'FMS'), 'on': (False, 0, 17, 'M')}

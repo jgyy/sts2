@@ -1,0 +1,191 @@
+$ trace
+r1 hand ASAHM hp 77 boss 165 st 0 ennui 0
+   play H  boss 151 en 1 blk 0 sadness 0
+   play S  boss 138 en 0 blk 0 sadness 2
+   play M  boss 128 en 0 blk 0 sadness 3
+r1 took 12 hp 65
+r2 hand XXXBBABB hp 65 boss 128 st 0 ennui 0
+   play A  boss 122 en 2 blk 0 sadness 3
+   play B  boss 122 en 1 blk 6 sadness 3
+   play B  boss 122 en 0 blk 12 sadness 3
+r2 took 0 hp 65
+r3 hand XXXEASFH hp 65 boss 122 st 0 ennui 0
+   play H  boss 108 en 1 blk 0 sadness 3
+   play S  boss 95 en 0 blk 0 sadness 5
+r3 took 16 hp 49
+r4 hand XXXXXBAABB hp 49 boss 95 st 0 ennui 0
+   play A  boss 89 en 2 blk 0 sadness 5
+   play A  boss 83 en 1 blk 0 sadness 5
+r4 took 0 hp 49
+r5 hand XXXXXSBASA hp 49 boss 83 st 2 ennui 0 INTANGIBLE
+   play A  boss 82 en 2 blk 0 sadness 5
+   play A  boss 81 en 1 blk 0 sadness 5
+   play B  boss 81 en 0 blk 6 sadness 5
+r5 took 6 hp 43
+r6 hand XXXXXHBBAB hp 43 boss 81 st 2 ennui 0
+   play A  boss 75 en 2 blk 0 sadness 5
+   play B  boss 75 en 1 blk 6 sadness 5
+   play B  boss 75 en 0 blk 12 sadness 5
+r6 took 2 hp 41
+r7 hand XXXXXAEBAS hp 41 boss 75 st 2 ennui 0
+   play A  boss 69 en 2 blk 0 sadness 5
+   play A  boss 63 en 1 blk 0 sadness 5
+   play B  boss 63 en 0 blk 6 sadness 5
+r7 took 10 hp 31
+r8 hand XXXXXBBAAS hp 31 boss 63 st 2 ennui 0
+   play A  boss 57 en 2 blk 0 sadness 5
+   play B  boss 57 en 1 blk 6 sadness 5
+   play B  boss 57 en 0 blk 12 sadness 5
+r8 took 6 hp 25
+r9 hand XXXXXHBEBS hp 25 boss 57 st 2 ennui 0
+   play H  boss 43 en 1 blk 0 sadness 5
+r9 took 0 hp 25
+r10 hand XXXXXASABA hp 25 boss 43 st 4 ennui 0 INTANGIBLE
+   play A  boss 42 en 2 blk 0 sadness 5
+   play A  boss 41 en 1 blk 0 sadness 5
+   play B  boss 41 en 0 blk 6 sadness 5
+r10 took 8 hp 17
+r11 hand XXXXXABBAA hp 17 boss 41 st 4 ennui 0
+   play A  boss 35 en 2 blk 0 sadness 5
+   play B  boss 35 en 1 blk 6 sadness 5
+   play B  boss 35 en 0 blk 12 sadness 5
+r11 took 4 hp 13
+r12 hand XXXXXSSAEB hp 13 boss 35 st 4 ennui 0
+   play S  boss 22 en 2 blk 0 sadness 6
+   play S  boss 9 en 1 blk 0 sadness 7
+   play A  boss 3 en 0 blk 0 sadness 7
+r12 took 20 hp -7
+(False, 0, 12, 5)
+$ trace 3 4 S.LONG=1+S.LATER=0.2
+r1 hand HSBAB hp 77 boss 180 st 0 ennui 0
+   play S  boss 167 en 2 blk 0 sadness 2
+   play A  boss 161 en 1 blk 0 sadness 2
+   play B  boss 161 en 0 blk 7 sadness 2
+r1 took 5 hp 72
+r2 hand XXEBAHA hp 72 boss 161 st 0 ennui 0
+   play H  boss 147 en 1 blk 0 sadness 2
+   play B  boss 147 en 0 blk 7 sadness 2
+r2 took 5 hp 67
+r3 hand XXFSBSM hp 67 boss 147 st 0 ennui 0
+   play S  boss 134 en 2 blk 0 sadness 4
+   play S  boss 121 en 1 blk 0 sadness 6
+   play M  boss 111 en 1 blk 0 sadness 7
+   play B  boss 111 en 0 blk 7 sadness 7
+r3 took 9 hp 58
+r4 hand XXXXXXXHSE hp 58 boss 111 st 0 ennui 0
+   play H  boss 97 en 1 blk 0 sadness 7
+   play S  boss 84 en 0 blk 0 sadness 9
+r4 took 0 hp 58
+r5 hand XXXXXXXXXA hp 58 boss 84 st 2 ennui 0 INTANGIBLE
+   play A  boss 83 en 2 blk 0 sadness 9
+r5 took 12 hp 46
+r6 hand XXXXXXXXXA hp 46 boss 83 st 2 ennui 0
+   play A  boss 77 en 2 blk 0 sadness 9
+r6 took 14 hp 32
+r7 hand XXXXXXXXXS hp 32 boss 77 st 2 ennui 0
+   play S  boss 64 en 2 blk 0 sadness 10
+r7 took 16 hp 16
+r8 hand XXXXXXXXXX hp 16 boss 64 st 2 ennui 0
+r8 took 18 hp -2
+(False, 0, 8, 10)
+$ trace 6 0 K.caution=1.35+S.SPARE=0.9
+r1 hand ESABH hp 77 boss 150 st 0 ennui 0
+   play S  boss 137 en 2 blk 0 sadness 2
+   play A  boss 131 en 1 blk 0 sadness 2
+   play B  boss 131 en 0 blk 6 sadness 2
+r1 took 6 hp 71
+r2 hand XXABMBF hp 71 boss 131 st 0 ennui 0
+   play M  boss 121 en 3 blk 0 sadness 3
+   play A  boss 115 en 2 blk 0 sadness 3
+   play B  boss 115 en 1 blk 6 sadness 3
+   play B  boss 115 en 0 blk 12 sadness 3
+r2 took 0 hp 71
+r3 hand XXXAABSA hp 71 boss 115 st 0 ennui 0
+   play S  boss 102 en 2 blk 0 sadness 5
+   play A  boss 96 en 1 blk 0 sadness 5
+   play B  boss 96 en 0 blk 6 sadness 5
+r3 took 10 hp 61
+r4 hand XXXXXBSBEB hp 61 boss 96 st 0 ennui 0
+r4 took 0 hp 61
+r5 hand XXXXXAHEBA hp 61 boss 96 st 2 ennui 0 INTANGIBLE
+   play A  boss 95 en 2 blk 0 sadness 5
+   play A  boss 94 en 1 blk 0 sadness 5
+   play B  boss 94 en 0 blk 6 sadness 5
+r5 took 6 hp 55
+r6 hand XXXXXBABBA hp 55 boss 94 st 2 ennui 0
+   play A  boss 88 en 2 blk 0 sadness 5
+   play B  boss 88 en 1 blk 6 sadness 5
+   play B  boss 88 en 0 blk 12 sadness 5
+r6 took 2 hp 53
+r7 hand XXXXXSSBAA hp 53 boss 88 st 2 ennui 0
+   play A  boss 82 en 2 blk 0 sadness 5
+   play A  boss 76 en 1 blk 0 sadness 5
+   play B  boss 76 en 0 blk 6 sadness 5
+r7 took 10 hp 43
+r8 hand XXXXXBHABE hp 43 boss 76 st 2 ennui 0
+   play A  boss 70 en 2 blk 0 sadness 5
+   play B  boss 70 en 1 blk 6 sadness 5
+   play B  boss 70 en 0 blk 12 sadness 5
+r8 took 6 hp 37
+r9 hand XXXXXABSSA hp 37 boss 70 st 2 ennui 0
+   play A  boss 64 en 2 blk 0 sadness 5
+   play A  boss 58 en 1 blk 0 sadness 5
+r9 took 0 hp 37
+r10 hand XXXXXAHBBA hp 37 boss 58 st 4 ennui 0 INTANGIBLE
+   play A  boss 57 en 2 blk 0 sadness 5
+   play B  boss 57 en 1 blk 6 sadness 5
+   play B  boss 57 en 0 blk 12 sadness 5
+r10 took 2 hp 35
+r11 hand XXXXXBEHAA hp 35 boss 57 st 4 ennui 0
+   play H  boss 43 en 1 blk 0 sadness 5
+   play B  boss 43 en 0 blk 6 sadness 5
+r11 took 10 hp 25
+r12 hand XXXXXABASS hp 25 boss 43 st 4 ennui 0
+   play A  boss 37 en 2 blk 0 sadness 5
+   play A  boss 31 en 1 blk 0 sadness 5
+   play B  boss 31 en 0 blk 6 sadness 5
+r12 took 14 hp 11
+r13 hand XXXXXBBSBS hp 11 boss 31 st 4 ennui 0
+   play B  boss 31 en 2 blk 6 sadness 5
+   play B  boss 31 en 1 blk 12 sadness 5
+   play B  boss 31 en 0 blk 18 sadness 5
+r13 took 2 hp 9
+r14 hand XXXXXAAABH hp 9 boss 31 st 4 ennui 0
+   play H  boss 17 en 1 blk 0 sadness 5
+   play A  boss 11 en 0 blk 0 sadness 5
+r14 took 0 hp 9
+r15 hand XXXXXAESSA hp 9 boss 11 st 6 ennui 0 INTANGIBLE
+   play A  boss 10 en 2 blk 0 sadness 5
+   play A  boss 9 en 1 blk 0 sadness 5
+r15 took 16 hp -7
+(False, 0, 15, 5)
+$ 3 on S.LONG=1 S.PLAYED=2+HP_BASE=2.5
+on                          : won 0.556  hp left   7.1  rounds 14.2  peak Sadness  5.7
+S.LONG=1                    : won 0.556  hp left   6.3  rounds 13.9  peak Sadness  6.6
+S.PLAYED=2+HP_BASE=2.5      : won 0.556  hp left   7.1  rounds 14.2  peak Sadness  6.1
+(150, 6, 4, 1, 4, 2, 1, 1, 1, 3) on: won 1.00 sad 6.3  S.LONG=1: won 1.00 sad 6.3  S.PLAYED=2+HP_BASE=2.5: won 1.00 sad 6.0
+(165, 6, 4, 1, 4, 2, 1, 1, 1, 3) on: won 0.33 sad 5.0  S.LONG=1: won 0.00 sad 9.3  S.PLAYED=2+HP_BASE=2.5: won 0.33 sad 7.0
+(180, 6, 4, 1, 4, 2, 1, 1, 1, 3) on: won 0.33 sad 5.7  S.LONG=1: won 0.33 sad 7.3  S.PLAYED=2+HP_BASE=2.5: won 0.33 sad 5.7
+(180, 6, 4, 1, 4, 2, 1, 0, 1, 3) on: won 0.33 sad 7.3  S.LONG=1: won 0.67 sad 6.7  S.PLAYED=2+HP_BASE=2.5: won 0.67 sad 6.3
+(180, 7, 3, 2, 4, 3, 1, 1, 1, 3) on: won 1.00 sad 5.0  S.LONG=1: won 1.00 sad 5.0  S.PLAYED=2+HP_BASE=2.5: won 0.67 sad 5.3
+(200, 7, 3, 2, 4, 3, 1, 1, 1, 3) on: won 0.33 sad 5.0  S.LONG=1: won 0.33 sad 5.0  S.PLAYED=2+HP_BASE=2.5: won 0.33 sad 6.3
+$ flips 2 on S.LONG=1
+9026329 {'on': (True, 3, 14, 6), 'S.LONG=1': (False, 0, 12, 10)}
+9026331 {'on': (False, 0, 17, 7), 'S.LONG=1': (True, 3, 17, 7)}
+9026333 {'on': (True, 5, 16, 5), 'S.LONG=1': (False, 0, 15, 7)}
+9026338 {'on': (False, 0, 15, 5), 'S.LONG=1': (True, 5, 16, 7)}
+9026353 {'on': (False, 0, 16, 5), 'S.LONG=1': (True, 3, 16, 7)}
+9026356 {'on': (False, 0, 16, 7), 'S.LONG=1': (True, 5, 17, 6)}
+9026360 {'on': (True, 3, 14, 5), 'S.LONG=1': (False, 0, 12, 10)}
+9026367 {'on': (True, 1, 17, 5), 'S.LONG=1': (False, 0, 12, 10)}
+9026381 {'on': (False, 0, 17, 8), 'S.LONG=1': (True, 19, 16, 7)}
+9026387 {'on': (True, 11, 16, 5), 'S.LONG=1': (False, 0, 15, 7)}
+9026392 {'on': (False, 0, 15, 7), 'S.LONG=1': (True, 1, 16, 6)}
+9026408 {'on': (True, 1, 16, 7), 'S.LONG=1': (False, 0, 12, 10)}
+9026428 {'on': (True, 1, 16, 6), 'S.LONG=1': (False, 0, 15, 8)}
+9026431 {'on': (False, 0, 16, 7), 'S.LONG=1': (True, 3, 17, 8)}
+9026435 {'on': (False, 0, 16, 8), 'S.LONG=1': (True, 11, 16, 7)}
+9026438 {'on': (True, 7, 16, 5), 'S.LONG=1': (False, 0, 12, 10)}
+9026483 {'on': (True, 3, 16, 5), 'S.LONG=1': (False, 0, 11, 10)}
+9026506 {'on': (False, 0, 16, 5), 'S.LONG=1': (True, 5, 16, 7)}
+9026507 {'on': (True, 11, 16, 5), 'S.LONG=1': (False, 0, 15, 7)}

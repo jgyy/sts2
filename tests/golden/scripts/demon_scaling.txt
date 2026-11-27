@@ -1,0 +1,66 @@
+A6H4Z2B6F2P0 hit 15 block 11 hp 75 energy 3
+    + nothing                        perfect 0.002
+    + Strike-like attack             perfect 0.001
+    + two-cost attack                perfect 0.003
+    + Inflame (+3 Str, 1)            perfect 0.054
+    + energy Power                   perfect 0.215
+    + Countdown (6/turn, 1)          perfect 0.067
+    + Countdown+ (9/turn?, 1)        perfect 0.221
+    + Lethality (~+half a hit, 1)    perfect 0.111
+    + Reaper Form (x2, 3)            perfect 0.667
+    + Reaper Form (x2, 2)            perfect 0.729
+A6H3Z3B6F2P0 hit 19 block 12 hp 75 energy 3
+    + nothing                        perfect 0.460
+    + Strike-like attack             perfect 0.494
+    + two-cost attack                perfect 0.565
+    + Inflame (+3 Str, 1)            perfect 0.625
+    + energy Power                   perfect 0.686
+    + Countdown (6/turn, 1)          perfect 0.637
+    + Countdown+ (9/turn?, 1)        perfect 0.731
+    + Lethality (~+half a hit, 1)    perfect 0.731
+    + Reaper Form (x2, 3)            perfect 0.853
+    + Reaper Form (x2, 2)            perfect 0.884
+A7H3Z2B7F3P0 hit 17 block 12 hp 66 energy 3
+    + nothing                        perfect 0.028
+    + Strike-like attack             perfect 0.032
+    + two-cost attack                perfect 0.052
+    + Inflame (+3 Str, 1)            perfect 0.116
+    + energy Power                   perfect 0.228
+    + Countdown (6/turn, 1)          perfect 0.135
+    + Countdown+ (9/turn?, 1)        perfect 0.268
+    + Lethality (~+half a hit, 1)    perfect 0.222
+    + Reaper Form (x2, 3)            perfect 0.613
+    + Reaper Form (x2, 2)            perfect 0.690
+A6H4Z2B6F2P0 hit 15 block 11 hp 75 energy 4
+    + nothing                        perfect 0.605
+    + Strike-like attack             perfect 0.607
+    + two-cost attack                perfect 0.711
+    + Inflame (+3 Str, 1)            perfect 0.746
+    + energy Power                   perfect 0.667
+    + Countdown (6/turn, 1)          perfect 0.736
+    + Countdown+ (9/turn?, 1)        perfect 0.801
+    + Lethality (~+half a hit, 1)    perfect 0.762
+    + Reaper Form (x2, 3)            perfect 0.908
+    + Reaper Form (x2, 2)            perfect 0.922
+A5H4Z3B6F2P0 hit 15 block 11 hp 90 energy 3
+    + nothing                        perfect 0.035
+    + Strike-like attack             perfect 0.035
+    + two-cost attack                perfect 0.051
+    + Inflame (+3 Str, 1)            perfect 0.213
+    + energy Power                   perfect 0.383
+    + Countdown (6/turn, 1)          perfect 0.242
+    + Countdown+ (9/turn?, 1)        perfect 0.446
+    + Lethality (~+half a hit, 1)    perfect 0.311
+    + Reaper Form (x2, 3)            perfect 0.760
+    + Reaper Form (x2, 2)            perfect 0.803
+A8H2Z2B7F3P0 hit 13 block 10 hp 66 energy 4
+    + nothing                        perfect 0.001
+    + Strike-like attack             perfect 0.001
+    + two-cost attack                perfect 0.004
+    + Inflame (+3 Str, 1)            perfect 0.019
+    + energy Power                   perfect 0.002
+    + Countdown (6/turn, 1)          perfect 0.014
+    + Countdown+ (9/turn?, 1)        perfect 0.056
+    + Lethality (~+half a hit, 1)    perfect 0.014
+    + Reaper Form (x2, 3)            perfect 0.517
+    + Reaper Form (x2, 2)            perfect 0.573
