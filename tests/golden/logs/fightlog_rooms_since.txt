@@ -1,0 +1,8 @@
+Defect       act 1 punch  0.9: fights  13  rounds 3.46  enemy HP a round  18.4  cost  8.8% of Max HP  deaths 0
+Ironclad     act 1 punch  2.7: fights   8  rounds 4.00  enemy HP a round  15.1  cost  3.4% of Max HP  deaths 0
+Necrobinder  act 1 punch  0.9: fights  10  rounds 2.90  enemy HP a round  20.9  cost  3.1% of Max HP  deaths 0
+Necrobinder  act 1 punch  2.7: fights  14  rounds 4.43  enemy HP a round  15.2  cost  2.6% of Max HP  deaths 0
+Regent       act 1 punch  2.7: fights   8  rounds 3.75  enemy HP a round  15.3  cost  9.3% of Max HP  deaths 0
+Silent       act 1 punch  2.7: fights  15  rounds 4.27  enemy HP a round  14.3  cost  7.7% of Max HP  deaths 0
+all          act 1 punch  0.9: fights  25  rounds 3.32  enemy HP a round  18.7  cost  9.8% of Max HP  deaths 1
+all          act 1 punch  2.7: fights  45  rounds 4.18  enemy HP a round  14.9  cost  5.7% of Max HP  deaths 0

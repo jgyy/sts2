@@ -1,0 +1,33 @@
+== sts2 cards: 242  read 112  rule 55  unseen 41  partial 29  unread 3  power 2
+   partial     42  Charge Battery             Gain 7 Block. Next turn, gain [energy_icon.png].
+   partial     36  Go for the Eyes            Deal 3 damage. If the enemy intends to attack, apply 1 Weak.
+   partial     33  Glitterstream              Gain 11 Block. Next turn, gain 5 Block.
+   partial     25  True Grit                  Gain 7 Block. Exhaust 1 card at random.
+   partial     24  Cinder                     Deal 18 damage. Exhaust 1 card at random.
+   partial     22  Guiding Star               Deal 12 damage. Next turn, draw 2 cards.
+   partial     21  Death March                Deal 8 damage. Deals 4 additional damage for each card drawn during your turn.
+   partial     21  Setup Strike               Deal 7 damage. Gain 3 Strength this turn.
+   partial     20  Crush Under                Deal 8 damage to ALL enemies. All enemies lose 1 Strength this turn.
+   partial     20  Precise Cut                Deal 13 damage. Deals 2 less damage for each other card in your Hand.
+   partial     19  Delay                      Gain 11 Block. Next turn, gain [energy_icon.png].
+   partial     19  Mangle                     Deal 20 damage. Enemy loses 10 Strength this turn.
+   unread      13  Body Slam                  Deal damage equal to your Block.
+   partial     13  Bubble Bubble              If the enemy has Poison, apply 9 Poison.
+   partial      8  Battle Trance              Draw 3 cards. You cannot draw additional cards this turn.
+   partial      7  Knockout Blow              Deal 30 damage. If this kills an enemy, gain [star_icon.png][star_icon.png][star_icon.png][star_icon.png][star_icon.png].
+   partial      6  Dodge and Roll             Gain 4 Block. Next turn, gain 4 Block.
+   partial      5  Grand Finale               Can only be played if there are no cards in your Draw Pile. Deal 60 damage to ALL enemies.
+   partial      5  Hand of Greed              Deal 20 damage. If Fatal, gain 20 Gold.
+   partial      4  Bone Shards                If Osty is alive, he deals 9 damage to ALL enemies and you gain 9 Block. Osty dies.
+   partial      4  Dominate                   Apply 1 Vulnerable. Gain 1 Strength for each Vulnerable on the enemy.
+   partial      4  Glow                       Gain [star_icon.png]. Draw 1 card. Next turn, draw 1 card.
+   unread       4  Transfigure                Add Replay to a card in your Hand. It costs an extra [energy_icon.png].
+   unread       3  White Noise                Add a random Power into your Hand. It's free to play this turn.
+   partial      2  Hegemony                   Deal 15 damage. Next turn, gain [energy_icon.png][energy_icon.png].
+   partial      2  Hyperbeam                  Deal 24 damage to ALL enemies. Lose 3 Focus this turn.
+   partial      2  Reflect                    Gain 15 Block. Blocked attack damage is reflected to your attacker this turn.
+   partial      1  Expect a Fight             Gain 15 Block. Gains 5 additional Block for each Strength you have.
+   partial      1  Feed                       Deal 10 damage. If Fatal, raise your Max HP by 3.
+   partial      1  Fetch                      Osty deals 3 damage. If this is the first time this card has been played this turn, draw 1 card.
+   partial      1  Stomp                      Deal 12 damage to ALL enemies. Costs 1 less [energy_icon.png] for each Attack played this turn.
+   partial      1  Tear Asunder               Deal 5 damage. Hits an additional time for each time you lost HP this combat.

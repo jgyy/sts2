@@ -1,0 +1,24 @@
+-- named in the text, read as 0
+AFTERIMAGE             Power  block      Whenever you play a card, gain 1 Block.
+CRIMSON_MANTLE         Power  block      At the start of your turn, lose 1 HP and gain 7 Block.
+DANSE_MACABRE          Power  block      Whenever you play a card that costs [energy_icon.png][energy_icon.png] or more, gain 4 Block.
+DARK_EMBRACE           Power  draw       Whenever a card is Exhausted, draw 1 card.
+DEMON_FORM             Power  strength   At the start of your turn, gain 3 Strength.
+FETCH                  Attack draw       Osty deals 3 damage. If this is the first time this card has been played this turn, draw 1 card.
+GUIDING_STAR           Attack draw       Deal 12 damage. Next turn, draw 2 cards.
+NOXIOUS_FUMES          Power  poison     At the start of your turn, apply 2 Poison to ALL enemies.
+RUPTURE                Power  strength   Whenever you lose HP on your turn, gain 1 Strength.
+SERPENT_FORM           Power  damage     Whenever you play a card, deal 4 damage to a random enemy.
+TOOLS_OF_THE_TRADE     Power  draw       At the start of your turn, draw 1 card and discard 1 card.
+TYRANNY                Power  draw       At the start of your turn, draw 1 card and Exhaust 1 card from your Hand.
+VICIOUS                Power  draw       Whenever you apply Vulnerable, draw 1 card.
+-- conditions in the text (the card's own effect, not a Power's trigger)
+BONE_SHARDS            If Osty is alive, he deals 9 damage to ALL enemies and you gain 9 Block. Osty dies.                  d9 b9 p0 dr0
+BUBBLE_BUBBLE          If the enemy has Poison, apply 9 Poison.                                                             d0 b0 p9 dr0
+FEED                   Deal 10 damage. If Fatal, raise your Max HP by 3.                                                    d10 b0 p0 dr0
+FETCH                  Osty deals 3 damage. If this is the first time this card has been played this turn, draw 1 card.     d3 b0 p0 dr0
+FLATTEN                Osty deals 12 damage. This card costs 0 [energy_icon.png] if Osty has attacked this turn.            d12 b0 p0 dr0
+GO_FOR_THE_EYES        Deal 3 damage. If the enemy intends to attack, apply 1 Weak.                                         d3 b0 p0 dr0
+GRAND_FINALE           Can only be played if there are no cards in your Draw Pile. Deal 60 damage to ALL enemies.           d60 b0 p0 dr0
+HAND_OF_GREED          Deal 20 damage. If Fatal, gain 20 Gold.                                                              d20 b0 p0 dr0
+KNOCKOUT_BLOW          Deal 30 damage. If this kills an enemy, gain [star_icon.png][star_icon.png][star_icon.png][star_icon d30 b0 p0 dr0

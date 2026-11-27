@@ -1,0 +1,23 @@
+act 1: 94 ordinary fights; cost, % of Max HP 6.2 on average
+  Block cards       held  0.7   one more: -1.14 % of Max HP (t -0.8)   0:  6.7 (56)  1:  4.2 (13)  2:  6.7 (21)  3+:  3.0 (4)
+  cards for damage  held  1.2   one more: -1.19 % of Max HP (t -0.9)   0:  8.8 (25)  1:  6.1 (35)  2:  4.5 (23)  3+:  4.2 (11)
+  other attacks     held  0.3   one more: -6.04 % of Max HP (t -2.5)   0:  7.0 (72)  1:  4.0 (15)  2:  3.0 (7)
+  hit ALL           held  0.2   one more: +3.07 % of Max HP (t +1.0)   0:  5.8 (81)  1:  8.2 (10)  2:  9.3 (3)
+  Powers            held  0.3   one more: +1.57 % of Max HP (t +0.5)   0:  5.7 (69)  1:  7.6 (25)
+  other Skills      held  0.4   one more: +1.04 % of Max HP (t +0.5)   0:  6.2 (73)  1:  6.3 (11)  2:  4.9 (7)  3+:  9.2 (3)
+  Weak              held  0.4   one more: -0.86 % of Max HP (t -0.4)   0:  6.9 (65)  1:  5.1 (19)  2:  4.0 (10)
+  Vulnerable        held  0.2   one more: -3.70 % of Max HP (t -1.1)   0:  6.6 (73)  1:  4.8 (21)
+  cards drawn       held  0.2   one more: -0.19 % of Max HP (t -0.1)   
+  cost 0            held  0.4   one more: -2.82 % of Max HP (t -1.2)   0:  6.8 (66)  1:  6.7 (19)  2:  0.9 (9)
+  cost 2+           held  0.4   one more: -1.06 % of Max HP (t -0.5)   0:  5.9 (64)  1:  7.2 (21)  2:  5.8 (9)
+  upgraded          held  0.8   one more: -1.14 % of Max HP (t -1.0)   
+  Strikes           held  3.9   one more: +1.92 % of Max HP (t +0.9)   2:  3.7 (8)  3+:  6.4 (86)
+  Defends           held  4.2   one more: +0.00 % of Max HP (t +0.0)   3+:  6.2 (94)
+  Curses            held  0.1   one more: -4.20 % of Max HP (t -1.0)   0:  6.5 (84)  1:  4.4 (9)  2:  0.0 (1)
+  deck size         held 12.8   one more: -0.79 % of Max HP (t -1.2)   
+  relics            held  2.9   one more: -1.09 % of Max HP (t -1.1)   
+  potions           held  1.1   one more: -0.12 % of Max HP (t -0.1)   0:  4.9 (34)  1:  8.9 (29)  2:  4.5 (20)  3+:  5.9 (11)
+  cards against the character's usual (% of Max HP; 25+ fights; the ten at each end): Defend +0.0 (94), Strike +0.0 (94), Bodyguard +0.0 (31), Unleash +0.0 (31)
+  relics against the character's usual (% of Max HP; 25+ fights; the ten at each end): NUNCHAKU -0.2 (25), BOUND_PHYLACTERY +0.0 (31)
+act 2: 6 fights, too few
+act 3: 5 fights, too few

@@ -1,0 +1,12 @@
+GOLDEN_SHRINE                {'Pray': 16}
+      [2.5] Pray: Gain 100 Gold. | [1.0] Desecrate: Gain 275 Gold. Become Cursed - Regret. | [0.5] Leave: Nothing happens.
+WORLD_OF_GOOP                {'Leave It': 14}
+      [0.3] Leave It: Lose 30 Gold. | [-0.3] Gather Gold: Gain 75 Gold. Lose 11 HP.
+A_VERY_LONG_EVENT_NAME_THAT_RUNS_PAST_THE_COLUMN {'An option whose title is a good deal lon': 12}
+      [0.7] An option whose title is a good deal longer than forty characters in all: Gain 10 Gold. | [0.5] Proceed: Go on.
+BIG_FISH                     {'Banana': 7, 'Donut': 5}
+      [4.3] Banana: Heal 26 HP. | [2.2] Donut: Gain 5 Max HP. | [1.5] Box: Obtain a random Relic. Become Cursed - Regret.
+SLIPPERY_BRIDGE              {'Overcome': 11}
+      [2.5] Overcome: Strike is removed from your Deck. | [0.9] Hold On: Lose 3 HP. The card in the above option is randomized.
+THE_CLERIC                   {'Purify': 8, 'Heal': 2}
+      [5.2] Purify: Lose 50 Gold. Remove a card from your Deck. | [1.6] Heal: Lose 35 Gold. Heal 20 HP. | [0.5] Leave: Nothing happens.

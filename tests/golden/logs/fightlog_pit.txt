@@ -1,0 +1,4 @@
+11-21 13:49 won   rounds  8  boss left  28  hp  8  Sandpit at the end 2  | - 3E 3E 4 3 2 1E 2E
+11-21 13:56 won   rounds  6  boss left  18  hp 20  Sandpit at the end 2  | - 3E 3E 3 2E 2
+11-21 13:58 won   rounds  9  boss left   7  hp 64  Sandpit at the end 6  | - 3E 3E 3E 3E 3E 3E 4E 5E
+{'won': 3}

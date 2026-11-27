@@ -1,0 +1,69 @@
+no wiki.json: the kinds will fill in as the bot is offered each card (python3 scripts/fightlog.py wiki writes one)
+free      0 cards,     0 picks, +0.00 floors a pick beyond par: its cards start at +0.00
+energy    0 cards,     0 picks, +0.00 floors a pick beyond par: its cards start at +0.00
+draw      0 cards,     0 picks, +0.00 floors a pick beyond par: its cards start at +0.00
+The Defect: 44 picks, par +0.00 floors a pick
+   SCRAPE                      1 picks  +0.30 -> +0.28  
+   BALL_LIGHTNING              7 picks  +0.21 -> +0.21  
+   BOOST_AWAY                  1 picks  +0.28 -> +0.28  
+   CAPACITOR                   1 picks  +0.28 -> +0.28  
+   COLD_SNAP                   3 picks  +0.21 -> +0.21  
+   DARKNESS                    1 picks  +0.32 -> +0.32  
+   STORM                       1 picks  +0.28 -> +0.28  
+   SWEEPING_BEAM               2 picks  +0.23 -> +0.23  
+   BEAM_CELL                   3 picks  +0.15 -> +0.18  
+   GO_FOR_THE_EYES             4 picks  +0.13 -> +0.17  
+   CHARGE_BATTERY              1 picks  +0.20 -> +0.28  
+   SUPERCRITICAL               2 picks  +0.14 -> +0.26  
+The Ironclad: 34 picks, par +0.00 floors a pick
+   BATTLE_TRANCE               2 picks  +0.23 -> +0.23  
+   BLUDGEON                    1 picks  +0.29 -> +0.29  
+   BREAKTHROUGH                1 picks  +0.32 -> +0.32  
+   CINDER                      2 picks  +0.24 -> +0.24  
+   CONFLAGRATION               1 picks  +0.28 -> +0.28  
+   CRIMSON_MANTLE              1 picks  +0.28 -> +0.28  
+   TAUNT                       1 picks  +0.29 -> +0.29  
+   THRASH                      2 picks  +0.27 -> +0.27  
+   THUNDERCLAP                 1 picks  +0.29 -> +0.29  
+   TRUE_GRIT                   2 picks  +0.27 -> +0.27  
+   UPPERCUT                    1 picks  +0.28 -> +0.28  
+   FORGOTTEN_RITUAL            1 picks  +0.20 -> +0.29  
+The Necrobinder: 65 picks, par +5.31 floors a pick
+   DREDGE                      1 picks  +0.31 -> +0.25  
+   CAPTURE_SPIRIT              1 picks  +0.30 -> +0.30  
+   BLIGHT_STRIKE               1 picks  +0.38 -> +0.38  
+   BONE_SHARDS                 1 picks  +0.27 -> +0.27  
+   CLEANSE                     1 picks  +0.30 -> +0.30  
+   DEATHBRINGER                2 picks  +0.19 -> +0.19  
+   MISERY                      1 picks  +0.24 -> +0.25  
+   FETCH                       1 picks  +0.24 -> +0.26  
+   DELAY                       2 picks  +0.16 -> +0.19  
+   WISP                        1 picks  +0.20 -> +0.26  
+   BORROWED_TIME               2 picks  +0.15 -> +0.21  
+   POKE                        2 picks  +0.15 -> +0.31  
+The Regent: 61 picks, par +2.81 floors a pick
+   BOMBARDMENT                 1 picks  +0.31 -> +0.31  
+   BULWARK                     1 picks  +0.31 -> +0.31  
+   CELESTIAL_MIGHT             1 picks  +0.28 -> +0.28  
+   CHILD_OF_THE_STARS          1 picks  +0.31 -> +0.31  
+   CLOAK_OF_STARS              3 picks  +0.21 -> +0.21  
+   COSMIC_INDIFFERENCE         4 picks  +0.13 -> +0.13  
+   VOID_FORM                   1 picks  +0.28 -> +0.28  
+   PROPHESIZE                  1 picks  +0.29 -> +0.31  
+   COLLISION_COURSE            2 picks  +0.18 -> +0.21  
+   MAKE_IT_SO                  1 picks  +0.23 -> +0.28  
+   STARDUST                    1 picks  +0.23 -> +0.28  
+   BIG_BANG                    2 picks  +0.15 -> +0.22  
+The Silent: 35 picks, par +0.00 floors a pick
+   REFLEX                      1 picks  +0.30 -> +0.28  
+   ACROBATICS                  2 picks  +0.25 -> +0.23  
+   ANTICIPATE                  1 picks  +0.29 -> +0.29  
+   BACKFLIP                    2 picks  +0.24 -> +0.24  
+   BLADE_DANCE                 1 picks  +0.28 -> +0.28  
+   BOUNCING_FLASK              1 picks  +0.29 -> +0.29  
+   SPEEDSTER                   1 picks  +0.29 -> +0.29  
+   STRANGLE                    1 picks  +0.29 -> +0.29  
+   SUCKER_PUNCH                1 picks  +0.28 -> +0.28  
+   UNTOUCHABLE                 2 picks  +0.24 -> +0.24  
+   UP_MY_SLEEVE                1 picks  +0.28 -> +0.28  
+   ADRENALINE                  2 picks  +0.15 -> +0.23  

@@ -1,0 +1,5 @@
+11-21 13:58 boss    AEONGLASS                Necrobinder won  rounds  9  gone by  5  | 3 3 2 1 0 0 0 0 0
+11-22 12:10 elite   BYRDONIS+TOADPOLE        None        won  rounds  3  gone by  2  | 1 0 0
+boss      1 fights: Artifact stood for 4.0 of 9.0 rounds
+elite     1 fights: Artifact stood for 1.0 of 3.0 rounds
+monster   5 fights: Artifact stood for 1.4 of 3.8 rounds

@@ -1,0 +1,4 @@
+11-21 13:51 Regent      won  rounds 11  first to die: Rocket  by round  8, the other on 156 | 209/199 195/157 182/116 178/78 175/78 157/72 156/27 156/0 101/0 95/0 8/0
+11-21 13:54 Defect      won  rounds 11  first to die: Rocket  by round  7, the other on 125 | 209/199 196/167 188/128 174/69 158/22 140/8 125/0 122/0 90/0 53/0 11/0
+11-21 14:00 Necrobinder won  rounds 10  first to die: Rocket  by round  7, the other on 174 | 209/199 202/181 199/170 184/129 184/88 177/79 174/0 171/0 106/0 93/0
+{'Rocket won': 3}

@@ -1,0 +1,13 @@
+on enemy  RAMPART                      Living Shield          Rampart: whenever this is here, things go as its name says.
+on enemy  RAVENOUS                     Corpse Slug            Ravenous: whenever this is here, things go as its name says.
+on enemy  STEAM_ERUPTION               Waterfall Giant        Steam Eruption: whenever this is here, things go as its name says.
+on enemy  SUCK                         Fossil Stalker         Suck: whenever this is here, things go as its name says.
+on enemy  SURPRISE                     Gremlin Merc           Surprise: whenever this is here, things go as its name says.
+on us     CALCIFY                      The Necrobinder        Calcify: whenever this is here, things go as its name says.
+on us     CONSUMING_SHADOW             The Defect             Consuming Shadow: whenever this is here, things go as its name says.
+on us     DEXTERITY                    The Regent             Dexterity: whenever this is here, things go as its name says.
+on us     FRAIL                        The Regent             Frail: whenever this is here, things go as its name says.
+on us     MADE_UP                      The Silent             Whenever you play a card, nothing at all happens.
+on us     NEXT_BLOCK                   The Regent             Next Block: whenever this is here, things go as its name says.
+on us     SHRINK                       The Regent             Shrink: whenever this is here, things go as its name says.
+on us     TANGLED                      The Defect             Tangled: whenever this is here, things go as its name says.
