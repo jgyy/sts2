@@ -52,10 +52,19 @@ class Memory:
     timeline_stuck: set = field(default_factory=set)  # epochs it could not reveal (not retried)
     parasol: tuple = ()  # the shop Lord's Parasol is emptying, and how often we have looked at it: (act, floor, looks)
     potion_swaps: dict = field(default_factory=dict)  # (act, floor) -> potions poured away there for a better one
+    walked: tuple = ()  # the fight we last walked into from the map: (act, row, kind, HP then)
+    fight_toll: list = field(default_factory=lambda: [0.0, 0.0])  # this run's fights: HP they cost, HP the route planner expected
+
+    def toll(self) -> float:
+        """What a fight costs this deck next to the average (FIGHT_COST), from the fights of this run (the `own_cost` setting)."""
+        if not knob("own_cost"):
+            return 1.0
+        return max(TOLL_RANGE[0], min(TOLL_RANGE[1], (self.fight_toll[0] + TOLL_PRIOR) / (self.fight_toll[1] + TOLL_PRIOR)))
 
     def reset_run(self) -> None:
         self.deck_size, self.deck, self.max_energy, self.picks, self.map_nodes, self.map_at, self.over_waits = 10, [], 3, [], {}, (), 0
         self.select_key, self.character_selected, self.ascension_waits = "", False, 0
+        self.walked, self.fight_toll = (), [0.0, 0.0]
         self.card_skips.clear()
         self.potion_swaps.clear()
         self.selected.clear()
@@ -210,6 +219,8 @@ FIGHT_COST = {1: {"Monster": 5, "Elite": 21}, 2: {"Monster": 12, "Elite": 30}, 3
 LATE_ROW = 5  # from this row of acts 2 and 3 an ordinary fight costs more than the act's average, before it less
 LATE_COST = {2: (0.85, 1.2), 3: (0.93, 1.08)}
 BAD_LUCK = 1.7  # how much more than average a fight costs when the draws go wrong
+TOLL_PRIOR = 40.0  # HP of fights at the average cost that a run's own fights are weighed against (Memory.toll)
+TOLL_RANGE = (0.6, 1.6)
 BOSS_WORTH = 16.0  # what getting past the boss is worth, in the units of the room rewards below
 # Slay the Spire 2's Spoils Map marks a node of the next act's map worth 600 Gold to whoever walks through it (map_screen tags it
 # "Spoils:<type>"): the gold is spent at the shops after it (in the path's own shop value), and a little more for the rest of the run.
@@ -258,10 +269,20 @@ def _upgrade_worth(act) -> float:
     return UPGRADE_EARLY if act == 1 else knob("upgrade_worth")
 
 
-def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, act: int, harsh: float = 1.0) -> float:
+def fight_cost(kind: str, act: int, row) -> float:
+    """HP a fight of this kind costs on average, by where in the act it is met."""
+    cost = FIGHT_COST.get(act, FIGHT_COST[3])[kind]
+    if kind == "Elite" and act == 1 and isinstance(row, int) and row < knob("early_rows"):
+        cost = 32  # a starter deck against an elite
+    if kind == "Monster" and act in LATE_COST and isinstance(row, int):
+        cost *= LATE_COST[act][row >= LATE_ROW]
+    return cost
+
+
+def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, act: int, harsh: float = 1.0, toll: float = 1.0) -> float:
     """Expected worth of walking through `rooms` (type, row) in order, starting at `hp`: rewards along the way weighed
-    against the state we reach the boss in, and at each rest site whichever of resting and upgrading comes out ahead."""
-    costs = FIGHT_COST.get(act, FIGHT_COST[3])
+    against the state we reach the boss in, and at each rest site whichever of resting and upgrading comes out ahead.
+    `toll` is what fights cost this deck next to the average (Memory.toll)."""
     score = 0.0
     for n, (kind, row) in enumerate(rooms):
         if kind.startswith(SPOILS):
@@ -269,21 +290,17 @@ def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, 
         if kind == "EmeraldElite":
             score, kind = score + EMERALD_WORTH.get(act, EMERALD_WORTH[3]), "Elite"
         if kind in ("Monster", "Elite"):
-            cost = costs[kind]
-            if kind == "Elite" and act == 1 and isinstance(row, int) and row < EARLY_ROWS:
-                cost = 32  # a starter deck against an elite
+            cost = fight_cost(kind, act, row)
             if kind == "Elite" and hp < 0.75 * max_hp:
                 # Elites met below three quarters HP end runs far more often than their average cost says.
                 score -= 2.5 if hp >= 0.65 * max_hp else 6.0 if hp >= 0.5 * max_hp else 14.0
             if kind == "Elite" and act >= 3:
                 score -= 6.0  # an act 3 elite ends the run one time in five whatever the HP, and its relic has one boss left
-            if kind == "Monster" and act in LATE_COST and isinstance(row, int):
-                cost *= LATE_COST[act][row >= LATE_ROW]
             if kind == "Monster" and act >= 2 and hp < 0.3 * max_hp:
                 score -= 14.0 if act >= 3 else 10.0  # the same for an ordinary fight met badly hurt (a run ended is 30 here)
             elif kind == "Monster" and act >= 2 and hp < 0.6 * max_hp:
                 score -= 3.0 if act >= 3 else 1.5
-            hp -= cost * harsh
+            hp -= cost * harsh * toll
             score += knob("elite_worth") if kind == "Elite" else 1.0
             gold += 30 if kind == "Elite" else 15
             if hp <= 0:
@@ -296,10 +313,10 @@ def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, 
             hp = min(hp, max_hp)
         elif kind == "RestSite":
             onward = rooms[n + 1 :]
-            smith = _upgrade_worth(act) + path_value(onward, hp, max_hp, gold, act, harsh)
+            smith = _upgrade_worth(act) + path_value(onward, hp, max_hp, gold, act, harsh, toll)
             if hp >= 0.95 * max_hp:
                 return score + smith
-            rest = path_value(onward, min(float(max_hp), hp + REST_HEAL * max_hp), max_hp, gold, act, harsh)
+            rest = path_value(onward, min(float(max_hp), hp + REST_HEAL * max_hp), max_hp, gold, act, harsh, toll)
             return score + max(smith, rest)
         elif kind == "Treasure":
             score += 2.0
@@ -316,14 +333,14 @@ def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, 
     return score
 
 
-def best_onward(nodes: dict, key, rooms: list, hp: float, max_hp: int, gold: int, act: int, budget: list) -> float:
+def best_onward(nodes: dict, key, rooms: list, hp: float, max_hp: int, gold: int, act: int, budget: list, toll: float = 1.0) -> float:
     """Best value over every way on from node `key` (`rooms` is the way so far, that node included)."""
     kids = [tuple(c) for c in (nodes.get(key) or {}).get("children") or [] if tuple(c) in nodes]
     if not kids or budget[0] <= 0:
         budget[0] -= 1
         # A route is also judged by how it goes when fights cost a good deal more than average.
-        return 0.6 * path_value(rooms, hp, max_hp, gold, act) + 0.4 * path_value(rooms, hp, max_hp, gold, act, BAD_LUCK)
-    return max(best_onward(nodes, k, rooms + [(str(nodes[k].get("type")), k[1])], hp, max_hp, gold, act, budget) for k in kids)
+        return 0.6 * path_value(rooms, hp, max_hp, gold, act, 1.0, toll) + 0.4 * path_value(rooms, hp, max_hp, gold, act, BAD_LUCK, toll)
+    return max(best_onward(nodes, k, rooms + [(str(nodes[k].get("type")), k[1])], hp, max_hp, gold, act, budget, toll) for k in kids)
 
 
 def map_screen(state: dict, mem: Memory) -> list[Action]:
@@ -337,6 +354,13 @@ def map_screen(state: dict, mem: Memory) -> list[Action]:
     nodes = {(n.get("col"), n.get("row")): n for n in m.get("nodes") or []}
     act = (state.get("run") or {}).get("act")
     budget = [MAX_PATHS]
+    # What the fight we walked into last cost, next to the average: this deck's own price of a fight (Memory.toll).
+    row = options[0].get("row")
+    if mem.walked and isinstance(act, int) and mem.walked[:2] != (act, row):
+        if mem.walked[0] == act:  # (after a boss comes its heal: not counted)
+            mem.fight_toll = [mem.fight_toll[0] + mem.walked[3] - hp_now, mem.fight_toll[1] + fight_cost(mem.walked[2], act, mem.walked[1])]
+        mem.walked = ()
+    toll = mem.toll()
     for q in m.get("quests") or []:  # the Spoils Map's 600 Gold: a node of this act's map to walk through (the mod's `quests`)
         key = (q.get("col"), q.get("row"))
         if q.get("kind") == "spoils" and q.get("act") == act and key in nodes and not str(nodes[key].get("type")).startswith(SPOILS):
@@ -344,12 +368,12 @@ def map_screen(state: dict, mem: Memory) -> list[Action]:
             log.debug("map: the Spoils Map's gold at %s", key)
 
     def is_early(row) -> bool:
-        return act == 1 and isinstance(row, int) and row < EARLY_ROWS
+        return act == 1 and isinstance(row, int) and row < knob("early_rows")
 
     def value(opt: dict) -> float:
         key = (opt.get("col"), opt.get("row"))
         if key in nodes:
-            return best_onward(nodes, key, [(str(nodes[key].get("type")), key[1])], hp_now, max_hp, gold, act if isinstance(act, int) else 1, budget)
+            return best_onward(nodes, key, [(str(nodes[key].get("type")), key[1])], hp_now, max_hp, gold, act if isinstance(act, int) else 1, budget, toll)
         kids = opt.get("leads_to") or []
         ahead = max((_room_value(str(k.get("type")), hp, gold, is_early(k.get("row")), act) for k in kids), default=0.0)
         return _room_value(str(opt.get("type")), hp, gold, is_early(opt.get("row")), act) + 0.9 * ahead
@@ -365,6 +389,8 @@ def map_screen(state: dict, mem: Memory) -> list[Action]:
     kids = best.get("leads_to") or [{"type": (nodes.get(tuple(c)) or {}).get("type")} for c in (nodes.get((best.get("col"), best.get("row"))) or {}).get("children") or []]
     mem.boss_next = any(str(k.get("type")) == "Boss" for k in kids)
     mem.map_nodes, mem.map_at = nodes, (best.get("col"), best.get("row"))
+    kind = str(best.get("type") or (nodes.get(mem.map_at) or {}).get("type")).replace("EmeraldElite", "Elite").removeprefix(SPOILS)
+    mem.walked = (act, best.get("row"), kind, hp_now) if kind in ("Monster", "Elite") and isinstance(act, int) else ()
     return [("choose_map_node", {"index": int(o.get("index", 0))}) for o in ranked]
 
 
@@ -448,9 +474,9 @@ def rest_site(state: dict, mem: Memory) -> list[Action]:
     node = mem.map_nodes.get(mem.map_at) if mem.map_nodes else None
     if node is not None and str(node.get("type")) == "RestSite" and (node.get("children") or []):
         args = (max_hp, int(player.get("gold") or 0), act if isinstance(act, int) else 1)
-        smith = _upgrade_worth(args[2]) + best_onward(mem.map_nodes, mem.map_at, [], hp_now, *args, [MAX_PATHS])
+        smith = _upgrade_worth(args[2]) + best_onward(mem.map_nodes, mem.map_at, [], hp_now, *args, [MAX_PATHS], mem.toll())
         healed = min(float(max_hp), hp_now + REST_HEAL * max_hp)
-        rest = best_onward(mem.map_nodes, mem.map_at, [], healed, *args, [MAX_PATHS])
+        rest = best_onward(mem.map_nodes, mem.map_at, [], healed, *args, [MAX_PATHS], mem.toll())
         # Below half HP the path values hardly tell 6 HP from 40 (no boss is won under 30%): heal then, and before a boss.
         heal_first = hp < 0.5 or (rest > smith and hp < 0.95) or (mem.boss_next and hp < full)
         log.debug("rest site at %d/%d: rest %.1f, upgrade %.1f", hp_now, max_hp, rest, smith)

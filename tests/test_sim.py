@@ -107,6 +107,24 @@ class Sim(unittest.TestCase):
         self.assertEqual(table["sts2"]["SILENT"], {"FOOTWORK": round(1.0 + 25 / 15, 2), "DEFLECT": -3.0, "NOXIOUS_FUMES": 0.5})
         self.assertEqual(table["sts1"], {"IRONCLAD": {"BASH": 1.0}})
 
+    def test_a_card_the_table_buried_is_tried_again(self):
+        # A card below the bar is never picked, so no run can speak for it: --forgive puts those worth a try back at 0.
+        from sim.__main__ import main
+
+        lean = learn.GAME_DEFAULTS["sts2"]["model_lean"]
+        runs = [{"game": "sts2", "character": "SILENT", "floor": 30, "won": False, "picks": [[2, "FOOTWORK"]] + [[3, "DEFLECT"]] * (n < 3), "knobs": {}, "model_lean": lean}
+                for n in range(6)]
+        with tempfile.TemporaryDirectory() as d:
+            src, base, out = Path(d) / "runs.jsonl", Path(d) / "base.json", Path(d) / "cards.json"
+            src.write_text("".join(json.dumps(r) + "\n" for r in runs))
+            base.write_text(json.dumps({"sts2": {"SILENT": {"FOOTWORK": -1.0, "DEFLECT": -2.0, "BLUR": -1.4, "PIERCING_WAIL": -1.2, "SLICE": -1.0, "ADRENALINE": 2.0}}}))
+            with contextlib.redirect_stderr(io.StringIO()):
+                main(["prior", str(src), "--out", str(out), "--onto", str(base), "--forgive", "2"])
+            table = json.loads(out.read_text())["sts2"]["SILENT"]
+        # Blur (Block) and Piercing Wail (rated 4 or more) had no pick: back to 0. Deflect was picked three times and Footwork six: theirs
+        # stand. Slice is neither Block nor rated: buried it stays. A card above 0 is not touched.
+        self.assertEqual(table, {"FOOTWORK": -1.0, "DEFLECT": -2.0, "SLICE": -1.0, "ADRENALINE": 2.0})
+
     def test_the_owl_magistrate_lands(self):
         sts2 = _content("sts2")
         run = Run(sts2, "IRONCLAD", 1, {}, 0)

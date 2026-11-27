@@ -130,6 +130,7 @@ def simulate(
     last_aimed = max((n for n, c in enumerate(line) if c.needs_target), default=-1)
     first_target: str | None = None
     # Damage is worth more where the fight is a race: bosses and elites, enemies that gain Strength every turn, fights that drag on.
+    caution = knob("caution") * (knob("boss_caution") if fight == "boss" else 1.0)  # the weight of our HP against everything else
     dmg_value = {"boss": 1.5, "elite": 1.3}.get(fight, 1.0) + min(0.4, 0.08 * max(0, round_no - 5))
     dmg_value *= 1.0 + min(1.5, 0.15 * max((e.grows for e in enemies if e.worth >= 1.0), default=0.0))
     dmg_value += 0.5 * max(0, round_no - 12)
@@ -430,7 +431,7 @@ def simulate(
 
     if healed:  # HP given back is HP not lost, at the price HP has right now; and it is there for this turn's blow
         healed = min(healed, max(0, max_hp - hp))
-        score += healed * (1.5 + 2.5 * (1.0 - hp / max(1, max_hp))) * knob("caution")
+        score += healed * (1.5 + 2.5 * (1.0 - hp / max(1, max_hp))) * caution
         hp += healed
     # Cards drawn: the free ones as they come, the rest as far as the energy left over stretches (and only as many as may still be played).
     drawn = drawn if card_limit is None else min(drawn, max(0, card_limit - plays))
@@ -547,16 +548,16 @@ def simulate(
     for e in survivors:
         hit = e.incoming + tainted * e.incoming_hits
         if e.imbalanced and hit and cover >= hit:
-            score += 0.85 * hit * (1.5 + 2.5 * (1.0 - ratio)) * knob("caution")
+            score += 0.85 * hit * (1.5 + 2.5 * (1.0 - ratio)) * caution
         cover -= min(cover, hit)
     # Osty keeps the HP he is not hit for: unlike Block it is still there next turn (and what he soaks now he cannot soak later).
     if pet > 0:
         kept = min(pet, max(0, max(0, own - scorch) + guard - incoming))
-        score += kept * (1.5 + 2.5 * (1.0 - ratio)) * knob("caution") * {"boss": 0.85, "elite": 0.7}.get(fight, 0.5)  # (less than ours: the fight may end first)
+        score += kept * (1.5 + 2.5 * (1.0 - ratio)) * caution * {"boss": 0.85, "elite": 0.7}.get(fight, 0.5)  # (less than ours: the fight may end first)
         if mastery:  # ... and under Necro Mastery what he is hit for, every enemy is hit for as well
             score += (pet - kept) * mastery * dmg_value * sum(e.worth for e in survivors)
     if holds:  # Block that outlasts the turn is next turn's Block (as Osty's HP is, and a little surer)
-        score += max(0, block - max(pet, 0) - scorch - incoming) * (1.5 + 2.5 * (1.0 - ratio)) * knob("caution") * {"boss": 0.8, "elite": 0.7}.get(fight, 0.5)
+        score += max(0, block - max(pet, 0) - scorch - incoming) * (1.5 + 2.5 * (1.0 - ratio)) * caution * {"boss": 0.8, "elite": 0.7}.get(fight, 0.5)
     # Every leader left is Doomed to die at the end of its turn: the fight is won if we live through that turn, so more damage is wasted energy.
     leaders = [e for e in survivors if not e.minion]
     doomed = bool(leaders) and all(e.doom >= e.hp for e in leaders) and not any(e.adapts or e.spent for e in survivors)
@@ -565,7 +566,7 @@ def simulate(
     # A point of our HP is worth more than a point of enemy HP even at full health, and more still when this one turn would take a big bite of what is left.
     bite = min(1.0, lost / max(1, hp))
     worth = HP_BASE + HP_SLOPE * (1.0 - ratio) + HP_BITE * bite
-    price = lost * worth * (4.0 if doomed else 1.0) * knob("caution")
+    price = lost * worth * (4.0 if doomed else 1.0) * caution
     price *= closing.discount(pace, lost, hp, survivors)  # (a boss about to die: the HP we keep past its death buys nothing)
     score -= price
     if wrath and (st.now == "WRATH" or fury) and survivors and lost < hp:
@@ -575,7 +576,7 @@ def simulate(
         seen = [blows.get(e.entity_id, (e.incoming / TAKEN.get(st.start, 1.0), 1.0)) for e in survivors]  # (a first turn: what it shows now)
         score -= carry_cost(odds, sum(b for b, _ in seen), hp - lost, max((share for b, share in seen if b > 0), default=0.0))
     if len(line) < wither_in:  # stopping short of the next Wither only puts it off (the count carries over) to the next turn's first card
-        score -= wither_hp * (1.5 + 2.5 * (1.0 - ratio)) * knob("caution")
+        score -= wither_hp * (1.5 + 2.5 * (1.0 - ratio)) * caution
     if lost >= hp:
         # Dead on paper is dead: the HP is not priced; what counts is cards drawn while there is energy to play them, and how near the line comes to a kill.
         short = lost - hp

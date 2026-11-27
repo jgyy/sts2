@@ -271,6 +271,8 @@ class Run:
         self.log["fights"].append({"act": self.act, "floor": self.floor, "kind": kind, "foes": met, "hp0": hp0,
                                    "hp1": max(0, self.hp), "max_hp": self.max_hp, "rounds": f.round, "won": won,
                                    "drunk": self.log.get("potions", 0) - drunk, "left": sum(p is not None for p in self.potions)})
+        if not won:  # how much of the enemy was left standing: a lost race reads differently from a deck that never got going
+            self.log["fights"][-1]["foe_left"] = round(sum(x.hp for x in f.foes if x.alive and not x.minion) / max(1, sum(x.max_hp for x in f.foes if not x.minion)), 2)
         self.log["elites"] += kind == "elite"
         if won:
             self.game.fight_won(self, f)
