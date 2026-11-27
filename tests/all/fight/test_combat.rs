@@ -703,7 +703,18 @@ fn test_orichalcum_and_regen_are_counted() {
     assert_eq!(combat::expected_end_loss(&state), Some(10));
 }
 
-// TODO(bot): test_deck_is_read_at_the_start_of_a_fight_only needs make_bot(FakeGame()) (src/bot.rs): it is ported with the bot.
+#[test]
+fn test_deck_is_read_at_the_start_of_a_fight_only() {
+    let mut bot = crate::helpers::make_bot(crate::fake_game::FakeGame::default().shared());
+    let mut state = combat_state!([STRIKE(0), DEFEND(1)], [enemy!("A", 30, attack = 5)], draw_pile_count = 2, draw_pile = json!([{"name": "Bash", "cost": "2"}, {"name": "Strike", "cost": "1"}]));
+    bot._combat(&state);
+    assert_eq!(bot.mem.deck_size, 4);
+    // Later in the fight the piles hold Wounds and other things that are not in the deck.
+    state["battle"]["round"] = json!(3);
+    (state["player"]["discard_pile_count"], state["player"]["draw_pile_count"], state["player"]["draw_pile"]) = (json!(9), json!(1), json!([{"name": "Wound"}]));
+    bot._combat(&state);
+    assert_eq!(bot.mem.deck_size, 4);
+}
 
 #[test]
 fn test_star_cards_are_worth_less_without_stars_to_pay_for_them() {

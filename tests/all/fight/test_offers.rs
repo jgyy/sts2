@@ -48,5 +48,23 @@ fn test_afflictions_and_screens_outside_a_fight_are_left_alone() {
     assert_eq!(afflictions::offered(&[GUARD(), PUNCH()], &Value::Null), vec![GUARD(), PUNCH()]);
 }
 
-// TODO(bot): test_the_bot_hands_the_screen_the_fight_it_came_in needs make_bot (src/bot.rs) and bot.candidates; its spy on
-// `afflictions.offered` is `afflictions::with_offered_hook(|ordered, fight| { ...; afflictions::_offered(ordered, fight) })`.
+#[test]
+fn test_the_bot_hands_the_screen_the_fight_it_came_in() {
+    afflictions::_OFFER_reset();
+    let (mut bot, state) = (crate::helpers::make_bot_none(), fight(None, 60, 300));
+    bot._combat(&state);
+    let screen = json!({"state_type": "card_select", "run": state["run"], "player": state["player"], "card_select": {"screen_type": "choose", "prompt": "Choose a card.", "cards": [GUARD(), PUNCH()]}});
+    assert_eq!(bot.candidates(&screen)[0], ("select_card".to_string(), json!({"index": 1}))); // Sucker Punch
+    let mut elsewhere = screen.clone(); // (an event's offer, out of the fight)
+    elsewhere["run"]["floor"] = json!(state["run"]["floor"].as_i64().unwrap() + 1);
+    let ranked: std::rc::Rc<std::cell::RefCell<Vec<Value>>> = Default::default();
+    {
+        let calls = ranked.clone();
+        let _spy = afflictions::with_offered_hook(move |ordered, fight| {
+            calls.borrow_mut().push(fight.clone());
+            afflictions::_offered(ordered, fight)
+        });
+        bot.candidates(&elsewhere);
+    }
+    assert!(ranked.borrow().last().unwrap().is_null());
+}
