@@ -1,3 +1,5 @@
+//! Tests of the rules for particular bosses and elites.
+
 mod test_bosses;
 mod test_bossfight;
 mod test_bowlbugs;
