@@ -97,7 +97,6 @@ fn test_all_the_more_runs_of_the_first_game_are_the_pythons() {
 }
 
 #[test]
-#[ignore = "TODO(sts2 content): Slay the Spire 2's content is not ported yet"]
 fn test_slay_the_spire_2s_runs_are_the_pythons() {
     check("sts2");
 }

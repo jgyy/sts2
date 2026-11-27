@@ -180,7 +180,7 @@ pub fn content(game: &str) -> Rc<Content> {
     }
     let made = Rc::new(match game {
         "sts1" => sts1::content(),
-        // TODO(sts2 content): "sts2" => sts2::content(),
+        "sts2" => sts2::content(),
         other => panic!("No module named 'sim.content.{other}'"),
     });
     CONTENT.with(|m| m.borrow_mut().insert(game.to_string(), made.clone()));
