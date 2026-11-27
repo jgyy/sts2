@@ -1,5 +1,6 @@
 //! `sim`: play model runs, report on them, or print a digest of every decision.
 //!
+//! ```text
 //!     sim run --game sts1 --character IRONCLAD --runs 1000 --jobs 4 --out sim-runs.jsonl
 //!     sim run --game sts2 --character all --runs 1000 --vary      # each run draws its own value of every setting
 //!     sim report sim-runs.jsonl [--md docs/strategy/simulation.md]
@@ -8,6 +9,7 @@
 //!     sim prior runs.jsonl --onto src/run/model_cards.json --out new.json  # ... plus what runs that played it still say
 //!     sim run --game sts2 --vary --only model_table,caution --alt-cards new.json   # two tables (and caution) drawn per run
 //!     sim run --game sts1 --vary --only caution,belt_spare --grid caution=1,1.35       # ... caution from these two values only
+//! ```
 
 use std::rc::Rc;
 
