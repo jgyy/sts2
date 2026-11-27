@@ -150,7 +150,19 @@ fn test_the_death_of_the_enemy_holding_the_arrow_counts_and_only_once_a_turn() {
     assert!(combat::simulate(&line, &two, &yah).is_none()); // (the second Arrow out pays nothing)
 }
 
-// TODO(bot): test_the_bot_notes_an_arrow_coming_out_this_turn needs make_bot (src/bot.rs): it is ported with the bot.
+#[test]
+fn test_the_bot_notes_an_arrow_coming_out_this_turn() {
+    let mut bot = crate::helpers::make_bot_none();
+    bot._combat(&combat_state!([STRIKE(0), STRIKE(1)], [enemy!("A", 300, attack = 5, status = [IMPALED(1)])], energy = 2));
+    assert!(!bot._dislodged);
+    let out = combat_state!([STRIKE(1)], [enemy!("A", 294, attack = 5)], energy = 1);
+    bot._combat(&out);
+    assert!(bot._dislodged);
+    bot._combat(&out);
+    assert!(bot._dislodged); // (for the rest of the turn)
+    bot._combat(&combat_state!([STRIKE(0)], [enemy!("A", 294, attack = 5, status = [IMPALED(3)])], energy = 3, round_no = 2));
+    assert!(!bot._dislodged);
+}
 
 fn ENNUI(i: i64) -> Value {
     card(i, "ENNUI", "Ennui", "Power", 1, "At the start of your turn, add 1 Sadness to your Hand and draw 2 additional cards.", "Self")
