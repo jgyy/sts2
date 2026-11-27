@@ -1108,7 +1108,7 @@ pub fn bot_sources() -> Result<String, String> {
                 }
             } else if name.ends_with(".rs") {
                 let text = std::fs::read_to_string(&path).map_err(|e| io_error(&e, &path.to_string_lossy()))?;
-                code.push_str(text.split("\n#[cfg(test)]\nmod tests").next().unwrap_or(""));
+                code.push_str(re!(r"\n#\[cfg\(test\)\]\n(?:pub(?:\(crate\))? )?mod tests").split(&text).next().unwrap_or(""));
             }
         }
         Ok(())
