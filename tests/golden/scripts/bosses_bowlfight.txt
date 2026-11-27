@@ -1,0 +1,90 @@
+$ trace
+   play H NECTAR_0 {'ROCK': 46, 'NECT': 18}
+   play B  {'ROCK': 46, 'NECT': 18}
+r1 took 11 hp 49 | ROCK 46 NECT 18
+   play A NECTAR_0 {'ROCK': 46, 'NECT': 9}
+   play B  {'ROCK': 46, 'NECT': 9}
+   play B  {'ROCK': 46, 'NECT': 9}
+r2 took 0 hp 49 | ROCK 46 NECT 9
+   play A NECTAR_0 {'ROCK': 46, 'NECT': 0}
+   play H ROCK_0 {'ROCK': 25, 'NECT': 0}
+r3 took 0 hp 49 | ROCK 25 NECT 0
+   play H ROCK_0 {'ROCK': 4, 'NECT': 0}
+   play A ROCK_0 {'ROCK': 0, 'NECT': 0}
+(11, 4, 'NR')
+$ trace 4 3 off+egg
+   play H EGG_0 {'ROCK': 48, 'NECT': 38, 'EGG_': 0}
+   play B  {'ROCK': 48, 'NECT': 38, 'EGG_': 0}
+r1 took 11 hp 49 | ROCK 48 NECT 38 EGG_ 0
+   play A ROCK_0 {'ROCK': 38, 'NECT': 38, 'EGG_': 0}
+   play A ROCK_0 {'ROCK': 28, 'NECT': 38, 'EGG_': 0}
+   play B  {'ROCK': 28, 'NECT': 38, 'EGG_': 0}
+r2 took 8 hp 41 | ROCK 28 NECT 38 EGG_ 0
+   play S  {'ROCK': 21, 'NECT': 31, 'EGG_': 0}
+   play B  {'ROCK': 21, 'NECT': 31, 'EGG_': 0}
+   play B  {'ROCK': 21, 'NECT': 31, 'EGG_': 0}
+r3 took 19 hp 22 | ROCK 21 NECT 31 EGG_ 0
+   play H NECTAR_0 {'ROCK': 21, 'NECT': 7, 'EGG_': 0}
+   play A NECTAR_0 {'ROCK': 21, 'NECT': 0, 'EGG_': 0}
+r4 took 0 hp 22 | ROCK 21 NECT 0 EGG_ 0
+   play H ROCK_0 {'ROCK': 0, 'NECT': 0, 'EGG_': 0}
+(38, 5, 'ENR')
+$ trace 2 5 nectar=30+HP_BASE=1
+   play H NECTAR_0 {'ROCK': 49, 'NECT': 13}
+   play A NECTAR_0 {'ROCK': 49, 'NECT': 2}
+r1 took 19 hp 41 | ROCK 49 NECT 2
+   play A NECTAR_0 {'ROCK': 49, 'NECT': 0}
+   play B  {'ROCK': 49, 'NECT': 0}
+   play B  {'ROCK': 49, 'NECT': 0}
+r2 took 0 hp 41 | ROCK 49 NECT 0
+   play H ROCK_0 {'ROCK': 23, 'NECT': 0}
+   play A ROCK_0 {'ROCK': 12, 'NECT': 0}
+r3 took 0 hp 41 | ROCK 12 NECT 0
+   play A ROCK_0 {'ROCK': 1, 'NECT': 0}
+   play A ROCK_0 {'ROCK': 0, 'NECT': 0}
+(19, 4, 'NR')
+$ 4
+off                 : hp lost 22.38  rounds  4.8  died 0.000  first to die {'N': 6, 'R': 18}
+on                  : hp lost 13.88  rounds  4.9  died 0.000  first to die {'N': 24}
+(8, 7, 5, 5, 2, 0, 3) off: lost 44.75  on: lost 28.00
+(9, 8, 5, 5, 2, 0, 2) off: lost 23.00  on: lost 13.00
+(9, 8, 5, 6, 3, 0, 2) off: lost 21.50  on: lost 12.25
+(10, 8, 5, 5, 2, 1, 3) off: lost 14.50  on: lost 11.00
+(9, 9, 4, 5, 2, 2, 2) off: lost 17.50  on: lost 10.00
+(11, 9, 5, 5, 2, 1, 2) off: lost 13.00  on: lost  9.00
+$ 2 off on+egg nectar=2+THREAT_FLOOR=1
+off                 : hp lost 22.92  rounds  5.0  died 0.000  first to die {'N': 3, 'R': 9}
+on+egg              : hp lost 32.75  rounds  6.7  died 0.083  first to die {'E': 7, 'N': 5}
+nectar=2+THREAT_FLOOR=1: hp lost 23.67  rounds  5.2  died 0.000  first to die {'N': 1, 'R': 11}
+(8, 7, 5, 5, 2, 0, 3) off: lost 44.00  on+egg: lost 59.50  nectar=2+THREAT_FLOOR=1: lost 44.00
+(9, 8, 5, 5, 2, 0, 2) off: lost 29.00  on+egg: lost 23.00  nectar=2+THREAT_FLOOR=1: lost 29.00
+(9, 8, 5, 6, 3, 0, 2) off: lost 21.00  on+egg: lost 27.00  nectar=2+THREAT_FLOOR=1: lost 21.00
+(10, 8, 5, 5, 2, 1, 3) off: lost 18.00  on+egg: lost 39.00  nectar=2+THREAT_FLOOR=1: lost 21.00
+(9, 9, 4, 5, 2, 2, 2) off: lost 15.00  on+egg: lost 27.50  nectar=2+THREAT_FLOOR=1: lost 15.00
+(11, 9, 5, 5, 2, 1, 2) off: lost 10.50  on+egg: lost 20.50  nectar=2+THREAT_FLOOR=1: lost 12.00
+$ flips
+9016493 44 {'off': (55, 7, 'RN'), 'on': (11, 6, 'NR')}
+9016501 41 {'off': (52, 6, 'RN'), 'on': (11, 6, 'NR')}
+9016342 33 {'off': (44, 6, 'RN'), 'on': (11, 6, 'NR')}
+9016426 33 {'off': (44, 6, 'RN'), 'on': (11, 6, 'NR')}
+9016338 31 {'off': (42, 8, 'RN'), 'on': (11, 6, 'NR')}
+9016358 31 {'off': (50, 8, 'RN'), 'on': (19, 7, 'NR')}
+9016320 30 {'off': (33, 5, 'RN'), 'on': (3, 5, 'NR')}
+9016385 30 {'off': (33, 5, 'RN'), 'on': (3, 5, 'NR')}
+9016422 30 {'off': (41, 6, 'RN'), 'on': (11, 5, 'NR')}
+9016431 30 {'off': (33, 5, 'RN'), 'on': (3, 5, 'NR')}
+9016435 30 {'off': (33, 5, 'RN'), 'on': (3, 6, 'NR')}
+9016474 30 {'off': (33, 5, 'RN'), 'on': (3, 5, 'NR')}
+$ flips 4 on+egg nectar=40
+9046431 56 {'on+egg': (57, 8, 'ENR'), 'nectar=40': (1, 6, 'NR')}
+9046465 52 {'on+egg': (60, 7, 'NEx'), 'nectar=40': (8, 6, 'NR')}
+9046497 50 {'on+egg': (58, 6, 'ENR'), 'nectar=40': (8, 6, 'NR')}
+9046345 45 {'on+egg': (46, 6, 'NER'), 'nectar=40': (1, 5, 'NR')}
+9046486 45 {'on+egg': (46, 9, 'NER'), 'nectar=40': (1, 6, 'NR')}
+9046337 43 {'on+egg': (60, 5, 'ENx'), 'nectar=40': (17, 5, 'NR')}
+9046424 43 {'on+egg': (53, 7, 'ENR'), 'nectar=40': (10, 5, 'NR')}
+9046353 42 {'on+egg': (43, 7, 'ENR'), 'nectar=40': (1, 5, 'NR')}
+9046494 42 {'on+egg': (50, 7, 'ENR'), 'nectar=40': (8, 6, 'NR')}
+9046391 41 {'on+egg': (49, 7, 'ENR'), 'nectar=40': (8, 4, 'NR')}
+9046421 41 {'on+egg': (49, 7, 'ENR'), 'nectar=40': (8, 5, 'NR')}
+9046467 41 {'on+egg': (49, 6, 'ENR'), 'nectar=40': (8, 4, 'NR')}

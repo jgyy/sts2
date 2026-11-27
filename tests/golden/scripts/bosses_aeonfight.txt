@@ -1,0 +1,150 @@
+$ trace
+r1 hand AAFAB hp 75 boss 512/0blk st 0 intent (1, 22, 33) withers 0 level 0 count 6
+   play A  boss 486hp/0blk en 3 blk 0 count 5
+   play A  boss 460hp/0blk en 2 blk 0 count 4
+   play A  boss 434hp/0blk en 1 blk 0 count 3
+   play B  boss 434hp/0blk en 0 blk 14 count 2
+r1 burn 0 took 8 hp 67 | boss 434 st 0
+r2 hand HBBAH hp 67 boss 434/33blk st 0 intent (2, 11, 0) withers 0 level 0 count 2
+   play H  boss 410hp/0blk en 2 blk 0 count 1
+   play H  boss 353hp/0blk en 0 blk 0 count 6
+r2 burn 3 took 22 hp 42 | boss 353 st 0
+r3 hand BABVW hp 42 boss 353/0blk st 0 intent (0, 0, 0) withers 1 level 0 count 6
+   play V  boss 345hp/0blk en 2 blk 0 count 5
+   play A  boss 319hp/0blk en 1 blk 0 count 4
+   play W  boss 306hp/0blk en 0 blk 0 count 3
+r3 burn 0 took 0 hp 42 | boss 306 st 3
+r4 hand ABBBV hp 42 boss 306/0blk st 3 intent (1, 25, 33) withers 2 level 1 count 3
+   play A  boss 280hp/0blk en 3 blk 0 count 2
+   play B  boss 280hp/0blk en 2 blk 14 count 1
+   play B  boss 280hp/0blk en 1 blk 28 count 6
+   play B  boss 280hp/0blk en 0 blk 42 count 5
+r4 burn 6 took 0 hp 42 | boss 280 st 3
+r5 hand ABAAH hp 42 boss 280/33blk st 3 intent (2, 14, 0) withers 3 level 1 count 5
+   play H  boss 256hp/0blk en 2 blk 0 count 4
+   play A  boss 230hp/0blk en 1 blk 0 count 3
+   play B  boss 230hp/0blk en 0 blk 14 count 2
+r5 burn 0 took 14 hp 28 | boss 230 st 3
+r6 hand ABBXF hp 28 boss 230/0blk st 3 intent (0, 0, 0) withers 3 level 1 count 2
+   play A  boss 204hp/0blk en 3 blk 0 count 1
+   play B  boss 204hp/0blk en 2 blk 14 count 6
+r6 burn 12 took 0 hp 28 | boss 204 st 7
+r7 hand HXWAB hp 28 boss 204/0blk st 7 intent (1, 29, 33) withers 5 level 2 count 6
+   play H  boss 147hp/0blk en 2 blk 0 count 5
+   play A  boss 121hp/0blk en 1 blk 0 count 4
+   play B  boss 121hp/0blk en 0 blk 14 count 3
+r7 burn 9 took 24 hp 4 | boss 121 st 7
+r8 hand AABFX hp 4 boss 121/33blk st 7 intent (2, 18, 0) withers 5 level 2 count 3
+   play A  boss 121hp/7blk en 3 blk 0 count 2
+   play A  boss 102hp/0blk en 2 blk 0 count 1
+   play B  boss 102hp/0blk en 1 blk 14 count 6
+r8 burn 18 took 36 hp -36 | boss 102 st 7
+(False, 102, 8, 2)
+$ trace 3 4 WB=3+K.caution=1.35
+r1 hand BAABF hp 75 boss 512/0blk st 0 intent (1, 22, 33) withers 0 level 0 count 6
+   play A  boss 478hp/0blk en 2 blk 0 count 5
+   play A  boss 444hp/0blk en 1 blk 0 count 4
+   play B  boss 444hp/0blk en 0 blk 14 count 3
+r1 burn 0 took 8 hp 67 | boss 444 st 0
+r2 hand BHAAH hp 67 boss 444/33blk st 0 intent (2, 11, 0) withers 0 level 0 count 3
+   play H  boss 403hp/0blk en 1 blk 0 count 2
+   play B  boss 403hp/0blk en 0 blk 14 count 1
+r2 burn 0 took 8 hp 59 | boss 403 st 0
+r3 hand AWBVB hp 59 boss 403/0blk st 0 intent (0, 0, 0) withers 0 level 0 count 1
+   play A  boss 369hp/0blk en 2 blk 0 count 6
+   play W  boss 352hp/0blk en 1 blk 0 count 5
+r3 burn 3 took 0 hp 56 | boss 352 st 3
+r4 hand ABXBA hp 56 boss 352/0blk st 3 intent (1, 25, 33) withers 2 level 1 count 5
+   play A  boss 318hp/0blk en 2 blk 0 count 4
+   play B  boss 318hp/0blk en 1 blk 14 count 3
+   play B  boss 318hp/0blk en 0 blk 28 count 2
+r4 burn 6 took 3 hp 53 | boss 318 st 3
+r5 hand VBBBX hp 53 boss 318/33blk st 3 intent (2, 14, 0) withers 2 level 1 count 2
+   play B  boss 318hp/33blk en 2 blk 14 count 1
+   play B  boss 318hp/33blk en 1 blk 28 count 6
+   play B  boss 318hp/33blk en 0 blk 42 count 5
+r5 burn 12 took 0 hp 53 | boss 318 st 3
+r6 hand ABHAA hp 53 boss 318/0blk st 3 intent (0, 0, 0) withers 3 level 1 count 5
+   play H  boss 244hp/0blk en 1 blk 0 count 4
+   play A  boss 210hp/0blk en 0 blk 0 count 3
+r6 burn 0 took 0 hp 53 | boss 210 st 7
+r7 hand AHFWX hp 53 boss 210/0blk st 7 intent (1, 29, 33) withers 4 level 2 count 3
+   play H  boss 136hp/0blk en 1 blk 0 count 2
+   play A  boss 102hp/0blk en 0 blk 0 count 1
+r7 burn 9 took 29 hp 15 | boss 102 st 7
+r8 hand ABAAB hp 15 boss 102/33blk st 7 intent (2, 18, 0) withers 4 level 2 count 1
+   play A  boss 101hp/0blk en 2 blk 0 count 6
+   play B  boss 101hp/0blk en 1 blk 14 count 5
+   play B  boss 101hp/0blk en 0 blk 28 count 4
+r8 burn 9 took 17 hp -2 | boss 101 st 7
+(False, 101, 8, 2)
+$ trace 7 0 WITHER_FIGHT=5+HP_SLOPE=1
+r1 hand BABFAA hp 75 boss 512/0blk st 0 intent (1, 22, 33) withers 0 level 0 count 6
+   play A  boss 488hp/0blk en 3 blk 0 count 5
+   play A  boss 464hp/0blk en 2 blk 0 count 4
+   play A  boss 440hp/0blk en 1 blk 0 count 3
+   play B  boss 440hp/0blk en 0 blk 14 count 2
+r1 burn 0 took 8 hp 67 | boss 440 st 0
+r2 hand BBAHWB hp 67 boss 440/33blk st 0 intent (2, 11, 0) withers 0 level 0 count 2
+   play H  boss 421hp/0blk en 2 blk 0 count 1
+   play A  boss 397hp/0blk en 1 blk 0 count 6
+   play B  boss 397hp/0blk en 0 blk 14 count 5
+r2 burn 3 took 11 hp 56 | boss 397 st 0
+r3 hand BVHAAA hp 56 boss 397/0blk st 0 intent (0, 0, 0) withers 1 level 0 count 5
+   play H  boss 345hp/0blk en 2 blk 0 count 4
+   play A  boss 321hp/0blk en 1 blk 0 count 3
+   play A  boss 297hp/0blk en 0 blk 0 count 2
+r3 burn 0 took 0 hp 56 | boss 297 st 3
+r4 hand BXBHAB hp 56 boss 297/0blk st 3 intent (1, 25, 33) withers 2 level 1 count 2
+   play H  boss 245hp/0blk en 2 blk 0 count 1
+   play B  boss 245hp/0blk en 1 blk 14 count 6
+   play B  boss 245hp/0blk en 0 blk 28 count 5
+r4 burn 12 took 9 hp 47 | boss 245 st 3
+r5 hand BAWAFB hp 47 boss 245/33blk st 3 intent (2, 14, 0) withers 3 level 1 count 5
+   play A  boss 245hp/9blk en 3 blk 0 count 4
+   play A  boss 230hp/0blk en 2 blk 0 count 3
+   play B  boss 230hp/0blk en 1 blk 14 count 2
+   play B  boss 230hp/0blk en 0 blk 28 count 1
+r5 burn 0 took 0 hp 47 | boss 230 st 3
+r6 hand WFBAHH hp 47 boss 230/0blk st 3 intent (0, 0, 0) withers 3 level 1 count 1
+   play H  boss 178hp/0blk en 2 blk 0 count 6
+   play H  boss 126hp/0blk en 0 blk 0 count 5
+r6 burn 6 took 0 hp 41 | boss 126 st 7
+r7 hand BAVXBX hp 41 boss 126/0blk st 7 intent (1, 29, 33) withers 5 level 2 count 5
+   play A  boss 102hp/0blk en 3 blk 0 count 4
+   play B  boss 102hp/0blk en 2 blk 14 count 3
+   play B  boss 102hp/0blk en 1 blk 28 count 2
+r7 burn 18 took 19 hp 22 | boss 102 st 7
+r8 hand BABXAA hp 22 boss 102/33blk st 7 intent (2, 18, 0) withers 5 level 2 count 2
+   play A  boss 102hp/9blk en 3 blk 0 count 1
+   play A  boss 87hp/0blk en 2 blk 0 count 6
+   play B  boss 87hp/0blk en 1 blk 14 count 5
+   play B  boss 87hp/0blk en 0 blk 28 count 4
+r8 burn 18 took 26 hp -4 | boss 87 st 7
+(False, 87, 8, 2)
+$ 2 on WB=0+NEXT_ENERGY=1 K.debuff_worth=3
+on                          : won 0.333  boss HP left   45.2  rounds  7.7
+WB=0+NEXT_ENERGY=1          : won 0.333  boss HP left   45.2  rounds  7.7
+K.debuff_worth=3            : won 0.333  boss HP left   51.7  rounds  7.7
+(24, 14, 6, 6, 2, 1, 1, 1, 4, 6) on: won 0.00  WB=0+NEXT_ENERGY=1: won 0.00  K.debuff_worth=3: won 0.00
+(26, 14, 6, 6, 2, 1, 1, 1, 4, 5) on: won 0.00  WB=0+NEXT_ENERGY=1: won 0.00  K.debuff_worth=3: won 0.00
+(28, 14, 6, 6, 2, 1, 1, 1, 4, 5) on: won 0.50  WB=0+NEXT_ENERGY=1: won 0.50  K.debuff_worth=3: won 0.50
+(26, 14, 6, 6, 2, 1, 1, 1, 4, 6) on: won 0.50  WB=0+NEXT_ENERGY=1: won 0.50  K.debuff_worth=3: won 0.50
+(34, 14, 6, 6, 2, 1, 1, 1, 3, 5) on: won 0.50  WB=0+NEXT_ENERGY=1: won 0.50  K.debuff_worth=3: won 0.50
+(34, 14, 6, 6, 2, 1, 1, 1, 3, 6) on: won 0.50  WB=0+NEXT_ENERGY=1: won 0.50  K.debuff_worth=3: won 0.50
+$ flips 1 on WB=4
+9016307 {'on': (False, 45, 8), 'WB=4': (True, 12, 10)}
+9016322 {'on': (True, 5, 10), 'WB=4': (False, 140, 8)}
+9016325 {'on': (False, 13, 8), 'WB=4': (True, 14, 8)}
+9016327 {'on': (True, 11, 10), 'WB=4': (False, 165, 8)}
+9016333 {'on': (False, 38, 8), 'WB=4': (True, 13, 10)}
+9016335 {'on': (False, 71, 8), 'WB=4': (True, 3, 10)}
+9016351 {'on': (True, 14, 8), 'WB=4': (False, 9, 8)}
+9016370 {'on': (True, 2, 10), 'WB=4': (False, 70, 8)}
+9016378 {'on': (True, 7, 10), 'WB=4': (False, 89, 8)}
+9016425 {'on': (True, 8, 10), 'WB=4': (False, 90, 8)}
+9016431 {'on': (True, 14, 8), 'WB=4': (False, 78, 8)}
+9016442 {'on': (True, 6, 8), 'WB=4': (False, 103, 8)}
+9016445 {'on': (True, 21, 10), 'WB=4': (False, 77, 8)}
+9016465 {'on': (False, 26, 9), 'WB=4': (True, 3, 9)}
+9016479 {'on': (True, 12, 9), 'WB=4': (False, 13, 10)}

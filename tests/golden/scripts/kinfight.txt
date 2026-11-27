@@ -1,0 +1,324 @@
+$ trace 2 3 off
+   play H KIN_PRIEST_0 {'FOLLOWER_0': 63, 'FOLLOWER_1': 62, 'PRIEST_0': 171}
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 63, 'FOLLOWER_1': 62, 'PRIEST_0': 159}
+r1 took 13 hp 57 | FOLLOWER_0 63 FOLLOWER_1 62 PRIEST_0 159
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 63, 'FOLLOWER_1': 62, 'PRIEST_0': 147}
+   play B None {'FOLLOWER_0': 63, 'FOLLOWER_1': 62, 'PRIEST_0': 147}
+   play B None {'FOLLOWER_0': 63, 'FOLLOWER_1': 62, 'PRIEST_0': 147}
+r2 took 7 hp 50 | FOLLOWER_0 63 FOLLOWER_1 62 PRIEST_0 147
+   play S None {'FOLLOWER_0': 57, 'FOLLOWER_1': 56, 'PRIEST_0': 141}
+   play B None {'FOLLOWER_0': 57, 'FOLLOWER_1': 56, 'PRIEST_0': 141}
+   play B None {'FOLLOWER_0': 57, 'FOLLOWER_1': 56, 'PRIEST_0': 141}
+r3 took 0 hp 50 | FOLLOWER_0 57 FOLLOWER_1 56 PRIEST_0 141
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 57, 'FOLLOWER_1': 56, 'PRIEST_0': 129}
+   play S None {'FOLLOWER_0': 48, 'FOLLOWER_1': 47, 'PRIEST_0': 120}
+   play B None {'FOLLOWER_0': 48, 'FOLLOWER_1': 47, 'PRIEST_0': 120}
+r4 took 0 hp 50 | FOLLOWER_0 48 FOLLOWER_1 47 PRIEST_0 120
+   play H KIN_PRIEST_0 {'FOLLOWER_0': 48, 'FOLLOWER_1': 47, 'PRIEST_0': 92}
+   play B None {'FOLLOWER_0': 48, 'FOLLOWER_1': 47, 'PRIEST_0': 92}
+r5 took 18 hp 32 | FOLLOWER_0 48 FOLLOWER_1 47 PRIEST_0 92
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 48, 'FOLLOWER_1': 47, 'PRIEST_0': 80}
+   play B None {'FOLLOWER_0': 48, 'FOLLOWER_1': 47, 'PRIEST_0': 80}
+   play B None {'FOLLOWER_0': 48, 'FOLLOWER_1': 47, 'PRIEST_0': 80}
+r6 took 10 hp 22 | FOLLOWER_0 48 FOLLOWER_1 47 PRIEST_0 80
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 48, 'FOLLOWER_1': 47, 'PRIEST_0': 71}
+   play B None {'FOLLOWER_0': 48, 'FOLLOWER_1': 47, 'PRIEST_0': 71}
+   play B None {'FOLLOWER_0': 48, 'FOLLOWER_1': 47, 'PRIEST_0': 71}
+r7 took 6 hp 16 | FOLLOWER_0 48 FOLLOWER_1 47 PRIEST_0 71
+   play S None {'FOLLOWER_0': 39, 'FOLLOWER_1': 38, 'PRIEST_0': 62}
+   play B None {'FOLLOWER_0': 39, 'FOLLOWER_1': 38, 'PRIEST_0': 62}
+   play B None {'FOLLOWER_0': 39, 'FOLLOWER_1': 38, 'PRIEST_0': 62}
+r8 took 5 hp 11 | FOLLOWER_0 39 FOLLOWER_1 38 PRIEST_0 62
+   play H KIN_PRIEST_0 {'FOLLOWER_0': 39, 'FOLLOWER_1': 38, 'PRIEST_0': 34}
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 39, 'FOLLOWER_1': 38, 'PRIEST_0': 22}
+r9 took 28 hp -17 | FOLLOWER_0 39 FOLLOWER_1 38 PRIEST_0 22
+(False, 0, 9, '')
+$ trace
+   play H KIN_FOLLOWER_1 {'FOLLOWER_0': 63, 'FOLLOWER_1': 34, 'PRIEST_0': 199}
+   play B None {'FOLLOWER_0': 63, 'FOLLOWER_1': 34, 'PRIEST_0': 199}
+r1 took 3 hp 67 | FOLLOWER_0 63 FOLLOWER_1 34 PRIEST_0 199
+   play A KIN_FOLLOWER_1 {'FOLLOWER_0': 63, 'FOLLOWER_1': 22, 'PRIEST_0': 199}
+   play B None {'FOLLOWER_0': 63, 'FOLLOWER_1': 22, 'PRIEST_0': 199}
+   play B None {'FOLLOWER_0': 63, 'FOLLOWER_1': 22, 'PRIEST_0': 199}
+r2 took 5 hp 62 | FOLLOWER_0 63 FOLLOWER_1 22 PRIEST_0 199
+   play H KIN_FOLLOWER_1 {'FOLLOWER_0': 63, 'FOLLOWER_1': 1, 'PRIEST_0': 199}
+   play A KIN_FOLLOWER_1 {'FOLLOWER_0': 63, 'FOLLOWER_1': 0, 'PRIEST_0': 199}
+r3 took 17 hp 45 | FOLLOWER_0 63 FOLLOWER_1 0 PRIEST_0 199
+   play A KIN_FOLLOWER_0 {'FOLLOWER_0': 51, 'FOLLOWER_1': 0, 'PRIEST_0': 199}
+   play A KIN_FOLLOWER_0 {'FOLLOWER_0': 39, 'FOLLOWER_1': 0, 'PRIEST_0': 199}
+r4 took 0 hp 45 | FOLLOWER_0 39 FOLLOWER_1 0 PRIEST_0 199
+   play A KIN_FOLLOWER_0 {'FOLLOWER_0': 27, 'FOLLOWER_1': 0, 'PRIEST_0': 199}
+   play B None {'FOLLOWER_0': 27, 'FOLLOWER_1': 0, 'PRIEST_0': 199}
+   play B None {'FOLLOWER_0': 27, 'FOLLOWER_1': 0, 'PRIEST_0': 199}
+r5 took 0 hp 45 | FOLLOWER_0 27 FOLLOWER_1 0 PRIEST_0 199
+   play H KIN_FOLLOWER_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 199}
+   play B None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 199}
+r6 took 3 hp 42 | FOLLOWER_0 0 FOLLOWER_1 0 PRIEST_0 199
+   play H KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 178}
+   play B None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 178}
+r7 took 5 hp 37 | FOLLOWER_0 0 FOLLOWER_1 0 PRIEST_0 178
+   play H KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 150}
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 138}
+r8 took 0 hp 37 | FOLLOWER_0 0 FOLLOWER_1 0 PRIEST_0 138
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 126}
+   play B None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 126}
+   play B None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 126}
+r9 took 0 hp 37 | FOLLOWER_0 0 FOLLOWER_1 0 PRIEST_0 126
+   play H KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 98}
+   play B None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 98}
+r10 took 5 hp 32 | FOLLOWER_0 0 FOLLOWER_1 0 PRIEST_0 98
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 89}
+   play B None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 89}
+   play B None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 89}
+r11 took 1 hp 31 | FOLLOWER_0 0 FOLLOWER_1 0 PRIEST_0 89
+   play H KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 61}
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 49}
+r12 took 0 hp 31 | FOLLOWER_0 0 FOLLOWER_1 0 PRIEST_0 49
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 37}
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 25}
+   play B None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 25}
+r13 took 4 hp 27 | FOLLOWER_0 0 FOLLOWER_1 0 PRIEST_0 25
+   play H KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 0}
+(True, 27, 14, 'FFP')
+$ trace 5 4 THREAT_FLOOR=30
+   play H KIN_FOLLOWER_1 {'FOLLOWER_0': 63, 'FOLLOWER_1': 36, 'PRIEST_0': 199}
+   play S None {'FOLLOWER_0': 55, 'FOLLOWER_1': 28, 'PRIEST_0': 191}
+r1 took 13 hp 57 | FOLLOWER_0 55 FOLLOWER_1 28 PRIEST_0 191
+   play A KIN_FOLLOWER_1 {'FOLLOWER_0': 55, 'FOLLOWER_1': 17, 'PRIEST_0': 191}
+   play A KIN_FOLLOWER_1 {'FOLLOWER_0': 55, 'FOLLOWER_1': 6, 'PRIEST_0': 191}
+   play B None {'FOLLOWER_0': 55, 'FOLLOWER_1': 6, 'PRIEST_0': 191}
+r2 took 12 hp 45 | FOLLOWER_0 55 FOLLOWER_1 6 PRIEST_0 191
+   play A KIN_FOLLOWER_0 {'FOLLOWER_0': 47, 'FOLLOWER_1': 6, 'PRIEST_0': 191}
+   play A KIN_FOLLOWER_0 {'FOLLOWER_0': 39, 'FOLLOWER_1': 6, 'PRIEST_0': 191}
+   play S None {'FOLLOWER_0': 33, 'FOLLOWER_1': 0, 'PRIEST_0': 185}
+r3 took 17 hp 28 | FOLLOWER_0 33 FOLLOWER_1 0 PRIEST_0 185
+   play A KIN_FOLLOWER_0 {'FOLLOWER_0': 22, 'FOLLOWER_1': 0, 'PRIEST_0': 185}
+r4 took 0 hp 28 | FOLLOWER_0 22 FOLLOWER_1 0 PRIEST_0 185
+   play H KIN_FOLLOWER_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 185}
+   play B None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 185}
+r5 took 0 hp 28 | FOLLOWER_0 0 FOLLOWER_1 0 PRIEST_0 185
+   play H KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 159}
+   play B None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 159}
+r6 took 3 hp 25 | FOLLOWER_0 0 FOLLOWER_1 0 PRIEST_0 159
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 151}
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 143}
+   play B None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 143}
+r7 took 5 hp 20 | FOLLOWER_0 0 FOLLOWER_1 0 PRIEST_0 143
+   play H KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 117}
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 106}
+r8 took 0 hp 20 | FOLLOWER_0 0 FOLLOWER_1 0 PRIEST_0 106
+   play H KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 80}
+   play B None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 80}
+r9 took 2 hp 18 | FOLLOWER_0 0 FOLLOWER_1 0 PRIEST_0 80
+   play H KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 54}
+   play B None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 54}
+r10 took 5 hp 13 | FOLLOWER_0 0 FOLLOWER_1 0 PRIEST_0 54
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 46}
+   play B None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 46}
+   play B None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 46}
+r11 took 1 hp 12 | FOLLOWER_0 0 FOLLOWER_1 0 PRIEST_0 46
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 35}
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 24}
+   play A KIN_PRIEST_0 {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 13}
+r12 took 0 hp 12 | FOLLOWER_0 0 FOLLOWER_1 0 PRIEST_0 13
+   play S None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 5}
+   play S None {'FOLLOWER_0': 0, 'FOLLOWER_1': 0, 'PRIEST_0': 0}
+(True, 12, 13, 'FFP')
+$ 3
+off                 : won 0.333  hp left   2.6  rounds  9.1  first to die {'-': 11, 'F': 2, 'P': 5}
+on                  : won 1.000  hp left  16.1  rounds 12.9  first to die {'F': 18}
+(11, 9, 5, 5, 2, 0, 2) off: won 0.00 hp  0.0  on: won 1.00 hp 11.7
+(12, 10, 5, 5, 2, 0, 2) off: won 0.67 hp  2.7  on: won 1.00 hp 16.0
+(11, 10, 5, 6, 3, 0, 1) off: won 0.00 hp  0.0  on: won 1.00 hp 17.7
+(12, 9, 5, 5, 2, 1, 2) off: won 0.00 hp  0.0  on: won 1.00 hp  7.3
+(11, 10, 4, 5, 2, 2, 2) off: won 0.33 hp  4.7  on: won 1.00 hp 16.7
+(13, 10, 5, 5, 2, 1, 2) off: won 1.00 hp  8.0  on: won 1.00 hp 27.0
+$ 2 off on FOCUS_FLOOR=1 HP_BASE=3
+off                 : won 0.333  hp left   3.5  rounds  9.2  first to die {'-': 8, 'F': 1, 'P': 3}
+on                  : won 1.000  hp left  16.7  rounds 13.0  first to die {'F': 12}
+FOCUS_FLOOR=1       : won 1.000  hp left  16.7  rounds 13.0  first to die {'F': 12}
+HP_BASE=3           : won 0.917  hp left  22.2  rounds 13.3  first to die {'F': 12}
+(11, 9, 5, 5, 2, 0, 2) off: won 0.00 hp  0.0  on: won 1.00 hp 12.0  FOCUS_FLOOR=1: won 1.00 hp 12.0  HP_BASE=3: won 0.50 hp 13.0
+(12, 10, 5, 5, 2, 0, 2) off: won 0.50 hp  3.0  on: won 1.00 hp 11.0  FOCUS_FLOOR=1: won 1.00 hp 11.0  HP_BASE=3: won 1.00 hp 15.5
+(11, 10, 5, 6, 3, 0, 1) off: won 0.00 hp  0.0  on: won 1.00 hp 22.5  FOCUS_FLOOR=1: won 1.00 hp 22.5  HP_BASE=3: won 1.00 hp 31.0
+(12, 9, 5, 5, 2, 1, 2) off: won 0.00 hp  0.0  on: won 1.00 hp  8.5  FOCUS_FLOOR=1: won 1.00 hp  8.5  HP_BASE=3: won 1.00 hp  9.5
+(11, 10, 4, 5, 2, 2, 2) off: won 0.50 hp  7.0  on: won 1.00 hp 21.5  FOCUS_FLOOR=1: won 1.00 hp 21.5  HP_BASE=3: won 1.00 hp 31.5
+(13, 10, 5, 5, 2, 1, 2) off: won 1.00 hp 11.0  on: won 1.00 hp 24.5  FOCUS_FLOOR=1: won 1.00 hp 24.5  HP_BASE=3: won 1.00 hp 33.0
+$ flips 3
+9036321 {'off': (False, 0, 8, ''), 'on': (True, 11, 14, 'FFP')}
+9036322 {'off': (False, 0, 8, ''), 'on': (True, 6, 12, 'FFP')}
+9036323 {'off': (False, 0, 9, ''), 'on': (True, 5, 12, 'FFP')}
+9036324 {'off': (False, 0, 6, ''), 'on': (True, 10, 11, 'FFP')}
+9036325 {'off': (False, 0, 8, ''), 'on': (True, 1, 12, 'FFP')}
+9036326 {'off': (False, 0, 9, ''), 'on': (True, 19, 13, 'FFP')}
+9036328 {'off': (False, 0, 9, ''), 'on': (True, 4, 12, 'FFP')}
+9036329 {'off': (False, 0, 9, ''), 'on': (True, 29, 13, 'FFP')}
+9036330 {'off': (False, 0, 8, ''), 'on': (True, 16, 14, 'FFP')}
+9036331 {'off': (False, 0, 8, ''), 'on': (True, 19, 13, 'FFP')}
+9036332 {'off': (False, 0, 9, ''), 'on': (True, 16, 12, 'FFP')}
+9036333 {'off': (False, 0, 9, ''), 'on': (True, 9, 14, 'FFP')}
+9036334 {'off': (False, 0, 9, ''), 'on': (True, 26, 14, 'FFP')}
+9036335 {'off': (False, 0, 9, ''), 'on': (True, 27, 13, 'FFP')}
+9036336 {'off': (False, 0, 7, ''), 'on': (True, 8, 12, 'FFP')}
+9036337 {'off': (False, 0, 9, ''), 'on': (True, 28, 14, 'FFP')}
+9036338 {'off': (False, 0, 9, 'F'), 'on': (True, 28, 13, 'FFP')}
+9036339 {'off': (False, 0, 9, ''), 'on': (True, 13, 12, 'FFP')}
+9036340 {'off': (False, 0, 9, ''), 'on': (True, 16, 12, 'FFP')}
+9036341 {'off': (False, 0, 8, ''), 'on': (True, 17, 14, 'FFP')}
+9036342 {'off': (False, 0, 9, ''), 'on': (True, 28, 13, 'FFP')}
+9036343 {'off': (False, 0, 6, ''), 'on': (True, 8, 11, 'FFP')}
+9036344 {'off': (False, 0, 9, ''), 'on': (True, 25, 13, 'FFP')}
+9036345 {'off': (False, 0, 7, ''), 'on': (True, 10, 12, 'FFP')}
+9036346 {'off': (False, 0, 9, ''), 'on': (True, 7, 13, 'FFP')}
+9036347 {'off': (False, 0, 9, ''), 'on': (True, 23, 13, 'FFP')}
+9036349 {'off': (False, 0, 9, ''), 'on': (True, 28, 13, 'FFP')}
+9036350 {'off': (False, 0, 8, ''), 'on': (True, 19, 13, 'FFP')}
+9036351 {'off': (False, 0, 9, ''), 'on': (True, 1, 12, 'FFP')}
+9036352 {'off': (False, 0, 9, ''), 'on': (True, 22, 13, 'FFP')}
+9036353 {'off': (False, 0, 9, ''), 'on': (True, 17, 13, 'FFP')}
+9036354 {'off': (False, 0, 11, 'F'), 'on': (True, 5, 14, 'FFP')}
+9036356 {'off': (False, 0, 10, 'F'), 'on': (True, 4, 12, 'FFP')}
+9036358 {'off': (False, 0, 9, ''), 'on': (True, 16, 13, 'FFP')}
+9036359 {'off': (False, 0, 8, ''), 'on': (True, 23, 14, 'FFP')}
+9036360 {'off': (False, 0, 7, ''), 'on': (True, 23, 13, 'FFP')}
+9036361 {'off': (False, 0, 11, 'F'), 'on': (True, 15, 13, 'FFP')}
+9036362 {'off': (False, 0, 8, ''), 'on': (True, 13, 13, 'FFP')}
+9036363 {'off': (False, 0, 8, ''), 'on': (True, 7, 12, 'FFP')}
+9036364 {'off': (False, 0, 7, ''), 'on': (True, 19, 13, 'FFP')}
+9036365 {'off': (False, 0, 9, ''), 'on': (True, 7, 13, 'FFP')}
+9036366 {'off': (False, 0, 7, ''), 'on': (True, 9, 11, 'FFP')}
+9036367 {'off': (False, 0, 9, ''), 'on': (True, 16, 12, 'FFP')}
+9036368 {'off': (False, 0, 8, ''), 'on': (True, 29, 13, 'FFP')}
+9036369 {'off': (False, 0, 10, 'F'), 'on': (True, 24, 13, 'FFP')}
+9036370 {'off': (False, 0, 8, ''), 'on': (True, 15, 12, 'FFP')}
+9036372 {'off': (False, 0, 9, ''), 'on': (True, 26, 13, 'FFP')}
+9036373 {'off': (False, 0, 7, ''), 'on': (True, 25, 13, 'FFP')}
+9036374 {'off': (False, 0, 7, ''), 'on': (True, 4, 13, 'FFP')}
+9036375 {'off': (False, 0, 9, ''), 'on': (True, 10, 13, 'FFP')}
+9036376 {'off': (False, 0, 7, ''), 'on': (True, 9, 12, 'FFP')}
+9036377 {'off': (False, 0, 9, ''), 'on': (True, 13, 13, 'FFP')}
+9036378 {'off': (False, 0, 9, ''), 'on': (True, 7, 12, 'FFP')}
+9036379 {'off': (False, 0, 8, ''), 'on': (True, 22, 10, 'FFP')}
+9036380 {'off': (False, 0, 8, ''), 'on': (True, 17, 12, 'FFP')}
+9036381 {'off': (False, 0, 8, ''), 'on': (True, 21, 13, 'FFP')}
+9036383 {'off': (False, 0, 9, ''), 'on': (True, 13, 13, 'FFP')}
+9036384 {'off': (False, 0, 7, ''), 'on': (True, 6, 13, 'FFP')}
+9036385 {'off': (False, 0, 10, ''), 'on': (True, 5, 12, 'FFP')}
+9036386 {'off': (False, 0, 9, ''), 'on': (True, 9, 13, 'FFP')}
+9036388 {'off': (False, 0, 9, ''), 'on': (True, 13, 12, 'FFP')}
+9036389 {'off': (False, 0, 10, 'F'), 'on': (True, 25, 13, 'FFP')}
+9036390 {'off': (False, 0, 7, ''), 'on': (True, 5, 11, 'FFP')}
+9036391 {'off': (False, 0, 9, ''), 'on': (True, 11, 13, 'FFP')}
+9036392 {'off': (False, 0, 7, ''), 'on': (True, 16, 12, 'FFP')}
+9036393 {'off': (False, 0, 8, ''), 'on': (True, 7, 12, 'FFP')}
+9036394 {'off': (False, 0, 9, ''), 'on': (True, 4, 13, 'FFP')}
+9036395 {'off': (False, 0, 9, ''), 'on': (True, 22, 13, 'FFP')}
+9036396 {'off': (False, 0, 8, ''), 'on': (True, 10, 12, 'FFP')}
+9036397 {'off': (False, 0, 9, ''), 'on': (True, 18, 12, 'FFP')}
+9036398 {'off': (False, 0, 8, ''), 'on': (True, 17, 12, 'FFP')}
+9036400 {'off': (False, 0, 9, ''), 'on': (True, 25, 12, 'FFP')}
+9036401 {'off': (False, 0, 8, ''), 'on': (True, 19, 12, 'FFP')}
+9036402 {'off': (False, 0, 9, ''), 'on': (True, 13, 13, 'FFP')}
+9036403 {'off': (False, 0, 8, ''), 'on': (True, 26, 13, 'FFP')}
+9036404 {'off': (False, 0, 7, ''), 'on': (True, 11, 12, 'FFP')}
+9036405 {'off': (False, 0, 9, ''), 'on': (True, 24, 12, 'FFP')}
+9036406 {'off': (False, 0, 7, ''), 'on': (True, 11, 14, 'FFP')}
+9036407 {'off': (False, 0, 8, ''), 'on': (True, 7, 12, 'FFP')}
+9036408 {'off': (False, 0, 8, ''), 'on': (True, 15, 13, 'FFP')}
+9036409 {'off': (False, 0, 9, ''), 'on': (True, 10, 12, 'FFP')}
+9036410 {'off': (False, 0, 8, ''), 'on': (True, 13, 12, 'FFP')}
+9036411 {'off': (False, 0, 9, ''), 'on': (True, 4, 13, 'FFP')}
+9036413 {'off': (False, 0, 9, ''), 'on': (True, 14, 12, 'FFP')}
+9036414 {'off': (False, 0, 8, ''), 'on': (True, 25, 13, 'FFP')}
+9036415 {'off': (False, 0, 9, ''), 'on': (True, 2, 12, 'FFP')}
+9036419 {'off': (False, 0, 9, ''), 'on': (True, 14, 14, 'FFP')}
+9036420 {'off': (False, 0, 10, 'F'), 'on': (True, 19, 13, 'FFP')}
+9036421 {'off': (False, 0, 8, ''), 'on': (True, 4, 12, 'FFP')}
+9036422 {'off': (False, 0, 9, ''), 'on': (True, 23, 13, 'FFP')}
+9036424 {'off': (False, 0, 8, ''), 'on': (True, 5, 12, 'FFP')}
+9036425 {'off': (False, 0, 9, ''), 'on': (True, 22, 12, 'FFP')}
+9036426 {'off': (False, 0, 9, ''), 'on': (True, 19, 13, 'FFP')}
+9036427 {'off': (False, 0, 8, ''), 'on': (True, 12, 13, 'FFP')}
+9036428 {'off': (False, 0, 8, ''), 'on': (True, 22, 13, 'FFP')}
+9036430 {'off': (False, 0, 7, ''), 'on': (True, 4, 13, 'FFP')}
+9036431 {'off': (False, 0, 9, ''), 'on': (True, 17, 14, 'FFP')}
+9036432 {'off': (False, 0, 8, ''), 'on': (True, 2, 15, 'FFP')}
+9036433 {'off': (False, 0, 8, ''), 'on': (True, 4, 12, 'FFP')}
+9036434 {'off': (False, 0, 9, ''), 'on': (True, 19, 13, 'FFP')}
+9036435 {'off': (False, 0, 10, 'F'), 'on': (True, 22, 12, 'FFP')}
+9036436 {'off': (False, 0, 7, ''), 'on': (True, 9, 13, 'FFP')}
+9036437 {'off': (False, 0, 9, ''), 'on': (True, 1, 13, 'FFP')}
+9036440 {'off': (False, 0, 9, ''), 'on': (True, 1, 12, 'FFP')}
+9036441 {'off': (False, 0, 9, ''), 'on': (True, 22, 11, 'FFP')}
+9036442 {'off': (False, 0, 8, ''), 'on': (True, 14, 13, 'FFP')}
+9036443 {'off': (False, 0, 9, ''), 'on': (True, 2, 12, 'FFP')}
+9036444 {'off': (False, 0, 10, ''), 'on': (True, 15, 13, 'FFP')}
+9036445 {'off': (False, 0, 8, ''), 'on': (True, 6, 12, 'FFP')}
+9036446 {'off': (False, 0, 8, ''), 'on': (True, 21, 13, 'FFP')}
+9036447 {'off': (False, 0, 9, ''), 'on': (True, 4, 12, 'FFP')}
+9036448 {'off': (False, 0, 8, ''), 'on': (True, 21, 13, 'FFP')}
+9036449 {'off': (False, 0, 10, 'F'), 'on': (True, 10, 13, 'FFP')}
+9036450 {'off': (False, 0, 8, ''), 'on': (True, 22, 11, 'FFP')}
+9036451 {'off': (False, 0, 9, ''), 'on': (True, 29, 13, 'FFP')}
+9036453 {'off': (False, 0, 8, ''), 'on': (True, 4, 12, 'FFP')}
+9036454 {'off': (False, 0, 9, ''), 'on': (True, 10, 14, 'FFP')}
+9036455 {'off': (False, 0, 9, ''), 'on': (True, 14, 12, 'FFP')}
+9036456 {'off': (False, 0, 9, ''), 'on': (True, 22, 13, 'FFP')}
+9036457 {'off': (False, 0, 8, ''), 'on': (True, 25, 13, 'FFP')}
+9036458 {'off': (False, 0, 8, ''), 'on': (True, 16, 11, 'FFP')}
+9036459 {'off': (False, 0, 9, ''), 'on': (True, 16, 13, 'FFP')}
+9036460 {'off': (False, 0, 7, ''), 'on': (True, 8, 13, 'FFP')}
+9036461 {'off': (False, 0, 9, ''), 'on': (True, 8, 13, 'FFP')}
+9036462 {'off': (False, 0, 9, ''), 'on': (True, 25, 13, 'FFP')}
+9036463 {'off': (False, 0, 7, ''), 'on': (True, 7, 12, 'FFP')}
+9036465 {'off': (False, 0, 8, ''), 'on': (True, 23, 11, 'FFP')}
+9036466 {'off': (False, 0, 8, ''), 'on': (True, 14, 12, 'FFP')}
+9036467 {'off': (False, 0, 8, ''), 'on': (True, 11, 12, 'FFP')}
+9036468 {'off': (False, 0, 8, ''), 'on': (True, 17, 13, 'FFP')}
+9036469 {'off': (False, 0, 9, ''), 'on': (True, 11, 13, 'FFP')}
+9036470 {'off': (False, 0, 9, ''), 'on': (True, 16, 11, 'FFP')}
+9036471 {'off': (False, 0, 8, ''), 'on': (True, 8, 14, 'FFP')}
+9036472 {'off': (False, 0, 8, ''), 'on': (True, 19, 14, 'FFP')}
+9036473 {'off': (False, 0, 9, ''), 'on': (True, 1, 12, 'FFP')}
+9036474 {'off': (False, 0, 7, ''), 'on': (True, 10, 11, 'FFP')}
+9036476 {'off': (False, 0, 9, 'F'), 'on': (True, 25, 13, 'FFP')}
+9036477 {'off': (False, 0, 7, ''), 'on': (True, 22, 12, 'FFP')}
+9036478 {'off': (False, 0, 9, ''), 'on': (True, 21, 13, 'FFP')}
+9036479 {'off': (False, 0, 9, ''), 'on': (True, 22, 11, 'FFP')}
+9036480 {'off': (False, 0, 10, 'F'), 'on': (True, 19, 13, 'FFP')}
+9036481 {'off': (False, 0, 9, ''), 'on': (True, 4, 12, 'FFP')}
+9036482 {'off': (False, 0, 7, ''), 'on': (True, 14, 13, 'FFP')}
+9036483 {'off': (False, 0, 7, ''), 'on': (True, 8, 11, 'FFP')}
+9036484 {'off': (False, 0, 8, ''), 'on': (True, 7, 13, 'FFP')}
+9036485 {'off': (False, 0, 9, ''), 'on': (True, 14, 14, 'FFP')}
+9036486 {'off': (False, 0, 9, ''), 'on': (True, 18, 13, 'FFP')}
+9036487 {'off': (False, 0, 11, 'F'), 'on': (True, 19, 12, 'FFP')}
+9036488 {'off': (False, 0, 9, ''), 'on': (True, 7, 12, 'FFP')}
+9036490 {'off': (False, 0, 8, ''), 'on': (True, 22, 12, 'FFP')}
+9036492 {'off': (False, 0, 9, ''), 'on': (True, 28, 13, 'FFP')}
+9036493 {'off': (False, 0, 9, ''), 'on': (True, 2, 11, 'FFP')}
+9036494 {'off': (False, 0, 8, ''), 'on': (True, 5, 12, 'FFP')}
+9036497 {'off': (False, 0, 8, ''), 'on': (True, 6, 14, 'FFP')}
+9036498 {'off': (False, 0, 8, ''), 'on': (True, 5, 14, 'FFP')}
+9036499 {'off': (False, 0, 8, ''), 'on': (True, 15, 12, 'FFP')}
+9036500 {'off': (False, 0, 9, 'F'), 'on': (True, 13, 12, 'FFP')}
+9036501 {'off': (False, 0, 8, ''), 'on': (True, 19, 13, 'FFP')}
+9036502 {'off': (False, 0, 10, 'F'), 'on': (True, 7, 12, 'FFP')}
+9036503 {'off': (False, 0, 8, ''), 'on': (True, 13, 13, 'FFP')}
+9036504 {'off': (False, 0, 9, ''), 'on': (True, 24, 13, 'FFP')}
+9036505 {'off': (False, 0, 8, ''), 'on': (True, 16, 13, 'FFP')}
+9036506 {'off': (False, 0, 8, ''), 'on': (True, 25, 13, 'FFP')}
+9036507 {'off': (False, 0, 9, ''), 'on': (True, 8, 13, 'FFP')}
+9036508 {'off': (False, 0, 8, ''), 'on': (True, 22, 12, 'FFP')}
+9036509 {'off': (False, 0, 7, ''), 'on': (True, 16, 13, 'FFP')}
+9036510 {'off': (False, 0, 9, ''), 'on': (True, 16, 11, 'FFP')}
+9036511 {'off': (False, 0, 9, ''), 'on': (True, 21, 13, 'FFP')}
+9036512 {'off': (False, 0, 8, ''), 'on': (True, 8, 12, 'FFP')}
+9036513 {'off': (False, 0, 9, ''), 'on': (True, 10, 13, 'FFP')}
+9036514 {'off': (False, 0, 8, ''), 'on': (True, 20, 12, 'FFP')}
+9036515 {'off': (False, 0, 9, ''), 'on': (True, 28, 14, 'FFP')}
+9036516 {'off': (False, 0, 9, ''), 'on': (True, 16, 13, 'FFP')}
+9036517 {'off': (False, 0, 8, ''), 'on': (True, 17, 13, 'FFP')}
+9036518 {'off': (False, 0, 9, ''), 'on': (True, 19, 13, 'FFP')}
+9036519 {'off': (False, 0, 7, ''), 'on': (True, 26, 13, 'FFP')}
+9036520 {'off': (False, 0, 7, ''), 'on': (True, 1, 13, 'FFP')}

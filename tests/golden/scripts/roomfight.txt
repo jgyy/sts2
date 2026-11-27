@@ -1,0 +1,64 @@
+$ trace
+A6H3Z2B6F3P0 hit 9 block 8 hp 75 energy 3 toad the best play ends on 48.01 of 75
+r 1 hp  75 foe 117 coming  0 hand AABBZ | ours 25 dmg  0 blk ( 48.00)  best 25 dmg  8 blk ( 48.00)
+r 2 hp  75 foe  92 coming 23 hand AABBH | ours  9 dmg 16 blk ( 49.33)  best  9 dmg 16 blk ( 49.33)
+r 3 hp  68 foe  83 coming 17 hand ABBHH | ours  9 dmg 16 blk ( 51.50)  best  9 dmg 16 blk ( 51.50)
+r 4 hp  67 foe  74 coming  0 hand AABFF | ours 18 dmg  0 blk ( 49.76)  best 18 dmg  8 blk ( 49.76)
+r 5 hp  67 foe  56 coming 23 hand AAFHZ | ours 35 dmg  0 blk ( 43.25)  best 35 dmg  0 blk ( 43.25)
+r 6 hp  44 foe  21 coming 17 hand AAHHZ | ours 28 dmg  0 blk ( 44.00)  best 35 dmg  0 blk ( 44.00)
+(44, 6)
+$ trace 3 louse 2 0.35
+A7H4Z2B4F3P0 hit 10 block 8 hp 75 energy 3 louse the best play ends on -19.49 of 26
+r 1 hp  26 foe 134 coming  9 hand AHHZZ | ours 46 dmg  0 blk (-27.35)  best 46 dmg  0 blk (-27.35)
+r 2 hp  17 foe  88 coming  0 hand AAAAB | ours 30 dmg  0 blk (-28.97)  best 30 dmg  0 blk (-28.97)
+r 3 hp  17 foe  58 coming 19 hand BFHHZ | ours 29 dmg  8 blk ( -0.72)  best 29 dmg  8 blk ( -0.72)
+r 4 hp   6 foe  29 coming 14 hand ABFHZ | ours 32 dmg  0 blk (  6.00)  best 39 dmg  0 blk (  6.00)
+(6, 4)
+$ trace 7 hunter 3 0.6 caution=1.35 HP_BASE=2.0
+A5H2Z2B8F3P0 hit 10 block 9 hp 75 energy 3 hunter the best play ends on 17.0 of 45
+r 1 hp  45 foe 121 coming  0 hand AABBH | ours 32 dmg  0 blk ( 21.27)  best 32 dmg  0 blk ( 21.27)
+r 2 hp  45 foe  89 coming 17 hand AABZZ | ours 34 dmg  9 blk ( 23.41)  best 34 dmg  9 blk ( 23.41)
+r 3 hp  37 foe  55 coming 21 hand AAABZ | ours 27 dmg  9 blk ( 22.75)  best 27 dmg  9 blk ( 22.75)
+r 4 hp  25 foe  28 coming 21 hand ABBFZ | ours 17 dmg 18 blk ( 21.88)  best 17 dmg 18 blk ( 21.88)
+r 5 hp  22 foe  11 coming 17 hand AAFFH | ours 22 dmg  0 blk ( 22.00)  best 32 dmg  0 blk ( 22.00)
+(22, 5)
+$ 2
+each cell: HP the planner lost a fight / the best play's, and deaths in a hundred (a death counts as all the HP and 60 more)
+entered on 100% of Max HP
+  A6H3Z2B6F3P0 hit 9 block 8 hp 75 energy 3    toad  41.0/ 27.0 †  0   hunter  46.0/ 39.1 †  0   louse  19.0/ 23.3 †  0
+  A6H3Z2B6F3P0 hit 11 block 9 hp 75 energy 3   toad  16.0/ 18.8 †  0   hunter  20.5/ 25.6 †  0   louse  10.5/ 14.2 †  0
+  A7H4Z2B4F3P0 hit 10 block 8 hp 75 energy 3   toad  24.0/ 26.3 †  0   hunter  47.5/ 34.9 †  0   louse  15.0/ 22.1 †  0
+  A5H2Z2B8F3P0 hit 10 block 9 hp 75 energy 3   toad  17.5/ 17.7 †  0   hunter  28.0/ 26.3 †  0   louse  18.0/ 15.2 †  0
+entered on 60% of Max HP
+  A6H3Z2B6F3P0 hit 9 block 8 hp 75 energy 3    toad  68.5/ 29.5 † 50   hunter  70.0/ 49.7 † 50   louse  19.0/ 24.3 †  0
+  A6H3Z2B6F3P0 hit 11 block 9 hp 75 energy 3   toad  16.0/ 19.1 †  0   hunter  20.5/ 26.6 †  0   louse  10.5/ 14.2 †  0
+  A7H4Z2B4F3P0 hit 10 block 8 hp 75 energy 3   toad  24.0/ 26.8 †  0   hunter  70.0/ 38.8 † 50   louse  15.0/ 22.2 †  0
+  A5H2Z2B8F3P0 hit 10 block 9 hp 75 energy 3   toad  17.5/ 18.3 †  0   hunter  22.5/ 28.0 †  0   louse  15.5/ 15.5 †  0
+entered on 35% of Max HP
+  A6H3Z2B6F3P0 hit 9 block 8 hp 75 energy 3    toad  51.5/ 49.3 † 50   hunter  86.0/ 81.7 †100   louse  49.0/ 46.8 † 50
+  A6H3Z2B6F3P0 hit 11 block 9 hp 75 energy 3   toad  16.0/ 30.0 †  0   hunter  52.0/ 48.5 † 50   louse  10.5/ 18.1 †  0
+  A7H4Z2B4F3P0 hit 10 block 8 hp 75 energy 3   toad  86.0/ 48.0 †100   hunter  86.0/ 78.6 †100   louse  15.0/ 45.5 †  0
+  A5H2Z2B8F3P0 hit 10 block 9 hp 75 energy 3   toad  17.5/ 29.4 †  0   hunter  55.5/ 51.9 † 50   louse  15.5/ 22.0 †  0
+all, entered on 100%: planner lost 25.25 a fight, the best play 24.20; deaths 0.0%; rounds 6.21
+all, entered on 60%: planner lost 30.75 a fight, the best play 26.08; deaths 12.5%; rounds 6.04
+all, entered on 35%: planner lost 45.04 a fight, the best play 45.82; deaths 41.7%; rounds 5.62
+$ 3 CLOSE_REACH=0 caution=0.75 HP_BITE=1
+each cell: HP the planner lost a fight / the best play's, and deaths in a hundred (a death counts as all the HP and 60 more)
+entered on 100% of Max HP
+  A6H3Z2B6F3P0 hit 9 block 8 hp 75 energy 3    toad  37.7/ 27.0 †  0   hunter  45.0/ 39.1 †  0   louse  20.7/ 23.3 †  0
+  A6H3Z2B6F3P0 hit 11 block 9 hp 75 energy 3   toad  21.0/ 18.8 †  0   hunter  23.3/ 25.6 †  0   louse  12.0/ 14.2 †  0
+  A7H4Z2B4F3P0 hit 10 block 8 hp 75 energy 3   toad  26.3/ 26.3 †  0   hunter  40.7/ 34.9 †  0   louse  22.0/ 22.1 †  0
+  A5H2Z2B8F3P0 hit 10 block 9 hp 75 energy 3   toad  14.3/ 17.7 †  0   hunter  34.0/ 26.3 †  0   louse  19.0/ 15.2 †  0
+entered on 60% of Max HP
+  A6H3Z2B6F3P0 hit 9 block 8 hp 75 energy 3    toad  53.7/ 29.5 † 33   hunter  58.7/ 49.7 † 33   louse  17.7/ 24.3 †  0
+  A6H3Z2B6F3P0 hit 11 block 9 hp 75 energy 3   toad  21.0/ 19.1 †  0   hunter  20.7/ 26.6 †  0   louse   9.0/ 14.2 †  0
+  A7H4Z2B4F3P0 hit 10 block 8 hp 75 energy 3   toad  24.0/ 26.8 †  0   hunter  58.7/ 38.8 † 33   louse  14.0/ 22.2 †  0
+  A5H2Z2B8F3P0 hit 10 block 9 hp 75 energy 3   toad  14.3/ 18.3 †  0   hunter  25.3/ 28.0 †  0   louse  19.0/ 15.5 †  0
+entered on 35% of Max HP
+  A6H3Z2B6F3P0 hit 9 block 8 hp 75 energy 3    toad  42.3/ 49.3 † 33   hunter  86.0/ 81.7 †100   louse  38.7/ 46.8 † 33
+  A6H3Z2B6F3P0 hit 11 block 9 hp 75 energy 3   toad  39.3/ 30.0 † 33   hunter  41.7/ 48.5 † 33   louse   9.0/ 18.1 †  0
+  A7H4Z2B4F3P0 hit 10 block 8 hp 75 energy 3   toad  65.3/ 48.0 † 67   hunter  86.0/ 78.6 †100   louse  14.0/ 45.5 †  0
+  A5H2Z2B8F3P0 hit 10 block 9 hp 75 energy 3   toad  14.3/ 29.4 †  0   hunter  43.7/ 51.9 † 33   louse  17.3/ 22.0 †  0
+all, entered on 100%: planner lost 26.33 a fight, the best play 24.20; deaths 0.0%; rounds 5.78
+all, entered on 60%: planner lost 28.00 a fight, the best play 26.08; deaths 8.3%; rounds 5.81
+all, entered on 35%: planner lost 41.47 a fight, the best play 45.82; deaths 36.1%; rounds 5.33

@@ -1,0 +1,12 @@
+perfect play's chance of beating the Demon from full HP, by deck; then the mean gain in points on 3 and on 4+ energy
+none                                                       0.605 0.460 0.471 0.508 0.602 0.303 0.002 0.028   3E  +0.0  4E+  +0.0
++1 energy (Velvet Choker, Prismatic Gem, Sozu)             0.820 0.899 0.717 0.896 0.957 0.426 0.605 0.545   3E +46.0  4E+ +19.4
++1 card a turn (Pael's Blood)                              0.950 0.883 0.905 0.909 0.944 0.829 0.039 0.233   3E +28.2  4E+ +43.5
++2 cards a turn (Snecko Eye unconfused, Fiddle)            0.997 0.987 0.991 0.991 0.996 0.982 0.199 0.584   3E +43.1  4E+ +53.0
++1 energy from turn 3 (Pael's Flesh)                       0.789 0.859 0.674 0.856 0.934 0.403 0.467 0.449   3E +39.3  4E+ +16.3
++4 energy on turn 1 (Very Hot Cocoa)                       0.642 0.556 0.519 0.593 0.693 0.321 0.057 0.093   3E  +7.8  4E+  +3.4
++1 energy, Demon +1 Strength (Philosopher's Stone)         0.665 0.817 0.533 0.809 0.899 0.257 0.403 0.387   3E +34.3  4E+  +2.5
++1 energy, a dead card (Blessed Antler, Blood-Soaked Rose) 0.694 0.811 0.572 0.809 0.905 0.307 0.453 0.412   3E +35.8  4E+  +6.5
++1 energy, two dead cards                                  0.557 0.700 0.431 0.699 0.827 0.213 0.322 0.299   3E +25.0  4E+  -5.9
++1 Strength a round (Toasty Mittens, no card lost)         0.973 0.962 0.937 0.943 0.975 0.777 0.754 0.711   3E +54.9  4E+ +43.6
++1 Strength a round, a card less (Toasty Mittens)          0.576 0.540 0.375 0.454 0.575 0.137 0.157 0.136   3E  +5.2  4E+  -9.7

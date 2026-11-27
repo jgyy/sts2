@@ -1,0 +1,196 @@
+$ trace
+r1 hand AABABH hp 80 | amalgam 199 st 0 | queen 400/0blk st 0 k None
+   play H at A  amalgam 142 queen 400/0 en 2 blk 0
+   play A at A  amalgam 116 queen 400/0 en 1 blk 0
+   play B  amalgam 116 queen 400/0 en 0 blk 18
+r1 took 8 hp 72
+r2 hand V*H*B*BWA hp 72 | amalgam 116 st 0 | queen 400/0blk st 0 k None
+   play H at A  amalgam 59 queen 400/0 en 2 blk 0
+   play A at A  amalgam 33 queen 400/0 en 1 blk 0
+   play W at A  amalgam 20 queen 400/0 en 0 blk 0
+r2 took 13 hp 59
+r3 hand D*A*B*FFA hp 59 | amalgam 20 st 0 | queen 400/0blk st 0 k None
+   play A at A  amalgam 1 queen 400/0 en 3 blk 0
+   play A at A  amalgam 0 queen 400/0 en 2 blk 0
+r3 took 20 hp 39
+r4 hand B*D*W*AVA hp 39 | amalgam 0 st 0 | queen 400/0blk st 0 k 1
+   play V at Q  amalgam 0 queen 394/0 en 2 blk 0
+   play A at Q  amalgam 0 queen 366/0 en 1 blk 0
+   play B  amalgam 0 queen 366/0 en 0 blk 13
+r4 took 9 hp 30
+r5 hand B*H*B*BFF hp 30 | amalgam 0 st 0 | queen 366/0blk st 0 k 2
+   play H at Q  amalgam 0 queen 305/0 en 2 blk 0
+r5 took 0 hp 30
+r6 hand A*A*A*HBB hp 30 | amalgam 0 st 0 | queen 305/0blk st 2 k 3
+   play H at Q  amalgam 0 queen 264/0 en 2 blk 0
+   play B  amalgam 0 queen 264/0 en 1 blk 13
+   play B  amalgam 0 queen 264/0 en 0 blk 26
+r6 took 9 hp 21
+r7 hand A*A*B*BAB hp 21 | amalgam 0 st 0 | queen 264/0blk st 2 k 4
+   play A at Q  amalgam 0 queen 245/0 en 3 blk 0
+   play A at Q  amalgam 0 queen 226/0 en 2 blk 0
+   play B  amalgam 0 queen 226/0 en 1 blk 13
+   play B  amalgam 0 queen 226/0 en 0 blk 26
+r7 took 0 hp 21
+r8 hand D*A*H*FAW hp 21 | amalgam 0 st 0 | queen 226/0blk st 2 k 5
+   play H at Q  amalgam 0 queen 185/0 en 2 blk 0
+   play A at Q  amalgam 0 queen 166/0 en 1 blk 0
+   play W at Q  amalgam 0 queen 157/0 en 0 blk 0
+r8 took 0 hp 21
+r9 hand V*B*B*HFA hp 21 | amalgam 0 st 0 | queen 157/0blk st 4 k 6
+   play H at Q  amalgam 0 queen 116/0 en 2 blk 0
+   play A at Q  amalgam 0 queen 97/0 en 1 blk 0
+   play B  amalgam 0 queen 97/0 en 0 blk 13
+r9 took 22 hp -1
+(False, 0, 9, True)
+$ trace 5 3 MW=0.4
+r1 hand BBDAH hp 80 | amalgam 199 st 0 | queen 400/0blk st 0 k None
+   play H at Q  amalgam 199 queen 330/0 en 2 blk 0
+   play A at Q  amalgam 199 queen 298/0 en 1 blk 0
+   play B  amalgam 199 queen 298/0 en 0 blk 14
+r1 took 12 hp 68
+r2 hand B*H*A*BW hp 68 | amalgam 199 st 0 | queen 298/0blk st 0 k None
+   play H at Q  amalgam 199 queen 228/0 en 2 blk 0
+   play W at Q  amalgam 199 queen 212/0 en 1 blk 0
+   play B  amalgam 199 queen 212/0 en 0 blk 14
+r2 took 4 hp 64
+r3 hand A*A*F*FV hp 64 | amalgam 199 st 0 | queen 212/0blk st 0 k None
+   play V at Q  amalgam 199 queen 206/0 en 2 blk 0
+   play A at Q  amalgam 199 queen 170/0 en 1 blk 0
+r3 took 36 hp 28
+r4 hand A*B*B*AA hp 28 | amalgam 199 st 1 | queen 170/20blk st 0 k None
+   play A at Q  amalgam 199 queen 154/0 en 3 blk 0
+   play A at Q  amalgam 199 queen 118/0 en 2 blk 0
+   play A at Q  amalgam 199 queen 82/0 en 1 blk 0
+r4 took 22 hp 6
+r5 hand B*H*A*FW hp 6 | amalgam 199 st 2 | queen 82/20blk st 0 k None
+   play W at A  amalgam 187 queen 82/20 en 3 blk 0
+   play B  amalgam 187 queen 82/20 en 2 blk 10
+r5 took 8 hp -2
+(False, 0, 5, False)
+$ trace 2 2 K.caution=0.75+SLIP_WORTH=1
+r1 hand AAFBH hp 80 | amalgam 199 st 0 | queen 400/0blk st 0 k None
+   play H at A  amalgam 142 queen 400/0 en 3 blk 0
+   play A at A  amalgam 116 queen 400/0 en 2 blk 0
+   play A at A  amalgam 90 queen 400/0 en 1 blk 0
+   play B  amalgam 90 queen 400/0 en 0 blk 18
+r1 took 8 hp 72
+r2 hand D*W*B*AH hp 72 | amalgam 90 st 0 | queen 400/0blk st 0 k None
+   play H at A  amalgam 33 queen 400/0 en 3 blk 0
+   play A at A  amalgam 7 queen 400/0 en 2 blk 0
+   play W at A  amalgam 0 queen 400/0 en 1 blk 0
+r2 took 0 hp 72
+r3 hand A*A*B*AF hp 72 | amalgam 0 st 0 | queen 400/0blk st 0 k None
+   play A at Q  amalgam 0 queen 381/0 en 4 blk 0
+   play A at Q  amalgam 0 queen 362/0 en 3 blk 0
+r3 took 20 hp 52
+r4 hand B*V*B*BA hp 52 | amalgam 0 st 0 | queen 362/0blk st 0 k 1
+   play V at Q  amalgam 0 queen 356/0 en 3 blk 0
+   play A at Q  amalgam 0 queen 328/0 en 2 blk 0
+   play B  amalgam 0 queen 328/0 en 1 blk 13
+r4 took 9 hp 43
+r5 hand A*D*H*FW hp 43 | amalgam 0 st 0 | queen 328/0blk st 0 k 2
+   play H at Q  amalgam 0 queen 267/0 en 3 blk 0
+   play W at Q  amalgam 0 queen 254/0 en 2 blk 0
+r5 took 0 hp 43
+r6 hand A*F*H*AA hp 43 | amalgam 0 st 0 | queen 254/0blk st 2 k 3
+   play H at Q  amalgam 0 queen 213/0 en 3 blk 0
+   play A at Q  amalgam 0 queen 194/0 en 2 blk 0
+   play A at Q  amalgam 0 queen 175/0 en 1 blk 0
+r6 took 25 hp 18
+r7 hand B*A*B*BW hp 18 | amalgam 0 st 0 | queen 175/0blk st 2 k 4
+   play A at Q  amalgam 0 queen 156/0 en 4 blk 0
+   play W at Q  amalgam 0 queen 147/0 en 3 blk 0
+   play B  amalgam 0 queen 147/0 en 2 blk 13
+r7 took 6 hp 12
+r8 hand D*B*A*AB hp 12 | amalgam 0 st 0 | queen 147/0blk st 2 k 5
+   play A at Q  amalgam 0 queen 128/0 en 4 blk 0
+   play A at Q  amalgam 0 queen 109/0 en 3 blk 0
+r8 took 0 hp 12
+r9 hand F*V*A*HF hp 12 | amalgam 0 st 0 | queen 109/0blk st 4 k 6
+   play V at Q  amalgam 0 queen 103/0 en 3 blk 0
+   play H at Q  amalgam 0 queen 42/0 en 1 blk 0
+r9 took 50 hp -38
+(False, 0, 9, True)
+$ 2 on MW=0.2+HP_BITE=9
+on                          : won 0.250  hp left   3.3  rounds  8.8  amalgam dead 1.00
+MW=0.2+HP_BITE=9            : won 0.167  hp left   1.6  rounds  7.2  amalgam dead 0.00
+(26, 14, 6, 6, 2, 1, 1, 1, 2, 4, 6) on: won 0.00 hp  0.0  MW=0.2+HP_BITE=9: won 0.00 hp  0.0
+(26, 18, 6, 6, 2, 1, 1, 1, 2, 4, 6) on: won 0.50 hp  3.5  MW=0.2+HP_BITE=9: won 0.00 hp  0.0
+(26, 18, 6, 6, 2, 1, 1, 1, 2, 5, 5) on: won 0.00 hp  0.0  MW=0.2+HP_BITE=9: won 0.00 hp  0.0
+(32, 14, 6, 6, 2, 1, 1, 1, 2, 4, 5) on: won 0.00 hp  0.0  MW=0.2+HP_BITE=9: won 0.00 hp  0.0
+(32, 18, 6, 6, 2, 1, 1, 1, 2, 4, 5) on: won 1.00 hp 16.5  MW=0.2+HP_BITE=9: won 1.00 hp  9.5
+(36, 14, 6, 6, 2, 1, 1, 1, 2, 4, 5) on: won 0.00 hp  0.0  MW=0.2+HP_BITE=9: won 0.00 hp  0.0
+$ flips 4 on MW=0.3
+9046330 {'on': (True, 7, 10, True), 'MW=0.3': (False, 0, 7, False)}
+9046333 {'on': (False, 0, 7, True), 'MW=0.3': (True, 2, 7, False)}
+9046334 {'on': (True, 14, 9, True), 'MW=0.3': (False, 0, 6, False)}
+9046335 {'on': (True, 2, 12, True), 'MW=0.3': (False, 0, 9, False)}
+9046339 {'on': (True, 18, 10, True), 'MW=0.3': (False, 0, 7, False)}
+9046341 {'on': (True, 13, 11, True), 'MW=0.3': (False, 0, 6, False)}
+9046346 {'on': (True, 14, 9, True), 'MW=0.3': (False, 0, 6, False)}
+9046347 {'on': (False, 0, 9, True), 'MW=0.3': (True, 8, 7, False)}
+9046349 {'on': (True, 16, 9, True), 'MW=0.3': (False, 0, 8, False)}
+9046350 {'on': (True, 24, 9, True), 'MW=0.3': (False, 0, 5, False)}
+9046352 {'on': (False, 0, 9, True), 'MW=0.3': (True, 11, 6, False)}
+9046356 {'on': (True, 39, 9, True), 'MW=0.3': (False, 0, 6, False)}
+9046358 {'on': (True, 15, 9, True), 'MW=0.3': (False, 0, 6, False)}
+9046359 {'on': (True, 5, 13, True), 'MW=0.3': (False, 0, 6, False)}
+9046360 {'on': (True, 1, 10, True), 'MW=0.3': (False, 0, 6, False)}
+9046366 {'on': (True, 4, 9, True), 'MW=0.3': (False, 0, 7, False)}
+9046368 {'on': (True, 22, 9, True), 'MW=0.3': (False, 0, 6, False)}
+9046369 {'on': (True, 2, 9, True), 'MW=0.3': (False, 0, 6, False)}
+9046371 {'on': (True, 18, 10, True), 'MW=0.3': (False, 0, 7, False)}
+9046376 {'on': (True, 1, 10, True), 'MW=0.3': (False, 0, 6, False)}
+9046381 {'on': (True, 34, 9, True), 'MW=0.3': (False, 0, 6, False)}
+9046384 {'on': (False, 0, 9, True), 'MW=0.3': (True, 6, 7, False)}
+9046385 {'on': (True, 13, 10, True), 'MW=0.3': (False, 0, 7, False)}
+9046386 {'on': (True, 25, 9, True), 'MW=0.3': (False, 0, 5, False)}
+9046387 {'on': (True, 20, 11, True), 'MW=0.3': (False, 0, 9, False)}
+9046388 {'on': (True, 3, 10, True), 'MW=0.3': (False, 0, 9, False)}
+9046389 {'on': (False, 0, 9, True), 'MW=0.3': (True, 5, 8, False)}
+9046391 {'on': (True, 5, 10, True), 'MW=0.3': (False, 0, 6, False)}
+9046392 {'on': (True, 9, 9, True), 'MW=0.3': (False, 0, 7, False)}
+9046394 {'on': (True, 11, 12, True), 'MW=0.3': (False, 0, 6, False)}
+9046399 {'on': (True, 15, 9, True), 'MW=0.3': (False, 0, 7, False)}
+9046400 {'on': (False, 0, 9, True), 'MW=0.3': (True, 4, 5, False)}
+9046401 {'on': (True, 13, 9, True), 'MW=0.3': (False, 0, 6, False)}
+9046406 {'on': (True, 12, 11, True), 'MW=0.3': (False, 0, 9, False)}
+9046407 {'on': (False, 0, 9, True), 'MW=0.3': (True, 4, 9, False)}
+9046415 {'on': (False, 0, 9, True), 'MW=0.3': (True, 6, 8, False)}
+9046416 {'on': (True, 12, 9, True), 'MW=0.3': (False, 0, 6, False)}
+9046417 {'on': (False, 0, 9, True), 'MW=0.3': (True, 27, 6, False)}
+9046421 {'on': (True, 1, 10, True), 'MW=0.3': (False, 0, 6, False)}
+9046425 {'on': (True, 23, 8, True), 'MW=0.3': (False, 0, 5, False)}
+9046432 {'on': (True, 7, 9, True), 'MW=0.3': (False, 0, 6, False)}
+9046439 {'on': (True, 12, 10, True), 'MW=0.3': (False, 0, 6, False)}
+9046446 {'on': (True, 12, 9, True), 'MW=0.3': (False, 0, 9, False)}
+9046447 {'on': (False, 0, 9, True), 'MW=0.3': (True, 2, 9, False)}
+9046451 {'on': (True, 22, 9, True), 'MW=0.3': (False, 0, 7, False)}
+9046452 {'on': (False, 0, 9, True), 'MW=0.3': (True, 2, 7, False)}
+9046456 {'on': (False, 0, 9, True), 'MW=0.3': (True, 10, 7, False)}
+9046460 {'on': (True, 3, 12, True), 'MW=0.3': (False, 0, 6, False)}
+9046468 {'on': (True, 10, 9, True), 'MW=0.3': (False, 0, 9, False)}
+9046469 {'on': (False, 0, 9, True), 'MW=0.3': (True, 14, 7, False)}
+9046470 {'on': (False, 0, 9, True), 'MW=0.3': (True, 9, 8, False)}
+9046474 {'on': (True, 1, 10, True), 'MW=0.3': (False, 0, 7, False)}
+9046476 {'on': (True, 10, 9, True), 'MW=0.3': (False, 0, 7, False)}
+9046478 {'on': (False, 0, 9, True), 'MW=0.3': (True, 8, 6, False)}
+9046481 {'on': (False, 0, 9, True), 'MW=0.3': (True, 14, 8, False)}
+9046484 {'on': (True, 4, 10, True), 'MW=0.3': (False, 0, 6, False)}
+9046490 {'on': (True, 19, 10, True), 'MW=0.3': (False, 0, 9, False)}
+9046493 {'on': (True, 23, 9, True), 'MW=0.3': (False, 0, 7, False)}
+9046494 {'on': (True, 31, 9, True), 'MW=0.3': (False, 0, 7, False)}
+9046498 {'on': (True, 33, 9, True), 'MW=0.3': (False, 0, 8, False)}
+9046503 {'on': (True, 1, 12, True), 'MW=0.3': (False, 0, 7, False)}
+9046504 {'on': (True, 7, 9, True), 'MW=0.3': (False, 0, 6, False)}
+9046506 {'on': (True, 8, 11, True), 'MW=0.3': (False, 0, 7, False)}
+9046511 {'on': (True, 5, 9, True), 'MW=0.3': (False, 0, 6, False)}
+9046512 {'on': (True, 4, 10, True), 'MW=0.3': (False, 0, 7, False)}
+9046516 {'on': (True, 2, 10, True), 'MW=0.3': (False, 0, 9, False)}
+9046517 {'on': (True, 22, 9, True), 'MW=0.3': (False, 0, 7, False)}
+9046521 {'on': (True, 13, 8, True), 'MW=0.3': (False, 0, 9, False)}
+9046523 {'on': (False, 0, 9, True), 'MW=0.3': (True, 10, 7, False)}
+9046524 {'on': (True, 1, 10, True), 'MW=0.3': (False, 0, 5, False)}
+9046525 {'on': (False, 0, 10, True), 'MW=0.3': (True, 5, 6, False)}
+9046526 {'on': (True, 4, 11, True), 'MW=0.3': (False, 0, 6, False)}
