@@ -1,0 +1,1640 @@
+[
+{
+"argv": [
+"disable"
+],
+"rc": 0,
+"code": 0,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"disable",
+"--now",
+"sts2bot"
+]
+],
+"stdout": "The bot is stopped and will not start at login. Start it again with: python3 -m sts2bot service enable\nThe game keeps running; close it from the game or Steam if you want it gone too.\n",
+"stderr": ""
+},
+{
+"argv": [
+"disable"
+],
+"rc": 5,
+"code": 5,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"disable",
+"--now",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"disable"
+],
+"rc": "missing",
+"code": 127,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"disable",
+"--now",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"enable"
+],
+"rc": 0,
+"code": 0,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"enable",
+"--now",
+"sts2bot"
+]
+],
+"stdout": "The bot is started now and at every login.\n",
+"stderr": ""
+},
+{
+"argv": [
+"enable"
+],
+"rc": 5,
+"code": 5,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"enable",
+"--now",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"enable"
+],
+"rc": "missing",
+"code": 127,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"enable",
+"--now",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"start"
+],
+"rc": 0,
+"code": 0,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"start",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"start"
+],
+"rc": 5,
+"code": 5,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"start",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"start"
+],
+"rc": "missing",
+"code": 127,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"start",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"stop"
+],
+"rc": 0,
+"code": 0,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"sts2bot"
+]
+],
+"stdout": "The bot is stopped until you start it again or log in next time.\nThe game keeps running; close it from the game or Steam if you want it gone too.\n",
+"stderr": ""
+},
+{
+"argv": [
+"stop"
+],
+"rc": 5,
+"code": 5,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"stop"
+],
+"rc": "missing",
+"code": 127,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"status"
+],
+"rc": 0,
+"code": 0,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"status",
+"--no-pager",
+"--lines=0",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"status"
+],
+"rc": 5,
+"code": 5,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"status",
+"--no-pager",
+"--lines=0",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"status"
+],
+"rc": "missing",
+"code": 127,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"status",
+"--no-pager",
+"--lines=0",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"restart"
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'restart' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"restart"
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'restart' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"restart"
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'restart' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: the following arguments are required: action\n"
+},
+{
+"argv": [],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: the following arguments are required: action\n"
+},
+{
+"argv": [],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: the following arguments are required: action\n"
+},
+{
+"argv": [
+"-h"
+],
+"rc": 0,
+"code": 0,
+"exited": true,
+"calls": [],
+"stdout": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\n\nStart, stop, enable or disable the bot's systemd user service.\n\npositional arguments:\n  {disable,enable,start,status,stop}\n\noptions:\n  -h, --help            show this help message and exit\n  --unit UNIT           unit name (default: sts2bot)\n",
+"stderr": ""
+},
+{
+"argv": [
+"-h"
+],
+"rc": 5,
+"code": 0,
+"exited": true,
+"calls": [],
+"stdout": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\n\nStart, stop, enable or disable the bot's systemd user service.\n\npositional arguments:\n  {disable,enable,start,status,stop}\n\noptions:\n  -h, --help            show this help message and exit\n  --unit UNIT           unit name (default: sts2bot)\n",
+"stderr": ""
+},
+{
+"argv": [
+"-h"
+],
+"rc": "missing",
+"code": 0,
+"exited": true,
+"calls": [],
+"stdout": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\n\nStart, stop, enable or disable the bot's systemd user service.\n\npositional arguments:\n  {disable,enable,start,status,stop}\n\noptions:\n  -h, --help            show this help message and exit\n  --unit UNIT           unit name (default: sts2bot)\n",
+"stderr": ""
+},
+{
+"argv": [
+"--help"
+],
+"rc": 0,
+"code": 0,
+"exited": true,
+"calls": [],
+"stdout": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\n\nStart, stop, enable or disable the bot's systemd user service.\n\npositional arguments:\n  {disable,enable,start,status,stop}\n\noptions:\n  -h, --help            show this help message and exit\n  --unit UNIT           unit name (default: sts2bot)\n",
+"stderr": ""
+},
+{
+"argv": [
+"--help"
+],
+"rc": 5,
+"code": 0,
+"exited": true,
+"calls": [],
+"stdout": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\n\nStart, stop, enable or disable the bot's systemd user service.\n\npositional arguments:\n  {disable,enable,start,status,stop}\n\noptions:\n  -h, --help            show this help message and exit\n  --unit UNIT           unit name (default: sts2bot)\n",
+"stderr": ""
+},
+{
+"argv": [
+"--help"
+],
+"rc": "missing",
+"code": 0,
+"exited": true,
+"calls": [],
+"stdout": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\n\nStart, stop, enable or disable the bot's systemd user service.\n\npositional arguments:\n  {disable,enable,start,status,stop}\n\noptions:\n  -h, --help            show this help message and exit\n  --unit UNIT           unit name (default: sts2bot)\n",
+"stderr": ""
+},
+{
+"argv": [
+"stop",
+"--unit",
+"other"
+],
+"rc": 0,
+"code": 0,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"other"
+]
+],
+"stdout": "The bot is stopped until you start it again or log in next time.\nThe game keeps running; close it from the game or Steam if you want it gone too.\n",
+"stderr": ""
+},
+{
+"argv": [
+"stop",
+"--unit",
+"other"
+],
+"rc": 5,
+"code": 5,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"other"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"stop",
+"--unit",
+"other"
+],
+"rc": "missing",
+"code": 127,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"other"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"--unit=x.service",
+"start"
+],
+"rc": 0,
+"code": 0,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"start",
+"x.service"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"--unit=x.service",
+"start"
+],
+"rc": 5,
+"code": 5,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"start",
+"x.service"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"--unit=x.service",
+"start"
+],
+"rc": "missing",
+"code": 127,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"start",
+"x.service"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"--un",
+"y",
+"status"
+],
+"rc": 0,
+"code": 0,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"status",
+"--no-pager",
+"--lines=0",
+"y"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"--un",
+"y",
+"status"
+],
+"rc": 5,
+"code": 5,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"status",
+"--no-pager",
+"--lines=0",
+"y"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"--un",
+"y",
+"status"
+],
+"rc": "missing",
+"code": 127,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"status",
+"--no-pager",
+"--lines=0",
+"y"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"--u=z",
+"enable"
+],
+"rc": 0,
+"code": 0,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"enable",
+"--now",
+"z"
+]
+],
+"stdout": "The bot is started now and at every login.\n",
+"stderr": ""
+},
+{
+"argv": [
+"--u=z",
+"enable"
+],
+"rc": 5,
+"code": 5,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"enable",
+"--now",
+"z"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"--u=z",
+"enable"
+],
+"rc": "missing",
+"code": 127,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"enable",
+"--now",
+"z"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"stop",
+"--unit"
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument --unit: expected one argument\n"
+},
+{
+"argv": [
+"stop",
+"--unit"
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument --unit: expected one argument\n"
+},
+{
+"argv": [
+"stop",
+"--unit"
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument --unit: expected one argument\n"
+},
+{
+"argv": [
+"stop",
+"extra"
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: extra\n"
+},
+{
+"argv": [
+"stop",
+"extra"
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: extra\n"
+},
+{
+"argv": [
+"stop",
+"extra"
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: extra\n"
+},
+{
+"argv": [
+"stop",
+"--bogus"
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: --bogus\n"
+},
+{
+"argv": [
+"stop",
+"--bogus"
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: --bogus\n"
+},
+{
+"argv": [
+"stop",
+"--bogus"
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: --bogus\n"
+},
+{
+"argv": [
+"--",
+"stop"
+],
+"rc": 0,
+"code": 0,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"sts2bot"
+]
+],
+"stdout": "The bot is stopped until you start it again or log in next time.\nThe game keeps running; close it from the game or Steam if you want it gone too.\n",
+"stderr": ""
+},
+{
+"argv": [
+"--",
+"stop"
+],
+"rc": 5,
+"code": 5,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"--",
+"stop"
+],
+"rc": "missing",
+"code": 127,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"--",
+"--unit"
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: '--unit' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"--",
+"--unit"
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: '--unit' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"--",
+"--unit"
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: '--unit' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"stop",
+"-x"
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: -x\n"
+},
+{
+"argv": [
+"stop",
+"-x"
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: -x\n"
+},
+{
+"argv": [
+"stop",
+"-x"
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: -x\n"
+},
+{
+"argv": [
+"--unit",
+"a",
+"--unit",
+"b",
+"disable"
+],
+"rc": 0,
+"code": 0,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"disable",
+"--now",
+"b"
+]
+],
+"stdout": "The bot is stopped and will not start at login. Start it again with: python3 -m sts2bot service enable\nThe game keeps running; close it from the game or Steam if you want it gone too.\n",
+"stderr": ""
+},
+{
+"argv": [
+"--unit",
+"a",
+"--unit",
+"b",
+"disable"
+],
+"rc": 5,
+"code": 5,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"disable",
+"--now",
+"b"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"--unit",
+"a",
+"--unit",
+"b",
+"disable"
+],
+"rc": "missing",
+"code": 127,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"disable",
+"--now",
+"b"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"stop",
+"start"
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: start\n"
+},
+{
+"argv": [
+"stop",
+"start"
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: start\n"
+},
+{
+"argv": [
+"stop",
+"start"
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: start\n"
+},
+{
+"argv": [
+"--unit",
+"--",
+"stop"
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument --unit: expected one argument\n"
+},
+{
+"argv": [
+"--unit",
+"--",
+"stop"
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument --unit: expected one argument\n"
+},
+{
+"argv": [
+"--unit",
+"--",
+"stop"
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument --unit: expected one argument\n"
+},
+{
+"argv": [
+"-u",
+"x",
+"stop"
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'x' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"-u",
+"x",
+"stop"
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'x' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"-u",
+"x",
+"stop"
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'x' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"--unit",
+"-x",
+"stop"
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument --unit: expected one argument\n"
+},
+{
+"argv": [
+"--unit",
+"-x",
+"stop"
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument --unit: expected one argument\n"
+},
+{
+"argv": [
+"--unit",
+"-x",
+"stop"
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument --unit: expected one argument\n"
+},
+{
+"argv": [
+"--unit",
+"-1",
+"stop"
+],
+"rc": 0,
+"code": 0,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"-1"
+]
+],
+"stdout": "The bot is stopped until you start it again or log in next time.\nThe game keeps running; close it from the game or Steam if you want it gone too.\n",
+"stderr": ""
+},
+{
+"argv": [
+"--unit",
+"-1",
+"stop"
+],
+"rc": 5,
+"code": 5,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"-1"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"--unit",
+"-1",
+"stop"
+],
+"rc": "missing",
+"code": 127,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"-1"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"--unit",
+"",
+"stop"
+],
+"rc": 0,
+"code": 0,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+""
+]
+],
+"stdout": "The bot is stopped until you start it again or log in next time.\nThe game keeps running; close it from the game or Steam if you want it gone too.\n",
+"stderr": ""
+},
+{
+"argv": [
+"--unit",
+"",
+"stop"
+],
+"rc": 5,
+"code": 5,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+""
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"--unit",
+"",
+"stop"
+],
+"rc": "missing",
+"code": 127,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+""
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"STOP"
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'STOP' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"STOP"
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'STOP' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"STOP"
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'STOP' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+""
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: '' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+""
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: '' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+""
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: '' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"--unit",
+"a b",
+"stop"
+],
+"rc": 0,
+"code": 0,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"a b"
+]
+],
+"stdout": "The bot is stopped until you start it again or log in next time.\nThe game keeps running; close it from the game or Steam if you want it gone too.\n",
+"stderr": ""
+},
+{
+"argv": [
+"--unit",
+"a b",
+"stop"
+],
+"rc": 5,
+"code": 5,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"a b"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"--unit",
+"a b",
+"stop"
+],
+"rc": "missing",
+"code": 127,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"a b"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"--help",
+"restart"
+],
+"rc": 0,
+"code": 0,
+"exited": true,
+"calls": [],
+"stdout": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\n\nStart, stop, enable or disable the bot's systemd user service.\n\npositional arguments:\n  {disable,enable,start,status,stop}\n\noptions:\n  -h, --help            show this help message and exit\n  --unit UNIT           unit name (default: sts2bot)\n",
+"stderr": ""
+},
+{
+"argv": [
+"--help",
+"restart"
+],
+"rc": 5,
+"code": 0,
+"exited": true,
+"calls": [],
+"stdout": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\n\nStart, stop, enable or disable the bot's systemd user service.\n\npositional arguments:\n  {disable,enable,start,status,stop}\n\noptions:\n  -h, --help            show this help message and exit\n  --unit UNIT           unit name (default: sts2bot)\n",
+"stderr": ""
+},
+{
+"argv": [
+"--help",
+"restart"
+],
+"rc": "missing",
+"code": 0,
+"exited": true,
+"calls": [],
+"stdout": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\n\nStart, stop, enable or disable the bot's systemd user service.\n\npositional arguments:\n  {disable,enable,start,status,stop}\n\noptions:\n  -h, --help            show this help message and exit\n  --unit UNIT           unit name (default: sts2bot)\n",
+"stderr": ""
+},
+{
+"argv": [
+"restart",
+"--help"
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'restart' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"restart",
+"--help"
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'restart' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"restart",
+"--help"
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'restart' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"--unit=",
+"stop"
+],
+"rc": 0,
+"code": 0,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+""
+]
+],
+"stdout": "The bot is stopped until you start it again or log in next time.\nThe game keeps running; close it from the game or Steam if you want it gone too.\n",
+"stderr": ""
+},
+{
+"argv": [
+"--unit=",
+"stop"
+],
+"rc": 5,
+"code": 5,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+""
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"--unit=",
+"stop"
+],
+"rc": "missing",
+"code": 127,
+"exited": false,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+""
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"--unitx",
+"a",
+"stop"
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'a' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"--unitx",
+"a",
+"stop"
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'a' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"--unitx",
+"a",
+"stop"
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'a' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"stop",
+"--",
+"--unit",
+"x"
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: --unit x\n"
+},
+{
+"argv": [
+"stop",
+"--",
+"--unit",
+"x"
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: --unit x\n"
+},
+{
+"argv": [
+"stop",
+"--",
+"--unit",
+"x"
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: --unit x\n"
+},
+{
+"argv": [
+"-",
+"stop"
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: '-' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"-",
+"stop"
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: '-' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"-",
+"stop"
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: '-' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"stop",
+"-"
+],
+"rc": 0,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: -\n"
+},
+{
+"argv": [
+"stop",
+"-"
+],
+"rc": 5,
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: -\n"
+},
+{
+"argv": [
+"stop",
+"-"
+],
+"rc": "missing",
+"code": 2,
+"exited": true,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: unrecognized arguments: -\n"
+}
+]
