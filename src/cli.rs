@@ -96,10 +96,10 @@ pub struct Exit {
 impl Exit {
     /// Print what was to be printed; the exit code.
     pub fn leave(&self) -> i32 {
+        // (as argparse's `_print_message`: a closed stdout or stderr is not an error)
         use std::io::Write;
-        print!("{}", self.stdout);
-        eprint!("{}", self.stderr);
-        let _ = std::io::stdout().flush();
+        let _ = std::io::stdout().write_all(self.stdout.as_bytes()).and_then(|_| std::io::stdout().flush());
+        let _ = std::io::stderr().write_all(self.stderr.as_bytes());
         self.code
     }
 }

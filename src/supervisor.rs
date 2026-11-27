@@ -982,7 +982,7 @@ impl Supervisor {
                 if !self.host.running() {
                     return Ok(false); // it died: no point waiting out the timeout
                 }
-                if self.host.missing_steam(launched_at.filter(|at| *at != 0.0).unwrap_or(0.0)) {
+                if self.host.missing_steam(launched_at.unwrap_or(0.0)) {
                     return Ok(false);
                 }
             }
@@ -1031,7 +1031,7 @@ impl Supervisor {
                 log_info!(log, "game is up");
                 return Ok(());
             }
-            let since = launched_at.filter(|at| *at != 0.0).unwrap_or(0.0);
+            let since = launched_at.unwrap_or(0.0);
             if let Some(why) = self.host.mod_load_error(since).filter(|why| !why.is_empty()) {
                 log_error!(log, "the game did not load the bridge mod: {}", why);
                 self.host.kill()?;
