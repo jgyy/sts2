@@ -12,6 +12,7 @@ use crate::py::{self, JsonExt};
 
 crate::tunables! {
     pub SKIP_THRESHOLD: f64 = 3.0; // card rewards scoring below this are skipped
+    pub FEED_KEEP: f64 = 0.3; // of a payoff's worth kept with nothing yet to feed it (one may come later)
 }
 pub const BIG_DECK: i64 = 24;
 pub const SHOT_SPARE: f64 = 0.5; // each Shot beyond the Arrows keeps this share of the one before it (a Shot needs our Arrow back: about one a turn)
@@ -86,7 +87,29 @@ fn _plain(c: &Value) -> bool {
 
 /// Cards the deck holds for their damage: 8 or more an energy, the Strikes (upgraded or not) and the Regent's own Falling Star left out.
 pub fn _hitters(deck: &[Value]) -> i64 {
+    if let Some(f) = HITTERS.with(|h| h.borrow().clone()) {
+        return f(deck);
+    }
     deck.iter().filter(|c| _punch(c) >= 8.0 && _card_key(c) != "FALLING_STAR" && !_plain(c)).count() as i64
+}
+
+thread_local! {
+    static HITTERS: std::cell::RefCell<Option<std::rc::Rc<dyn Fn(&[Value]) -> i64>>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Puts the earlier `_hitters` back when dropped.
+#[must_use = "the override ends when this is dropped"]
+pub struct HittersGuard(Option<std::rc::Rc<dyn Fn(&[Value]) -> i64>>);
+
+impl Drop for HittersGuard {
+    fn drop(&mut self) {
+        HITTERS.with(|h| *h.borrow_mut() = self.0.take());
+    }
+}
+
+/// `mock.patch.object(decks, "_hitters", f)`: on this thread, until the guard is dropped.
+pub fn with_hitters_hook(f: impl Fn(&[Value]) -> i64 + 'static) -> HittersGuard {
+    HittersGuard(HITTERS.with(|h| h.borrow_mut().replace(std::rc::Rc::new(f))))
 }
 
 pub const BLOCK_ROOM: i64 = 2; // Block cards a deck of up to 23 takes at the full lean (learn::CHOICES["block_want"]); half for the next, none after
@@ -239,7 +262,7 @@ pub fn _PAYS(what: &str, text: &str) -> bool {
 }
 
 pub const FEED_FULL: f64 = 2.0; // feeding cards a payoff needs to be worth its rating (a Power that feeds it every turn counts twice)
-pub const FEED_KEEP: f64 = 0.3; // of a payoff's worth kept with nothing yet to feed it (one may come later)
+// (FEED_KEEP, which a test turns off, is with the tunables at the top.)
 pub const FEED_LEAN: f64 = 1.0; // rating points for a feeding card, for each payoff held, while the deck has less than FEED_FULL of them
 pub const FEED_LEAN_MOST: f64 = 2.0;
 
@@ -385,7 +408,7 @@ pub fn deck_fit(card: &Value, deck: &[Value], act: Option<i64>, energy: i64) -> 
     }
     if let Some(need) = pays_off(card) {
         let fed = py::fsum(deck.iter().map(|c| feeds(c, need)));
-        let share = FEED_KEEP + (1.0 - FEED_KEEP) * fmin(1.0, fed / FEED_FULL);
+        let share = FEED_KEEP.get() + (1.0 - FEED_KEEP.get()) * fmin(1.0, fed / FEED_FULL);
         fit -= (1.0 - share) * fmax(0.0, deck_value(card) + fit);
     }
     fit
