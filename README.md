@@ -141,7 +141,7 @@ python3 -m sim report runs.jsonl                                                
 python3 -m sim trace                                                                 # one hash per character
 python3 -m sim prior sts2.jsonl sts1.jsonl --out sts2bot/run/model_cards.json         # the card table the bot reads
 python3 -m sim prior runs.jsonl --onto sts2bot/run/model_cards.json --out new.json     # ... corrected by runs that played it
-python3 -m sim run --game sts2 --runs 400 --vary --only model_table,caution --alt-cards new.json   # vary only these; two tables
+python3 -m sim run --game sts2 --runs 400 --vary --only model_table,caution --alt-cards new.json   # vary only these; two tables (more: a,b)
 python3 -m sim run --game sts1 --runs 400 --vary --only caution,belt_spare --grid caution=1,1.35      # caution drawn from these values only
 ```
 

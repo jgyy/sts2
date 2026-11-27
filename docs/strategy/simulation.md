@@ -1,12 +1,74 @@
 # Model runs: what the simulator says
 
-**Latest round (2026-11-26, round 5):** 9,900 runs (Slay the Spire 2 at **Ascension 8**, where the live bot now plays
-every character; the first game at Ascension 0): 2,700 of the bot as it was, 3,600 drawing a corrected card table and
-three new rules against the old ones, and 3,600 of the bot before and after on seeds nothing was chosen on. The main
-finding was about **the model itself**: it was wrong about two dozen cards, and the card table had learned its mistakes.
-A run's **score** is the floor it ended on, plus 15 for a win (one point is about one floor). [Round 4](#round-4-2026-11-26)
-follows, then [round 3](#round-3-2026-11-26), the batches of [2026-11-25](#batches-of-2026-11-25) and the A5 batches
+**Latest round (2026-11-27, round 6):** 10,600 runs (Slay the Spire 2 at **Ascension 8**, the first game at Ascension
+0): 1,800 of the bot as it was, 7,200 in two varied batches on separate seeds, and 1,600 of the first game before and
+after. One thing held up on every batch, **the first game's card table brought up to date**; four candidate rules did
+not, and the second batch is what showed it. A run's **score** is the floor it ended on, plus 15 for a win (one point is
+about one floor). [Round 5](#round-5-2026-11-26) follows, then [round 4](#round-4-2026-11-26),
+[round 3](#round-3-2026-11-26), the batches of [2026-11-25](#batches-of-2026-11-25) and the A5 batches
 [further down](#earlier-9000-runs-at-ascension-5-and-0).
+
+## Round 6 (2026-11-27)
+
+- **The first game's card table, brought up to date** (shipped; `sim prior --onto` with the 800 runs of the bot as it
+  was). Three measurements on three sets of seeds agree:
+
+| | First game, A0 |
+|---|---|
+| First varied batch (seed 63000), new table against old | +0.91 ± 0.80 floors; wins 20.4% → 24.6% |
+| Second varied batch (seed 65000) | +0.94 ± 0.84; wins 21.8% → 24.6% |
+| **Before and after**, settings fixed, 800 pairs (seed 66000) | **+1.02 ± 0.58**; wins 21.5% → 25.5% |
+
+  Together about **+1.0 ± 0.4 floors** (95%). In the paired runs the Defect gains +2.0 ± 1.3, the Silent +1.9 ± 1.3 (wins
+  21% → 33%), the Ironclad +0.8 ± 1.15; the Watcher is -0.6 ± 0.9 (11% → 9%). What moved most: Reprogram -0.4 → -3.0,
+  Capacitor -0.8 → -3.0, Storm +0.8 → -0.8, Doom and Gloom +0.8 → +2.3 and Bullseye -2.7 → -0.5 for the Defect; Carnage
+  +1.5 → +3.0, Bludgeon -3.0 → -1.3, Rampage +0.7 → -0.6 and Spot Weakness -0.3 → +0.9 for the Ironclad; Dodge and Roll
+  -0.8 → +1.5, Leg Sweep +1.4 → +2.2, Blur +0.1 → -1.1 and Skewer -1.2 → -2.4 for the Silent; Like Water -0.2 → -1.6,
+  Devotion +2.4 → +1.2 and Perseverance -0.3 → +0.7 for the Watcher.
+- **Slay the Spire 2's table stays as it was.** The same update there: +0.09 ± 0.72 and -0.58 ± 0.70 floors on the two
+  batches (wins 11.4% against 9.1%, then 9.9% against 9.8%). Nothing in it.
+- **The table has locked most cards out, and trying them again did not pay.** In 200 runs a character the 15 most
+  picked cards are 71-77% of all picks in Slay the Spire 2 and 66-71% in the first game, and about 48 cards of 80 (30 of
+  72) are picked twice or less: among them the Watcher's Protect, Third Eye, Sanctity, Swivel and Halt, and Flame Barrier and Iron Wave.
+  The table learns from picks alone, so a card it has put below the bar can never speak for itself again. Tried: the
+  146 such cards the bot's own rating thinks well of (4.0 or more, or 5 Block) put back at 0 (`sim prior --forgive 2`),
+  a batch played with that table, and the table re-learned from those runs. Some came back (Pommel Strike -3.0 → +1.4,
+  Buffer +1.1, Skewer +1.0 and Shared Fate +1.0 in Slay the Spire 2; All for One +1.4, Overclock +1.3, Rushdown +0.6,
+  Sanctity +0.5 in the first game), but the re-learned table played worse than the plain update in both games: **-1.2 ±
+  0.7** floors in Slay the Spire 2 and **-2.1 ± 0.8** in the first game (and -1.8 ± 0.7 and -1.1 ± 0.8 against the
+  shipped table). One round of 130 runs a character is not enough to tell the cards worth having from the rest, and
+  what it costs to try them is not won back. `--forgive` is removed; the lock-in is real and still there.
+- **Tried and dropped** (each a `--vary` setting, then removed). The second column of each game is the batch on fresh
+  seeds: what looked best on the first did not come back.
+
+| Rule | StS2 A8 (2,000, then 2,000) | First game A0 (1,600, then 1,600) |
+|---|---|---|
+| Our HP weighs 1.35 times as much in a boss fight (`boss_caution`) | +0.5 ± 0.7, then -1.0 ± 0.7 | +0.7 ± 0.85, then +0.9 ± 0.85 |
+| ... 0.75 times as much | 0.0 ± 0.7, then -0.3 ± 0.7 | +1.6 ± 0.8, then -1.4 ± 0.8 |
+| An act 1 elite is a starter deck's fight up to row 5, not row 8 (`early_rows`) | +0.4 ± 0.6, then +0.1 ± 0.6 | +1.0 ± 0.7, then -1.1 ± 0.7 |
+| The route planner prices a fight at what this run's fights have cost (`own_cost`; first batch only) | -0.8 ± 0.6 (the Regent -3.0) | +0.4 ± 0.65 |
+
+- **Settings** in the same batches: `elite_worth` 6 and 10 against the default 2.5 in Slay the Spire 2: -0.2 and -1.0
+  ± 0.7; 10 against the default 6 in the first game: +1.2 ± 0.7 (the Ironclad +4.1), then 0.0 ± 0.7. No change.
+- **What the runs of the bot as it was show** (1,000 at A8, 800 at A0; a lost fight now logs the share of enemy HP
+  left, `foe_left`). Slay the Spire 2: the act 2 boss is beaten 65% of the time and the act 3 boss 25%; 0.4 elites a
+  run. The first game: the Watcher loses 11% of act 3's hallway fights, most of them entered badly hurt; and potions in
+  the belt at the act 3 boss go with winning it (none: 19%; three: 75%), though those are also the stronger runs.
+- **Where the bot stands now.** Slay the Spire 2 at A8, unchanged this round (1,000 runs, seed 60000): wins Necrobinder
+  14%, Silent 13.5%, Defect 13%, Ironclad 6.5%, Regent 2.5% (9.9%). The first game at A0 (the after arm): Silent 33%,
+  Ironclad 30.5%, Defect 29.5%, Watcher 9% (25.5%).
+
+```sh
+python3 -m sim run --game sts2 --character all --runs 200 --seed 60000 --ascension 8 --out base_sts2.jsonl   # the bot as it was
+python3 -m sim run --game sts1 --character all --runs 200 --seed 61000 --out base_sts1.jsonl
+python3 -m sim prior base_sts2.jsonl base_sts1.jsonl --onto sts2bot/run/model_cards.json --out E.json         # (its first game half is shipped)
+python3 -m sim run --game sts1 --character all --runs 400 --seed 63000 --vary --alt-cards E.json,F.json \
+  --only model_table,boss_caution,early_rows,own_cost,elite_worth --grid elite_worth=6,10 --out var_sts1.jsonl   # (F: E with the buried cards at 0)
+python3 -m sim prior var_sts1.jsonl --onto F.json --table 2 --out G.json                                      # the table that tried them, re-learned
+python3 -m sim run --game sts1 --character all --runs 400 --seed 65000 --vary --alt-cards E.json,G.json \
+  --only model_table,boss_caution,early_rows,elite_worth --grid elite_worth=6,10 --out conf_sts1.jsonl           # (Slay the Spire 2 alike: seeds 62000, 64000)
+python3 -m sim run --game sts1 --character all --runs 200 --seed 66000 --out after.jsonl                      # ("before": the table of 9b0e9db)
+```
 
 ## Round 5 (2026-11-26)
 
