@@ -1,0 +1,761 @@
+{
+"dechunk": [
+{
+"body": "340d0a7b2261220d0a353b783d310d0a3a2031327d0d0a300d0a0d0a",
+"out": "7b2261223a2031327d",
+"error": null
+},
+{
+"body": "300d0a0d0a",
+"out": "",
+"error": null
+},
+{
+"body": "300d0a",
+"out": "",
+"error": null
+},
+{
+"body": "",
+"out": null,
+"error": "subsection not found"
+},
+{
+"body": "350d0a68656c6c6f",
+"out": null,
+"error": "subsection not found"
+},
+{
+"body": "350d0a68656c6c6f0d0a",
+"out": null,
+"error": "subsection not found"
+},
+{
+"body": "350d0a68656c6c6f0d0a300d0a0d0a",
+"out": "68656c6c6f",
+"error": null
+},
+{
+"body": "7a7a0d0a6162630d0a300d0a0d0a",
+"out": null,
+"error": "invalid literal for int() with base 16: b'zz'"
+},
+{
+"body": "410d0a303132333435363738390d0a300d0a0d0a",
+"out": "30313233343536373839",
+"error": null
+},
+{
+"body": "610d0a303132333435363738390d0a30300d0a0d0a",
+"out": "30313233343536373839",
+"error": null
+},
+{
+"body": "3078330d0a6162630d0a300d0a0d0a",
+"out": "616263",
+"error": null
+},
+{
+"body": "2033200d0a6162630d0a300d0a0d0a",
+"out": "616263",
+"error": null
+},
+{
+"body": "2b330d0a6162630d0a300d0a0d0a",
+"out": "616263",
+"error": null
+},
+{
+"body": "2d310d0a6162630d0a300d0a0d0a",
+"out": null,
+"error": "subsection not found"
+},
+{
+"body": "2d340d0a",
+"out": null,
+"error": "invalid literal for int() with base 16: b''"
+},
+{
+"body": "315f300d0a303132333435363738396162636465660d0a300d0a0d0a",
+"out": "30313233343536373839616263646566",
+"error": null
+},
+{
+"body": "5f310d0a610d0a300d0a",
+"out": null,
+"error": "invalid literal for int() with base 16: b'_1'"
+},
+{
+"body": "315f0d0a610d0a300d0a",
+"out": null,
+"error": "invalid literal for int() with base 16: b'1_'"
+},
+{
+"body": "315f5f300d0a",
+"out": null,
+"error": "invalid literal for int() with base 16: b'1__0'"
+},
+{
+"body": "0d0a",
+"out": null,
+"error": "invalid literal for int() with base 16: b''"
+},
+{
+"body": "3b0d0a",
+"out": null,
+"error": "invalid literal for int() with base 16: b''"
+},
+{
+"body": "333b6578743d313b790d0a6162630d0a303b7a0d0a0d0a",
+"out": "616263",
+"error": null
+},
+{
+"body": "666666660d0a73686f72740d0a300d0a0d0a",
+"out": null,
+"error": "subsection not found"
+},
+{
+"body": "330d0a6162635858300d0a0d0a",
+"out": "616263",
+"error": null
+},
+{
+"body": "330d0a616263300d0a0d0a",
+"out": null,
+"error": "invalid literal for int() with base 16: b'\\n'"
+},
+{
+"body": "330d0a610d0a0d0a300d0a",
+"out": "610d0a",
+"error": null
+},
+{
+"body": "310d0a270d0a310d0a220d0a300d0a",
+"out": "2722",
+"error": null
+},
+{
+"body": "27710d0a",
+"out": null,
+"error": "invalid literal for int() with base 16: b\"'q\""
+},
+{
+"body": "27220d0a",
+"out": null,
+"error": "invalid literal for int() with base 16: b'\\'\"'"
+},
+{
+"body": "ff000d0a",
+"out": null,
+"error": "invalid literal for int() with base 16: b'\\xff\\x00'"
+},
+{
+"body": "3320330d0a",
+"out": null,
+"error": "invalid literal for int() with base 16: b'3 3'"
+},
+{
+"body": "3058330d0a6162630d0a300d0a",
+"out": "616263",
+"error": null
+},
+{
+"body": "30780d0a",
+"out": null,
+"error": "invalid literal for int() with base 16: b'0x'"
+},
+{
+"body": "30785f330d0a6162630d0a300d0a",
+"out": "616263",
+"error": null
+},
+{
+"body": "09320a0d0a61620d0a300d0a",
+"out": "6162",
+"error": null
+},
+{
+"body": "320d0ac3a90d0a300d0a0d0a",
+"out": "c3a9",
+"error": null
+},
+{
+"body": "6666666666666666666666666666666666666666666666660d0a6162630d0a300d0a",
+"out": null,
+"error": "subsection not found"
+},
+{
+"body": "670d0a",
+"out": null,
+"error": "invalid literal for int() with base 16: b'g'"
+},
+{
+"body": "315c0d0a",
+"out": null,
+"error": "invalid literal for int() with base 16: b'1\\\\'"
+},
+{
+"body": "6e6f206e65776c696e6520617420616c6c",
+"out": null,
+"error": "subsection not found"
+},
+{
+"body": "330d0a6162",
+"out": null,
+"error": "subsection not found"
+},
+{
+"body": "30303030303030330d0a6162630d0a3030300d0a",
+"out": "616263",
+"error": null
+}
+],
+"answers": [
+{
+"raw": "485454502f312e3120323030204f4b0d0a436f6e74656e742d547970653a206170706c69636174696f6e2f6a736f6e0d0a436f6e74656e742d4c656e6774683a2036340d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"exchange_error": null,
+"request": "{\"state_type\": \"menu\", \"n\": [1, 2.5, null, true], \"s\": \"\\u00e9\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a436f6e74656e742d547970653a206170706c69636174696f6e2f6a736f6e0d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"exchange_error": null,
+"request": "{\"state_type\": \"menu\", \"n\": [1, 2.5, null, true], \"s\": \"\\u00e9\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a5472616e736665722d456e636f64696e673a206368756e6b65640d0a0d0a370d0a7b2273746174650d0a370d0a5f74797065223a0d0a370d0a20226d656e75220d0a370d0a2c20226e223a200d0a370d0a5b312c20322e350d0a370d0a2c206e756c6c2c0d0a370d0a20747275655d2c0d0a370d0a202273223a20220d0a370d0a5c7530306539220d0a310d0a7d0d0a300d0a0d0a",
+"code": 200,
+"body": "7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"exchange_error": null,
+"request": "{\"state_type\": \"menu\", \"n\": [1, 2.5, null, true], \"s\": \"\\u00e9\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a7472616e736665722d656e636f64696e673a20204348554e4b454420200d0a0d0a330d0a7b22730d0a330d0a7461740d0a330d0a655f740d0a330d0a7970650d0a330d0a223a200d0a330d0a226d650d0a330d0a6e75220d0a330d0a2c20220d0a330d0a6e223a0d0a330d0a205b310d0a330d0a2c20320d0a330d0a2e352c0d0a330d0a206e750d0a330d0a6c6c2c0d0a330d0a2074720d0a330d0a75655d0d0a330d0a2c20220d0a330d0a73223a0d0a330d0a20225c0d0a330d0a7530300d0a330d0a6539220d0a310d0a7d0d0a300d0a0d0a",
+"code": 200,
+"body": "7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"exchange_error": null,
+"request": "{\"state_type\": \"menu\", \"n\": [1, 2.5, null, true], \"s\": \"\\u00e9\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a5472616e736665722d456e636f64696e673a20677a69702c206368756e6b65640d0a436f6e74656e742d4c656e6774683a20330d0a0d0a34300d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d0d0a300d0a0d0a",
+"code": 200,
+"body": "7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"exchange_error": null,
+"request": "{\"state_type\": \"menu\", \"n\": [1, 2.5, null, true], \"s\": \"\\u00e9\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a5472616e736665722d456e636f64696e673a206368756e6b65640d0a0d0a7a7a0d0a6162630d0a300d0a0d0a",
+"code": null,
+"body": null,
+"exchange_error": "invalid literal for int() with base 16: b'zz'",
+"request": null,
+"request_error": "invalid literal for int() with base 16: b'zz'"
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a5472616e736665722d456e636f64696e673a206368756e6b65640d0a0d0a350d0a616263",
+"code": null,
+"body": null,
+"exchange_error": "subsection not found",
+"request": null,
+"request_error": "subsection not found"
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a436f6e74656e742d4c656e6774683a20350d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b22737461",
+"exchange_error": null,
+"request": null,
+"request_error": "bad JSON from game: Unterminated string starting at: line 1 column 2 (char 1)"
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a436f6e74656e742d4c656e6774683a20353030300d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"exchange_error": null,
+"request": "{\"state_type\": \"menu\", \"n\": [1, 2.5, null, true], \"s\": \"\\u00e9\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a436f6e74656e742d4c656e6774683a20300d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "",
+"exchange_error": null,
+"request": null,
+"request_error": "bad JSON from game: Expecting value: line 1 column 1 (char 0)"
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a436f6e74656e742d4c656e6774683a202d350d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"exchange_error": null,
+"request": "{\"state_type\": \"menu\", \"n\": [1, 2.5, null, true], \"s\": \"\\u00e9\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a436f6e74656e742d4c656e6774683a202b350d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"exchange_error": null,
+"request": "{\"state_type\": \"menu\", \"n\": [1, 2.5, null, true], \"s\": \"\\u00e9\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a436f6e74656e742d4c656e6774683a20350d0a436f6e74656e742d4c656e6774683a2031320d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b2273746174655f74797065",
+"exchange_error": null,
+"request": null,
+"request_error": "bad JSON from game: Unterminated string starting at: line 1 column 2 (char 1)"
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a436f6e74656e742d4c656e677468203a20350d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b22737461",
+"exchange_error": null,
+"request": null,
+"request_error": "bad JSON from game: Unterminated string starting at: line 1 column 2 (char 1)"
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a434f4e54454e542d4c454e4754483a350d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b22737461",
+"exchange_error": null,
+"request": null,
+"request_error": "bad JSON from game: Unterminated string starting at: line 1 column 2 (char 1)"
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a436f6e74656e742d4c656e6774683a20b20d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": null,
+"body": null,
+"exchange_error": "invalid literal for int() with base 10: '\u00b2'",
+"request": null,
+"request_error": "invalid literal for int() with base 10: '\u00b2'"
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a436f6e74656e742d4c656e6774683a2031b90d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": null,
+"body": null,
+"exchange_error": "invalid literal for int() with base 10: '1\u00b9'",
+"request": null,
+"request_error": "invalid literal for int() with base 10: '1\u00b9'"
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a436f6e74656e742d4c656e6774683a2039393939393939393939393939393939393939393939393939390d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"exchange_error": null,
+"request": "{\"state_type\": \"menu\", \"n\": [1, 2.5, null, true], \"s\": \"\\u00e9\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a436f6e74656e742d4c656e6774683a20315f300d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"exchange_error": null,
+"request": "{\"state_type\": \"menu\", \"n\": [1, 2.5, null, true], \"s\": \"\\u00e9\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a582d4f64640d0a436f6e74656e742d4c656e6774683a09371f0d0a3a20656d707479206e616d650d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b227374617465",
+"exchange_error": null,
+"request": null,
+"request_error": "bad JSON from game: Unterminated string starting at: line 1 column 2 (char 1)"
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0aa0436f6e74656e742d4c656e677468853aa0351c0d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b22737461",
+"exchange_error": null,
+"request": null,
+"request_error": "bad JSON from game: Unterminated string starting at: line 1 column 2 (char 1)"
+},
+{
+"raw": "485454502f312e31203230300d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"exchange_error": null,
+"request": "{\"state_type\": \"menu\", \"n\": [1, 2.5, null, true], \"s\": \"\\u00e9\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e31203230300d0a0d0a5b312c20325d",
+"code": 200,
+"body": "5b312c20325d",
+"exchange_error": null,
+"request": "{\"value\": [1, 2]}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a0d0a3132",
+"code": 200,
+"body": "3132",
+"exchange_error": null,
+"request": "{\"value\": 12}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a0d0a227465787422",
+"code": 200,
+"body": "227465787422",
+"exchange_error": null,
+"request": "{\"value\": \"text\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a0d0a6e756c6c",
+"code": 200,
+"body": "6e756c6c",
+"exchange_error": null,
+"request": "{\"value\": null}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a0d0a",
+"code": 200,
+"body": "",
+"exchange_error": null,
+"request": null,
+"request_error": "bad JSON from game: Expecting value: line 1 column 1 (char 0)"
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a0d0a6e6f74206a736f6e",
+"code": 200,
+"body": "6e6f74206a736f6e",
+"exchange_error": null,
+"request": null,
+"request_error": "bad JSON from game: Expecting value: line 1 column 1 (char 0)"
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a0d0a7b2261223a2031",
+"code": 200,
+"body": "7b2261223a2031",
+"exchange_error": null,
+"request": null,
+"request_error": "bad JSON from game: Expecting ',' delimiter: line 1 column 8 (char 7)"
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a0d0a7b2261223a20312c202261223a20322c202262223a20337d",
+"code": 200,
+"body": "7b2261223a20312c202261223a20322c202262223a20337d",
+"exchange_error": null,
+"request": "{\"a\": 2, \"b\": 3}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a0d0a7b226e616d65223a2022c3a9227d",
+"code": 200,
+"body": "7b226e616d65223a2022c3a9227d",
+"exchange_error": null,
+"request": "{\"name\": \"\\u00e9\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a0d0a20207b2261223a20312e302c202262223a203165332c202263223a202d302e307d0a",
+"code": 200,
+"body": "20207b2261223a20312e302c202262223a203165332c202263223a202d302e307d0a",
+"exchange_error": null,
+"request": "{\"a\": 1.0, \"b\": 1000.0, \"c\": -0.0}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323034204e6f20436f6e74656e740d0a0d0a7b7d",
+"code": 204,
+"body": "7b7d",
+"exchange_error": null,
+"request": "{}",
+"request_error": null
+},
+{
+"raw": "485454502f312e312033393920580d0a0d0a7b7d",
+"code": 399,
+"body": "7b7d",
+"exchange_error": null,
+"request": "{}",
+"request_error": null
+},
+{
+"raw": "485454502f312e31203430302042616420526571756573740d0a0d0a7b22737461747573223a20226572726f72222c20226572726f72223a20224e6f7420696e20636f6d626174227d",
+"code": 400,
+"body": "7b22737461747573223a20226572726f72222c20226572726f72223a20224e6f7420696e20636f6d626174227d",
+"exchange_error": null,
+"request": "{\"status\": \"error\", \"error\": \"Not in combat\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e31203430302042616420526571756573740d0a436f6e74656e742d4c656e6774683a20320d0a0d0a7b7d78787878",
+"code": 400,
+"body": "7b7d",
+"exchange_error": null,
+"request": "{\"status\": \"error\", \"error\": \"HTTP 400\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e31203430302042616420526571756573740d0a0d0a7b226572726f72223a20226f6e6c792074686973227d",
+"code": 400,
+"body": "7b226572726f72223a20226f6e6c792074686973227d",
+"exchange_error": null,
+"request": "{\"error\": \"only this\", \"status\": \"error\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e31203430302042616420526571756573740d0a0d0a7b22737461747573223a20226661696c6564227d",
+"code": 400,
+"body": "7b22737461747573223a20226661696c6564227d",
+"exchange_error": null,
+"request": "{\"status\": \"failed\", \"error\": \"HTTP 400\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e31203430302042616420526571756573740d0a0d0a7b226d657373616765223a202278222c2022737461747573223a206e756c6c7d",
+"code": 400,
+"body": "7b226d657373616765223a202278222c2022737461747573223a206e756c6c7d",
+"exchange_error": null,
+"request": "{\"message\": \"x\", \"status\": null, \"error\": \"HTTP 400\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120343034204e6f7420466f756e640d0a0d0a3c68746d6c3e6e6f70653c2f68746d6c3e",
+"code": 404,
+"body": "3c68746d6c3e6e6f70653c2f68746d6c3e",
+"exchange_error": null,
+"request": "{\"status\": \"error\", \"error\": \"HTTP 404\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120343034204e6f7420466f756e640d0a0d0a5b315d",
+"code": 404,
+"body": "5b315d",
+"exchange_error": null,
+"request": "{\"status\": \"error\", \"error\": \"HTTP 404\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e312035303020496e7465726e616c20536572766572204572726f720d0a0d0a",
+"code": 500,
+"body": "",
+"exchange_error": null,
+"request": "{\"status\": \"error\", \"error\": \"HTTP 500\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e312035303020496e7465726e616c20536572766572204572726f720d0a5472616e736665722d456e636f64696e673a206368756e6b65640d0a0d0a350d0a7b227374610d0a350d0a747573223a0d0a350d0a20226572720d0a350d0a6f72222c200d0a350d0a226572726f0d0a350d0a72223a20220d0a350d0a626f6f6d220d0a350d0a2c202264650d0a350d0a7461696c220d0a350d0a3a207b22780d0a350d0a223a205b310d0a330d0a5d7d7d0d0a300d0a0d0a",
+"code": 500,
+"body": "7b22737461747573223a20226572726f72222c20226572726f72223a2022626f6f6d222c202264657461696c223a207b2278223a205b315d7d7d",
+"exchange_error": null,
+"request": "{\"status\": \"error\", \"error\": \"boom\", \"detail\": {\"x\": [1]}}",
+"request_error": null
+},
+{
+"raw": "485454502f312e31203530330d0a0d0a22646f776e22",
+"code": 503,
+"body": "22646f776e22",
+"exchange_error": null,
+"request": "{\"status\": \"error\", \"error\": \"HTTP 503\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120616263204f4b0d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": null,
+"body": null,
+"exchange_error": "invalid literal for int() with base 10: 'abc'",
+"request": null,
+"request_error": "invalid literal for int() with base 10: 'abc'"
+},
+{
+"raw": "485454502f312e3120323078204f4b0d0a436f6e74656e742d4c656e6774683a20350d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": null,
+"body": null,
+"exchange_error": "invalid literal for int() with base 10: '20x'",
+"request": null,
+"request_error": "invalid literal for int() with base 10: '20x'"
+},
+{
+"raw": "485454502f312e312020323030204f4b0d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": null,
+"body": null,
+"exchange_error": "invalid literal for int() with base 10: ''",
+"request": null,
+"request_error": "invalid literal for int() with base 10: ''"
+},
+{
+"raw": "485454502f312e31202b323030204f4b0d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"exchange_error": null,
+"request": "{\"state_type\": \"menu\", \"n\": [1, 2.5, null, true], \"s\": \"\\u00e9\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e31202d323030204f4b0d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": -200,
+"body": "7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"exchange_error": null,
+"request": "{\"state_type\": \"menu\", \"n\": [1, 2.5, null, true], \"s\": \"\\u00e9\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120345f305f30204f4b0d0a0d0a7b2265223a20317d",
+"code": 400,
+"body": "7b2265223a20317d",
+"exchange_error": null,
+"request": "{\"e\": 1, \"status\": \"error\", \"error\": \"HTTP 400\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030094f4b0d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": null,
+"body": null,
+"exchange_error": "invalid literal for int() with base 10: '200\\tOK'",
+"request": null,
+"request_error": "invalid literal for int() with base 10: '200\\tOK'"
+},
+{
+"raw": "485454502f312e312030323030204f4b0d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"exchange_error": null,
+"request": "{\"state_type\": \"menu\", \"n\": [1, 2.5, null, true], \"s\": \"\\u00e9\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e31203230302e30204f4b0d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": null,
+"body": null,
+"exchange_error": "invalid literal for int() with base 10: '200.0'",
+"request": null,
+"request_error": "invalid literal for int() with base 10: '200.0'"
+},
+{
+"raw": "485454502f312e310d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": null,
+"body": null,
+"exchange_error": "not an HTTP answer from the game",
+"request": null,
+"request_error": "not an HTTP answer from the game"
+},
+{
+"raw": "485454502f312e3020323030204f4b0d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": 200,
+"body": "7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"exchange_error": null,
+"request": "{\"state_type\": \"menu\", \"n\": [1, 2.5, null, true], \"s\": \"\\u00e9\"}",
+"request_error": null
+},
+{
+"raw": "485454502f312e312020323030204f4b0d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": null,
+"body": null,
+"exchange_error": "invalid literal for int() with base 10: ''",
+"request": null,
+"request_error": "invalid literal for int() with base 10: ''"
+},
+{
+"raw": "485454502f32203530300d0a0d0a",
+"code": 500,
+"body": "",
+"exchange_error": null,
+"request": "{\"status\": \"error\", \"error\": \"HTTP 500\"}",
+"request_error": null
+},
+{
+"raw": "49435920323030204f4b0d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": null,
+"body": null,
+"exchange_error": "not an HTTP answer from the game",
+"request": null,
+"request_error": "not an HTTP answer from the game"
+},
+{
+"raw": "687474702f312e3120323030204f4b0d0a0d0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": null,
+"body": null,
+"exchange_error": "not an HTTP answer from the game",
+"request": null,
+"request_error": "not an HTTP answer from the game"
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a436f6e74656e742d4c656e6774683a20320d0a",
+"code": null,
+"body": null,
+"exchange_error": "not an HTTP answer from the game",
+"request": null,
+"request_error": "not an HTTP answer from the game"
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a0d0a",
+"code": 200,
+"body": "",
+"exchange_error": null,
+"request": null,
+"request_error": "bad JSON from game: Expecting value: line 1 column 1 (char 0)"
+},
+{
+"raw": "485454502f312e3120323030204f4b0a0a7b2273746174655f74797065223a20226d656e75222c20226e223a205b312c20322e352c206e756c6c2c20747275655d2c202273223a20225c7530306539227d",
+"code": null,
+"body": null,
+"exchange_error": "not an HTTP answer from the game",
+"request": null,
+"request_error": "not an HTTP answer from the game"
+},
+{
+"raw": "",
+"code": null,
+"body": null,
+"exchange_error": "not an HTTP answer from the game",
+"request": null,
+"request_error": "not an HTTP answer from the game"
+},
+{
+"raw": "0d0a0d0a",
+"code": null,
+"body": null,
+"exchange_error": "not an HTTP answer from the game",
+"request": null,
+"request_error": "not an HTTP answer from the game"
+},
+{
+"raw": "67617262616765",
+"code": null,
+"body": null,
+"exchange_error": "not an HTTP answer from the game",
+"request": null,
+"request_error": "not an HTTP answer from the game"
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a0d0a0d0a0d0a7b7d",
+"code": 200,
+"body": "0d0a0d0a7b7d",
+"exchange_error": null,
+"request": "{}",
+"request_error": null
+},
+{
+"raw": "485454502f312e3120323030204f4b0d0a413a20620d0a0d0a7b7d0d0a0d0a",
+"code": 200,
+"body": "7b7d0d0a0d0a",
+"exchange_error": null,
+"request": "{}",
+"request_error": null
+}
+],
+"sent": [
+"474554202f20485454502f312e310d0a486f73743a203132372e302e302e313a504f52540d0a436f6e6e656374696f6e3a20636c6f73650d0a4163636570743a206170706c69636174696f6e2f6a736f6e0d0a0d0a",
+"474554202f6170692f76312f73696e676c65706c6179657220485454502f312e310d0a486f73743a203132372e302e302e313a504f52540d0a436f6e6e656374696f6e3a20636c6f73650d0a4163636570743a206170706c69636174696f6e2f6a736f6e0d0a0d0a",
+"474554202f6170692f76312f70726f66696c6520485454502f312e310d0a486f73743a203132372e302e302e313a504f52540d0a436f6e6e656374696f6e3a20636c6f73650d0a4163636570743a206170706c69636174696f6e2f6a736f6e0d0a0d0a",
+"474554202f6170692f76312f77696b693f747970653d63617264266c696d69743d3326713d41253230422f4325324220485454502f312e310d0a486f73743a203132372e302e302e313a504f52540d0a436f6e6e656374696f6e3a20636c6f73650d0a4163636570743a206170706c69636174696f6e2f6a736f6e0d0a0d0a",
+"474554202f6170692f76312f77696b693f747970653d63617264266c696d69743d3326713d254333253839434c41495220485454502f312e310d0a486f73743a203132372e302e302e313a504f52540d0a436f6e6e656374696f6e3a20636c6f73650d0a4163636570743a206170706c69636174696f6e2f6a736f6e0d0a0d0a",
+"504f5354202f6170692f76312f73696e676c65706c6179657220485454502f312e310d0a486f73743a203132372e302e302e313a504f52540d0a436f6e6e656374696f6e3a20636c6f73650d0a4163636570743a206170706c69636174696f6e2f6a736f6e0d0a436f6e74656e742d547970653a206170706c69636174696f6e2f6a736f6e0d0a436f6e74656e742d4c656e6774683a2039320d0a0d0a7b22616374696f6e223a2022706c61795f63617264222c2022636172645f696e646578223a20322c2022746172676574223a20224a41575f574f524d5f30222c202278223a20312e352c20226e616d65223a20225c7530306539227d",
+"504f5354202f6170692f76312f73696e676c65706c6179657220485454502f312e310d0a486f73743a203132372e302e302e313a504f52540d0a436f6e6e656374696f6e3a20636c6f73650d0a4163636570743a206170706c69636174696f6e2f6a736f6e0d0a436f6e74656e742d547970653a206170706c69636174696f6e2f6a736f6e0d0a436f6e74656e742d4c656e6774683a2032320d0a0d0a7b22616374696f6e223a2022656e645f7475726e227d"
+]
+}

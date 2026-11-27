@@ -1,0 +1,327 @@
+[
+{
+"method": "GET",
+"path": "/",
+"body": null,
+"status": "HTTP/1.0 200 OK",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"ok\", \"game\": \"sts1\", \"connected\": false}"
+},
+{
+"method": "GET",
+"path": "/state",
+"body": null,
+"status": "HTTP/1.0 200 OK",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"seq\": 0, \"message\": null}"
+},
+{
+"method": "GET",
+"path": "/statement?x",
+"body": null,
+"status": "HTTP/1.0 200 OK",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"seq\": 0, \"message\": null}"
+},
+{
+"method": "POST",
+"path": "/command",
+"body": "{nope",
+"status": "HTTP/1.0 400 Bad Request",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"error\", \"error\": \"bad JSON\"}"
+},
+{
+"method": "POST",
+"path": "/other",
+"body": "{}",
+"status": "HTTP/1.0 404 Not Found",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"error\", \"error\": \"unknown request\"}"
+},
+{
+"method": "POST",
+"path": "/command",
+"body": "[1]",
+"status": "HTTP/1.0 404 Not Found",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"error\", \"error\": \"unknown request\"}"
+},
+{
+"method": "POST",
+"path": "/command",
+"body": "",
+"status": "HTTP/1.0 400 Bad Request",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"error\", \"error\": \"empty command\"}"
+},
+{
+"method": "POST",
+"path": "/command",
+"body": "{\"command\": null}",
+"status": "HTTP/1.0 400 Bad Request",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"error\", \"error\": \"empty command\"}"
+},
+{
+"method": "POST",
+"path": "/command",
+"body": "{\"command\": \"  \"}",
+"status": "HTTP/1.0 400 Bad Request",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"error\", \"error\": \"empty command\"}"
+},
+{
+"method": "POST",
+"path": "/command",
+"body": "{\"command\": 0}",
+"status": "HTTP/1.0 400 Bad Request",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"error\", \"error\": \"empty command\"}"
+},
+{
+"method": "POST",
+"path": "/command?x=1",
+"body": "{\"command\": \"state\", \"timeout\": \"1.5\"}",
+"status": "HTTP/1.0 200 OK",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"ok\", \"message\": {\"in_game\": false, \"available_commands\": [\"start\"]}, \"seq\": 1}"
+},
+{
+"method": "GET",
+"path": "/anything",
+"body": null,
+"status": "HTTP/1.0 200 OK",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"ok\", \"game\": \"sts1\", \"connected\": true}"
+},
+{
+"method": "GET",
+"path": "/state",
+"body": null,
+"status": "HTTP/1.0 200 OK",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"seq\": 1, \"message\": {\"in_game\": false, \"available_commands\": [\"start\"]}}"
+},
+{
+"method": "POST",
+"path": "/command",
+"body": "{\"command\": \"end\", \"timeout\": 2}",
+"status": "HTTP/1.0 400 Bad Request",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"error\", \"error\": \"Invalid command: end\", \"seq\": 2}"
+},
+{
+"method": "POST",
+"path": "/command",
+"body": "{\"command\": \"start  THE_SILENT\\n 0\", \"timeout\": null}",
+"status": "HTTP/1.0 200 OK",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"ok\", \"message\": {\"in_game\": true, \"available_commands\": [\"play\", \"end\"], \"game_state\": {\"class\": \"THE_SILENT\"}}, \"seq\": 3}"
+},
+{
+"method": "POST",
+"path": "/commands",
+"body": "{\"command\": \"state\", \"timeout\": true}",
+"status": "HTTP/1.0 200 OK",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"ok\", \"message\": {\"in_game\": false, \"available_commands\": [\"start\"]}, \"seq\": 4}"
+},
+{
+"method": "POST",
+"path": "/command",
+"body": "{\"command\": 5}",
+"status": "HTTP/1.0 400 Bad Request",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"error\", \"error\": \"Invalid command: 5\", \"seq\": 5}"
+},
+{
+"method": "POST",
+"path": "/command",
+"body": "{\"command\": [\"a\", 1]}",
+"status": "HTTP/1.0 400 Bad Request",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"error\", \"error\": \"Invalid command: ['a', 1]\", \"seq\": 6}"
+},
+{
+"method": "POST",
+"path": "/command",
+"body": "{\"command\": \"\u00e9tat\"}",
+"status": "HTTP/1.0 400 Bad Request",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"error\", \"error\": \"Invalid command: \\u00e9tat\", \"seq\": 7}"
+},
+{
+"method": "POST",
+"path": "/",
+"body": "{\"command\": \"state\"}",
+"status": "HTTP/1.0 404 Not Found",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"error\", \"error\": \"unknown request\"}"
+},
+{
+"method": "POST",
+"path": "/command",
+"body": "\"text\"",
+"status": "HTTP/1.0 404 Not Found",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"error\", \"error\": \"unknown request\"}"
+},
+{
+"method": "POST",
+"path": "/command",
+"body": "null",
+"status": "HTTP/1.0 404 Not Found",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"error\", \"error\": \"unknown request\"}"
+},
+{
+"method": "GET",
+"path": "/state",
+"body": null,
+"status": "HTTP/1.0 200 OK",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"seq\": 7, \"message\": {\"in_game\": false, \"available_commands\": [\"start\"]}}"
+},
+{
+"method": "GET",
+"path": "state",
+"body": null,
+"status": "HTTP/1.0 200 OK",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"ok\", \"game\": \"sts1\", \"connected\": true}"
+},
+{
+"method": "POST",
+"path": "/command",
+"body": "{\"command\": \"state\", \"timeout\": 0.5, \"extra\": 1}",
+"status": "HTTP/1.0 200 OK",
+"headers": [
+"Server",
+"Date",
+"Content-Type",
+"Content-Length"
+],
+"answer": "{\"status\": \"ok\", \"message\": {\"in_game\": false, \"available_commands\": [\"start\"]}, \"seq\": 8}"
+}
+]
