@@ -1,8 +1,3 @@
-// TODO(cli): these go through the command line (`sts2bot::cli::main`) and wait for it:
-//   - test_the_cli_sends_service_commands_to_the_service_not_the_bot
-//     (cli::main(["service", "disable"]) == 0 with `service::patch_run` standing in for systemctl, which must have been asked
-//     exactly once for ["systemctl", "--user", "disable", "--now", "sts2bot"])
-
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -90,4 +85,17 @@ fn test_the_stand_in_for_running_commands_is_used() {
     assert_eq!(code, 0);
     assert_eq!(*calls.borrow(), vec![args(&["systemctl", "--user", "enable", "--now", "other"])]);
     assert_eq!(printed.stdout, "The bot is started now and at every login.\n");
+}
+
+#[test]
+fn test_the_cli_sends_service_commands_to_the_service_not_the_bot() {
+    let calls: Rc<RefCell<Vec<Vec<String>>>> = Rc::default();
+    let seen = Rc::clone(&calls);
+    let _guard = service::patch_run(move |a| {
+        seen.borrow_mut().push(a.to_vec());
+        Ok(0)
+    });
+    let (code, _printed) = service::capture_print(|| sts2bot::cli::main(args(&["service", "disable"])));
+    assert_eq!(code, 0);
+    assert_eq!(*calls.borrow(), vec![args(&["systemctl", "--user", "disable", "--now", "sts2bot"])]);
 }
