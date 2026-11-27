@@ -1,10 +1,61 @@
 //! What the test files share: a clock that does not wait, and small builders for combat states.
-// TODO(bot): `FakeClock` and `make_bot(game, **kw)` need src/bot.rs: they are ported with it.
+
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 
 use serde_json::{json, Value};
+use sts2bot::bot::{Bot, BotArgs, SharedGame};
 use sts2bot::py::JsonExt;
 
 pub use crate::fake_game::{card, with};
+
+/// A clock that does not wait: `sleep` moves it on. (A handle: its clones tell the same time.)
+#[derive(Clone, Default)]
+pub struct FakeClock {
+    pub t: Rc<Cell<f64>>,
+}
+
+impl FakeClock {
+    pub fn new() -> Self {
+        FakeClock::default()
+    }
+
+    pub fn now(&self) -> f64 {
+        self.t.get()
+    }
+
+    pub fn sleep(&self, s: f64) {
+        self.t.set(self.t.get() + s);
+    }
+
+    /// `clock=clock.now`.
+    pub fn clock_fn(&self) -> Option<Box<dyn Fn() -> f64>> {
+        let clock = self.clone();
+        Some(Box::new(move || clock.now()))
+    }
+
+    /// `sleep=clock.sleep`.
+    pub fn sleep_fn(&self) -> Option<Box<dyn Fn(f64)>> {
+        let clock = self.clone();
+        Some(Box::new(move |s| clock.sleep(s)))
+    }
+}
+
+/// `make_bot(game, **kw)`: the keywords in `kw` (its clock and sleep are a FakeClock's).
+pub fn make_bot_kw(game: SharedGame, kw: BotArgs) -> Bot {
+    let clock = FakeClock::new();
+    Bot::new(game, BotArgs { clock: clock.clock_fn(), sleep: clock.sleep_fn(), ..kw })
+}
+
+/// `make_bot(game)`.
+pub fn make_bot(game: SharedGame) -> Bot {
+    make_bot_kw(game, BotArgs::default())
+}
+
+/// `make_bot(None)`.
+pub fn make_bot_none() -> Bot {
+    make_bot(Rc::new(RefCell::new(crate::fake_game::NoGame)))
+}
 
 /// `combat_state(hand, enemies, *, energy=3, hp=80, max_hp=80, block=0, kind="monster", potions=())`: the keywords as a dict
 /// (`combat_state!(hand, enemies, energy = 1, kind = "boss")` writes it).
