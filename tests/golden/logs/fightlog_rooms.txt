@@ -1,0 +1,7 @@
+Defect       act 1 caution 1.35: fights  13  rounds 3.46  enemy HP a round  18.4  cost  8.8% of Max HP  deaths 0
+Ironclad     act 1 caution 0.75: fights  10  rounds 4.10  enemy HP a round  14.0  cost 12.7% of Max HP  deaths 1
+Necrobinder  act 1 caution 1.35: fights  20  rounds 4.00  enemy HP a round  17.1  cost  2.4% of Max HP  deaths 0
+Regent       act 1 caution 0.75: fights  14  rounds 4.29  enemy HP a round  14.1  cost  8.4% of Max HP  deaths 0
+Silent       act 1 caution 1.35: fights  15  rounds 4.27  enemy HP a round  14.3  cost  7.7% of Max HP  deaths 0
+all          act 1 caution 0.75: fights  30  rounds 3.93  enemy HP a round  15.7  cost  9.2% of Max HP  deaths 1
+all          act 1 caution 1.35: fights  55  rounds 3.95  enemy HP a round  16.4  cost  5.8% of Max HP  deaths 0

@@ -1,0 +1,38 @@
+== sts1 cards: 370  read 140  unread 91  partial 71  rule 68
+   partial     10  Miracle                    Retain. Gain 1 Energy. Exhaust.
+   partial      6  Flame Barrier              Gain 12 Block. Whenever you are attacked this turn, deal 4 damage back.
+   unread       0  After Image                Whenever you play a card, gain 1 Block.
+   unread       0  ALCHEMIZE                  Obtain a random potion. Exhaust.
+   unread       0  ALPHA                      Shuffle a Beta into your draw pile. Exhaust.
+   unread       0  Amplify                    This turn, your next 1 Power is played twice.
+   unread       0  APOTHEOSIS                 Upgrade ALL of your cards for the rest of combat. Exhaust.
+   unread       0  Apparition                 Ethereal. Gain 1 Intangible. Exhaust.||Gain 1 Intangible. Exhaust.
+   unread       0  ASCENDER_S_BANE            Unplayable. Ethereal. Cannot be removed from your deck.
+   unread       0  Auto Shields               If you have no Block, gain 11 Block.
+   unread       0  A_THOUSAND_CUTS            Whenever you play a card, deal 1 damage to ALL enemies.
+   partial      0  Bane                       Deal 7 damage. If the enemy has Poison, deal 7 damage again.
+   partial      0  BARRAGE                    Deal 4 damage for each Channeled Orb.
+   unread       0  BATTLE_HYMN                At the start of each turn, add a Smite into your hand.
+   partial      0  BATTLE_TRANCE              Draw 3 cards. You cannot draw additional cards this turn.
+   unread       0  Beta                       Shuffle an Omega into your draw pile. Exhaust.
+   unread       0  BIASED_COGNITION           Gain 4 Focus. At the start of each turn, lose 1 Focus.
+   partial      0  BLASPHEMY                  Enter Divinity. Die next turn. Exhaust.
+   unread       0  Blizzard                   Deal damage equal to 2 times the number of Frost Channeled this combat to ALL enemies.
+   partial      0  BLOOD_FOR_BLOOD            Costs 1 less Energy for each time you lose HP in combat. Deal 18 damage.
+   partial      0  BLUR                       Gain 5 Block. Block is not removed at the start of your next turn.
+   unread       0  BODY_SLAM                  Deal damage equal to your Block.
+   partial      0  BOWLING_BASH               Deal 7 damage for each enemy in combat.
+   unread       0  BRUTALITY                  At the start of your turn, lose 1 HP and draw 1 card.
+   unread       0  BURN                       Unplayable. At the end of your turn, if this is in your hand, take 2 damage.
+== sts1 powers: 22  rule 14  unnamed 8
+   unnamed      0  Combust_Power              Seen in the log:  combust_power .
+   unnamed      0  Curl_Up_Power              Seen in the log:  curl_up_power .
+   unnamed      0  Frail_Power                Seen in the log:  frail_power .
+   unnamed      0  Mantra_Power               Seen in the log:  mantra_power .
+   unnamed      0  Ritual_Power               Seen in the log:  ritual_power .
+   unnamed      0  Odd                        
+   unnamed      0  Strength_Power             Seen in the log:  strength_power .
+   unnamed      0  Weak_Power                 Seen in the log:  weak_power .
+== sts1 relics: 1  text 1
+   text         0  Runic Dome                 A relic:  runic_dome
+== sts1 monsters: 11  intents 11

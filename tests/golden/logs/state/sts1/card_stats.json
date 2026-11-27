@@ -1,0 +1,66 @@
+{
+ "cards": {
+  "The Ironclad": {},
+  "The Watcher": {}
+ },
+ "finals": {
+  "The Ironclad": [
+   14
+  ],
+  "The Watcher": [
+   14
+  ]
+ },
+ "kinds": {
+  "ANGER": "free",
+  "BATTLE_HYMN": "",
+  "BOWLING_BASH": "",
+  "CARVE_REALITY": "",
+  "CLASH": "free",
+  "CLOTHESLINE": "",
+  "COMBUST": "",
+  "CONCLUDE": "",
+  "CONJURE_BLADE": "",
+  "CONSECRATE": "free",
+  "CRESCENDO": "",
+  "CRUSH_JOINTS": "",
+  "DECEIVE_REALITY": "",
+  "DEUS_EX_MACHINA": "",
+  "EMPTY_BODY": "",
+  "FEAR_NO_EVIL": "",
+  "FLAME_BARRIER": "",
+  "FLURRY_OF_BLOWS": "free",
+  "FOLLOW_UP": "energy",
+  "FOREIGN_INFLUENCE": "",
+  "FORESIGHT": "",
+  "HALT": "",
+  "HAVOC": "",
+  "METALLICIZE": "",
+  "NIRVANA": "",
+  "PANACEA": "",
+  "PERFECTED_STRIKE": "",
+  "PERSEVERANCE": "",
+  "POMMEL_STRIKE": "",
+  "POWER_THROUGH": "",
+  "PROSTRATE": "",
+  "RAGE": "",
+  "RAMPAGE": "",
+  "RECKLESS_CHARGE": "free",
+  "RUSHDOWN": "",
+  "SADISTIC_NATURE": "",
+  "SANCTITY": "",
+  "SANDS_OF_TIME": "",
+  "SECOND_WIND": "",
+  "SHOCKWAVE": "",
+  "STUDY": "",
+  "SWIVEL": "",
+  "SWORD_BOOMERANG": "",
+  "THUNDERCLAP": "",
+  "TRUE_GRIT": "",
+  "TWIN_STRIKE": "",
+  "WARCRY": "",
+  "WHIRLWIND": "",
+  "WILD_STRIKE": "",
+  "WREATH_OF_FLAME": ""
+ }
+}

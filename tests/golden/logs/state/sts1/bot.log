@@ -1,0 +1,711 @@
+2026-11-23 16:12:00 DEBUG menu_select {'option': 'singleplayer'} -> menu_select done
+2026-11-23 16:12:00 DEBUG menu_select {'option': 'standard'} -> menu_select done
+2026-11-23 16:12:01 DEBUG menu_select {'option': 'WATCHER'} -> menu_select done
+2026-11-23 16:12:01 DEBUG menu_select {'option': 'WATCHER'} -> menu_select done
+2026-11-23 16:12:01 INFO act 1 floor 0  card_select  hp 72/72  gold 99
+2026-11-23 16:12:02 DEBUG select_card {'index': 0} -> Toggled card: Strike
+2026-11-23 16:12:02 DEBUG map: Monster@0 -9.5, Monster@1 -9.5, Monster@2 -10.1
+2026-11-23 16:12:02 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:12:02 INFO act 1 floor 1  monster  hp 72/72  gold 99
+2026-11-23 16:12:02 DEBUG combat r1 hp 72/72 blk 0 en 3 stars 0 orbs - [] | JAW_WORM_0 44hp/0blk [] Attack11 | hand 0:Miracle(0), 1:Defend(1 b5), 2:Defend(1 b5), 3:Vigilance(2 b8), 4:Defend(1 b5), 5:Strike(1 d6)
+2026-11-23 16:12:03 DEBUG play_card {'card_index': 0} -> Playing 'Miracle'
+2026-11-23 16:12:03 DEBUG combat r1 hp 72/72 blk 0 en 4 stars 0 orbs - [] | JAW_WORM_0 44hp/0blk [] Attack11 | hand 0:Defend(1 b5), 1:Defend(1 b5), 2:Vigilance(2 b8), 3:Defend(1 b5), 4:Strike(1 d6)
+2026-11-23 16:12:03 DEBUG play_card {'card_index': 4, 'target': 'JAW_WORM_0'} -> Playing 'Strike' targeting JAW_WORM_0
+2026-11-23 16:12:03 DEBUG combat r1 hp 72/72 blk 0 en 3 stars 0 orbs - [] | JAW_WORM_0 38hp/0blk [] Attack11 | hand 0:Defend(1 b5), 1:Defend(1 b5), 2:Vigilance(2 b8), 3:Defend(1 b5)
+2026-11-23 16:12:03 DEBUG play_card {'card_index': 0} -> Playing 'Defend'
+2026-11-23 16:12:03 DEBUG combat r1 hp 72/72 blk 5 en 2 stars 0 orbs - [] | JAW_WORM_0 38hp/0blk [] Attack11 | hand 0:Defend(1 b5), 1:Vigilance(2 b8), 2:Defend(1 b5)
+2026-11-23 16:12:04 DEBUG play_card {'card_index': 1} -> Playing 'Vigilance'
+2026-11-23 16:12:04 DEBUG combat r1 hp 72/72 blk 13 en 0 stars 0 orbs - stance CALM [] | JAW_WORM_0 38hp/0blk [] Attack11 | hand 0:Defend(1! b5), 1:Defend(1! b5)
+2026-11-23 16:12:04 DEBUG ending r1 on 72 HP, expecting to lose 0
+2026-11-23 16:12:04 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:12:04 DEBUG combat r2 hp 72/72 blk 0 en 3 stars 0 orbs - stance CALM [] | JAW_WORM_0 38hp/0blk [] Buff+Defend | hand 0:Eruption(2 d9), 1:Strike(1 d6), 2:Defend(1 b5), 3:Strike(1 d6), 4:Defend(1 b5)
+2026-11-23 16:12:05 DEBUG play_card {'card_index': 0, 'target': 'JAW_WORM_0'} -> Playing 'Eruption' targeting JAW_WORM_0
+2026-11-23 16:12:05 DEBUG combat r2 hp 72/72 blk 0 en 3 stars 0 orbs - stance WRATH [] | JAW_WORM_0 29hp/0blk [] Buff+Defend | hand 0:Strike(1 d12), 1:Defend(1 b5), 2:Strike(1 d12), 3:Defend(1 b5)
+2026-11-23 16:12:05 DEBUG play_card {'card_index': 0, 'target': 'JAW_WORM_0'} -> Playing 'Strike' targeting JAW_WORM_0
+2026-11-23 16:12:05 DEBUG combat r2 hp 72/72 blk 0 en 2 stars 0 orbs - stance WRATH [] | JAW_WORM_0 17hp/0blk [] Buff+Defend | hand 0:Defend(1 b5), 1:Strike(1 d12), 2:Defend(1 b5)
+2026-11-23 16:12:06 DEBUG play_card {'card_index': 1, 'target': 'JAW_WORM_0'} -> Playing 'Strike' targeting JAW_WORM_0
+2026-11-23 16:12:06 DEBUG combat r2 hp 72/72 blk 0 en 1 stars 0 orbs - stance WRATH [] | JAW_WORM_0 5hp/0blk [] Buff+Defend | hand 0:Defend(1 b5), 1:Defend(1 b5)
+2026-11-23 16:12:06 DEBUG combat r2 hp 72/72 blk 0 en 1 stars 0 orbs - stance WRATH [] | JAW_WORM_0 5hp/0blk [] Buff+Defend | hand 0:Defend(1 b5), 1:Defend(1 b5)
+2026-11-23 16:12:06 DEBUG ending r2 on 72 HP, expecting to lose 0
+2026-11-23 16:12:06 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:12:06 INFO power STRENGTH_POWER (on Jaw Worm): Strength: whenever this is here, things go as its name says.
+It lasts while it lasts.
+2026-11-23 16:12:06 DEBUG combat r3 hp 72/72 blk 0 en 3 stars 0 orbs - stance WRATH [] | JAW_WORM_0 5hp/6blk [STRENGTH:3] Attack20 | hand 0:Strike(1 d12), 1:Defend(1 b5), 2:Defend(1 b5), 3:Vigilance(2 b8), 4:Strike(1 d12)
+2026-11-23 16:12:06 DEBUG play_card {'card_index': 0, 'target': 'JAW_WORM_0'} -> Playing 'Strike' targeting JAW_WORM_0
+2026-11-23 16:12:07 DEBUG claim_reward {'index': 1} -> claim_reward done
+2026-11-23 16:12:07 DEBUG card reward (deck 10, need 2.0): Perseverance 4.3, Study 2.6, Swivel 1.8
+2026-11-23 16:12:07 DEBUG select_card_reward {'card_index': 0} -> select_card_reward done
+2026-11-23 16:12:08 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:12:08 DEBUG proceed {} -> proceed done
+2026-11-23 16:12:08 DEBUG map: Monster@0 4.2, Monster@1 4.2
+2026-11-23 16:12:09 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:12:09 INFO power CURL_UP_POWER (on Red Louse): Curl Up: whenever this is here, things go as its name says.
+It lasts while it lasts.
+2026-11-23 16:12:09 INFO act 1 floor 2  monster  hp 72/72  gold 111
+2026-11-23 16:12:09 DEBUG combat r1 hp 72/72 blk 0 en 3 stars 0 orbs - [] | RED_LOUSE_0 11hp/0blk [CURL_UP:7] Buff ; GREEN_LOUSE_1 11hp/0blk [CURL_UP:6] Attack6 | hand 0:Miracle(0), 1:Strike(1 d6), 2:Perseverance(1 b5), 3:Vigilance(2 b8), 4:Strike(1 d6), 5:Defend(1 b5)
+2026-11-23 16:12:09 DEBUG play_card {'card_index': 0} -> Playing 'Miracle'
+2026-11-23 16:12:09 DEBUG combat r1 hp 72/72 blk 0 en 4 stars 0 orbs - [] | RED_LOUSE_0 11hp/0blk [CURL_UP:7] Buff ; GREEN_LOUSE_1 11hp/0blk [CURL_UP:6] Attack6 | hand 0:Strike(1 d6), 1:Perseverance(1 b5), 2:Vigilance(2 b8), 3:Strike(1 d6), 4:Defend(1 b5)
+2026-11-23 16:12:10 DEBUG play_card {'card_index': 0, 'target': 'GREEN_LOUSE_1'} -> Playing 'Strike' targeting GREEN_LOUSE_1
+2026-11-23 16:12:10 DEBUG combat r1 hp 72/72 blk 0 en 3 stars 0 orbs - [] | RED_LOUSE_0 11hp/0blk [CURL_UP:7] Buff ; GREEN_LOUSE_1 5hp/6blk [] Attack6 | hand 0:Perseverance(1 b5), 1:Vigilance(2 b8), 2:Strike(1 d6), 3:Defend(1 b5)
+2026-11-23 16:12:10 DEBUG play_card {'card_index': 2, 'target': 'RED_LOUSE_0'} -> Playing 'Strike' targeting RED_LOUSE_0
+2026-11-23 16:12:10 DEBUG combat r1 hp 72/72 blk 0 en 2 stars 0 orbs - [] | RED_LOUSE_0 5hp/7blk [] Buff ; GREEN_LOUSE_1 5hp/6blk [] Attack6 | hand 0:Perseverance(1 b5), 1:Vigilance(2 b8), 2:Defend(1 b5)
+2026-11-23 16:12:10 DEBUG play_card {'card_index': 1} -> Playing 'Vigilance'
+2026-11-23 16:12:11 DEBUG combat r1 hp 72/72 blk 8 en 0 stars 0 orbs - stance CALM [] | RED_LOUSE_0 5hp/7blk [] Buff ; GREEN_LOUSE_1 5hp/6blk [] Attack6 | hand 0:Perseverance(1! b5), 1:Defend(1! b5)
+2026-11-23 16:12:11 DEBUG ending r1 on 72 HP, expecting to lose 0
+2026-11-23 16:12:11 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:12:11 DEBUG combat r2 hp 72/72 blk 0 en 3 stars 0 orbs - stance CALM [] | RED_LOUSE_0 5hp/0blk [STRENGTH:3] Attack9 ; GREEN_LOUSE_1 5hp/0blk [] Attack6 | hand 0:Perseverance(1 b7), 1:Strike(1 d6), 2:Eruption(2 d9), 3:Defend(1 b5), 4:Defend(1 b5), 5:Defend(1 b5)
+2026-11-23 16:12:11 DEBUG play_card {'card_index': 2, 'target': 'RED_LOUSE_0'} -> Playing 'Eruption' targeting RED_LOUSE_0
+2026-11-23 16:12:11 DEBUG combat r2 hp 72/72 blk 0 en 3 stars 0 orbs - stance WRATH [] | GREEN_LOUSE_1 5hp/0blk [] Attack12 | hand 0:Perseverance(1 b7), 1:Strike(1 d12), 2:Defend(1 b5), 3:Defend(1 b5), 4:Defend(1 b5)
+2026-11-23 16:12:12 DEBUG play_card {'card_index': 1, 'target': 'GREEN_LOUSE_1'} -> Playing 'Strike' targeting GREEN_LOUSE_1
+2026-11-23 16:12:12 DEBUG claim_reward {'index': 1} -> claim_reward done
+2026-11-23 16:12:12 DEBUG card reward (deck 11, need 2.0): Crush Joints 10.0, Consecrate 6.7, Deceive Reality 3.7
+2026-11-23 16:12:13 DEBUG select_card_reward {'card_index': 2} -> select_card_reward done
+2026-11-23 16:12:13 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:12:14 DEBUG proceed {} -> proceed done
+2026-11-23 16:12:14 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:12:14 INFO act 1 floor 3  monster  hp 72/72  gold 131
+2026-11-23 16:12:14 DEBUG combat r1 hp 72/72 blk 0 en 3 stars 0 orbs - [] | ACID_SLIME_M_0 31hp/0blk [] Debuff ; ACID_SLIME_S_1 12hp/0blk [] Debuff | hand 0:Miracle(0), 1:Strike(1 d6), 2:Strike(1 d6), 3:Eruption(2 d9), 4:Vigilance(2 b8), 5:Defend(1 b5)
+2026-11-23 16:12:15 DEBUG play_card {'card_index': 0} -> Playing 'Miracle'
+2026-11-23 16:12:15 DEBUG combat r1 hp 72/72 blk 0 en 4 stars 0 orbs - [] | ACID_SLIME_M_0 31hp/0blk [] Debuff ; ACID_SLIME_S_1 12hp/0blk [] Debuff | hand 0:Strike(1 d6), 1:Strike(1 d6), 2:Eruption(2 d9), 3:Vigilance(2 b8), 4:Defend(1 b5)
+2026-11-23 16:12:15 DEBUG play_card {'card_index': 2, 'target': 'ACID_SLIME_S_1'} -> Playing 'Eruption' targeting ACID_SLIME_S_1
+2026-11-23 16:12:15 DEBUG combat r1 hp 72/72 blk 0 en 2 stars 0 orbs - stance WRATH [] | ACID_SLIME_M_0 31hp/0blk [] Debuff ; ACID_SLIME_S_1 3hp/0blk [] Debuff | hand 0:Strike(1 d12), 1:Strike(1 d12), 2:Vigilance(2 b8), 3:Defend(1 b5)
+2026-11-23 16:12:15 DEBUG play_card {'card_index': 0, 'target': 'ACID_SLIME_S_1'} -> Playing 'Strike' targeting ACID_SLIME_S_1
+2026-11-23 16:12:15 DEBUG combat r1 hp 72/72 blk 0 en 1 stars 0 orbs - stance WRATH [] | ACID_SLIME_M_0 31hp/0blk [] Debuff | hand 0:Strike(1 d12), 1:Vigilance(2! b8), 2:Defend(1 b5)
+2026-11-23 16:12:16 DEBUG play_card {'card_index': 0, 'target': 'ACID_SLIME_M_0'} -> Playing 'Strike' targeting ACID_SLIME_M_0
+2026-11-23 16:12:16 DEBUG combat r1 hp 72/72 blk 0 en 0 stars 0 orbs - stance WRATH [] | ACID_SLIME_M_0 19hp/0blk [] Debuff | hand 0:Vigilance(2! b8), 1:Defend(1! b5)
+2026-11-23 16:12:16 DEBUG ending r1 on 72 HP, expecting to lose 0
+2026-11-23 16:12:16 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:12:16 INFO power WEAK_POWER (on The Watcher): Weak: whenever this is here, things go as its name says.
+It lasts while it lasts.
+2026-11-23 16:12:16 DEBUG combat r2 hp 72/72 blk 0 en 3 stars 0 orbs - stance WRATH [WEAK:1] | ACID_SLIME_M_0 19hp/0blk [] Attack14+Debuff | hand 0:Defend(1 b5), 1:Defend(1 b5), 2:Perseverance(1 b5), 3:Strike(1 d9), 4:Defend(1 b5)
+2026-11-23 16:12:17 DEBUG play_card {'card_index': 3, 'target': 'ACID_SLIME_M_0'} -> Playing 'Strike' targeting ACID_SLIME_M_0
+2026-11-23 16:12:17 DEBUG combat r2 hp 72/72 blk 0 en 2 stars 0 orbs - stance WRATH [WEAK:1] | ACID_SLIME_M_0 10hp/0blk [] Attack14+Debuff | hand 0:Defend(1 b5), 1:Defend(1 b5), 2:Perseverance(1 b5), 3:Defend(1 b5)
+2026-11-23 16:12:17 DEBUG play_card {'card_index': 0} -> Playing 'Defend'
+2026-11-23 16:12:17 DEBUG combat r2 hp 72/72 blk 5 en 1 stars 0 orbs - stance WRATH [WEAK:1] | ACID_SLIME_M_0 10hp/0blk [] Attack14+Debuff | hand 0:Defend(1 b5), 1:Perseverance(1 b5), 2:Defend(1 b5)
+2026-11-23 16:12:18 DEBUG play_card {'card_index': 0} rejected: the game is busy
+2026-11-23 16:12:18 DEBUG combat r2 hp 72/72 blk 5 en 1 stars 0 orbs - stance WRATH [WEAK:1] | ACID_SLIME_M_0 10hp/0blk [] Attack14+Debuff | hand 0:Defend(1 b5), 1:Perseverance(1 b5), 2:Defend(1 b5)
+2026-11-23 16:12:18 DEBUG play_card {'card_index': 0} -> Playing 'Defend'
+2026-11-23 16:12:18 DEBUG combat r2 hp 72/72 blk 10 en 0 stars 0 orbs - stance WRATH [WEAK:1] | ACID_SLIME_M_0 10hp/0blk [] Attack14+Debuff | hand 0:Perseverance(1! b5), 1:Defend(1! b5)
+2026-11-23 16:12:18 DEBUG ending r2 on 72 HP, expecting to lose 4
+2026-11-23 16:12:19 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:12:19 DEBUG combat r3 hp 68/72 blk 0 en 3 stars 0 orbs - stance WRATH [] | ACID_SLIME_M_0 10hp/0blk [] Attack20 | hand 0:Perseverance(1 b7), 1:Crush Joints(1 d16), 2:Defend(1 b5), 3:Eruption(2 d18), 4:Vigilance(2 b8), 5:Strike(1 d12)
+2026-11-23 16:12:19 DEBUG play_card {'card_index': 1, 'target': 'ACID_SLIME_M_0'} -> Playing 'Crush Joints' targeting ACID_SLIME_M_0
+2026-11-23 16:12:19 DEBUG claim_reward {'index': 2} -> claim_reward done
+2026-11-23 16:12:19 DEBUG card reward (deck 12, need 2.0): Prostrate 4.6, Deus Ex Machina 4.2, Rushdown 2.1
+2026-11-23 16:12:20 DEBUG select_card_reward {'card_index': 2} -> select_card_reward done
+2026-11-23 16:12:20 DEBUG claim_reward {'index': 1} -> claim_reward done
+2026-11-23 16:12:21 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:12:21 DEBUG proceed {} -> proceed done
+2026-11-23 16:12:21 DEBUG map: Shop@1 18.4, Monster@2 4.4
+2026-11-23 16:12:22 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:12:22 INFO act 1 floor 4  shop  hp 68/72  gold 147
+2026-11-23 16:12:22 DEBUG shop (gold 147, potions 1 of 3): card Sands Of Time 36 [0.4], card Fear No Evil 79 [10.9], card Deus Ex Machina 142 [4.2], card Conjure Blade 164! [2.9], card Battle Hymn 73 [2.5], card Panacea 89 [3.2], card Sadistic Nature 191! [3.3], relic Peace Pipe 309! [6.5], relic Bag Of Preparation 146 [7.6], relic Dream Catcher 150! [7.2], potion Attack Potion 50 [2.0], potion Heart Of Iron 74 [2.0], potion Blood Potion 95 [-1.0], card_removal 75 [9.0]
+2026-11-23 16:12:22 DEBUG shop_purchase {'index': 1} -> shop_purchase done
+2026-11-23 16:12:22 DEBUG shop (gold 68, potions 1 of 3): card Sands Of Time 36 [0.4], card Deus Ex Machina 142! [4.2], card Conjure Blade 164! [2.9], card Battle Hymn 73! [2.5], card Panacea 89! [3.2], card Sadistic Nature 191! [3.3], relic Peace Pipe 309! [6.5], relic Bag Of Preparation 146! [7.6], relic Dream Catcher 150! [7.2], potion Attack Potion 50 [-1.0], potion Heart Of Iron 74! [-1.0], potion Blood Potion 95! [-1.0], card_removal 75! [9.0]
+2026-11-23 16:12:23 DEBUG proceed {} -> proceed done
+2026-11-23 16:12:23 DEBUG map: Monster@0 0.4, Monster@1 16.9, Monster@2 16.9
+2026-11-23 16:12:23 DEBUG choose_map_node {'index': 1} -> choose_map_node done
+2026-11-23 16:12:23 INFO potion Power Potion (Self): Choose 1 of 3 random Power cards to add to your hand. It costs 0 this turn.
+2026-11-23 16:12:23 INFO act 1 floor 5  monster  hp 68/72  gold 68
+2026-11-23 16:12:23 DEBUG combat r1 hp 68/72 blk 0 en 3 stars 0 orbs - [] | SPIKE_SLIME_S_0 12hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 11hp/0blk [] Debuff ; ACID_SLIME_S_4 8hp/0blk [] Debuff | hand 0:Miracle(0), 1:Perseverance(1 b5), 2:Defend(1 b5), 3:Eruption(2 d9), 4:Defend(1 b5), 5:Prostrate(0 b4)
+2026-11-23 16:12:24 DEBUG play_card {'card_index': 1} -> Playing 'Perseverance'
+2026-11-23 16:12:24 DEBUG combat r1 hp 68/72 blk 5 en 2 stars 0 orbs - [] | SPIKE_SLIME_S_0 12hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 11hp/0blk [] Debuff ; ACID_SLIME_S_4 8hp/0blk [] Debuff | hand 0:Miracle(0), 1:Defend(1 b5), 2:Eruption(2 d9), 3:Defend(1 b5), 4:Prostrate(0 b4)
+2026-11-23 16:12:24 DEBUG play_card {'card_index': 1} -> Playing 'Defend'
+2026-11-23 16:12:24 DEBUG combat r1 hp 68/72 blk 10 en 1 stars 0 orbs - [] | SPIKE_SLIME_S_0 12hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 11hp/0blk [] Debuff ; ACID_SLIME_S_4 8hp/0blk [] Debuff | hand 0:Miracle(0), 1:Eruption(2! d9), 2:Defend(1 b5), 3:Prostrate(0 b4)
+2026-11-23 16:12:25 DEBUG play_card {'card_index': 2} -> Playing 'Defend'
+2026-11-23 16:12:25 DEBUG combat r1 hp 68/72 blk 15 en 0 stars 0 orbs - [] | SPIKE_SLIME_S_0 12hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 11hp/0blk [] Debuff ; ACID_SLIME_S_4 8hp/0blk [] Debuff | hand 0:Miracle(0), 1:Eruption(2! d9), 2:Prostrate(0 b4)
+2026-11-23 16:12:25 DEBUG play_card {'card_index': 2} -> Playing 'Prostrate'
+2026-11-23 16:12:25 INFO power MANTRA_POWER (on The Watcher): Mantra: whenever this is here, things go as its name says.
+It lasts while it lasts.
+2026-11-23 16:12:25 DEBUG combat r1 hp 68/72 blk 19 en 0 stars 0 orbs - [MANTRA:2] | SPIKE_SLIME_S_0 12hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 11hp/0blk [] Debuff ; ACID_SLIME_S_4 8hp/0blk [] Debuff | hand 0:Miracle(0), 1:Eruption(2! d9)
+2026-11-23 16:12:25 DEBUG ending r1 on 68 HP, expecting to lose 0
+2026-11-23 16:12:25 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:12:25 DEBUG combat r2 hp 68/72 blk 0 en 3 stars 0 orbs - [WEAK:2,MANTRA:2] | SPIKE_SLIME_S_0 12hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 11hp/0blk [] Attack3 ; ACID_SLIME_S_4 8hp/0blk [] Attack3 | hand 0:Miracle(0), 1:Vigilance(2 b8), 2:Fear No Evil(1 d6), 3:Defend(1 b5), 4:Strike(1 d4), 5:Strike(1 d4)
+2026-11-23 16:12:26 DEBUG play_card {'card_index': 0} -> Playing 'Miracle'
+2026-11-23 16:12:26 DEBUG combat r2 hp 68/72 blk 0 en 4 stars 0 orbs - [WEAK:2,MANTRA:2] | SPIKE_SLIME_S_0 12hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 11hp/0blk [] Attack3 ; ACID_SLIME_S_4 8hp/0blk [] Attack3 | hand 0:Vigilance(2 b8), 1:Fear No Evil(1 d6), 2:Defend(1 b5), 3:Strike(1 d4), 4:Strike(1 d4)
+2026-11-23 16:12:26 DEBUG play_card {'card_index': 1, 'target': 'ACID_SLIME_S_4'} -> Playing 'Fear No Evil' targeting ACID_SLIME_S_4
+2026-11-23 16:12:26 DEBUG combat r2 hp 68/72 blk 0 en 3 stars 0 orbs - stance CALM [WEAK:2,MANTRA:2] | SPIKE_SLIME_S_0 12hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 11hp/0blk [] Attack3 ; ACID_SLIME_S_4 2hp/0blk [] Attack3 | hand 0:Vigilance(2 b8), 1:Defend(1 b5), 2:Strike(1 d4), 3:Strike(1 d4)
+2026-11-23 16:12:27 DEBUG play_card {'card_index': 2, 'target': 'ACID_SLIME_S_4'} -> Playing 'Strike' targeting ACID_SLIME_S_4
+2026-11-23 16:12:27 DEBUG combat r2 hp 68/72 blk 0 en 2 stars 0 orbs - stance CALM [WEAK:2,MANTRA:2] | SPIKE_SLIME_S_0 12hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 11hp/0blk [] Attack3 | hand 0:Vigilance(2 b8), 1:Defend(1 b5), 2:Strike(1 d4)
+2026-11-23 16:12:27 DEBUG play_card {'card_index': 0} -> Playing 'Vigilance'
+2026-11-23 16:12:27 DEBUG combat r2 hp 68/72 blk 8 en 0 stars 0 orbs - stance CALM [WEAK:2,MANTRA:2] | SPIKE_SLIME_S_0 12hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 11hp/0blk [] Attack3 | hand 0:Defend(1! b5), 1:Strike(1! d4)
+2026-11-23 16:12:27 DEBUG ending r2 on 68 HP, expecting to lose 10
+2026-11-23 16:12:28 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:12:28 DEBUG combat r3 hp 58/72 blk 0 en 3 stars 0 orbs - stance CALM [WEAK:1,MANTRA:2] | SPIKE_SLIME_S_0 12hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 11hp/0blk [] Debuff | hand 0:Defend(1 b5), 1:Strike(1 d4), 2:Crush Joints(1 d6), 3:Defend(1 b5), 4:Eruption(2 d6)
+2026-11-23 16:12:28 DEBUG play_card {'card_index': 4, 'target': 'SPIKE_SLIME_S_2'} -> Playing 'Eruption' targeting SPIKE_SLIME_S_2
+2026-11-23 16:12:28 DEBUG combat r3 hp 58/72 blk 0 en 3 stars 0 orbs - stance WRATH [WEAK:1,MANTRA:2] | SPIKE_SLIME_S_0 12hp/0blk [] Attack10 ; SPIKE_SLIME_S_1 13hp/0blk [] Attack10 ; SPIKE_SLIME_S_2 5hp/0blk [] Attack10 ; ACID_SLIME_S_3 11hp/0blk [] Debuff | hand 0:Defend(1 b5), 1:Strike(1 d9), 2:Crush Joints(1 d12), 3:Defend(1 b5)
+2026-11-23 16:12:28 DEBUG play_card {'card_index': 2, 'target': 'SPIKE_SLIME_S_0'} -> Playing 'Crush Joints' targeting SPIKE_SLIME_S_0
+2026-11-23 16:12:28 DEBUG combat r3 hp 58/72 blk 0 en 2 stars 0 orbs - stance WRATH [WEAK:1,MANTRA:2] | SPIKE_SLIME_S_1 13hp/0blk [] Attack10 ; SPIKE_SLIME_S_2 5hp/0blk [] Attack10 ; ACID_SLIME_S_3 11hp/0blk [] Debuff | hand 0:Defend(1 b5), 1:Strike(1 d9), 2:Defend(1 b5)
+2026-11-23 16:12:29 DEBUG play_card {'card_index': 1, 'target': 'SPIKE_SLIME_S_2'} -> Playing 'Strike' targeting SPIKE_SLIME_S_2
+2026-11-23 16:12:29 DEBUG combat r3 hp 58/72 blk 0 en 1 stars 0 orbs - stance WRATH [WEAK:1,MANTRA:2] | SPIKE_SLIME_S_1 13hp/0blk [] Attack10 ; ACID_SLIME_S_3 11hp/0blk [] Debuff | hand 0:Defend(1 b5), 1:Defend(1 b5)
+2026-11-23 16:12:29 DEBUG play_card {'card_index': 0} -> Playing 'Defend'
+2026-11-23 16:12:29 DEBUG combat r3 hp 58/72 blk 5 en 0 stars 0 orbs - stance WRATH [WEAK:1,MANTRA:2] | SPIKE_SLIME_S_1 13hp/0blk [] Attack10 ; ACID_SLIME_S_3 11hp/0blk [] Debuff | hand 0:Defend(1! b5)
+2026-11-23 16:12:29 DEBUG ending r3 on 58 HP, expecting to lose 5
+2026-11-23 16:12:30 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:12:30 DEBUG combat r4 hp 53/72 blk 0 en 3 stars 0 orbs - stance WRATH [WEAK:1,MANTRA:2] | SPIKE_SLIME_S_1 13hp/0blk [] Attack10 ; ACID_SLIME_S_3 11hp/0blk [] Attack6 | hand 0:Vigilance(2 b8), 1:Strike(1 d9), 2:Defend(1 b5), 3:Perseverance(1 b5), 4:Defend(1 b5)
+2026-11-23 16:12:30 DEBUG play_card {'card_index': 1, 'target': 'ACID_SLIME_S_3'} -> Playing 'Strike' targeting ACID_SLIME_S_3
+2026-11-23 16:12:30 DEBUG combat r4 hp 53/72 blk 0 en 2 stars 0 orbs - stance WRATH [WEAK:1,MANTRA:2] | SPIKE_SLIME_S_1 13hp/0blk [] Attack10 ; ACID_SLIME_S_3 2hp/0blk [] Attack6 | hand 0:Vigilance(2 b8), 1:Defend(1 b5), 2:Perseverance(1 b5), 3:Defend(1 b5)
+2026-11-23 16:12:31 DEBUG play_card {'card_index': 0} -> Playing 'Vigilance'
+2026-11-23 16:12:31 DEBUG combat r4 hp 53/72 blk 8 en 0 stars 0 orbs - stance CALM [WEAK:1,MANTRA:2] | SPIKE_SLIME_S_1 13hp/0blk [] Attack5 ; ACID_SLIME_S_3 2hp/0blk [] Attack3 | hand 0:Defend(1! b5), 1:Perseverance(1! b5), 2:Defend(1! b5)
+2026-11-23 16:12:31 DEBUG ending r4 on 53 HP, expecting to lose 0
+2026-11-23 16:12:31 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:12:31 DEBUG combat r5 hp 53/72 blk 0 en 3 stars 0 orbs - stance CALM [MANTRA:2] | SPIKE_SLIME_S_1 13hp/0blk [] Attack5 ; ACID_SLIME_S_3 2hp/0blk [] Debuff | hand 0:Perseverance(1 b7), 1:Fear No Evil(1 d8), 2:Strike(1 d6), 3:Prostrate(0 b4), 4:Defend(1 b5), 5:Defend(1 b5)
+2026-11-23 16:12:31 DEBUG play_card {'card_index': 1, 'target': 'SPIKE_SLIME_S_1'} -> Playing 'Fear No Evil' targeting SPIKE_SLIME_S_1
+2026-11-23 16:12:31 DEBUG combat r5 hp 53/72 blk 0 en 2 stars 0 orbs - stance CALM [MANTRA:2] | SPIKE_SLIME_S_1 5hp/0blk [] Attack5 ; ACID_SLIME_S_3 2hp/0blk [] Debuff | hand 0:Perseverance(1 b7), 1:Strike(1 d6), 2:Prostrate(0 b4), 3:Defend(1 b5), 4:Defend(1 b5)
+2026-11-23 16:12:32 DEBUG play_card {'card_index': 1, 'target': 'SPIKE_SLIME_S_1'} -> Playing 'Strike' targeting SPIKE_SLIME_S_1
+2026-11-23 16:12:32 DEBUG combat r5 hp 53/72 blk 0 en 1 stars 0 orbs - stance CALM [MANTRA:2] | ACID_SLIME_S_3 2hp/0blk [] Debuff | hand 0:Perseverance(1 b7), 1:Prostrate(0 b4), 2:Defend(1 b5), 3:Defend(1 b5)
+2026-11-23 16:12:32 DEBUG play_card {'card_index': 1} -> Playing 'Prostrate'
+2026-11-23 16:12:32 DEBUG combat r5 hp 53/72 blk 4 en 1 stars 0 orbs - stance CALM [MANTRA:4] | ACID_SLIME_S_3 2hp/0blk [] Debuff | hand 0:Perseverance(1 b7), 1:Defend(1 b5), 2:Defend(1 b5)
+2026-11-23 16:12:32 DEBUG combat r5 hp 53/72 blk 4 en 1 stars 0 orbs - stance CALM [MANTRA:4] | ACID_SLIME_S_3 2hp/0blk [] Debuff | hand 0:Perseverance(1 b7), 1:Defend(1 b5), 2:Defend(1 b5)
+2026-11-23 16:12:32 DEBUG ending r5 on 53 HP, expecting to lose 0
+2026-11-23 16:12:33 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:12:33 DEBUG combat r6 hp 53/72 blk 0 en 3 stars 0 orbs - stance CALM [WEAK:1,MANTRA:4] | ACID_SLIME_S_3 2hp/0blk [] Attack3 | hand 0:Perseverance(1 b9), 1:Strike(1 d4), 2:Strike(1 d4), 3:Vigilance(2 b8), 4:Defend(1 b5), 5:Defend(1 b5)
+2026-11-23 16:12:33 DEBUG play_card {'card_index': 1, 'target': 'ACID_SLIME_S_3'} -> Playing 'Strike' targeting ACID_SLIME_S_3
+2026-11-23 16:12:34 DEBUG claim_reward {'index': 1} -> claim_reward done
+2026-11-23 16:12:34 DEBUG card reward (deck 14, need 2.0): Foreign Influence 3.7, Halt 2.3, Sanctity 2.2
+2026-11-23 16:12:34 DEBUG select_card_reward {'card_index': 0} -> select_card_reward done
+2026-11-23 16:12:35 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:12:35 DEBUG proceed {} -> proceed done
+2026-11-23 16:12:35 DEBUG map: Elite@1 -26.5, Monster@2 9.3
+2026-11-23 16:12:36 DEBUG choose_map_node {'index': 1} -> choose_map_node done
+2026-11-23 16:12:36 INFO act 1 floor 6  monster  hp 53/72  gold 80
+2026-11-23 16:12:36 DEBUG combat r1 hp 53/72 blk 0 en 3 stars 0 orbs - [] | RED_SLAVER_0 50hp/0blk [] Attack13 | hand 0:Miracle(0), 1:Crush Joints(1 d8), 2:Defend(1 b5), 3:Fear No Evil(1 d8), 4:Vigilance(2 b8), 5:Defend(1 b5)
+2026-11-23 16:12:36 DEBUG play_card {'card_index': 0} rejected: the game is busy
+2026-11-23 16:12:36 DEBUG combat r1 hp 53/72 blk 0 en 3 stars 0 orbs - [] | RED_SLAVER_0 50hp/0blk [] Attack13 | hand 0:Miracle(0), 1:Crush Joints(1 d8), 2:Defend(1 b5), 3:Fear No Evil(1 d8), 4:Vigilance(2 b8), 5:Defend(1 b5)
+2026-11-23 16:12:37 DEBUG play_card {'card_index': 0} -> Playing 'Miracle'
+2026-11-23 16:12:37 DEBUG combat r1 hp 53/72 blk 0 en 4 stars 0 orbs - [] | RED_SLAVER_0 50hp/0blk [] Attack13 | hand 0:Crush Joints(1 d8), 1:Defend(1 b5), 2:Fear No Evil(1 d8), 3:Vigilance(2 b8), 4:Defend(1 b5)
+2026-11-23 16:12:37 DEBUG play_card {'card_index': 0, 'target': 'RED_SLAVER_0'} -> Playing 'Crush Joints' targeting RED_SLAVER_0
+2026-11-23 16:12:37 INFO power VULNERABLE_POWER (on Red Slaver): Vulnerable: whenever this is here, things go as its name says.
+It lasts while it lasts.
+2026-11-23 16:12:37 DEBUG combat r1 hp 53/72 blk 0 en 3 stars 0 orbs - [] | RED_SLAVER_0 42hp/0blk [VULNERABLE:1] Attack13 | hand 0:Defend(1 b5), 1:Fear No Evil(1 d8), 2:Vigilance(2 b8), 3:Defend(1 b5)
+2026-11-23 16:12:37 DEBUG play_card {'card_index': 1, 'target': 'RED_SLAVER_0'} -> Playing 'Fear No Evil' targeting RED_SLAVER_0
+2026-11-23 16:12:37 DEBUG combat r1 hp 53/72 blk 0 en 2 stars 0 orbs - stance CALM [] | RED_SLAVER_0 30hp/0blk [VULNERABLE:1] Attack13 | hand 0:Defend(1 b5), 1:Vigilance(2 b8), 2:Defend(1 b5)
+2026-11-23 16:12:38 DEBUG play_card {'card_index': 0} -> Playing 'Defend'
+2026-11-23 16:12:38 DEBUG combat r1 hp 53/72 blk 5 en 1 stars 0 orbs - stance CALM [] | RED_SLAVER_0 30hp/0blk [VULNERABLE:1] Attack13 | hand 0:Vigilance(2! b8), 1:Defend(1 b5)
+2026-11-23 16:12:38 DEBUG play_card {'card_index': 1} -> Playing 'Defend'
+2026-11-23 16:12:38 DEBUG combat r1 hp 53/72 blk 10 en 0 stars 0 orbs - stance CALM [] | RED_SLAVER_0 30hp/0blk [VULNERABLE:1] Attack13 | hand 0:Vigilance(2! b8)
+2026-11-23 16:12:38 DEBUG ending r1 on 53 HP, expecting to lose 3
+2026-11-23 16:12:39 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:12:39 DEBUG combat r2 hp 50/72 blk 0 en 3 stars 0 orbs - stance CALM [] | RED_SLAVER_0 30hp/0blk [] Attack8+Debuff | hand 0:Strike(1 d6), 1:Strike(1 d6), 2:Eruption(2 d9), 3:Strike(1 d6), 4:Prostrate(0 b4)
+2026-11-23 16:12:39 DEBUG play_card {'card_index': 2, 'target': 'RED_SLAVER_0'} -> Playing 'Eruption' targeting RED_SLAVER_0
+2026-11-23 16:12:39 DEBUG combat r2 hp 50/72 blk 0 en 3 stars 0 orbs - stance WRATH [] | RED_SLAVER_0 21hp/0blk [] Attack16+Debuff | hand 0:Strike(1 d12), 1:Strike(1 d12), 2:Strike(1 d12), 3:Prostrate(0 b4)
+2026-11-23 16:12:40 DEBUG play_card {'card_index': 0, 'target': 'RED_SLAVER_0'} -> Playing 'Strike' targeting RED_SLAVER_0
+2026-11-23 16:12:40 DEBUG combat r2 hp 50/72 blk 0 en 2 stars 0 orbs - stance WRATH [] | RED_SLAVER_0 9hp/0blk [] Attack16+Debuff | hand 0:Strike(1 d12), 1:Strike(1 d12), 2:Prostrate(0 b4)
+2026-11-23 16:12:40 DEBUG play_card {'card_index': 0, 'target': 'RED_SLAVER_0'} -> Playing 'Strike' targeting RED_SLAVER_0
+2026-11-23 16:12:40 DEBUG claim_reward {'index': 2} -> claim_reward done
+2026-11-23 16:12:40 DEBUG card reward (deck 15, need 2.0): Fear No Evil 10.2, Crescendo 4.2, Flurry Of Blows 2.6
+2026-11-23 16:12:41 DEBUG select_card_reward {'card_index': 0} -> select_card_reward done
+2026-11-23 16:12:41 DEBUG claim_reward {'index': 1} -> claim_reward done
+2026-11-23 16:12:42 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:12:42 DEBUG proceed {} -> proceed done
+2026-11-23 16:12:43 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:12:43 INFO potion Ambrosia (Self): Enter Divinity.
+2026-11-23 16:12:43 INFO act 1 floor 7  monster  hp 50/72  gold 98
+2026-11-23 16:12:43 DEBUG combat r1 hp 50/72 blk 0 en 3 stars 0 orbs - [] | GREEN_LOUSE_0 12hp/0blk [CURL_UP:7] Debuff ; RED_LOUSE_1 12hp/0blk [CURL_UP:5] Attack5 ; RED_LOUSE_2 15hp/0blk [CURL_UP:7] Attack6 | hand 0:Miracle(0), 1:Eruption(2 d9), 2:Foreign Influence(0), 3:Strike(1 d6), 4:Fear No Evil(1 d8), 5:Prostrate(0 b4)
+2026-11-23 16:12:43 DEBUG play_card {'card_index': 0} -> Playing 'Miracle'
+2026-11-23 16:12:43 DEBUG combat r1 hp 50/72 blk 0 en 4 stars 0 orbs - [] | GREEN_LOUSE_0 12hp/0blk [CURL_UP:7] Debuff ; RED_LOUSE_1 12hp/0blk [CURL_UP:5] Attack5 ; RED_LOUSE_2 15hp/0blk [CURL_UP:7] Attack6 | hand 0:Eruption(2 d9), 1:Foreign Influence(0), 2:Strike(1 d6), 3:Fear No Evil(1 d8), 4:Prostrate(0 b4)
+2026-11-23 16:12:44 DEBUG play_card {'card_index': 0, 'target': 'RED_LOUSE_1'} -> Playing 'Eruption' targeting RED_LOUSE_1
+2026-11-23 16:12:44 DEBUG combat r1 hp 50/72 blk 0 en 2 stars 0 orbs - stance WRATH [] | GREEN_LOUSE_0 12hp/0blk [CURL_UP:7] Debuff ; RED_LOUSE_1 3hp/5blk [] Attack10 ; RED_LOUSE_2 15hp/0blk [CURL_UP:7] Attack12 | hand 0:Foreign Influence(0), 1:Strike(1 d12), 2:Fear No Evil(1 d16), 3:Prostrate(0 b4)
+2026-11-23 16:12:44 DEBUG play_card {'card_index': 1, 'target': 'RED_LOUSE_1'} -> Playing 'Strike' targeting RED_LOUSE_1
+2026-11-23 16:12:44 DEBUG combat r1 hp 50/72 blk 0 en 1 stars 0 orbs - stance WRATH [] | GREEN_LOUSE_0 12hp/0blk [CURL_UP:7] Debuff ; RED_LOUSE_2 15hp/0blk [CURL_UP:7] Attack12 | hand 0:Foreign Influence(0), 1:Fear No Evil(1 d16), 2:Prostrate(0 b4)
+2026-11-23 16:12:44 DEBUG play_card {'card_index': 1, 'target': 'RED_LOUSE_2'} -> Playing 'Fear No Evil' targeting RED_LOUSE_2
+2026-11-23 16:12:44 DEBUG combat r1 hp 50/72 blk 0 en 0 stars 0 orbs - stance CALM [] | GREEN_LOUSE_0 12hp/0blk [CURL_UP:7] Debuff | hand 0:Foreign Influence(0), 1:Prostrate(0 b4)
+2026-11-23 16:12:45 DEBUG play_card {'card_index': 1} -> Playing 'Prostrate'
+2026-11-23 16:12:45 DEBUG combat r1 hp 50/72 blk 4 en 0 stars 0 orbs - stance CALM [MANTRA:2] | GREEN_LOUSE_0 12hp/0blk [CURL_UP:7] Debuff | hand 0:Foreign Influence(0)
+2026-11-23 16:12:45 DEBUG play_card {'card_index': 0} -> Playing 'Foreign Influence'
+2026-11-23 16:12:45 DEBUG combat r1 hp 50/72 blk 4 en 0 stars 0 orbs - stance CALM [MANTRA:2] | GREEN_LOUSE_0 12hp/0blk [CURL_UP:7] Debuff | hand 0:Brilliance(0 d14)
+2026-11-23 16:12:46 DEBUG play_card {'card_index': 0, 'target': 'GREEN_LOUSE_0'} -> Playing 'Brilliance' targeting GREEN_LOUSE_0
+2026-11-23 16:12:46 DEBUG claim_reward {'index': 2} -> claim_reward done
+2026-11-23 16:12:46 DEBUG card reward (deck 16, need 3.0): Conclude 11.1, Fear No Evil 9.7, Empty Body 2.3
+2026-11-23 16:12:47 DEBUG select_card_reward {'card_index': 0} -> select_card_reward done
+2026-11-23 16:12:47 DEBUG claim_reward {'index': 1} -> claim_reward done
+2026-11-23 16:12:47 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:12:48 DEBUG proceed {} -> proceed done
+2026-11-23 16:12:48 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:12:48 INFO act 1 floor 8  monster  hp 50/72  gold 109
+2026-11-23 16:12:48 DEBUG combat r1 hp 50/72 blk 0 en 3 stars 0 orbs - [] | FUNGI_BEAST_0 23hp/0blk [] Buff ; JAW_WORM_1 40hp/0blk [] Attack11 | hand 0:Miracle(0), 1:Foreign Influence(0), 2:Crush Joints(1 d8), 3:Defend(1 b5), 4:Eruption(2 d9), 5:Defend(1 b5)
+2026-11-23 16:12:49 DEBUG use_potion {'slot': 1} -> Using potion 'Ambrosia'
+2026-11-23 16:12:49 DEBUG combat r1 hp 50/72 blk 0 en 6 stars 0 orbs - stance DIVINITY [] | FUNGI_BEAST_0 23hp/0blk [] Buff ; JAW_WORM_1 40hp/0blk [] Attack11 | hand 0:Miracle(0), 1:Foreign Influence(0), 2:Crush Joints(1 d24), 3:Defend(1 b5), 4:Eruption(2 d27), 5:Defend(1 b5)
+2026-11-23 16:12:49 DEBUG play_card {'card_index': 2, 'target': 'JAW_WORM_1'} -> Playing 'Crush Joints' targeting JAW_WORM_1
+2026-11-23 16:12:49 DEBUG combat r1 hp 50/72 blk 0 en 5 stars 0 orbs - stance DIVINITY [] | FUNGI_BEAST_0 23hp/0blk [] Buff ; JAW_WORM_1 16hp/0blk [] Attack11 | hand 0:Miracle(0), 1:Foreign Influence(0), 2:Defend(1 b5), 3:Eruption(2 d27), 4:Defend(1 b5)
+2026-11-23 16:12:50 DEBUG play_card {'card_index': 3, 'target': 'JAW_WORM_1'} -> Playing 'Eruption' targeting JAW_WORM_1
+2026-11-23 16:12:50 DEBUG combat r1 hp 50/72 blk 0 en 3 stars 0 orbs - stance WRATH [] | FUNGI_BEAST_0 23hp/0blk [] Buff | hand 0:Miracle(0), 1:Foreign Influence(0), 2:Defend(1 b5), 3:Defend(1 b5)
+2026-11-23 16:12:50 DEBUG play_card {'card_index': 1} -> Playing 'Foreign Influence'
+2026-11-23 16:12:50 DEBUG combat r1 hp 50/72 blk 0 en 3 stars 0 orbs - stance WRATH [] | FUNGI_BEAST_0 23hp/0blk [] Buff | hand 0:Miracle(0), 1:Defend(1 b5), 2:Defend(1 b5), 3:Wheel Kick(0 d30)
+2026-11-23 16:12:51 DEBUG play_card {'card_index': 3, 'target': 'FUNGI_BEAST_0'} -> Playing 'Wheel Kick' targeting FUNGI_BEAST_0
+2026-11-23 16:12:51 DEBUG claim_reward {'index': 1} -> claim_reward done
+2026-11-23 16:12:51 DEBUG card reward (deck 17, need 3.0): Foresight 2.7, Nirvana 1.6, Sands Of Time 0.4
+2026-11-23 16:12:51 DEBUG skip_card_reward {} -> skip_card_reward done
+2026-11-23 16:12:52 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:12:52 DEBUG proceed {} -> proceed done
+2026-11-23 16:12:52 DEBUG map: Treasure@3 17.7, Treasure@4 14.9
+2026-11-23 16:12:53 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:12:53 INFO act 1 floor 11  monster  hp 50/72  gold 120
+2026-11-23 16:12:53 DEBUG combat r1 hp 50/72 blk 0 en 3 stars 0 orbs - [] | SPIKE_SLIME_S_0 10hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 14hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 13hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Debuff ; ACID_SLIME_S_4 10hp/0blk [] Debuff | hand 0:Miracle(0), 1:Conclude(1 d12), 2:Eruption(2 d9), 3:Fear No Evil(1 d8), 4:Defend(1 b5), 5:Prostrate(0 b4)
+2026-11-23 16:12:54 DEBUG play_card {'card_index': 2, 'target': 'SPIKE_SLIME_S_0'} -> Playing 'Eruption' targeting SPIKE_SLIME_S_0
+2026-11-23 16:12:54 DEBUG combat r1 hp 50/72 blk 0 en 1 stars 0 orbs - stance WRATH [] | SPIKE_SLIME_S_0 1hp/0blk [] Attack10 ; SPIKE_SLIME_S_1 14hp/0blk [] Attack10 ; SPIKE_SLIME_S_2 13hp/0blk [] Attack10 ; ACID_SLIME_S_3 12hp/0blk [] Debuff ; ACID_SLIME_S_4 10hp/0blk [] Debuff | hand 0:Miracle(0), 1:Conclude(1 d24), 2:Fear No Evil(1 d16), 3:Defend(1 b5), 4:Prostrate(0 b4)
+2026-11-23 16:12:54 DEBUG play_card {'card_index': 4} -> Playing 'Prostrate'
+2026-11-23 16:12:54 DEBUG combat r1 hp 50/72 blk 4 en 1 stars 0 orbs - stance WRATH [MANTRA:2] | SPIKE_SLIME_S_0 1hp/0blk [] Attack10 ; SPIKE_SLIME_S_1 14hp/0blk [] Attack10 ; SPIKE_SLIME_S_2 13hp/0blk [] Attack10 ; ACID_SLIME_S_3 12hp/0blk [] Debuff ; ACID_SLIME_S_4 10hp/0blk [] Debuff | hand 0:Miracle(0), 1:Conclude(1 d24), 2:Fear No Evil(1 d16), 3:Defend(1 b5)
+2026-11-23 16:12:55 DEBUG play_card {'card_index': 1} rejected: the game is busy
+2026-11-23 16:12:55 DEBUG combat r1 hp 50/72 blk 4 en 1 stars 0 orbs - stance WRATH [MANTRA:2] | SPIKE_SLIME_S_0 1hp/0blk [] Attack10 ; SPIKE_SLIME_S_1 14hp/0blk [] Attack10 ; SPIKE_SLIME_S_2 13hp/0blk [] Attack10 ; ACID_SLIME_S_3 12hp/0blk [] Debuff ; ACID_SLIME_S_4 10hp/0blk [] Debuff | hand 0:Miracle(0), 1:Conclude(1 d24), 2:Fear No Evil(1 d16), 3:Defend(1 b5)
+2026-11-23 16:12:55 DEBUG play_card {'card_index': 1} -> Playing 'Conclude'
+2026-11-23 16:12:56 DEBUG claim_reward {'index': 2} -> claim_reward done
+2026-11-23 16:12:56 DEBUG card reward (deck 17, need 3.0): Bowling Bash 3.8, Follow Up 3.6, Wreath Of Flame 2.0
+2026-11-23 16:12:56 DEBUG select_card_reward {'card_index': 2} -> select_card_reward done
+2026-11-23 16:12:56 DEBUG claim_reward {'index': 1} -> claim_reward done
+2026-11-23 16:12:57 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:12:57 DEBUG proceed {} -> proceed done
+2026-11-23 16:12:58 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:12:58 INFO potion Stance Potion (Self): Enter Calm or Wrath.
+2026-11-23 16:12:58 INFO act 1 floor 12  monster  hp 50/72  gold 131
+2026-11-23 16:12:58 DEBUG combat r1 hp 50/72 blk 0 en 3 stars 0 orbs - [] | ACID_SLIME_L_0 66hp/0blk [] Debuff | hand 0:Miracle(0), 1:Defend(1 b5), 2:Eruption(2 d9), 3:Defend(1 b5), 4:Fear No Evil(1 d8), 5:Fear No Evil(1 d8)
+2026-11-23 16:12:58 DEBUG play_card {'card_index': 0} -> Playing 'Miracle'
+2026-11-23 16:12:58 DEBUG combat r1 hp 50/72 blk 0 en 4 stars 0 orbs - [] | ACID_SLIME_L_0 66hp/0blk [] Debuff | hand 0:Defend(1 b5), 1:Eruption(2 d9), 2:Defend(1 b5), 3:Fear No Evil(1 d8), 4:Fear No Evil(1 d8)
+2026-11-23 16:12:59 DEBUG play_card {'card_index': 1, 'target': 'ACID_SLIME_L_0'} -> Playing 'Eruption' targeting ACID_SLIME_L_0
+2026-11-23 16:12:59 DEBUG combat r1 hp 50/72 blk 0 en 2 stars 0 orbs - stance WRATH [] | ACID_SLIME_L_0 57hp/0blk [] Debuff | hand 0:Defend(1 b5), 1:Defend(1 b5), 2:Fear No Evil(1 d16), 3:Fear No Evil(1 d16)
+2026-11-23 16:12:59 DEBUG play_card {'card_index': 2, 'target': 'ACID_SLIME_L_0'} -> Playing 'Fear No Evil' targeting ACID_SLIME_L_0
+2026-11-23 16:12:59 DEBUG combat r1 hp 50/72 blk 0 en 1 stars 0 orbs - stance WRATH [] | ACID_SLIME_L_0 41hp/0blk [] Debuff | hand 0:Defend(1 b5), 1:Defend(1 b5), 2:Fear No Evil(1 d16)
+2026-11-23 16:13:00 DEBUG play_card {'card_index': 2, 'target': 'ACID_SLIME_L_0'} -> Playing 'Fear No Evil' targeting ACID_SLIME_L_0
+2026-11-23 16:13:00 DEBUG combat r1 hp 50/72 blk 0 en 0 stars 0 orbs - stance WRATH [] | ACID_SLIME_L_0 25hp/0blk [] Unknown | hand 0:Defend(1! b5), 1:Defend(1! b5)
+2026-11-23 16:13:00 DEBUG ending r1 on 50 HP, expecting to lose 0
+2026-11-23 16:13:00 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:00 DEBUG combat r2 hp 50/72 blk 0 en 3 stars 0 orbs - stance WRATH [] | ACID_SLIME_M_1 25hp/0blk [] Debuff ; ACID_SLIME_M_2 25hp/0blk [] Debuff | hand 0:Conclude(1 d24), 1:Crush Joints(1 d16), 2:Strike(1 d12), 3:Perseverance(1 b5), 4:Foreign Influence(0)
+2026-11-23 16:13:00 DEBUG play_card {'card_index': 1, 'target': 'ACID_SLIME_M_1'} -> Playing 'Crush Joints' targeting ACID_SLIME_M_1
+2026-11-23 16:13:00 DEBUG combat r2 hp 50/72 blk 0 en 2 stars 0 orbs - stance WRATH [] | ACID_SLIME_M_1 9hp/0blk [] Debuff ; ACID_SLIME_M_2 25hp/0blk [] Debuff | hand 0:Conclude(1 d24), 1:Strike(1 d12), 2:Perseverance(1 b5), 3:Foreign Influence(0)
+2026-11-23 16:13:01 DEBUG play_card {'card_index': 3} -> Playing 'Foreign Influence'
+2026-11-23 16:13:01 DEBUG combat r2 hp 50/72 blk 0 en 2 stars 0 orbs - stance WRATH [] | ACID_SLIME_M_1 9hp/0blk [] Debuff ; ACID_SLIME_M_2 25hp/0blk [] Debuff | hand 0:Conclude(1 d24), 1:Strike(1 d12), 2:Perseverance(1 b5), 3:Reach Heaven(0 d20)
+2026-11-23 16:13:01 DEBUG play_card {'card_index': 3, 'target': 'ACID_SLIME_M_1'} -> Playing 'Reach Heaven' targeting ACID_SLIME_M_1
+2026-11-23 16:13:01 DEBUG combat r2 hp 50/72 blk 0 en 2 stars 0 orbs - stance WRATH [] | ACID_SLIME_M_2 25hp/0blk [] Debuff | hand 0:Conclude(1 d24), 1:Strike(1 d12), 2:Perseverance(1 b5)
+2026-11-23 16:13:02 DEBUG play_card {'card_index': 1, 'target': 'ACID_SLIME_M_2'} -> Playing 'Strike' targeting ACID_SLIME_M_2
+2026-11-23 16:13:02 DEBUG combat r2 hp 50/72 blk 0 en 1 stars 0 orbs - stance WRATH [] | ACID_SLIME_M_2 13hp/0blk [] Debuff | hand 0:Conclude(1 d24), 1:Perseverance(1 b5)
+2026-11-23 16:13:02 DEBUG play_card {'card_index': 0} -> Playing 'Conclude'
+2026-11-23 16:13:03 DEBUG claim_reward {'index': 2} -> claim_reward done
+2026-11-23 16:13:03 DEBUG card reward (deck 17, need 3.0): Crush Joints 6.6, Carve Reality 4.7, Flurry Of Blows 2.6
+2026-11-23 16:13:03 DEBUG select_card_reward {'card_index': 2} -> select_card_reward done
+2026-11-23 16:13:03 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:13:04 DEBUG proceed {} -> proceed done
+2026-11-23 16:13:04 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:13:05 INFO act 1 floor 14  monster  hp 50/72  gold 23
+2026-11-23 16:13:05 DEBUG combat r1 hp 50/72 blk 0 en 3 stars 0 orbs - [] | GREEN_LOUSE_0 12hp/0blk [CURL_UP:3] Attack5 ; RED_LOUSE_1 13hp/0blk [CURL_UP:3] Attack7 ; RED_LOUSE_2 15hp/0blk [CURL_UP:3] Attack5 | hand 0:Miracle(0), 1:Defend(1 b5), 2:Defend(1 b5), 3:Foreign Influence(0), 4:Prostrate(0 b4), 5:Strike(1 d6)
+2026-11-23 16:13:05 DEBUG play_card {'card_index': 5, 'target': 'RED_LOUSE_1'} -> Playing 'Strike' targeting RED_LOUSE_1
+2026-11-23 16:13:05 DEBUG combat r1 hp 50/72 blk 0 en 2 stars 0 orbs - [] | GREEN_LOUSE_0 12hp/0blk [CURL_UP:3] Attack5 ; RED_LOUSE_1 7hp/3blk [] Attack7 ; RED_LOUSE_2 15hp/0blk [CURL_UP:3] Attack5 | hand 0:Miracle(0), 1:Defend(1 b5), 2:Defend(1 b5), 3:Foreign Influence(0), 4:Prostrate(0 b4)
+2026-11-23 16:13:06 DEBUG play_card {'card_index': 1} -> Playing 'Defend'
+2026-11-23 16:13:06 DEBUG combat r1 hp 50/72 blk 5 en 1 stars 0 orbs - [] | GREEN_LOUSE_0 12hp/0blk [CURL_UP:3] Attack5 ; RED_LOUSE_1 7hp/3blk [] Attack7 ; RED_LOUSE_2 15hp/0blk [CURL_UP:3] Attack5 | hand 0:Miracle(0), 1:Defend(1 b5), 2:Foreign Influence(0), 3:Prostrate(0 b4)
+2026-11-23 16:13:06 DEBUG play_card {'card_index': 1} -> Playing 'Defend'
+2026-11-23 16:13:06 DEBUG combat r1 hp 50/72 blk 10 en 0 stars 0 orbs - [] | GREEN_LOUSE_0 12hp/0blk [CURL_UP:3] Attack5 ; RED_LOUSE_1 7hp/3blk [] Attack7 ; RED_LOUSE_2 15hp/0blk [CURL_UP:3] Attack5 | hand 0:Miracle(0), 1:Foreign Influence(0), 2:Prostrate(0 b4)
+2026-11-23 16:13:06 DEBUG play_card {'card_index': 2} -> Playing 'Prostrate'
+2026-11-23 16:13:06 DEBUG combat r1 hp 50/72 blk 14 en 0 stars 0 orbs - [MANTRA:2] | GREEN_LOUSE_0 12hp/0blk [CURL_UP:3] Attack5 ; RED_LOUSE_1 7hp/3blk [] Attack7 ; RED_LOUSE_2 15hp/0blk [CURL_UP:3] Attack5 | hand 0:Miracle(0), 1:Foreign Influence(0)
+2026-11-23 16:13:07 DEBUG play_card {'card_index': 1} -> Playing 'Foreign Influence'
+2026-11-23 16:13:07 DEBUG combat r1 hp 50/72 blk 14 en 0 stars 0 orbs - [MANTRA:2] | GREEN_LOUSE_0 12hp/0blk [CURL_UP:3] Attack5 ; RED_LOUSE_1 7hp/3blk [] Attack7 ; RED_LOUSE_2 15hp/0blk [CURL_UP:3] Attack5 | hand 0:Miracle(0), 1:Carve Reality(0 d6)
+2026-11-23 16:13:07 DEBUG play_card {'card_index': 1, 'target': 'GREEN_LOUSE_0'} -> Playing 'Carve Reality' targeting GREEN_LOUSE_0
+2026-11-23 16:13:07 DEBUG combat r1 hp 50/72 blk 14 en 0 stars 0 orbs - [MANTRA:2] | GREEN_LOUSE_0 6hp/3blk [] Attack5 ; RED_LOUSE_1 7hp/3blk [] Attack7 ; RED_LOUSE_2 15hp/0blk [CURL_UP:3] Attack5 | hand 0:Miracle(0), 1:Smite(1! d12)
+2026-11-23 16:13:07 DEBUG ending r1 on 50 HP, expecting to lose 3
+2026-11-23 16:13:08 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:08 DEBUG combat r2 hp 47/72 blk 0 en 3 stars 0 orbs - [MANTRA:2] | GREEN_LOUSE_0 6hp/0blk [] Attack5 ; RED_LOUSE_1 7hp/0blk [] Buff ; RED_LOUSE_2 15hp/0blk [CURL_UP:3] Attack5 | hand 0:Miracle(0), 1:Smite(1 d12), 2:Conclude(1 d12), 3:Strike(1 d6), 4:Defend(1 b5), 5:Defend(1 b5), 6:Fear No Evil(1 d8)
+2026-11-23 16:13:08 DEBUG play_card {'card_index': 6, 'target': 'RED_LOUSE_2'} -> Playing 'Fear No Evil' targeting RED_LOUSE_2
+2026-11-23 16:13:08 DEBUG combat r2 hp 47/72 blk 0 en 2 stars 0 orbs - stance CALM [MANTRA:2] | GREEN_LOUSE_0 6hp/0blk [] Attack5 ; RED_LOUSE_1 7hp/0blk [] Buff ; RED_LOUSE_2 7hp/3blk [] Attack5 | hand 0:Miracle(0), 1:Smite(1 d12), 2:Conclude(1 d12), 3:Strike(1 d6), 4:Defend(1 b5), 5:Defend(1 b5)
+2026-11-23 16:13:09 DEBUG play_card {'card_index': 2} -> Playing 'Conclude'
+2026-11-23 16:13:09 INFO keys: ruby
+2026-11-23 16:13:09 INFO run 1 over: loss on act 1 floor 14 (0 wins so far)
+2026-11-23 16:13:09 DEBUG menu_select {'option': 'main_menu'} -> menu_select done
+2026-11-23 16:13:09 INFO settings for the next run: {'caution': 1.0, 'elite_worth': 2.5, 'upgrade_worth': 4.0, 'pickiness': -1.0, 'crowd': 0.0, 'punch': 2.7, 'weak_want': 1.0, 'attack_room': 3.0, 'block_want': 0.0, 'cards_first': 0.0, 'debuff_worth': 1.0, 'free_lean': 0.0, 'model_lean': 0.0, 'belt_spare': 1.0}
+2026-11-23 16:13:10 DEBUG menu_select {'option': 'singleplayer'} -> menu_select done
+2026-11-23 16:13:10 DEBUG menu_select {'option': 'standard'} -> menu_select done
+2026-11-23 16:13:10 DEBUG menu_select {'option': 'THE_SILENT'} -> menu_select done
+2026-11-23 16:13:11 DEBUG menu_select {'option': 'THE_SILENT'} -> menu_select done
+2026-11-23 16:13:11 INFO act 1 floor 0  map  hp 80/80  gold 99
+2026-11-23 16:13:11 DEBUG map: Monster@0 35.0, Monster@1 35.0, Monster@2 35.0, Monster@3 35.0
+2026-11-23 16:13:11 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:13:11 INFO act 1 floor 1  monster  hp 80/80  gold 99
+2026-11-23 16:13:11 DEBUG combat r1 hp 80/80 blk 0 en 3 stars 0 orbs - [] | RED_LOUSE_0 10hp/0blk [CURL_UP:5] Attack5 ; GREEN_LOUSE_1 17hp/0blk [CURL_UP:5] Attack6 | hand 0:Strike(1 d6), 1:Defend(1 b5), 2:Strike(1 d6), 3:Defend(1 b5), 4:Defend(1 b5)
+2026-11-23 16:13:12 DEBUG play_card {'card_index': 0, 'target': 'RED_LOUSE_0'} -> Playing 'Strike' targeting RED_LOUSE_0
+2026-11-23 16:13:12 DEBUG combat r1 hp 80/80 blk 0 en 2 stars 0 orbs - [] | RED_LOUSE_0 4hp/5blk [] Attack5 ; GREEN_LOUSE_1 17hp/0blk [CURL_UP:5] Attack6 | hand 0:Defend(1 b5), 1:Strike(1 d6), 2:Defend(1 b5), 3:Defend(1 b5)
+2026-11-23 16:13:12 DEBUG play_card {'card_index': 0} -> Playing 'Defend'
+2026-11-23 16:13:12 DEBUG combat r1 hp 80/80 blk 5 en 1 stars 0 orbs - [] | RED_LOUSE_0 4hp/5blk [] Attack5 ; GREEN_LOUSE_1 17hp/0blk [CURL_UP:5] Attack6 | hand 0:Strike(1 d6), 1:Defend(1 b5), 2:Defend(1 b5)
+2026-11-23 16:13:13 DEBUG play_card {'card_index': 1} -> Playing 'Defend'
+2026-11-23 16:13:13 DEBUG combat r1 hp 80/80 blk 10 en 0 stars 0 orbs - [] | RED_LOUSE_0 4hp/5blk [] Attack5 ; GREEN_LOUSE_1 17hp/0blk [CURL_UP:5] Attack6 | hand 0:Strike(1! d6), 1:Defend(1! b5)
+2026-11-23 16:13:13 DEBUG ending r1 on 80 HP, expecting to lose 1
+2026-11-23 16:13:13 DEBUG end_turn {} rejected: the game is busy
+2026-11-23 16:13:13 DEBUG combat r1 hp 80/80 blk 10 en 0 stars 0 orbs - [] | RED_LOUSE_0 4hp/5blk [] Attack5 ; GREEN_LOUSE_1 17hp/0blk [CURL_UP:5] Attack6 | hand 0:Strike(1! d6), 1:Defend(1! b5)
+2026-11-23 16:13:13 DEBUG ending r1 on 80 HP, expecting to lose 1
+2026-11-23 16:13:14 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:14 DEBUG combat r2 hp 79/80 blk 0 en 3 stars 0 orbs - [] | RED_LOUSE_0 4hp/0blk [] Attack5 ; GREEN_LOUSE_1 17hp/0blk [CURL_UP:5] Attack6 | hand 0:Strike(1 d6), 1:Strike(1 d6), 2:Defend(1 b5), 3:Strike(1 d6), 4:Bash(2 d8)
+2026-11-23 16:13:14 DEBUG play_card {'card_index': 0, 'target': 'RED_LOUSE_0'} -> Playing 'Strike' targeting RED_LOUSE_0
+2026-11-23 16:13:14 DEBUG combat r2 hp 79/80 blk 0 en 2 stars 0 orbs - [] | GREEN_LOUSE_1 17hp/0blk [CURL_UP:5] Attack6 | hand 0:Strike(1 d6), 1:Defend(1 b5), 2:Strike(1 d6), 3:Bash(2 d8)
+2026-11-23 16:13:14 DEBUG play_card {'card_index': 0, 'target': 'GREEN_LOUSE_1'} -> Playing 'Strike' targeting GREEN_LOUSE_1
+2026-11-23 16:13:14 DEBUG combat r2 hp 79/80 blk 0 en 1 stars 0 orbs - [] | GREEN_LOUSE_1 11hp/5blk [] Attack6 | hand 0:Defend(1 b5), 1:Strike(1 d6), 2:Bash(2! d8)
+2026-11-23 16:13:15 DEBUG play_card {'card_index': 0} -> Playing 'Defend'
+2026-11-23 16:13:15 DEBUG combat r2 hp 79/80 blk 5 en 0 stars 0 orbs - [] | GREEN_LOUSE_1 11hp/5blk [] Attack6 | hand 0:Strike(1! d6), 1:Bash(2! d8)
+2026-11-23 16:13:15 DEBUG ending r2 on 79 HP, expecting to lose 1
+2026-11-23 16:13:15 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:15 DEBUG combat r3 hp 78/80 blk 0 en 4 stars 0 orbs - [] | GREEN_LOUSE_1 11hp/0blk [] Debuff | hand 0:Bash(2 d8), 1:Strike(1 d6), 2:Defend(1 b5), 3:Strike(1 d6), 4:Defend(1 b5)
+2026-11-23 16:13:16 DEBUG play_card {'card_index': 0, 'target': 'GREEN_LOUSE_1'} -> Playing 'Bash' targeting GREEN_LOUSE_1
+2026-11-23 16:13:16 DEBUG combat r3 hp 78/80 blk 0 en 2 stars 0 orbs - [] | GREEN_LOUSE_1 3hp/0blk [VULNERABLE:2] Debuff | hand 0:Strike(1 d6), 1:Defend(1 b5), 2:Strike(1 d6), 3:Defend(1 b5)
+2026-11-23 16:13:16 DEBUG play_card {'card_index': 0, 'target': 'GREEN_LOUSE_1'} -> Playing 'Strike' targeting GREEN_LOUSE_1
+2026-11-23 16:13:17 DEBUG claim_reward {'index': 1} -> claim_reward done
+2026-11-23 16:13:17 DEBUG card reward (deck 10, need 2.0): Sword Boomerang 7.8, Reckless Charge 3.2, True Grit 1.9
+2026-11-23 16:13:17 DEBUG select_card_reward {'card_index': 2} -> select_card_reward done
+2026-11-23 16:13:17 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:13:18 DEBUG proceed {} -> proceed done
+2026-11-23 16:13:18 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:13:18 INFO act 1 floor 2  monster  hp 80/80  gold 118
+2026-11-23 16:13:18 DEBUG combat r1 hp 80/80 blk 0 en 3 stars 0 orbs - [] | SPIKE_SLIME_M_0 32hp/0blk [] Debuff ; SPIKE_SLIME_S_1 14hp/0blk [] Attack5 | hand 0:Sword Boomerang(1 d3x3), 1:Defend(1 b5), 2:Strike(1 d6), 3:Strike(1 d6), 4:Strike(1 d6)
+2026-11-23 16:13:19 DEBUG play_card {'card_index': 2, 'target': 'SPIKE_SLIME_S_1'} -> Playing 'Strike' targeting SPIKE_SLIME_S_1
+2026-11-23 16:13:19 DEBUG combat r1 hp 80/80 blk 0 en 2 stars 0 orbs - [] | SPIKE_SLIME_M_0 32hp/0blk [] Debuff ; SPIKE_SLIME_S_1 8hp/0blk [] Attack5 | hand 0:Sword Boomerang(1 d3x3), 1:Defend(1 b5), 2:Strike(1 d6), 3:Strike(1 d6)
+2026-11-23 16:13:19 DEBUG play_card {'card_index': 2, 'target': 'SPIKE_SLIME_S_1'} -> Playing 'Strike' targeting SPIKE_SLIME_S_1
+2026-11-23 16:13:19 DEBUG combat r1 hp 80/80 blk 0 en 1 stars 0 orbs - [] | SPIKE_SLIME_M_0 32hp/0blk [] Debuff ; SPIKE_SLIME_S_1 2hp/0blk [] Attack5 | hand 0:Sword Boomerang(1 d3x3), 1:Defend(1 b5), 2:Strike(1 d6)
+2026-11-23 16:13:20 DEBUG play_card {'card_index': 2, 'target': 'SPIKE_SLIME_S_1'} -> Playing 'Strike' targeting SPIKE_SLIME_S_1
+2026-11-23 16:13:20 DEBUG combat r1 hp 80/80 blk 0 en 0 stars 0 orbs - [] | SPIKE_SLIME_M_0 32hp/0blk [] Debuff | hand 0:Sword Boomerang(1! d3x3), 1:Defend(1! b5)
+2026-11-23 16:13:20 DEBUG ending r1 on 80 HP, expecting to lose 0
+2026-11-23 16:13:20 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:20 INFO power FRAIL_POWER (on The Ironclad): Frail: whenever this is here, things go as its name says.
+It lasts while it lasts.
+2026-11-23 16:13:20 DEBUG combat r2 hp 80/80 blk 0 en 3 stars 0 orbs - [FRAIL:1] | SPIKE_SLIME_M_0 32hp/0blk [] Debuff | hand 0:Strike(1 d6), 1:Bash(2 d8), 2:Defend(1 b3), 3:Defend(1 b3), 4:Strike(1 d6)
+2026-11-23 16:13:21 DEBUG play_card {'card_index': 1, 'target': 'SPIKE_SLIME_M_0'} -> Playing 'Bash' targeting SPIKE_SLIME_M_0
+2026-11-23 16:13:21 DEBUG combat r2 hp 80/80 blk 0 en 1 stars 0 orbs - [FRAIL:1] | SPIKE_SLIME_M_0 24hp/0blk [VULNERABLE:2] Debuff | hand 0:Strike(1 d6), 1:Defend(1 b3), 2:Defend(1 b3), 3:Strike(1 d6)
+2026-11-23 16:13:21 DEBUG play_card {'card_index': 0, 'target': 'SPIKE_SLIME_M_0'} -> Playing 'Strike' targeting SPIKE_SLIME_M_0
+2026-11-23 16:13:21 DEBUG combat r2 hp 80/80 blk 0 en 0 stars 0 orbs - [FRAIL:1] | SPIKE_SLIME_M_0 15hp/0blk [VULNERABLE:2] Debuff | hand 0:Defend(1! b3), 1:Defend(1! b3), 2:Strike(1! d6)
+2026-11-23 16:13:21 DEBUG ending r2 on 80 HP, expecting to lose 0
+2026-11-23 16:13:21 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:22 DEBUG combat r3 hp 80/80 blk 0 en 4 stars 0 orbs - [FRAIL:1] | SPIKE_SLIME_M_0 15hp/0blk [VULNERABLE:1] Attack8+Debuff | hand 0:Defend(1 b3), 1:Sword Boomerang(1 d3x3), 2:Strike(1 d6), 3:Defend(1 b3), 4:Bash(2 d8)
+2026-11-23 16:13:22 DEBUG play_card {'card_index': 4, 'target': 'SPIKE_SLIME_M_0'} -> Playing 'Bash' targeting SPIKE_SLIME_M_0
+2026-11-23 16:13:22 DEBUG combat r3 hp 80/80 blk 0 en 2 stars 0 orbs - [FRAIL:1] | SPIKE_SLIME_M_0 3hp/0blk [VULNERABLE:3] Attack8+Debuff | hand 0:Defend(1 b3), 1:Sword Boomerang(1 d3x3), 2:Strike(1 d6), 3:Defend(1 b3)
+2026-11-23 16:13:22 DEBUG play_card {'card_index': 1} -> Playing 'Sword Boomerang'
+2026-11-23 16:13:23 DEBUG claim_reward {'index': 1} -> claim_reward done
+2026-11-23 16:13:23 DEBUG card reward (deck 11, need 2.0): Clothesline 2.8, Warcry 2.3, Perfected Strike 1.0
+2026-11-23 16:13:23 DEBUG select_card_reward {'card_index': 1} -> select_card_reward done
+2026-11-23 16:13:24 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:13:24 DEBUG proceed {} -> proceed done
+2026-11-23 16:13:24 DEBUG map: Unknown@0 33.2, Unknown@1 33.6
+2026-11-23 16:13:25 DEBUG choose_map_node {'index': 1} -> choose_map_node done
+2026-11-23 16:13:25 INFO act 1 floor 4  monster  hp 80/80  gold 131
+2026-11-23 16:13:25 DEBUG combat r1 hp 80/80 blk 0 en 3 stars 0 orbs - [] | CULTIST_0 51hp/0blk [] Buff | hand 0:Strike(1 d6), 1:Defend+(1 b8), 2:Strike(1 d6), 3:Strike(1 d6), 4:Defend(1 b5)
+2026-11-23 16:13:25 DEBUG play_card {'card_index': 0, 'target': 'CULTIST_0'} -> Playing 'Strike' targeting CULTIST_0
+2026-11-23 16:13:25 DEBUG combat r1 hp 80/80 blk 0 en 2 stars 0 orbs - [] | CULTIST_0 45hp/0blk [] Buff | hand 0:Defend+(1 b8), 1:Strike(1 d6), 2:Strike(1 d6), 3:Defend(1 b5)
+2026-11-23 16:13:26 DEBUG play_card {'card_index': 1, 'target': 'CULTIST_0'} -> Playing 'Strike' targeting CULTIST_0
+2026-11-23 16:13:26 DEBUG combat r1 hp 80/80 blk 0 en 1 stars 0 orbs - [] | CULTIST_0 39hp/0blk [] Buff | hand 0:Defend+(1 b8), 1:Strike(1 d6), 2:Defend(1 b5)
+2026-11-23 16:13:26 DEBUG play_card {'card_index': 1, 'target': 'CULTIST_0'} -> Playing 'Strike' targeting CULTIST_0
+2026-11-23 16:13:26 DEBUG combat r1 hp 80/80 blk 0 en 0 stars 0 orbs - [] | CULTIST_0 33hp/0blk [] Buff | hand 0:Defend+(1! b8), 1:Defend(1! b5)
+2026-11-23 16:13:26 DEBUG ending r1 on 80 HP, expecting to lose 0
+2026-11-23 16:13:27 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:27 INFO power RITUAL_POWER (on Cultist): Ritual: whenever this is here, things go as its name says.
+It lasts while it lasts.
+2026-11-23 16:13:27 DEBUG combat r2 hp 80/80 blk 0 en 3 stars 0 orbs - [] | CULTIST_0 33hp/0blk [RITUAL:3] Attack6 | hand 0:Strike(1 d6), 1:Defend(1 b5), 2:Strike(1 d6), 3:Bash+(2 d10), 4:Defend(1 b5)
+2026-11-23 16:13:27 DEBUG play_card {'card_index': 3, 'target': 'CULTIST_0'} -> Playing 'Bash+' targeting CULTIST_0
+2026-11-23 16:13:27 DEBUG combat r2 hp 80/80 blk 0 en 1 stars 0 orbs - [] | CULTIST_0 23hp/0blk [RITUAL:3,VULNERABLE:3] Attack6 | hand 0:Strike(1 d6), 1:Defend(1 b5), 2:Strike(1 d6), 3:Defend(1 b5)
+2026-11-23 16:13:27 DEBUG play_card {'card_index': 0, 'target': 'CULTIST_0'} -> Playing 'Strike' targeting CULTIST_0
+2026-11-23 16:13:27 DEBUG combat r2 hp 80/80 blk 0 en 0 stars 0 orbs - [] | CULTIST_0 14hp/0blk [RITUAL:3,VULNERABLE:3] Attack6 | hand 0:Defend(1! b5), 1:Strike(1! d6), 2:Defend(1! b5)
+2026-11-23 16:13:27 DEBUG ending r2 on 80 HP, expecting to lose 6
+2026-11-23 16:13:28 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:28 DEBUG combat r3 hp 74/80 blk 0 en 4 stars 0 orbs - [] | CULTIST_0 14hp/0blk [RITUAL:3,STRENGTH:3,VULNERABLE:2] Attack9 | hand 0:Sword Boomerang(1 d3x3), 1:Defend(1 b5), 2:Defend(1 b5), 3:Strike(1 d6), 4:Strike(1 d6)
+2026-11-23 16:13:28 DEBUG play_card {'card_index': 0} -> Playing 'Sword Boomerang'
+2026-11-23 16:13:28 DEBUG combat r3 hp 74/80 blk 0 en 3 stars 0 orbs - [] | CULTIST_0 2hp/0blk [RITUAL:3,STRENGTH:3,VULNERABLE:2] Attack9 | hand 0:Defend(1 b5), 1:Defend(1 b5), 2:Strike(1 d6), 3:Strike(1 d6)
+2026-11-23 16:13:29 DEBUG play_card {'card_index': 2, 'target': 'CULTIST_0'} -> Playing 'Strike' targeting CULTIST_0
+2026-11-23 16:13:29 DEBUG claim_reward {'index': 1} -> claim_reward done
+2026-11-23 16:13:29 DEBUG card reward (deck 11, need 2.0): Flame Barrier 2.7, Warcry 2.3, Metallicize 1.7
+2026-11-23 16:13:30 DEBUG select_card_reward {'card_index': 2} -> select_card_reward done
+2026-11-23 16:13:30 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:13:30 DEBUG proceed {} -> proceed done
+2026-11-23 16:13:31 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:13:31 INFO act 1 floor 5  monster  hp 80/80  gold 147
+2026-11-23 16:13:31 DEBUG combat r1 hp 80/80 blk 0 en 3 stars 0 orbs - [] | FUNGI_BEAST_0 27hp/0blk [] Attack6 ; RED_LOUSE_1 10hp/0blk [CURL_UP:4] Attack6 | hand 0:Flame Barrier(2 b12), 1:Defend(1 b5), 2:Defend(1 b5), 3:Bash+(2 d10), 4:Defend+(1 b8)
+2026-11-23 16:13:31 DEBUG play_card {'card_index': 3, 'target': 'RED_LOUSE_1'} rejected: the game is busy
+2026-11-23 16:13:32 DEBUG combat r1 hp 80/80 blk 0 en 3 stars 0 orbs - [] | FUNGI_BEAST_0 27hp/0blk [] Attack6 ; RED_LOUSE_1 10hp/0blk [CURL_UP:4] Attack6 | hand 0:Flame Barrier(2 b12), 1:Defend(1 b5), 2:Defend(1 b5), 3:Bash+(2 d10), 4:Defend+(1 b8)
+2026-11-23 16:13:32 DEBUG play_card {'card_index': 3, 'target': 'RED_LOUSE_1'} -> Playing 'Bash+' targeting RED_LOUSE_1
+2026-11-23 16:13:32 DEBUG combat r1 hp 80/80 blk 0 en 1 stars 0 orbs - [] | FUNGI_BEAST_0 27hp/0blk [] Attack6 | hand 0:Flame Barrier(2! b12), 1:Defend(1 b5), 2:Defend(1 b5), 3:Defend+(1 b8)
+2026-11-23 16:13:32 DEBUG play_card {'card_index': 3} -> Playing 'Defend+'
+2026-11-23 16:13:32 DEBUG combat r1 hp 80/80 blk 8 en 0 stars 0 orbs - [] | FUNGI_BEAST_0 27hp/0blk [] Attack6 | hand 0:Flame Barrier(2! b12), 1:Defend(1! b5), 2:Defend(1! b5)
+2026-11-23 16:13:32 DEBUG ending r1 on 80 HP, expecting to lose 0
+2026-11-23 16:13:33 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:33 DEBUG combat r2 hp 80/80 blk 0 en 3 stars 0 orbs - [] | FUNGI_BEAST_0 27hp/0blk [] Attack6 | hand 0:Strike(1 d6), 1:Strike(1 d6), 2:Sword Boomerang(1 d3x3), 3:Strike(1 d6), 4:Strike(1 d6)
+2026-11-23 16:13:33 DEBUG play_card {'card_index': 2} -> Playing 'Sword Boomerang'
+2026-11-23 16:13:33 DEBUG combat r2 hp 80/80 blk 0 en 2 stars 0 orbs - [] | FUNGI_BEAST_0 18hp/0blk [] Attack6 | hand 0:Strike(1 d6), 1:Strike(1 d6), 2:Strike(1 d6), 3:Strike(1 d6)
+2026-11-23 16:13:34 DEBUG play_card {'card_index': 0, 'target': 'FUNGI_BEAST_0'} -> Playing 'Strike' targeting FUNGI_BEAST_0
+2026-11-23 16:13:34 DEBUG combat r2 hp 80/80 blk 0 en 1 stars 0 orbs - [] | FUNGI_BEAST_0 12hp/0blk [] Attack6 | hand 0:Strike(1 d6), 1:Strike(1 d6), 2:Strike(1 d6)
+2026-11-23 16:13:34 DEBUG play_card {'card_index': 0, 'target': 'FUNGI_BEAST_0'} -> Playing 'Strike' targeting FUNGI_BEAST_0
+2026-11-23 16:13:34 DEBUG combat r2 hp 80/80 blk 0 en 0 stars 0 orbs - [] | FUNGI_BEAST_0 6hp/0blk [] Attack6 | hand 0:Strike(1! d6), 1:Strike(1! d6)
+2026-11-23 16:13:34 DEBUG ending r2 on 80 HP, expecting to lose 6
+2026-11-23 16:13:35 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:35 DEBUG combat r3 hp 74/80 blk 0 en 4 stars 0 orbs - [] | FUNGI_BEAST_0 6hp/0blk [] Buff | hand 0:Defend(1 b5), 1:Strike(1 d6), 2:Strike(1 d6), 3:Defend+(1 b8), 4:Defend(1 b5)
+2026-11-23 16:13:35 DEBUG play_card {'card_index': 1, 'target': 'FUNGI_BEAST_0'} -> Playing 'Strike' targeting FUNGI_BEAST_0
+2026-11-23 16:13:35 DEBUG claim_reward {'index': 2} -> claim_reward done
+2026-11-23 16:13:35 DEBUG card reward (deck 12, need 2.0): Rampage 7.1, Power Through 6.7, Thunderclap 1.8
+2026-11-23 16:13:36 DEBUG select_card_reward {'card_index': 1} -> select_card_reward done
+2026-11-23 16:13:36 DEBUG claim_reward {'index': 1} -> claim_reward done
+2026-11-23 16:13:37 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:13:37 DEBUG proceed {} -> proceed done
+2026-11-23 16:13:38 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:13:38 INFO act 1 floor 6  rest_site  hp 80/80  gold 163
+2026-11-23 16:13:38 DEBUG rest site at 80/80: rest 28.5, upgrade 32.5
+2026-11-23 16:13:38 DEBUG choose_rest_option {'index': 1} -> choose_rest_option done
+2026-11-23 16:13:38 DEBUG upgrade: Power Through 9.0, Flame Barrier 5.6, Sword Boomerang 2.3, Strike -0.6, Strike -0.6
+2026-11-23 16:13:39 DEBUG select_card {'index': 10} -> Toggled card: Power Through
+2026-11-23 16:13:39 DEBUG map: Monster@2 27.2, Unknown@3 28.5
+2026-11-23 16:13:39 DEBUG choose_map_node {'index': 1} -> choose_map_node done
+2026-11-23 16:13:39 INFO act 1 floor 7  monster  hp 80/80  gold 163
+2026-11-23 16:13:39 DEBUG combat r1 hp 80/80 blk 0 en 3 stars 0 orbs - [] | SPIKE_SLIME_S_0 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 11hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Debuff ; ACID_SLIME_S_4 8hp/0blk [] Debuff | hand 0:Strike(1 d6), 1:Flame Barrier(2 b12), 2:Defend(1 b5), 3:Strike(1 d6), 4:Bash+(2 d10)
+2026-11-23 16:13:39 DEBUG play_card {'card_index': 4, 'target': 'ACID_SLIME_S_4'} -> Playing 'Bash+' targeting ACID_SLIME_S_4
+2026-11-23 16:13:40 DEBUG combat r1 hp 80/80 blk 0 en 1 stars 0 orbs - [] | SPIKE_SLIME_S_0 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 11hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Debuff | hand 0:Strike(1 d6), 1:Flame Barrier(2! b12), 2:Defend(1 b5), 3:Strike(1 d6)
+2026-11-23 16:13:40 DEBUG play_card {'card_index': 2} -> Playing 'Defend'
+2026-11-23 16:13:40 DEBUG combat r1 hp 80/80 blk 5 en 0 stars 0 orbs - [] | SPIKE_SLIME_S_0 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 11hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Debuff | hand 0:Strike(1! d6), 1:Flame Barrier(2! b12), 2:Strike(1! d6)
+2026-11-23 16:13:40 DEBUG ending r1 on 80 HP, expecting to lose 10
+2026-11-23 16:13:40 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:40 DEBUG combat r2 hp 70/80 blk 0 en 3 stars 0 orbs - [WEAK:1] | SPIKE_SLIME_S_0 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 11hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Attack3 | hand 0:Strike(1 d4), 1:Strike(1 d4), 2:Defend+(1 b8), 3:Power Through+(1 b20), 4:Defend(1 b5)
+2026-11-23 16:13:41 DEBUG play_card {'card_index': 0, 'target': 'SPIKE_SLIME_S_1'} -> Playing 'Strike' targeting SPIKE_SLIME_S_1
+2026-11-23 16:13:41 DEBUG combat r2 hp 70/80 blk 0 en 2 stars 0 orbs - [WEAK:1] | SPIKE_SLIME_S_0 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 7hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Attack3 | hand 0:Strike(1 d4), 1:Defend+(1 b8), 2:Power Through+(1 b20), 3:Defend(1 b5)
+2026-11-23 16:13:41 DEBUG play_card {'card_index': 0, 'target': 'SPIKE_SLIME_S_1'} -> Playing 'Strike' targeting SPIKE_SLIME_S_1
+2026-11-23 16:13:41 DEBUG combat r2 hp 70/80 blk 0 en 1 stars 0 orbs - [WEAK:1] | SPIKE_SLIME_S_0 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 3hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Attack3 | hand 0:Defend+(1 b8), 1:Power Through+(1 b20), 2:Defend(1 b5)
+2026-11-23 16:13:42 DEBUG play_card {'card_index': 1} -> Playing 'Power Through+'
+2026-11-23 16:13:42 INFO card Wound (Status, cost 0): Unplayable.
+2026-11-23 16:13:42 DEBUG combat r2 hp 70/80 blk 20 en 0 stars 0 orbs - [WEAK:1] | SPIKE_SLIME_S_0 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 3hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Attack3 | hand 0:Defend+(1! b8), 1:Defend(1! b5), 2:Wound(0!), 3:Wound(0!)
+2026-11-23 16:13:42 DEBUG ending r2 on 70 HP, expecting to lose 0
+2026-11-23 16:13:42 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:42 DEBUG combat r3 hp 70/80 blk 0 en 4 stars 0 orbs - [] | SPIKE_SLIME_S_0 13hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 3hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Debuff | hand 0:Strike(1 d6), 1:Sword Boomerang(1 d3x3), 2:Defend(1 b5), 3:Power Through+(1 b20), 4:Strike(1 d6)
+2026-11-23 16:13:42 DEBUG play_card {'card_index': 1} -> Playing 'Sword Boomerang'
+2026-11-23 16:13:43 DEBUG combat r3 hp 70/80 blk 0 en 3 stars 0 orbs - [] | SPIKE_SLIME_S_0 7hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 3hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 8hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Debuff | hand 0:Strike(1 d6), 1:Defend(1 b5), 2:Power Through+(1 b20), 3:Strike(1 d6)
+2026-11-23 16:13:43 DEBUG play_card {'card_index': 0, 'target': 'SPIKE_SLIME_S_1'} -> Playing 'Strike' targeting SPIKE_SLIME_S_1
+2026-11-23 16:13:43 DEBUG combat r3 hp 70/80 blk 0 en 2 stars 0 orbs - [] | SPIKE_SLIME_S_0 7hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 8hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Debuff | hand 0:Defend(1 b5), 1:Power Through+(1 b20), 2:Strike(1 d6)
+2026-11-23 16:13:43 DEBUG play_card {'card_index': 2, 'target': 'SPIKE_SLIME_S_0'} -> Playing 'Strike' targeting SPIKE_SLIME_S_0
+2026-11-23 16:13:43 DEBUG combat r3 hp 70/80 blk 0 en 1 stars 0 orbs - [] | SPIKE_SLIME_S_0 1hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 8hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Debuff | hand 0:Defend(1 b5), 1:Power Through+(1 b20)
+2026-11-23 16:13:44 DEBUG play_card {'card_index': 1} -> Playing 'Power Through+'
+2026-11-23 16:13:44 DEBUG combat r3 hp 70/80 blk 20 en 0 stars 0 orbs - [] | SPIKE_SLIME_S_0 1hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 8hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Debuff | hand 0:Defend(1! b5), 1:Wound(0!), 2:Wound(0!)
+2026-11-23 16:13:44 DEBUG ending r3 on 70 HP, expecting to lose 0
+2026-11-23 16:13:44 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:44 DEBUG combat r4 hp 70/80 blk 0 en 3 stars 0 orbs - [WEAK:1] | SPIKE_SLIME_S_0 1hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 8hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Attack3 | hand 0:Strike(1 d4), 1:Defend+(1 b8), 2:Flame Barrier(2 b12), 3:Strike(1 d4), 4:Strike(1 d4)
+2026-11-23 16:13:45 DEBUG play_card {'card_index': 0, 'target': 'SPIKE_SLIME_S_0'} -> Playing 'Strike' targeting SPIKE_SLIME_S_0
+2026-11-23 16:13:45 DEBUG combat r4 hp 70/80 blk 0 en 2 stars 0 orbs - [WEAK:1] | SPIKE_SLIME_S_2 8hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Attack3 | hand 0:Defend+(1 b8), 1:Flame Barrier(2 b12), 2:Strike(1 d4), 3:Strike(1 d4)
+2026-11-23 16:13:45 DEBUG play_card {'card_index': 2, 'target': 'SPIKE_SLIME_S_2'} -> Playing 'Strike' targeting SPIKE_SLIME_S_2
+2026-11-23 16:13:45 DEBUG combat r4 hp 70/80 blk 0 en 1 stars 0 orbs - [WEAK:1] | SPIKE_SLIME_S_2 4hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Attack3 | hand 0:Defend+(1 b8), 1:Flame Barrier(2! b12), 2:Strike(1 d4)
+2026-11-23 16:13:46 DEBUG play_card {'card_index': 2, 'target': 'SPIKE_SLIME_S_2'} -> Playing 'Strike' targeting SPIKE_SLIME_S_2
+2026-11-23 16:13:46 DEBUG combat r4 hp 70/80 blk 0 en 0 stars 0 orbs - [WEAK:1] | ACID_SLIME_S_3 12hp/0blk [] Attack3 | hand 0:Defend+(1! b8), 1:Flame Barrier(2! b12)
+2026-11-23 16:13:46 DEBUG ending r4 on 70 HP, expecting to lose 3
+2026-11-23 16:13:46 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:46 DEBUG combat r5 hp 67/80 blk 0 en 3 stars 0 orbs - [] | ACID_SLIME_S_3 12hp/0blk [] Debuff | hand 0:Wound(0!), 1:Defend(1 b5), 2:Wound(0!), 3:Bash+(2 d10), 4:Defend(1 b5)
+2026-11-23 16:13:46 DEBUG play_card {'card_index': 3, 'target': 'ACID_SLIME_S_3'} -> Playing 'Bash+' targeting ACID_SLIME_S_3
+2026-11-23 16:13:46 DEBUG combat r5 hp 67/80 blk 0 en 1 stars 0 orbs - [] | ACID_SLIME_S_3 2hp/0blk [VULNERABLE:3] Debuff | hand 0:Wound(0!), 1:Defend(1 b5), 2:Wound(0!), 3:Defend(1 b5)
+2026-11-23 16:13:46 DEBUG combat r5 hp 67/80 blk 0 en 1 stars 0 orbs - [] | ACID_SLIME_S_3 2hp/0blk [VULNERABLE:3] Debuff | hand 0:Wound(0!), 1:Defend(1 b5), 2:Wound(0!), 3:Defend(1 b5)
+2026-11-23 16:13:46 DEBUG ending r5 on 67 HP, expecting to lose 0
+2026-11-23 16:13:47 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:47 DEBUG combat r6 hp 67/80 blk 0 en 4 stars 0 orbs - [WEAK:1] | ACID_SLIME_S_3 2hp/0blk [VULNERABLE:2] Attack3 | hand 0:Strike(1 d4), 1:Strike(1 d4), 2:Wound(0!), 3:Wound(0!), 4:Wound(0!)
+2026-11-23 16:13:47 DEBUG play_card {'card_index': 0, 'target': 'ACID_SLIME_S_3'} -> Playing 'Strike' targeting ACID_SLIME_S_3
+2026-11-23 16:13:48 DEBUG claim_reward {'index': 2} -> claim_reward done
+2026-11-23 16:13:48 DEBUG card reward (deck 13, need 2.0): Clothesline 2.8, Whirlwind 2.2, Combust 1.7
+2026-11-23 16:13:48 DEBUG select_card_reward {'card_index': 0} -> select_card_reward done
+2026-11-23 16:13:49 DEBUG claim_reward {'index': 1} -> claim_reward done
+2026-11-23 16:13:49 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:13:49 DEBUG proceed {} rejected: the game is busy
+2026-11-23 16:13:50 DEBUG proceed {} -> proceed done
+2026-11-23 16:13:51 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:13:51 INFO potion Blessing Of The Forge (Self): Upgrade all cards in your hand for the rest of combat.
+2026-11-23 16:13:51 INFO act 1 floor 8  monster  hp 73/80  gold 182
+2026-11-23 16:13:51 DEBUG combat r1 hp 73/80 blk 0 en 3 stars 0 orbs - [] | FUNGI_BEAST_0 23hp/0blk [] Attack6 ; FUNGI_BEAST_1 23hp/0blk [] Attack6 | hand 0:Defend(1 b5), 1:Defend(1 b5), 2:Strike(1 d6), 3:Strike(1 d6), 4:Strike(1 d6)
+2026-11-23 16:13:51 DEBUG play_card {'card_index': 2, 'target': 'FUNGI_BEAST_0'} -> Playing 'Strike' targeting FUNGI_BEAST_0
+2026-11-23 16:13:51 DEBUG combat r1 hp 73/80 blk 0 en 2 stars 0 orbs - [] | FUNGI_BEAST_0 17hp/0blk [] Attack6 ; FUNGI_BEAST_1 23hp/0blk [] Attack6 | hand 0:Defend(1 b5), 1:Defend(1 b5), 2:Strike(1 d6), 3:Strike(1 d6)
+2026-11-23 16:13:51 DEBUG play_card {'card_index': 0} -> Playing 'Defend'
+2026-11-23 16:13:51 DEBUG combat r1 hp 73/80 blk 5 en 1 stars 0 orbs - [] | FUNGI_BEAST_0 17hp/0blk [] Attack6 ; FUNGI_BEAST_1 23hp/0blk [] Attack6 | hand 0:Defend(1 b5), 1:Strike(1 d6), 2:Strike(1 d6)
+2026-11-23 16:13:52 DEBUG play_card {'card_index': 0} -> Playing 'Defend'
+2026-11-23 16:13:52 DEBUG combat r1 hp 73/80 blk 10 en 0 stars 0 orbs - [] | FUNGI_BEAST_0 17hp/0blk [] Attack6 ; FUNGI_BEAST_1 23hp/0blk [] Attack6 | hand 0:Strike(1! d6), 1:Strike(1! d6)
+2026-11-23 16:13:52 DEBUG ending r1 on 73 HP, expecting to lose 2
+2026-11-23 16:13:52 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:52 DEBUG combat r2 hp 71/80 blk 0 en 3 stars 0 orbs - [] | FUNGI_BEAST_0 17hp/0blk [] Buff ; FUNGI_BEAST_1 23hp/0blk [] Attack6 | hand 0:Power Through+(1 b20), 1:Strike(1 d6), 2:Defend+(1 b8), 3:Defend(1 b5), 4:Bash+(2 d10)
+2026-11-23 16:13:53 DEBUG play_card {'card_index': 4, 'target': 'FUNGI_BEAST_0'} -> Playing 'Bash+' targeting FUNGI_BEAST_0
+2026-11-23 16:13:53 DEBUG combat r2 hp 71/80 blk 0 en 1 stars 0 orbs - [] | FUNGI_BEAST_0 7hp/0blk [VULNERABLE:3] Buff ; FUNGI_BEAST_1 23hp/0blk [] Attack6 | hand 0:Power Through+(1 b20), 1:Strike(1 d6), 2:Defend+(1 b8), 3:Defend(1 b5)
+2026-11-23 16:13:53 DEBUG play_card {'card_index': 1, 'target': 'FUNGI_BEAST_0'} -> Playing 'Strike' targeting FUNGI_BEAST_0
+2026-11-23 16:13:53 DEBUG combat r2 hp 71/80 blk 0 en 0 stars 0 orbs - [VULNERABLE:2] | FUNGI_BEAST_1 23hp/0blk [] Attack9 | hand 0:Power Through+(1! b20), 1:Defend+(1! b8), 2:Defend(1! b5)
+2026-11-23 16:13:53 DEBUG ending r2 on 71 HP, expecting to lose 9
+2026-11-23 16:13:54 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:54 DEBUG combat r3 hp 62/80 blk 0 en 4 stars 0 orbs - [VULNERABLE:1] | FUNGI_BEAST_1 23hp/0blk [] Buff | hand 0:Strike(1 d6), 1:Sword Boomerang(1 d3x3), 2:Combust(1), 3:Flame Barrier(2 b12), 4:Defend(1 b5)
+2026-11-23 16:13:54 DEBUG play_card {'card_index': 2} -> Playing 'Combust'
+2026-11-23 16:13:54 INFO power COMBUST_POWER (on The Ironclad): Combust: whenever this is here, things go as its name says.
+It lasts while it lasts.
+2026-11-23 16:13:54 DEBUG combat r3 hp 62/80 blk 0 en 3 stars 0 orbs - [VULNERABLE:1,COMBUST:5] | FUNGI_BEAST_1 23hp/0blk [] Buff | hand 0:Strike(1 d6), 1:Sword Boomerang(1 d3x3), 2:Flame Barrier(2 b12), 3:Defend(1 b5)
+2026-11-23 16:13:54 DEBUG play_card {'card_index': 1} -> Playing 'Sword Boomerang'
+2026-11-23 16:13:54 DEBUG combat r3 hp 62/80 blk 0 en 2 stars 0 orbs - [VULNERABLE:1,COMBUST:5] | FUNGI_BEAST_1 14hp/0blk [] Buff | hand 0:Strike(1 d6), 1:Flame Barrier(2 b12), 2:Defend(1 b5)
+2026-11-23 16:13:55 DEBUG play_card {'card_index': 0, 'target': 'FUNGI_BEAST_1'} -> Playing 'Strike' targeting FUNGI_BEAST_1
+2026-11-23 16:13:55 DEBUG combat r3 hp 62/80 blk 0 en 1 stars 0 orbs - [VULNERABLE:1,COMBUST:5] | FUNGI_BEAST_1 8hp/0blk [] Buff | hand 0:Flame Barrier(2! b12), 1:Defend(1 b5)
+2026-11-23 16:13:55 DEBUG combat r3 hp 62/80 blk 0 en 1 stars 0 orbs - [VULNERABLE:1,COMBUST:5] | FUNGI_BEAST_1 8hp/0blk [] Buff | hand 0:Flame Barrier(2! b12), 1:Defend(1 b5)
+2026-11-23 16:13:55 DEBUG ending r3 on 62 HP, expecting to lose 0
+2026-11-23 16:13:55 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:13:55 DEBUG combat r4 hp 61/80 blk 0 en 3 stars 0 orbs - [COMBUST:5] | FUNGI_BEAST_1 3hp/0blk [STRENGTH:3] Attack9 | hand 0:Defend+(1 b8), 1:Strike(1 d6), 2:Defend(1 b5), 3:Bash+(2 d10), 4:Power Through+(1 b20)
+2026-11-23 16:13:56 DEBUG play_card {'card_index': 3, 'target': 'FUNGI_BEAST_1'} -> Playing 'Bash+' targeting FUNGI_BEAST_1
+2026-11-23 16:13:56 DEBUG claim_reward {'index': 1} -> claim_reward done
+2026-11-23 16:13:56 DEBUG card reward (deck 14, need 2.0): Twin Strike 6.8, Clash 6.6, Second Wind 2.2
+2026-11-23 16:13:57 DEBUG select_card_reward {'card_index': 1} -> select_card_reward done
+2026-11-23 16:13:57 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:13:58 DEBUG proceed {} -> proceed done
+2026-11-23 16:13:58 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:13:58 INFO act 1 floor 10  monster  hp 67/80  gold 201
+2026-11-23 16:13:58 DEBUG combat r1 hp 67/80 blk 0 en 3 stars 0 orbs - [] | FUNGI_BEAST_0 27hp/0blk [] Buff ; JAW_WORM_1 40hp/0blk [] Attack11 | hand 0:Flame Barrier(2 b12), 1:Defend+(1 b8), 2:Bash+(2 d10), 3:Defend(1 b5), 4:Strike(1 d6)
+2026-11-23 16:13:59 DEBUG play_card {'card_index': 2, 'target': 'JAW_WORM_1'} -> Playing 'Bash+' targeting JAW_WORM_1
+2026-11-23 16:13:59 DEBUG combat r1 hp 67/80 blk 0 en 1 stars 0 orbs - [] | FUNGI_BEAST_0 27hp/0blk [] Buff ; JAW_WORM_1 30hp/0blk [VULNERABLE:3] Attack11 | hand 0:Flame Barrier(2! b12), 1:Defend+(1 b8), 2:Defend(1 b5), 3:Strike(1 d6)
+2026-11-23 16:13:59 DEBUG play_card {'card_index': 1} -> Playing 'Defend+'
+2026-11-23 16:13:59 DEBUG combat r1 hp 67/80 blk 8 en 0 stars 0 orbs - [] | FUNGI_BEAST_0 27hp/0blk [] Buff ; JAW_WORM_1 30hp/0blk [VULNERABLE:3] Attack11 | hand 0:Flame Barrier(2! b12), 1:Defend(1! b5), 2:Strike(1! d6)
+2026-11-23 16:13:59 DEBUG ending r1 on 67 HP, expecting to lose 3
+2026-11-23 16:14:00 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:14:00 DEBUG combat r2 hp 64/80 blk 0 en 4 stars 0 orbs - [] | FUNGI_BEAST_0 27hp/0blk [STRENGTH:3] Attack9 ; JAW_WORM_1 30hp/0blk [VULNERABLE:2] Attack7 | hand 0:Sword Boomerang(1 d3x3), 1:Strike(1 d6), 2:Strike(1 d6), 3:Strike(1 d6), 4:Power Through+(1 b20)
+2026-11-23 16:14:00 DEBUG play_card {'card_index': 1, 'target': 'JAW_WORM_1'} -> Playing 'Strike' targeting JAW_WORM_1
+2026-11-23 16:14:00 DEBUG combat r2 hp 64/80 blk 0 en 3 stars 0 orbs - [] | FUNGI_BEAST_0 27hp/0blk [STRENGTH:3] Attack9 ; JAW_WORM_1 21hp/0blk [VULNERABLE:2] Attack7 | hand 0:Sword Boomerang(1 d3x3), 1:Strike(1 d6), 2:Strike(1 d6), 3:Power Through+(1 b20)
+2026-11-23 16:14:00 DEBUG play_card {'card_index': 1, 'target': 'JAW_WORM_1'} -> Playing 'Strike' targeting JAW_WORM_1
+2026-11-23 16:14:01 DEBUG combat r2 hp 64/80 blk 0 en 2 stars 0 orbs - [] | FUNGI_BEAST_0 27hp/0blk [STRENGTH:3] Attack9 ; JAW_WORM_1 12hp/0blk [VULNERABLE:2] Attack7 | hand 0:Sword Boomerang(1 d3x3), 1:Strike(1 d6), 2:Power Through+(1 b20)
+2026-11-23 16:14:01 DEBUG play_card {'card_index': 1, 'target': 'JAW_WORM_1'} -> Playing 'Strike' targeting JAW_WORM_1
+2026-11-23 16:14:01 DEBUG combat r2 hp 64/80 blk 4 en 1 stars 0 orbs - [] | FUNGI_BEAST_0 27hp/0blk [STRENGTH:3] Attack9 ; JAW_WORM_1 3hp/0blk [VULNERABLE:2] Attack7 | hand 0:Sword Boomerang(1 d3x3), 1:Power Through+(1 b20)
+2026-11-23 16:14:01 DEBUG play_card {'card_index': 1} -> Playing 'Power Through+'
+2026-11-23 16:14:01 DEBUG combat r2 hp 64/80 blk 24 en 0 stars 0 orbs - [] | FUNGI_BEAST_0 27hp/0blk [STRENGTH:3] Attack9 ; JAW_WORM_1 3hp/0blk [VULNERABLE:2] Attack7 | hand 0:Sword Boomerang(1! d3x3), 1:Wound(0!), 2:Wound(0!)
+2026-11-23 16:14:01 DEBUG ending r2 on 64 HP, expecting to lose 0
+2026-11-23 16:14:02 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:14:02 DEBUG combat r3 hp 64/80 blk 0 en 3 stars 0 orbs - [] | FUNGI_BEAST_0 27hp/0blk [STRENGTH:3] Attack9 ; JAW_WORM_1 3hp/5blk [VULNERABLE:1] Buff+Defend | hand 0:Twin Strike(1 d5x2), 1:Combust(1), 2:Defend(1 b5), 3:Strike(1 d6), 4:Defend(1 b5)
+2026-11-23 16:14:02 DEBUG play_card {'card_index': 3, 'target': 'JAW_WORM_1'} -> Playing 'Strike' targeting JAW_WORM_1
+2026-11-23 16:14:02 DEBUG combat r3 hp 64/80 blk 0 en 2 stars 0 orbs - [] | FUNGI_BEAST_0 27hp/0blk [STRENGTH:3] Attack9 | hand 0:Twin Strike(1 d5x2), 1:Combust(1), 2:Defend(1 b5), 3:Defend(1 b5)
+2026-11-23 16:14:03 DEBUG play_card {'card_index': 0, 'target': 'FUNGI_BEAST_0'} -> Playing 'Twin Strike' targeting FUNGI_BEAST_0
+2026-11-23 16:14:03 DEBUG combat r3 hp 64/80 blk 0 en 1 stars 0 orbs - [] | FUNGI_BEAST_0 17hp/0blk [STRENGTH:3] Attack9 | hand 0:Combust(1), 1:Defend(1 b5), 2:Defend(1 b5)
+2026-11-23 16:14:03 DEBUG play_card {'card_index': 1} -> Playing 'Defend'
+2026-11-23 16:14:03 DEBUG combat r3 hp 64/80 blk 5 en 0 stars 0 orbs - [] | FUNGI_BEAST_0 17hp/0blk [STRENGTH:3] Attack9 | hand 0:Combust(1!), 1:Defend(1! b5)
+2026-11-23 16:14:03 DEBUG ending r3 on 64 HP, expecting to lose 4
+2026-11-23 16:14:03 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:14:04 DEBUG combat r4 hp 60/80 blk 0 en 3 stars 0 orbs - [] | FUNGI_BEAST_0 17hp/0blk [STRENGTH:3] Buff | hand 0:Defend(1 b5), 1:Defend+(1 b8), 2:Strike(1 d6), 3:Defend(1 b5), 4:Strike(1 d6)
+2026-11-23 16:14:04 DEBUG play_card {'card_index': 2, 'target': 'FUNGI_BEAST_0'} -> Playing 'Strike' targeting FUNGI_BEAST_0
+2026-11-23 16:14:04 DEBUG combat r4 hp 60/80 blk 0 en 2 stars 0 orbs - [] | FUNGI_BEAST_0 11hp/0blk [STRENGTH:3] Buff | hand 0:Defend(1 b5), 1:Defend+(1 b8), 2:Defend(1 b5), 3:Strike(1 d6)
+2026-11-23 16:14:04 DEBUG play_card {'card_index': 3, 'target': 'FUNGI_BEAST_0'} -> Playing 'Strike' targeting FUNGI_BEAST_0
+2026-11-23 16:14:04 DEBUG combat r4 hp 60/80 blk 0 en 1 stars 0 orbs - [] | FUNGI_BEAST_0 5hp/0blk [STRENGTH:3] Buff | hand 0:Defend(1 b5), 1:Defend+(1 b8), 2:Defend(1 b5)
+2026-11-23 16:14:04 DEBUG combat r4 hp 60/80 blk 0 en 1 stars 0 orbs - [] | FUNGI_BEAST_0 5hp/0blk [STRENGTH:3] Buff | hand 0:Defend(1 b5), 1:Defend+(1 b8), 2:Defend(1 b5)
+2026-11-23 16:14:04 DEBUG ending r4 on 60 HP, expecting to lose 0
+2026-11-23 16:14:05 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:14:05 DEBUG combat r5 hp 60/80 blk 0 en 4 stars 0 orbs - [] | FUNGI_BEAST_0 5hp/0blk [STRENGTH:6] Attack12 | hand 0:Strike(1 d6), 1:Combust(1), 2:Strike(1 d6), 3:Twin Strike(1 d5x2), 4:Flame Barrier(2 b12)
+2026-11-23 16:14:05 DEBUG play_card {'card_index': 1} -> Playing 'Combust'
+2026-11-23 16:14:05 DEBUG combat r5 hp 60/80 blk 0 en 3 stars 0 orbs - [COMBUST:5] | FUNGI_BEAST_0 5hp/0blk [STRENGTH:6] Attack12 | hand 0:Strike(1 d6), 1:Strike(1 d6), 2:Twin Strike(1 d5x2), 3:Flame Barrier(2 b12)
+2026-11-23 16:14:06 DEBUG play_card {'card_index': 2, 'target': 'FUNGI_BEAST_0'} -> Playing 'Twin Strike' targeting FUNGI_BEAST_0
+2026-11-23 16:14:06 DEBUG claim_reward {'index': 2} -> claim_reward done
+2026-11-23 16:14:06 DEBUG card reward (deck 15, need 2.0): Wild Strike 7.7, Pommel Strike 7.2, Rage 1.2
+2026-11-23 16:14:07 DEBUG select_card_reward {'card_index': 1} -> select_card_reward done
+2026-11-23 16:14:07 DEBUG claim_reward {'index': 1} -> claim_reward done
+2026-11-23 16:14:07 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:14:08 DEBUG proceed {} rejected: the game is busy
+2026-11-23 16:14:08 DEBUG proceed {} -> proceed done
+2026-11-23 16:14:09 DEBUG map: RestSite@1 22.9, RestSite@2 22.9
+2026-11-23 16:14:09 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:14:09 INFO act 1 floor 11  rest_site  hp 66/80  gold 218
+2026-11-23 16:14:09 DEBUG rest site at 66/80: rest 22.0, upgrade 22.9
+2026-11-23 16:14:09 DEBUG choose_rest_option {'index': 1} -> choose_rest_option done
+2026-11-23 16:14:09 DEBUG upgrade: Pommel Strike 5.9, Twin Strike 5.7, Flame Barrier 5.6, Sword Boomerang 2.3, Combust 1.9
+2026-11-23 16:14:10 DEBUG select_card {'index': 12} -> Toggled card: Pommel Strike
+2026-11-23 16:14:10 DEBUG choose_map_node {'index': 0} -> choose_map_node done
+2026-11-23 16:14:10 INFO potion Colorless Potion (Self): Choose 1 of 3 random Colorless cards to add to your hand. It costs 0 this turn.
+2026-11-23 16:14:10 INFO act 1 floor 12  monster  hp 66/80  gold 218
+2026-11-23 16:14:10 DEBUG combat r1 hp 66/80 blk 0 en 3 stars 0 orbs - [] | SPIKE_SLIME_S_0 12hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 14hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Debuff ; ACID_SLIME_S_4 8hp/0blk [] Debuff | hand 0:Strike(1 d6), 1:Strike(1 d6), 2:Pommel Strike+(1 d10), 3:Defend(1 b5), 4:Combust(1)
+2026-11-23 16:14:11 DEBUG play_card {'card_index': 2, 'target': 'ACID_SLIME_S_4'} -> Playing 'Pommel Strike+' targeting ACID_SLIME_S_4
+2026-11-23 16:14:11 DEBUG combat r1 hp 66/80 blk 0 en 2 stars 0 orbs - [] | SPIKE_SLIME_S_0 12hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 14hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 11hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Debuff | hand 0:Strike(1 d6), 1:Strike(1 d6), 2:Defend(1 b5), 3:Combust(1), 4:Defend(1 b5), 5:Twin Strike(1 d5x2)
+2026-11-23 16:14:11 DEBUG play_card {'card_index': 5, 'target': 'SPIKE_SLIME_S_2'} -> Playing 'Twin Strike' targeting SPIKE_SLIME_S_2
+2026-11-23 16:14:11 DEBUG combat r1 hp 66/80 blk 0 en 1 stars 0 orbs - [] | SPIKE_SLIME_S_0 12hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 14hp/0blk [] Attack5 ; SPIKE_SLIME_S_2 1hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Debuff | hand 0:Strike(1 d6), 1:Strike(1 d6), 2:Defend(1 b5), 3:Combust(1), 4:Defend(1 b5)
+2026-11-23 16:14:12 DEBUG play_card {'card_index': 0, 'target': 'SPIKE_SLIME_S_2'} -> Playing 'Strike' targeting SPIKE_SLIME_S_2
+2026-11-23 16:14:12 DEBUG combat r1 hp 66/80 blk 4 en 0 stars 0 orbs - [] | SPIKE_SLIME_S_0 12hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 14hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Debuff | hand 0:Strike(1! d6), 1:Defend(1! b5), 2:Combust(1!), 3:Defend(1! b5)
+2026-11-23 16:14:12 DEBUG ending r1 on 66 HP, expecting to lose 6
+2026-11-23 16:14:12 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:14:12 DEBUG combat r2 hp 60/80 blk 0 en 3 stars 0 orbs - [WEAK:1] | SPIKE_SLIME_S_0 12hp/0blk [] Attack5 ; SPIKE_SLIME_S_1 14hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Attack3 | hand 0:Power Through+(1 b20), 1:Sword Boomerang(1 d2x3), 2:Bash+(2 d7), 3:Strike(1 d4), 4:Flame Barrier(2 b12)
+2026-11-23 16:14:12 DEBUG play_card {'card_index': 2, 'target': 'SPIKE_SLIME_S_0'} -> Playing 'Bash+' targeting SPIKE_SLIME_S_0
+2026-11-23 16:14:13 DEBUG combat r2 hp 60/80 blk 0 en 1 stars 0 orbs - [WEAK:1] | SPIKE_SLIME_S_0 5hp/0blk [VULNERABLE:3] Attack5 ; SPIKE_SLIME_S_1 14hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Attack3 | hand 0:Power Through+(1 b20), 1:Sword Boomerang(1 d2x3), 2:Strike(1 d4), 3:Flame Barrier(2! b12)
+2026-11-23 16:14:13 DEBUG play_card {'card_index': 2, 'target': 'SPIKE_SLIME_S_0'} -> Playing 'Strike' targeting SPIKE_SLIME_S_0
+2026-11-23 16:14:13 DEBUG combat r2 hp 60/80 blk 0 en 0 stars 0 orbs - [WEAK:1] | SPIKE_SLIME_S_1 14hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Attack3 | hand 0:Power Through+(1! b20), 1:Sword Boomerang(1! d2x3), 2:Flame Barrier(2! b12)
+2026-11-23 16:14:13 DEBUG ending r2 on 60 HP, expecting to lose 8
+2026-11-23 16:14:13 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:14:13 DEBUG combat r3 hp 52/80 blk 0 en 4 stars 0 orbs - [] | SPIKE_SLIME_S_1 14hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Debuff | hand 0:Defend(1 b5), 1:Strike(1 d6), 2:Strike(1 d6), 3:Defend+(1 b8), 4:Pommel Strike+(1 d10)
+2026-11-23 16:14:14 DEBUG play_card {'card_index': 4, 'target': 'SPIKE_SLIME_S_1'} -> Playing 'Pommel Strike+' targeting SPIKE_SLIME_S_1
+2026-11-23 16:14:14 DEBUG combat r3 hp 52/80 blk 0 en 3 stars 0 orbs - [] | SPIKE_SLIME_S_1 4hp/0blk [] Attack5 ; ACID_SLIME_S_3 12hp/0blk [] Debuff | hand 0:Defend(1 b5), 1:Strike(1 d6), 2:Strike(1 d6), 3:Defend+(1 b8), 4:Power Through+(1 b20), 5:Flame Barrier(2 b12)
+2026-11-23 16:14:14 DEBUG play_card {'card_index': 1, 'target': 'SPIKE_SLIME_S_1'} -> Playing 'Strike' targeting SPIKE_SLIME_S_1
+2026-11-23 16:14:14 DEBUG combat r3 hp 52/80 blk 0 en 2 stars 0 orbs - [] | ACID_SLIME_S_3 12hp/0blk [] Debuff | hand 0:Defend(1 b5), 1:Strike(1 d6), 2:Defend+(1 b8), 3:Power Through+(1 b20), 4:Flame Barrier(2 b12)
+2026-11-23 16:14:15 DEBUG play_card {'card_index': 1, 'target': 'ACID_SLIME_S_3'} -> Playing 'Strike' targeting ACID_SLIME_S_3
+2026-11-23 16:14:15 DEBUG combat r3 hp 52/80 blk 4 en 1 stars 0 orbs - [] | ACID_SLIME_S_3 6hp/0blk [] Debuff | hand 0:Defend(1 b5), 1:Defend+(1 b8), 2:Power Through+(1 b20), 3:Flame Barrier(2! b12)
+2026-11-23 16:14:15 DEBUG combat r3 hp 52/80 blk 4 en 1 stars 0 orbs - [] | ACID_SLIME_S_3 6hp/0blk [] Debuff | hand 0:Defend(1 b5), 1:Defend+(1 b8), 2:Power Through+(1 b20), 3:Flame Barrier(2! b12)
+2026-11-23 16:14:15 DEBUG ending r3 on 52 HP, expecting to lose 0
+2026-11-23 16:14:15 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:14:15 DEBUG combat r4 hp 52/80 blk 0 en 3 stars 0 orbs - [WEAK:1] | ACID_SLIME_S_3 6hp/0blk [] Attack3 | hand 0:Sword Boomerang(1 d2x3), 1:Strike(1 d4), 2:Strike(1 d4), 3:Defend(1 b5), 4:Strike(1 d4)
+2026-11-23 16:14:16 DEBUG play_card {'card_index': 0} -> Playing 'Sword Boomerang'
+2026-11-23 16:14:16 DEBUG claim_reward {'index': 1} -> claim_reward done
+2026-11-23 16:14:16 DEBUG card reward (deck 16, need 3.0): Shockwave 6.2, Whirlwind 2.2, Anger 1.5
+2026-11-23 16:14:16 DEBUG select_card_reward {'card_index': 2} -> select_card_reward done
+2026-11-23 16:14:17 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:14:17 DEBUG proceed {} -> proceed done
+2026-11-23 16:14:17 DEBUG map: Monster@0 5.3, Monster@1 17.9, Monster@2 17.5
+2026-11-23 16:14:18 DEBUG choose_map_node {'index': 1} -> choose_map_node done
+2026-11-23 16:14:18 INFO act 1 floor 13  monster  hp 58/80  gold 229
+2026-11-23 16:14:18 DEBUG combat r1 hp 58/80 blk 0 en 3 stars 0 orbs - [] | ACID_SLIME_L_0 67hp/0blk [] Attack16 | hand 0:Power Through+(1 b20), 1:Sword Boomerang(1 d3x3), 2:Defend(1 b5), 3:Combust(1), 4:Defend+(1 b8)
+2026-11-23 16:14:18 DEBUG play_card {'card_index': 3} -> Playing 'Combust'
+2026-11-23 16:14:18 DEBUG combat r1 hp 58/80 blk 0 en 2 stars 0 orbs - [COMBUST:5] | ACID_SLIME_L_0 67hp/0blk [] Attack16 | hand 0:Power Through+(1 b20), 1:Sword Boomerang(1 d3x3), 2:Defend(1 b5), 3:Defend+(1 b8)
+2026-11-23 16:14:19 DEBUG play_card {'card_index': 1} -> Playing 'Sword Boomerang'
+2026-11-23 16:14:19 DEBUG combat r1 hp 58/80 blk 0 en 1 stars 0 orbs - [COMBUST:5] | ACID_SLIME_L_0 58hp/0blk [] Attack16 | hand 0:Power Through+(1 b20), 1:Defend(1 b5), 2:Defend+(1 b8)
+2026-11-23 16:14:19 DEBUG play_card {'card_index': 0} -> Playing 'Power Through+'
+2026-11-23 16:14:19 DEBUG combat r1 hp 58/80 blk 20 en 0 stars 0 orbs - [COMBUST:5] | ACID_SLIME_L_0 58hp/0blk [] Attack16 | hand 0:Defend(1! b5), 1:Defend+(1! b8), 2:Wound(0!), 3:Wound(0!)
+2026-11-23 16:14:19 DEBUG ending r1 on 58 HP, expecting to lose 0
+2026-11-23 16:14:20 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:14:20 DEBUG combat r2 hp 57/80 blk 0 en 4 stars 0 orbs - [COMBUST:5] | ACID_SLIME_L_0 53hp/0blk [] Debuff | hand 0:Pommel Strike+(1 d10), 1:Defend(1 b5), 2:Strike(1 d6), 3:Twin Strike(1 d5x2), 4:Strike(1 d6)
+2026-11-23 16:14:20 DEBUG play_card {'card_index': 0, 'target': 'ACID_SLIME_L_0'} -> Playing 'Pommel Strike+' targeting ACID_SLIME_L_0
+2026-11-23 16:14:20 DEBUG combat r2 hp 57/80 blk 0 en 3 stars 0 orbs - [COMBUST:5] | ACID_SLIME_L_0 43hp/0blk [] Debuff | hand 0:Defend(1 b5), 1:Strike(1 d6), 2:Twin Strike(1 d5x2), 3:Strike(1 d6), 4:Shockwave(2), 5:Strike(1 d6)
+2026-11-23 16:14:20 DEBUG play_card {'card_index': 4} -> Playing 'Shockwave'
+2026-11-23 16:14:20 DEBUG combat r2 hp 57/80 blk 0 en 1 stars 0 orbs - [COMBUST:5] | ACID_SLIME_L_0 43hp/0blk [VULNERABLE:3,WEAK:3] Debuff | hand 0:Defend(1 b5), 1:Strike(1 d6), 2:Twin Strike(1 d5x2), 3:Strike(1 d6), 4:Strike(1 d6)
+2026-11-23 16:14:21 DEBUG play_card {'card_index': 2, 'target': 'ACID_SLIME_L_0'} -> Playing 'Twin Strike' targeting ACID_SLIME_L_0
+2026-11-23 16:14:21 DEBUG combat r2 hp 57/80 blk 0 en 0 stars 0 orbs - [COMBUST:5] | ACID_SLIME_L_0 29hp/0blk [VULNERABLE:3,WEAK:3] Unknown | hand 0:Defend(1! b5), 1:Strike(1! d6), 2:Strike(1! d6), 3:Strike(1! d6)
+2026-11-23 16:14:21 DEBUG ending r2 on 57 HP, expecting to lose 0
+2026-11-23 16:14:21 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:14:21 DEBUG combat r3 hp 56/80 blk 0 en 3 stars 0 orbs - [COMBUST:5] | ACID_SLIME_M_1 24hp/0blk [] Debuff ; ACID_SLIME_M_2 24hp/0blk [] Attack7+Debuff | hand 0:Flame Barrier(2 b12), 1:Strike(1 d6), 2:Strike(1 d6), 3:Defend(1 b5), 4:Bash+(2 d10)
+2026-11-23 16:14:22 DEBUG play_card {'card_index': 4, 'target': 'ACID_SLIME_M_2'} -> Playing 'Bash+' targeting ACID_SLIME_M_2
+2026-11-23 16:14:22 DEBUG combat r3 hp 56/80 blk 0 en 1 stars 0 orbs - [COMBUST:5] | ACID_SLIME_M_1 24hp/0blk [] Debuff ; ACID_SLIME_M_2 14hp/0blk [VULNERABLE:3] Attack7+Debuff | hand 0:Flame Barrier(2! b12), 1:Strike(1 d6), 2:Strike(1 d6), 3:Defend(1 b5)
+2026-11-23 16:14:22 DEBUG play_card {'card_index': 3} -> Playing 'Defend'
+2026-11-23 16:14:22 DEBUG combat r3 hp 56/80 blk 5 en 0 stars 0 orbs - [COMBUST:5] | ACID_SLIME_M_1 24hp/0blk [] Debuff ; ACID_SLIME_M_2 14hp/0blk [VULNERABLE:3] Attack7+Debuff | hand 0:Flame Barrier(2! b12), 1:Strike(1! d6), 2:Strike(1! d6)
+2026-11-23 16:14:22 DEBUG ending r3 on 56 HP, expecting to lose 2
+2026-11-23 16:14:23 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:14:23 DEBUG combat r4 hp 53/80 blk 0 en 3 stars 0 orbs - [COMBUST:5,WEAK:1] | ACID_SLIME_M_1 19hp/0blk [] Attack10 ; ACID_SLIME_M_2 9hp/0blk [VULNERABLE:2] Attack7+Debuff | hand 0:Strike(1 d4), 1:Strike(1 d4), 2:Twin Strike(1 d3x2), 3:Flame Barrier(2 b12), 4:Strike(1 d4)
+2026-11-23 16:14:23 DEBUG play_card {'card_index': 0, 'target': 'ACID_SLIME_M_2'} -> Playing 'Strike' targeting ACID_SLIME_M_2
+2026-11-23 16:14:23 DEBUG combat r4 hp 53/80 blk 0 en 2 stars 0 orbs - [COMBUST:5,WEAK:1] | ACID_SLIME_M_1 19hp/0blk [] Attack10 ; ACID_SLIME_M_2 3hp/0blk [VULNERABLE:2] Attack7+Debuff | hand 0:Strike(1 d4), 1:Twin Strike(1 d3x2), 2:Flame Barrier(2 b12), 3:Strike(1 d4)
+2026-11-23 16:14:23 DEBUG play_card {'card_index': 0, 'target': 'ACID_SLIME_M_2'} -> Playing 'Strike' targeting ACID_SLIME_M_2
+2026-11-23 16:14:23 DEBUG combat r4 hp 53/80 blk 0 en 1 stars 0 orbs - [COMBUST:5,WEAK:1] | ACID_SLIME_M_1 19hp/0blk [] Attack10 | hand 0:Twin Strike(1 d3x2), 1:Flame Barrier(2! b12), 2:Strike(1 d4)
+2026-11-23 16:14:24 DEBUG play_card {'card_index': 0, 'target': 'ACID_SLIME_M_1'} -> Playing 'Twin Strike' targeting ACID_SLIME_M_1
+2026-11-23 16:14:24 DEBUG combat r4 hp 53/80 blk 4 en 0 stars 0 orbs - [COMBUST:5,WEAK:1] | ACID_SLIME_M_1 13hp/0blk [] Attack10 | hand 0:Flame Barrier(2! b12), 1:Strike(1! d4)
+2026-11-23 16:14:24 DEBUG ending r4 on 53 HP, expecting to lose 6
+2026-11-23 16:14:24 DEBUG end_turn {} -> Ending turn
+2026-11-23 16:14:24 DEBUG combat r5 hp 46/80 blk 0 en 4 stars 0 orbs - [COMBUST:5] | ACID_SLIME_M_1 8hp/0blk [] Attack7+Debuff | hand 0:Bash+(2 d10), 1:Wound(0!), 2:Sword Boomerang(1 d3x3), 3:Defend(1 b5), 4:Defend(1 b5)
+2026-11-23 16:14:25 DEBUG play_card {'card_index': 0, 'target': 'ACID_SLIME_M_1'} -> Playing 'Bash+' targeting ACID_SLIME_M_1
+2026-11-23 16:14:25 DEBUG claim_reward {'index': 2} -> claim_reward done
+2026-11-23 16:14:25 DEBUG card reward (deck 16, need 3.0): Flame Barrier 2.1, Anger 1.5, Havoc 0.0
+2026-11-23 16:14:26 DEBUG skip_card_reward {} -> skip_card_reward done
+2026-11-23 16:14:26 DEBUG claim_reward {'index': 0} rejected: the game is busy
+2026-11-23 16:14:27 DEBUG claim_reward {'index': 0} -> claim_reward done
+2026-11-23 16:14:27 DEBUG proceed {} -> proceed done
+2026-11-23 16:14:27 DEBUG map: Elite@0 7.3, Unknown@1 16.9
+2026-11-23 16:14:28 DEBUG choose_map_node {'index': 1} -> choose_map_node done
+2026-11-23 16:14:28 INFO act 1 floor 14  game_over  hp 0/80  gold 243
+2026-11-23 16:14:28 INFO keys: ruby
+2026-11-23 16:14:28 INFO run 2 over: loss on act 1 floor 14 (0 wins so far)
+2026-11-23 16:14:28 DEBUG menu_select {'option': 'main_menu'} -> menu_select done
+2026-11-23 16:14:28 INFO settings for the next run: {'caution': 0.75, 'elite_worth': 2.5, 'upgrade_worth': 2.5, 'pickiness': 0.0, 'crowd': 0.6, 'punch': 2.7, 'weak_want': 1.0, 'attack_room': 3.0, 'block_want': 1.5, 'cards_first': 1.0, 'debuff_worth': 1.0, 'free_lean': 0.0, 'model_lean': 2.0, 'belt_spare': 1.0}
+2026-11-23 16:14:29 DEBUG menu_select {'option': 'singleplayer'} -> menu_select done
+2026-11-23 16:14:29 DEBUG menu_select {'option': 'standard'} -> menu_select done
+2026-11-23 16:14:30 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:30 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:31 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:32 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:32 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:33 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:34 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:34 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:35 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:36 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:36 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:37 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:38 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:39 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:39 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:40 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:41 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:41 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:42 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:43 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:43 DEBUG menu_select {'option': 'DEFECT'} -> menu_select done
+2026-11-23 16:14:44 DEBUG menu_select {'option': 'confirm'} -> menu_select done
+2026-11-23 16:14:53 DEBUG menu_select {'option': 'confirm'} -> menu_select done
+2026-11-23 16:15:01 DEBUG menu_select {'option': 'confirm'} -> menu_select done
+2026-11-23 16:15:10 DEBUG menu_select {'option': 'confirm'} -> menu_select done
+2026-11-23 16:15:18 DEBUG menu_select {'option': 'confirm'} -> menu_select done
+2026-11-23 16:15:27 DEBUG menu_select {'option': 'confirm'} -> menu_select done
+2026-11-23 16:15:35 DEBUG menu_select {'option': 'confirm'} -> menu_select done
+2026-11-23 16:15:44 DEBUG menu_select {'option': 'confirm'} -> menu_select done
+2026-11-23 16:15:52 DEBUG menu_select {'option': 'confirm'} -> menu_select done
+2026-11-23 16:16:01 DEBUG menu_select {'option': 'confirm'} -> menu_select done

@@ -1,0 +1,6 @@
+== sts2 powers: 56  rule 41  unnamed 15
+   unnamed    219  Dexterity                  Smart: Dexterity: whenever this is here, things go as its name says.
+   unnamed    105  Steam Eruption             Steam Eruption: whenever this is here, things go as its name says.
+   unnamed     46  Ravenous                   Ravenous: whenever this is here, things go as its name says.
+   unnamed     43  Frail                      Frail: whenever this is here, things go as its name says.
+   unnamed     32  Suck                       Suck: whenever this is here, things go as its name says.

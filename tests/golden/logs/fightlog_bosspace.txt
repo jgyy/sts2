@@ -1,0 +1,27 @@
+act 1: 15 boss fights, 25.9 a round; won by HP a round: 0-20: 2/5  20-25: 4/4  25-30: 2/2  30-35: 1/1  35-45: 1/1  45-: 2/2
+    block_want     0.0:  +0.4 a round (se 0.4), won 7/8   1.5:  +0.3 a round (se 0.3), won 3/5
+    cards_first    0.0:  +0.6 a round (se 0.4), won 5/8   1.0:  +0.0 a round (se 0.0), won 5/5
+    caution        0.75:  +0.8 a round (se 0.8), won 3/4   1.0:  +1.7 a round (se 0.0), won 0/1   1.35:  +0.0 a round (se 0.0), won 7/8
+    crowd          0.0:  +0.0 a round (se 0.0), won 5/7   0.3:  +1.1 a round (se 1.1), won 3/3   0.6:  +0.6 a round (se 0.6), won 2/3
+    debuff_worth   1.0:  +0.4 a round (se 0.4), won 7/8   2.0:  +0.0 a round (se 0.0), won 2/3   3.0:  +0.8 a round (se 0.8), won 1/2
+    elite_worth    2.5:  +0.7 a round (se 0.5), won 5/7   6.0:  +0.0 a round (se 0.0), won 5/6
+    free_lean      0.0:  +0.4 a round (se 0.4), won 3/4   1.0:  +0.4 a round (se 0.4), won 7/9
+    model_lean     0.0:  +0.5 a round (se 0.3), won 7/10   2.0:  +0.0 a round (se 0.0), won 3/3
+    pickiness      -1.0:  +0.2 a round (se 0.2), won 8/9   0.0:  +0.8 a round (se 0.8), won 2/4
+    punch          0.9:  +1.0 a round (se 0.6), won 4/5   2.7:  +0.0 a round (se 0.0), won 6/8
+    upgrade_worth  2.5:  +0.2 a round (se 0.2), won 8/10   4.0:  +1.1 a round (se 1.1), won 2/3
+    weak_want      0.0:  +0.0 a round (se 0.0), won 5/6   1.0:  +0.7 a round (se 0.5), won 5/7
+act 2: 6 boss fights, 41.4 a round; won by HP a round: 0-20: 0/0  20-25: 0/0  25-30: 0/0  30-35: 0/0  35-45: 5/5  45-: 1/1
+    block_want     0.0:  +0.0 a round (se 0.0), won 4/4   1.5:  +0.0 a round (se 0.0), won 1/1
+    cards_first    0.0:  +0.0 a round (se 0.0), won 3/3   1.0:  +0.0 a round (se 0.0), won 2/2
+    caution        0.75:  +0.0 a round (se 0.0), won 3/3   1.35:  +0.0 a round (se 0.0), won 2/2
+    crowd          0.0:  +0.0 a round (se 0.0), won 2/2   0.3:  +0.0 a round (se 0.0), won 2/2   0.6:  +0.0 a round (se 0.0), won 1/1
+    debuff_worth   1.0:  +0.0 a round (se 0.0), won 4/4   2.0:  +0.0 a round (se 0.0), won 1/1
+    elite_worth    2.5:  +0.0 a round (se 0.0), won 3/3   6.0:  +0.0 a round (se 0.0), won 2/2
+    free_lean      0.0:  +0.0 a round (se 0.0), won 1/1   1.0:  +0.0 a round (se 0.0), won 4/4
+    model_lean     0.0:  +0.0 a round (se 0.0), won 4/4   2.0:  +0.0 a round (se 0.0), won 1/1
+    pickiness      -1.0:  +0.0 a round (se 0.0), won 3/3   0.0:  +0.0 a round (se 0.0), won 2/2
+    punch          0.9:  +0.0 a round (se 0.0), won 2/2   2.7:  +0.0 a round (se 0.0), won 3/3
+    upgrade_worth  2.5:  +0.0 a round (se 0.0), won 4/4   4.0:  +0.0 a round (se 0.0), won 1/1
+    weak_want      0.0:  +0.0 a round (se 0.0), won 2/2   1.0:  +0.0 a round (se 0.0), won 3/3
+act 3: 1 boss fights, 53.2 a round; won by HP a round: 0-20: 0/0  20-25: 0/0  25-30: 0/0  30-35: 0/0  35-45: 0/0  45-: 1/1

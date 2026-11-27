@@ -1,0 +1,3 @@
+Flex                         played    5  no visible effect    4 (80%)
+      2026-11-22 12:09:56 | hp 50/80 blk 0 en 3 [] | JAW_WORM_0 40hp/0blk [] Attack11 | hand 0:Flex(0), 1:Flex(0), 2:Defend(1 b5), 3:Strike(1 d6), 4:Wild Strike+(1 d17)
+      2026-11-22 12:09:57 | hp 50/80 blk 0 en 3 [] | JAW_WORM_0 40hp/0blk [] Attack11 | hand 0:Flex(0), 1:Defend(1 b5), 2:Strike(1 d6), 3:Wild Strike+(1 d17)

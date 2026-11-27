@@ -1,0 +1,175 @@
+== sts1 cards: 370  read 140  unread 91  partial 71  rule 68
+   partial     10  Miracle                    Retain. Gain 1 Energy. Exhaust.
+   partial      6  Flame Barrier              Gain 12 Block. Whenever you are attacked this turn, deal 4 damage back.
+   unread       0  After Image                Whenever you play a card, gain 1 Block.
+   unread       0  ALCHEMIZE                  Obtain a random potion. Exhaust.
+   unread       0  ALPHA                      Shuffle a Beta into your draw pile. Exhaust.
+   unread       0  Amplify                    This turn, your next 1 Power is played twice.
+   unread       0  APOTHEOSIS                 Upgrade ALL of your cards for the rest of combat. Exhaust.
+   unread       0  Apparition                 Ethereal. Gain 1 Intangible. Exhaust.||Gain 1 Intangible. Exhaust.
+   unread       0  ASCENDER_S_BANE            Unplayable. Ethereal. Cannot be removed from your deck.
+   unread       0  Auto Shields               If you have no Block, gain 11 Block.
+   unread       0  A_THOUSAND_CUTS            Whenever you play a card, deal 1 damage to ALL enemies.
+   partial      0  Bane                       Deal 7 damage. If the enemy has Poison, deal 7 damage again.
+   partial      0  BARRAGE                    Deal 4 damage for each Channeled Orb.
+   unread       0  BATTLE_HYMN                At the start of each turn, add a Smite into your hand.
+   partial      0  BATTLE_TRANCE              Draw 3 cards. You cannot draw additional cards this turn.
+   unread       0  Beta                       Shuffle an Omega into your draw pile. Exhaust.
+   unread       0  BIASED_COGNITION           Gain 4 Focus. At the start of each turn, lose 1 Focus.
+   partial      0  BLASPHEMY                  Enter Divinity. Die next turn. Exhaust.
+   unread       0  Blizzard                   Deal damage equal to 2 times the number of Frost Channeled this combat to ALL enemies.
+   partial      0  BLOOD_FOR_BLOOD            Costs 1 less Energy for each time you lose HP in combat. Deal 18 damage.
+   partial      0  BLUR                       Gain 5 Block. Block is not removed at the start of your next turn.
+   unread       0  BODY_SLAM                  Deal damage equal to your Block.
+   partial      0  BOWLING_BASH               Deal 7 damage for each enemy in combat.
+   unread       0  BRUTALITY                  At the start of your turn, lose 1 HP and draw 1 card.
+   unread       0  BURN                       Unplayable. At the end of your turn, if this is in your hand, take 2 damage.
+   partial      0  Burning Pact               Exhaust 1 card. Draw 2 cards.
+   unread       0  CALCULATED_GAMBLE          Discard your hand, then draw that many cards. Exhaust.||Discard your hand, then draw that many cards.
+   unread       0  Caltrops                   Whenever you are attacked, deal 3 damage back.
+   unread       0  CATALYST                   Double an enemy's Poison. Exhaust.||Triple an enemy's Poison. Exhaust.
+   unread       0  CHAOS                      Channel 1 random Orb.
+   partial      0  Charge Battery             Gain 7 Block. Next turn, gain 1 Energy.
+   partial      0  CHILL                      Channel 1 Frost for each enemy in combat. Exhaust.
+   partial      0  CHOKE                      Deal 12 damage. Whenever you play a card this turn, the enemy loses 3 HP.
+   unread       0  Chrysalis                  Shuffle 3 random Skills into your draw pile. They cost 0 this combat. Exhaust.
+   unread       0  COLLECT                    Put an Miracle+ into your hand at the start of your next X turns. Exhaust.
+   partial      0  COMPILE_DRIVER             Deal 7 damage. Draw 1 card for each unique Orb you have.
+   unread       0  CONJURE_BLADE              Shuffle an Expunger into your draw pile. Exhaust.
+   unread       0  Consume                    Gain 2 Focus. Lose 1 Orb slot.
+   partial      0  Corpse Explosion           Apply 6 Poison. When the enemy dies, deal damage equal to its Max HP to ALL enemies.
+   unread       0  CORRUPTION                 Skills cost 0. Whenever you play a Skill, Exhaust it.
+   partial      0  Crescendo                  Retain. Enter Wrath. Exhaust.
+   partial      0  CRUSH_JOINTS               Deal 8 damage. If the last card played this combat was a Skill, apply 1 Vulnerable.
+   unread       0  Curse Of The Bell          Unplayable. Cannot be removed from your deck.
+   partial      0  Dark Shackles              Enemy loses 9 Strength this turn. Exhaust.
+   unread       0  DEUS_EX_MACHINA            Unplayable. When you draw this card, add 2 Miracles into your hand and Exhaust.
+   unread       0  Deva Form                  Ethereal. At the start of your turn, gain Energy and increase this gain by 1.
+   unread       0  DEVOTION                   At the start of your turn, gain 2 Mantra.
+   unread       0  DISCOVERY                  Choose 1 of 3 random cards to add into your hand. It costs 0 this turn. Exhaust.||Choose 1 of 3 random cards to add into your hand. It costs 0 this tu
+   unread       0  DISTRACTION                Add a random Skill into your hand. It costs 0 this turn. Exhaust.
+   partial      0  Dodge And Roll             Gain 4 Block. Next turn, gain 4 Block.
+   unread       0  DOPPELGANGER               Next turn, draw X cards and gain X Energy. Exhaust.
+   partial      0  DROPKICK                   Deal 5 damage. If the enemy is Vulnerable, gain 1 Energy and draw 1 card.
+   partial      0  Endless Agony              Whenever you draw this card, add a copy of it into your hand. Deal 4 damage. Exhaust.
+   unread       0  ENLIGHTENMENT              Reduce the cost of all cards in your hand to 1 this turn.
+   partial      0  EQUILIBRIUM                Gain 13 Block. Retain your hand this turn.
+   partial      0  Escape Plan                Draw 1 card. If you draw a Skill, gain 3 Block.
+   unread       0  ESTABLISHMENT              Whenever a card is Retained, lower its cost by 1.
+   partial      0  Eviscerate                 Costs 1 less Energy for each card discarded this turn. Deal 7 damage three times.
+   unread       0  EXHUME                     Put a card from your exhaust pile into your hand. Exhaust.
+   unread       0  Expertise                  Draw cards until you have 6 in your hand.
+   unread       0  FAME_AND_FORTUNE           Gain 25 Gold.
+   partial      0  Fasting                    Gain 3 Strength. Gain 3 Dexterity. Gain 1 less Energy at the start of each turn.
+   partial      0  FEAR_NO_EVIL               Deal 8 damage. If the enemy intends to Attack, enter Calm.
+   partial      0  FEED                       Deal 10 damage. If Fatal, raise your Max HP by 3. Exhaust.
+   partial      0  Finisher                   Deal 6 damage for each Attack played this turn.
+   partial      0  FISSION                    Remove all your Orbs. Gain 1 Energy and draw 1 card for each Orb removed. Exhaust.
+   partial      0  Flex                       Gain 2 Strength this turn.
+   partial      0  FLYING_KNEE                Deal 8 damage. Next turn, gain 1 Energy.
+   partial      0  Flying Sleeves             Retain. Deal 4 damage twice.
+   partial      0  FOLLOW_UP                  Deal 7 damage. If the last card played this combat was an Attack, gain 1 Energy.
+   partial      0  Force Field                Costs 1 less Energy for each Power card played this combat. Gain 12 Block.
+   unread       0  FOREIGN_INFLUENCE          Choose 1 of 3 Attacks of any color to add into your hand. Exhaust.
+   unread       0  FORESIGHT                  At the start of your turn, Scry 3.
+   unread       0  Forethought                Put a card from your hand to the bottom of your draw pile. It costs 0 until played.
+   partial      0  FTL                        Deal 5 damage. If you have played less than 3 cards this turn, draw 1 card.
+   partial      0  Genetic Algorithm          Gain 1 Block. When played, permanently increase this card's Block by 2. Exhaust.
+   partial      0  GO_FOR_THE_EYES            Deal 3 damage. If the enemy intends to attack, apply 1 Weak.
+   partial      0  Grand Finale               Can only be played if there are no cards in your draw pile. Deal 50 damage to ALL enemies.
+   partial      0  HALT                       Gain 3 Block. If you are in Wrath, gain 9 additional Block.
+   partial      0  HAND_OF_GREED              Deal 20 damage. If Fatal, gain 20 Gold.
+   unread       0  Havoc                      Play the top card of your draw pile and Exhaust it.
+   unread       0  HEATSINKS                  Whenever you play a Power card, draw 1 card.
+   partial      0  HEEL_HOOK                  Deal 5 damage. If the enemy is Weak, gain 1 Energy and draw 1 card.
+   unread       0  HELLO_WORLD                At the start of your turn, add a random Common card into your hand.
+   unread       0  IMPATIENCE                 If you have no Attacks in your hand, draw 2 cards.
+   unread       0  Indignation                If you are in Wrath, apply 3 Vulnerable to ALL enemies, otherwise enter Wrath.
+   unread       0  INFERNAL_BLADE             Add a random Attack into your hand. It costs 0 this turn. Exhaust.
+   unread       0  INNER_PEACE                If you are in Calm, draw 3 cards, otherwise Enter Calm.
+   partial      0  Insight                    Retain. Draw 2 cards. Exhaust.
+   unread       0  Jack Of All Trades         Add 1 random Colorless card into your hand. Exhaust.
+   unread       0  JUDGMENT                   If the enemy has 30 or less HP, set their HP to 0.
+   partial      0  LESSON_LEARNED             Deal 10 damage. If Fatal, Upgrade a random card in your deck. Exhaust.
+   unread       0  LIKE_WATER                 At the end of your turn, if you are in Calm, gain 5 Block.
+   unread       0  LIVE_FOREVER               Gain 6 Plated Armor.
+   unread       0  MADNESS                    A random card in your hand costs 0 for the rest of combat. Exhaust.
+   unread       0  MAGNETISM                  At the start of each turn, add a random colorless card into your hand.
+   partial      0  MASTERFUL_STAB             Costs 1 additional Energy for each time you lose HP this combat. Deal 12 damage.
+   unread       0  Master Reality             Whenever a card is created during combat, Upgrade it.
+   partial      0  MEDITATE                   Put 1 card from your discard pile into your hand and Retain it. Enter Calm. End your turn.
+   unread       0  MENTAL_FORTRESS            Whenever you switch Stances, gain 4 Block.
+   unread       0  Metamorphosis              Shuffle 3 random Attacks into your draw pile. They cost 0 this combat. Exhaust.
+   unread       0  MIND_BLAST                 Innate. Deal damage equal to the number of cards in your draw pile.
+   unread       0  NIGHTMARE                  Choose a card. Next turn, add 3 copies of that card into your hand. Exhaust.
+   unread       0  NIRVANA                    Whenever you Scry, gain 3 Block.
+   unread       0  Omega                      At the end of your turn, deal 50 damage to ALL enemies.
+   unread       0  OMNISCIENCE                Choose a card in your draw pile. Play the chosen card twice and Exhaust it. Exhaust.
+   unread       0  OUTMANEUVER                Next turn, gain 2 Energy.
+   unread       0  PANACEA                    Gain 1 Artifact. Exhaust.
+   partial      0  PERSEVERANCE               Retain. Gain 5 Block. Whenever this card is Retained, increase its Block by 2.
+   unread       0  PHANTASMAL_KILLER          Next turn, your Attacks deal double damage.
+   partial      0  Piercing Wail              ALL enemies lose 6 Strength this turn. Exhaust.
+   partial      0  PREDATOR                   Deal 15 damage. Next turn, draw 2 cards.
+   unread       0  PRESSURE_POINTS            Apply 8 Mark. ALL enemies lose HP equal to their Mark.
+   unread       0  PRIDE                      Innate. At the end of your turn, put a copy of this card on top of your draw pile. Exhaust.
+   partial      0  PROTECT                    Retain. Gain 12 Block.
+   unread       0  Purity                     Exhaust up to 3 cards in your hand. Exhaust.
+   partial      0  Rebound                    Deal 9 damage. Put the next card you play this turn on top of your draw pile.
+   unread       0  Recycle                    Exhaust a card. Gain Energy equal to its cost.
+   unread       0  REFLEX                     Unplayable. If this card is discarded from your hand, draw 2 cards.
+   partial      0  RITUAL_DAGGER              Deal 15 damage. If this kills an enemy, permanently increase this card's damage by 3. Exhaust.
+   unread       0  Rushdown                   Whenever you enter Wrath, draw 2 cards.
+   unread       0  SADISTIC_NATURE            Whenever you apply a Debuff to an enemy, they take 5 damage.
+   partial      0  SAFETY                     Retain. Gain 12 Block. Exhaust.
+   partial      0  Sanctity                   Gain 6 Block. If the last card played this combat was a Skill, draw 2 cards.
+   partial      0  SANDS_OF_TIME              Retain. Deal 20 damage. Whenever this card is Retained, lower its cost by 1.
+   partial      0  SASH_WHIP                  Deal 8 damage. If the last card played this combat was an Attack, apply 1 Weak.
+   unread       0  SCRAWL                     Draw cards until your hand is full. Exhaust.
+   unread       0  SECRET_TECHNIQUE           Put a Skill from your draw pile into your hand. Exhaust.
+   unread       0  SECRET_WEAPON              Put an Attack from your draw pile into your hand. Exhaust.
+   unread       0  SEEK                       Choose 1 card from your draw pile and place it into your hand. Exhaust.
+   unread       0  SELF_REPAIR                At the end of combat, heal 7 HP.
+   partial      0  Sentinel                   Gain 5 Block. If this card is Exhausted, gain 2 Energy.
+   unread       0  SETUP                      Put a card from your hand on top of your draw pile. It costs 0 until played.
+   partial      0  SEVER_SOUL                 Exhaust all non-Attack cards in your hand. Deal 16 damage.
+   partial      0  SIGNATURE_MOVE             Can only be played if this is the only Attack in your hand. Deal 30 damage.
+   partial      0  SIMMERING_FURY             At the start of your next turn, enter Wrath and draw 2 cards.
+   partial      0  SMITE                      Retain. Deal 12 damage. Exhaust.
+   partial      0  SNEAKY_STRIKE              Deal 12 damage. If you have discarded a card this turn, gain 2 Energy.
+   partial      0  Spirit Shield              Gain 3 Block for each card in your hand.
+   unread       0  STACK                      Gain Block equal to the number of cards in your discard pile.
+   unread       0  Static Discharge           Whenever you receive unblocked attack damage, Channel 1 Lightning.
+   partial      0  Storm Of Steel             Discard your hand. Add 1 Shiv into your hand for each card discarded.
+   unread       0  Study                      At the end of your turn, shuffle an Insight into your draw pile.
+   partial      0  SUNDER                     Deal 24 damage. If this kills an enemy, gain 3 Energy.
+   unread       0  TACTICIAN                  Unplayable. If this card is discarded from your hand, gain 1 Energy.
+   partial      0  Talk To The Hand           Deal 5 damage. Whenever you attack this enemy, gain 2 Block. Exhaust.
+   unread       0  THE_BOMB                   At the end of 3 turns, deal 40 damage to ALL enemies.
+   partial      0  THROUGH_VIOLENCE           Retain. Deal 20 damage. Exhaust.
+   partial      0  Thunder Strike             Deal 7 damage to a random enemy for each Lightning Channeled this combat.
+   partial      0  TRANQUILITY                Retain. Enter Calm. Exhaust.
+   unread       0  Transmutation              Add X random colorless cards into your hand. They cost 0 this turn. Exhaust.
+   unread       0  VAULT                      Take an extra turn after this one. End your turn. Exhaust.
+   unread       0  Violence                   Put 3 random Attacks from your draw pile into your hand. Exhaust.
+   unread       0  VOID                       Unplayable. Ethereal. Whenever this card is drawn, lose 1 Energy.
+   unread       0  WAVE_OF_THE_HAND           Whenever you gain Block this turn, apply 1 Weak to ALL enemies.
+   partial      0  WEAVE                      Deal 4 damage. Whenever you Scry, return this from the discard pile to your hand.
+   unread       0  White Noise                Add a random Power card into your hand. It costs 0 this turn. Exhaust.
+   partial      0  WINDMILL_STRIKE            Retain. Deal 7 damage. Whenever this card is Retained, increase its damage by 4.
+   unread       0  Wish                       Choose one: Gain 6 Plated Armor, 3 Strength, or 25 Gold. Exhaust.
+   partial      0  WORSHIP                    Gain 5 Mantra. Exhaust.||Retain. Gain 5 Mantra.
+   unread       0  Wraith Form                Gain 2 Intangible. At the end of your turn, lose 1 Dexterity.
+   unread       0  WREATH_OF_FLAME            Your next Attack deals 5 additional damage.
+== sts1 powers: 22  rule 14  unnamed 8
+   unnamed      0  Combust_Power              Seen in the log:  combust_power .
+   unnamed      0  Curl_Up_Power              Seen in the log:  curl_up_power .
+   unnamed      0  Frail_Power                Seen in the log:  frail_power .
+   unnamed      0  Mantra_Power               Seen in the log:  mantra_power .
+   unnamed      0  Ritual_Power               Seen in the log:  ritual_power .
+   unnamed      0  Odd                        
+   unnamed      0  Strength_Power             Seen in the log:  strength_power .
+   unnamed      0  Weak_Power                 Seen in the log:  weak_power .
+== sts1 relics: 1  text 1
+   text         0  Runic Dome                 A relic:  runic_dome
+== sts1 monsters: 11  intents 11

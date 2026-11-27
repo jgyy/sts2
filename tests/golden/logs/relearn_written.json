@@ -1,0 +1,856 @@
+{
+ "cards": {
+  "The Defect": {
+   "BALL_LIGHTNING": [
+    7.0,
+    29.166666666666668
+   ],
+   "BEAM_CELL": [
+    3.0,
+    -6.800000000000001
+   ],
+   "BOOST_AWAY": [
+    1.0,
+    -1.0
+   ],
+   "CAPACITOR": [
+    1.0,
+    -0.8888888888888893
+   ],
+   "CHARGE_BATTERY": [
+    1.0,
+    -0.8000000000000007
+   ],
+   "COLD_SNAP": [
+    3.0,
+    3.875
+   ],
+   "DARKNESS": [
+    1.0,
+    15.142857142857142
+   ],
+   "ECHO_FORM": [
+    1.0,
+    -1.875
+   ],
+   "FERAL": [
+    1.0,
+    0.0
+   ],
+   "FIGHT_THROUGH": [
+    1.0,
+    -1.5555555555555571
+   ],
+   "FOCUSED_STRIKE": [
+    1.0,
+    -0.8888888888888893
+   ],
+   "GLACIER": [
+    2.0,
+    14.342857142857142
+   ],
+   "GLASSWORK": [
+    1.0,
+    -0.8888888888888893
+   ],
+   "GO_FOR_THE_EYES": [
+    4.0,
+    -5.555555555555557
+   ],
+   "GUNK_UP": [
+    1.0,
+    0.16666666666666785
+   ],
+   "HAILSTORM": [
+    1.0,
+    15.875
+   ],
+   "HYPERBEAM": [
+    1.0,
+    -2.1428571428571423
+   ],
+   "ICE_LANCE": [
+    1.0,
+    1.0
+   ],
+   "LEAP": [
+    2.0,
+    -0.5555555555555571
+   ],
+   "MULTI_CAST": [
+    1.0,
+    15.0
+   ],
+   "RAINBOW": [
+    1.0,
+    0.0
+   ],
+   "SCRAPE": [
+    1.0,
+    0.0
+   ],
+   "SHADOW_SHIELD": [
+    2.0,
+    -7.75
+   ],
+   "STORM": [
+    1.0,
+    -0.8000000000000007
+   ],
+   "SUPERCRITICAL": [
+    2.0,
+    12.857142857142858
+   ],
+   "SWEEPING_BEAM": [
+    2.0,
+    -1.6000000000000014
+   ]
+  },
+  "The Ironclad": {
+   "BATTLE_TRANCE": [
+    2.0,
+    0.0
+   ],
+   "BLUDGEON": [
+    1.0,
+    2.0
+   ],
+   "BREAKTHROUGH": [
+    1.0,
+    16.25
+   ],
+   "CINDER": [
+    2.0,
+    3.333333333333332
+   ],
+   "CONFLAGRATION": [
+    1.0,
+    0.0
+   ],
+   "CRIMSON_MANTLE": [
+    1.0,
+    0.0
+   ],
+   "DOMINATE": [
+    2.0,
+    15.0
+   ],
+   "EVIL_EYE": [
+    1.0,
+    0.0
+   ],
+   "FIGHT_ME": [
+    1.0,
+    16.25
+   ],
+   "FORGOTTEN_RITUAL": [
+    1.0,
+    1.4285714285714288
+   ],
+   "HEADBUTT": [
+    2.0,
+    3.666666666666666
+   ],
+   "IMPERVIOUS": [
+    1.0,
+    2.0
+   ],
+   "INFLAME": [
+    1.0,
+    0.0
+   ],
+   "IRON_WAVE": [
+    1.0,
+    16.25
+   ],
+   "MOLTEN_FIST": [
+    1.0,
+    2.0
+   ],
+   "PERFECTED_STRIKE": [
+    1.0,
+    -15.555555555555557
+   ],
+   "POMMEL_STRIKE": [
+    1.0,
+    15.0
+   ],
+   "PYRE": [
+    1.0,
+    15.0
+   ],
+   "RAMPAGE": [
+    1.0,
+    15.0
+   ],
+   "SETUP_STRIKE": [
+    1.0,
+    1.4285714285714288
+   ],
+   "SHRUG_IT_OFF": [
+    1.0,
+    0.0
+   ],
+   "STONE_ARMOR": [
+    1.0,
+    0.0
+   ],
+   "SWORD_BOOMERANG": [
+    1.0,
+    15.0
+   ],
+   "TAUNT": [
+    1.0,
+    1.4285714285714288
+   ],
+   "THRASH": [
+    2.0,
+    15.0
+   ],
+   "THUNDERCLAP": [
+    1.0,
+    1.666666666666666
+   ],
+   "TRUE_GRIT": [
+    2.0,
+    16.25
+   ],
+   "UPPERCUT": [
+    1.0,
+    0.0
+   ]
+  },
+  "The Necrobinder": {
+   "BLIGHT_STRIKE": [
+    1.0,
+    43.125
+   ],
+   "BONE_SHARDS": [
+    1.0,
+    0.14285714285714235
+   ],
+   "BORROWED_TIME": [
+    2.0,
+    3.633333333333333
+   ],
+   "CAPTURE_SPIRIT": [
+    1.0,
+    10.333333333333332
+   ],
+   "CLEANSE": [
+    1.0,
+    10.333333333333332
+   ],
+   "DEATHBRINGER": [
+    2.0,
+    -4.890909090909091
+   ],
+   "DEATH_MARCH": [
+    4.0,
+    10.80952380952381
+   ],
+   "DEBILITATE": [
+    4.0,
+    -11.966666666666669
+   ],
+   "DEFILE": [
+    1.0,
+    10.333333333333332
+   ],
+   "DEFY": [
+    2.0,
+    -11.333333333333336
+   ],
+   "DELAY": [
+    2.0,
+    -6.533333333333331
+   ],
+   "DEMESNE": [
+    1.0,
+    -6.444444444444443
+   ],
+   "DRAIN_POWER": [
+    3.0,
+    43.46785714285714
+   ],
+   "DREDGE": [
+    1.0,
+    -6.699999999999999
+   ],
+   "END_OF_DAYS": [
+    2.0,
+    9.625
+   ],
+   "FEAR": [
+    1.0,
+    -5.666666666666668
+   ],
+   "FETCH": [
+    1.0,
+    -5.666666666666668
+   ],
+   "FRIENDSHIP": [
+    1.0,
+    43.125
+   ],
+   "GRAVE_WARDEN": [
+    3.0,
+    0.15151515151515227
+   ],
+   "MISERY": [
+    1.0,
+    -6.444444444444443
+   ],
+   "NEGATIVE_PULSE": [
+    2.0,
+    43.29166666666667
+   ],
+   "POKE": [
+    2.0,
+    43.29166666666667
+   ],
+   "PULL_AGGRO": [
+    1.0,
+    -5.666666666666668
+   ],
+   "PUTREFY": [
+    2.0,
+    -4.890909090909091
+   ],
+   "REAP": [
+    2.0,
+    0.3095238095238102
+   ],
+   "REAVE": [
+    1.0,
+    0.14285714285714235
+   ],
+   "SCOURGE": [
+    3.0,
+    0.485714285714284
+   ],
+   "SCULPTING_STRIKE": [
+    5.0,
+    -16.548484848484843
+   ],
+   "SEANCE": [
+    1.0,
+    43.0
+   ],
+   "SHARED_FATE": [
+    1.0,
+    0.0
+   ],
+   "SLEIGHT_OF_FLESH": [
+    1.0,
+    43.125
+   ],
+   "SOW": [
+    3.0,
+    31.79166666666666
+   ],
+   "SQUEEZE": [
+    2.0,
+    9.625
+   ],
+   "UNDEATH": [
+    2.0,
+    43.0
+   ],
+   "VEILPIERCER": [
+    1.0,
+    0.14285714285714235
+   ],
+   "WISP": [
+    1.0,
+    -5.09090909090909
+   ]
+  },
+  "The Regent": {
+   "BIG_BANG": [
+    2.0,
+    0.0
+   ],
+   "BOMBARDMENT": [
+    1.0,
+    13.333333333333332
+   ],
+   "BULWARK": [
+    1.0,
+    13.333333333333332
+   ],
+   "CELESTIAL_MIGHT": [
+    1.0,
+    0.0
+   ],
+   "CHILD_OF_THE_STARS": [
+    1.0,
+    13.333333333333332
+   ],
+   "CLOAK_OF_STARS": [
+    3.0,
+    12.0
+   ],
+   "COLLISION_COURSE": [
+    2.0,
+    -3.7272727272727266
+   ],
+   "COSMIC_INDIFFERENCE": [
+    4.0,
+    -6.727272727272727
+   ],
+   "CRASH_LANDING": [
+    1.0,
+    15.0
+   ],
+   "CRESCENT_SPEAR": [
+    3.0,
+    9.606060606060606
+   ],
+   "CRUSH_UNDER": [
+    1.0,
+    13.333333333333332
+   ],
+   "DYING_STAR": [
+    2.0,
+    13.333333333333332
+   ],
+   "GAMMA_BLAST": [
+    3.0,
+    -3.0
+   ],
+   "GATHER_LIGHT": [
+    1.0,
+    -3.0
+   ],
+   "GENESIS": [
+    3.0,
+    28.333333333333332
+   ],
+   "GLITTERSTREAM": [
+    3.0,
+    -3.7272727272727266
+   ],
+   "GLOW": [
+    2.0,
+    12.0
+   ],
+   "GUIDING_STAR": [
+    6.0,
+    -6.727272727272727
+   ],
+   "HEAVENLY_DRILL": [
+    1.0,
+    0.0
+   ],
+   "HIDDEN_CACHE": [
+    1.0,
+    15.0
+   ],
+   "KINGLY_PUNCH": [
+    2.0,
+    13.333333333333332
+   ],
+   "MAKE_IT_SO": [
+    1.0,
+    0.0
+   ],
+   "MANIFEST_AUTHORITY": [
+    1.0,
+    -3.0
+   ],
+   "PALE_BLUE_DOT": [
+    1.0,
+    0.0
+   ],
+   "PHOTON_CUT": [
+    2.0,
+    28.333333333333332
+   ],
+   "PROPHESIZE": [
+    1.0,
+    15.0
+   ],
+   "REFLECT": [
+    1.0,
+    0.0
+   ],
+   "SHINING_STRIKE": [
+    4.0,
+    -7.454545454545453
+   ],
+   "SOLAR_STRIKE": [
+    3.0,
+    -3.7272727272727266
+   ],
+   "STARDUST": [
+    1.0,
+    0.0
+   ],
+   "TYRANNY": [
+    1.0,
+    -3.0
+   ],
+   "VOID_FORM": [
+    1.0,
+    0.0
+   ]
+  },
+  "The Silent": {
+   "ACROBATICS": [
+    2.0,
+    0.3249999999999993
+   ],
+   "ADRENALINE": [
+    2.0,
+    0.0
+   ],
+   "ANTICIPATE": [
+    1.0,
+    1.75
+   ],
+   "BACKFLIP": [
+    2.0,
+    2.1428571428571423
+   ],
+   "BLADE_DANCE": [
+    1.0,
+    0.125
+   ],
+   "BOUNCING_FLASK": [
+    1.0,
+    1.75
+   ],
+   "BULLET_TIME": [
+    1.0,
+    0.0
+   ],
+   "CLOAK_AND_DAGGER": [
+    1.0,
+    0.14285714285714235
+   ],
+   "CORROSIVE_WAVE": [
+    2.0,
+    0.0
+   ],
+   "DAGGER_THROW": [
+    2.0,
+    0.26785714285714235
+   ],
+   "DEADLY_POISON": [
+    2.0,
+    0.3095238095238102
+   ],
+   "ECHOING_SLASH": [
+    1.0,
+    1.5555555555555554
+   ],
+   "FLICK_FLACK": [
+    1.0,
+    1.5555555555555554
+   ],
+   "HIDDEN_DAGGERS": [
+    1.0,
+    0.16666666666666785
+   ],
+   "LEADING_STRIKE": [
+    1.0,
+    2.333333333333334
+   ],
+   "NOXIOUS_FUMES": [
+    2.0,
+    0.25
+   ],
+   "OUTBREAK": [
+    1.0,
+    0.0
+   ],
+   "POISONED_STAB": [
+    1.0,
+    0.14285714285714235
+   ],
+   "REFLEX": [
+    1.0,
+    0.16666666666666785
+   ],
+   "SHADOWMELD": [
+    1.0,
+    0.125
+   ],
+   "SKEWER": [
+    1.0,
+    0.1999999999999993
+   ],
+   "SNAKEBITE": [
+    1.0,
+    2.8000000000000007
+   ],
+   "SPEEDSTER": [
+    1.0,
+    1.75
+   ],
+   "STRANGLE": [
+    1.0,
+    1.5555555555555554
+   ],
+   "SUCKER_PUNCH": [
+    1.0,
+    0.1999999999999993
+   ],
+   "UNTOUCHABLE": [
+    2.0,
+    2.9666666666666686
+   ],
+   "UP_MY_SLEEVE": [
+    1.0,
+    0.14285714285714235
+   ]
+  }
+ },
+ "finals": {
+  "The Defect": [
+   17,
+   17,
+   17,
+   17,
+   17,
+   11,
+   16,
+   17,
+   32,
+   17,
+   17
+  ],
+  "The Ironclad": [
+   17,
+   17,
+   17,
+   7,
+   17,
+   17,
+   17,
+   17,
+   32,
+   2
+  ],
+  "The Necrobinder": [
+   17,
+   17,
+   16,
+   17,
+   17,
+   17,
+   17,
+   17,
+   60,
+   32,
+   16,
+   17,
+   16
+  ],
+  "The Regent": [
+   17,
+   17,
+   17,
+   17,
+   17,
+   17,
+   17,
+   17,
+   32,
+   32,
+   17,
+   16
+  ],
+  "The Silent": [
+   17,
+   16,
+   17,
+   4,
+   17,
+   17,
+   17,
+   17,
+   17,
+   17
+  ]
+ },
+ "kinds": {
+  "ACCURACY": "",
+  "ADAPTIVE_STRIKE": "",
+  "ADRENALINE": "energy",
+  "AFTERIMAGE": "",
+  "AFTERLIFE": "",
+  "ARMAMENTS": "",
+  "ASSASSINATE": "free",
+  "BACKFLIP": "",
+  "BALL_LIGHTNING": "",
+  "BASH": "",
+  "BATTLE_TRANCE": "",
+  "BEAM_CELL": "free",
+  "BIG_BANG": "energy",
+  "BLIGHT_STRIKE": "",
+  "BLOODLETTING": "energy",
+  "BLUDGEON": "",
+  "BODYGUARD": "",
+  "BODY_SLAM": "",
+  "BONE_SHARDS": "",
+  "BOOST_AWAY": "",
+  "BOOT_SEQUENCE": "",
+  "BORROWED_TIME": "energy",
+  "BREAKTHROUGH": "",
+  "BUBBLE_BUBBLE": "",
+  "BULK_UP": "",
+  "BULLET_TIME": "",
+  "BULWARK": "",
+  "BURY": "",
+  "CALCIFY": "",
+  "CHARGE_BATTERY": "energy",
+  "CINDER": "",
+  "CLOAK_AND_DAGGER": "",
+  "CLUMSY": "",
+  "COLD_SNAP": "",
+  "COLLISION_COURSE": "free",
+  "COMET": "free",
+  "CONFLAGRATION": "",
+  "CONSUMING_SHADOW": "",
+  "COSMIC_INDIFFERENCE": "",
+  "CRASH_LANDING": "",
+  "CRIMSON_MANTLE": "",
+  "CRUSH_UNDER": "",
+  "DAGGER_SPRAY": "",
+  "DAGGER_THROW": "",
+  "DANSE_MACABRE": "",
+  "DARK_EMBRACE": "",
+  "DASH": "",
+  "DEADLY_POISON": "",
+  "DEATHBRINGER": "",
+  "DEATH_MARCH": "",
+  "DEBILITATE": "",
+  "DECAY": "",
+  "DEFEND": "",
+  "DEFILE": "",
+  "DEFRAGMENT": "",
+  "DEFY": "",
+  "DELAY": "energy",
+  "DEMESNE": "",
+  "DEMON_FORM": "",
+  "DODGE_AND_ROLL": "",
+  "DOMINATE": "",
+  "DOUBT": "",
+  "DRAIN_POWER": "",
+  "DUALCAST": "",
+  "ECHO_FORM": "",
+  "END_OF_DAYS": "",
+  "ERADICATE": "",
+  "EXPECT_A_FIGHT": "",
+  "EXPOSE": "",
+  "FALLING_STAR": "free",
+  "FEED": "",
+  "FETCH": "free",
+  "FIEND_FIRE": "",
+  "FIGHT_ME": "",
+  "FLATTEN": "",
+  "FORGOTTEN_RITUAL": "energy",
+  "FURNACE": "",
+  "FUSION": "",
+  "GAMMA_BLAST": "free",
+  "GATHER_LIGHT": "",
+  "GENESIS": "",
+  "GLACIER": "",
+  "GLITTERSTREAM": "",
+  "GLOW": "",
+  "GO_FOR_THE_EYES": "free",
+  "GRAND_FINALE": "free",
+  "GRAVE_WARDEN": "",
+  "GUIDING_STAR": "",
+  "GUNK_UP": "",
+  "HAND_OF_GREED": "",
+  "HAZE": "",
+  "HEADBUTT": "",
+  "HEGEMONY": "energy",
+  "HIGH_FIVE": "",
+  "HYPERBEAM": "",
+  "ICE_LANCE": "",
+  "IMPERVIOUS": "",
+  "INFINITE_BLADES": "",
+  "INFLAME": "",
+  "INJURY": "",
+  "KNOCKOUT_BLOW": "",
+  "KNOW_THY_PLACE": "",
+  "LEAP": "",
+  "LEG_SWEEP": "",
+  "MACHINE_LEARNING": "",
+  "MANGLE": "",
+  "MANIFEST_AUTHORITY": "",
+  "MISERY": "free",
+  "MOLTEN_FIST": "",
+  "NEUTRALIZE": "free",
+  "NOT_YET": "",
+  "NOXIOUS_FUMES": "",
+  "NO_ESCAPE": "",
+  "NULL": "",
+  "OFFERING": "energy",
+  "PARSE": "draw",
+  "PHOTON_CUT": "",
+  "POISONED_STAB": "",
+  "POKE": "free",
+  "PRECISE_CUT": "free",
+  "PULL_AGGRO": "",
+  "PUTREFY": "",
+  "PYRE": "",
+  "RAINBOW": "",
+  "RAMPAGE": "",
+  "REAP": "",
+  "REAPER_FORM": "",
+  "REAVE": "",
+  "REFLECT": "",
+  "REFRACT": "",
+  "REGRET": "",
+  "RUPTURE": "",
+  "SCRAPE": "draw",
+  "SCULPTING_STRIKE": "",
+  "SECOND_WIND": "",
+  "SERPENT_FORM": "",
+  "SETUP_STRIKE": "",
+  "SEVEN_STARS": "",
+  "SHADOW_SHIELD": "",
+  "SHAME": "",
+  "SHINING_STRIKE": "",
+  "SHRUG_IT_OFF": "",
+  "SLICE": "free",
+  "SNAKEBITE": "",
+  "SOLAR_STRIKE": "",
+  "SPECTRUM_SHIFT": "",
+  "SPUR": "",
+  "SQUEEZE": "",
+  "STARDUST": "free",
+  "STOMP": "",
+  "STORM": "",
+  "STRIKE": "",
+  "SUCKER_PUNCH": "",
+  "SUPERCRITICAL": "energy",
+  "SURVIVOR": "",
+  "SWEEPING_BEAM": "",
+  "SWORD_BOOMERANG": "",
+  "TAUNT": "",
+  "TEAR_ASUNDER": "",
+  "THE_SCYTHE": "",
+  "THRASH": "",
+  "TOOLS_OF_THE_TRADE": "",
+  "TRANSFIGURE": "",
+  "TRUE_GRIT": "",
+  "TWIN_STRIKE": "",
+  "TYRANNY": "",
+  "UNDEATH": "",
+  "UNLEASH": "",
+  "UPPERCUT": "",
+  "VENERATE": "",
+  "VICIOUS": "",
+  "VOID_FORM": "",
+  "WHIRLWIND": "",
+  "WHITE_NOISE": "",
+  "WRITHE": "",
+  "ZAP": ""
+ }
+}

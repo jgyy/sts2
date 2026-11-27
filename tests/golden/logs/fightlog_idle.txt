@@ -1,0 +1,4 @@
+[('BYRDONIS+TOADPOLE', 2), ('JAW_WORM', 1)]
+11-22 12:10:00 monster energy 1 expects to lose 11 | hp 50 [] | JAW_WORM_0 17hp/0blk [] Attack11 | 0:Defend(1 b5)
+11-22 12:10:15 elite energy 1 expects to lose 22 | hp 22 [WEAK:1] | BYRDONIS_0 64hp/0blk [] Attack9x2 ; TOADPOLE_1 21hp/3blk [] Attack4 | 0:Strike(1 d4), 1:Defend(1 b5), 2:Defend+(1 b8), 3:Flex(0)
+11-22 12:10:20 elite energy 2 expects to lose 14 | hp 1 [] | BYRDONIS_0 64hp/0blk [] Attack9x2 ; TOADPOLE_1 21hp/3blk [] Attack4 | 0:Strike(1 d6), 1:Defend(1 b5), 2:Body Slam(1 d8), 3:Flex(0)
