@@ -4,6 +4,7 @@ use sts2bot::cards::{parse, CardInfo};
 use sts2bot::fight::combat::{self, Plan, SimulateArgs};
 use sts2bot::fight::triggers;
 use sts2bot::py::JsonExt;
+use sts2bot::run::strategy::{self, Memory};
 use sts2bot::Action;
 
 use crate::fake_game::{card, with};
@@ -220,7 +221,14 @@ fn test_vital_spark_taints_by_its_own_amount() {
     assert_eq!(combat::choose_card(&state, None), None); // a 5-Block Skill that adds 4 to each of three hits lets more through, not less
 }
 
-// TODO(strategy): test_an_escape_is_never_the_card_given_up asks strategy.hand_select with a strategy.Memory (src/run/strategy.rs): ported with it.
+#[test]
+fn test_an_escape_is_never_the_card_given_up() {
+    let hand = [ESCAPE(0, 1), with(card(1, "X", "Hyperbeam", "Attack", 2, "Deal 26 damage to ALL enemies.", "None"), json!({"rarity": "Rare"})), DEFEND(2)];
+    let state = json!({"state_type": "hand_select", "hand_select": {"prompt": "Choose a card to Exhaust.", "cards": hand, "can_confirm": false}});
+    assert_eq!(strategy::hand_select(&state, &mut Memory::new())[0], ("combat_select_card".to_string(), json!({"card_index": 2})));
+    let order: Vec<i64> = strategy::hand_select(&state, &mut Memory::new()).iter().filter(|a| a.0 == "combat_select_card").map(|a| a.1["card_index"].as_i64().unwrap()).collect();
+    assert_eq!(*order.last().unwrap(), 0); // the Escape goes last, after even the best card
+}
 
 // CardPlayTriggers: Powers that act on every card played are part of the turn's arithmetic.
 

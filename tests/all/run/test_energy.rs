@@ -5,6 +5,7 @@ use serde_json::{json, Value};
 use sts2bot::cards::deck_value;
 use sts2bot::learn;
 use sts2bot::run::decks;
+use sts2bot::run::strategy::{self, Memory};
 
 use crate::fake_game::with;
 
@@ -93,7 +94,21 @@ fn BLIGHT_STRIKE() -> Value {
 fn OBLIVION() -> Value {
     c("OBLIVION", "Oblivion", "Skill", 0, "Whenever you play a card this turn, apply 3 Doom to the enemy.", "Rare")
 }
-// (SCULPTING_STRIKE, SHARED_FATE, SOUL_STORM, DEATHS_DOOR, PARSE: only in the card-reward tests, see the TODOs below.)
+fn SCULPTING_STRIKE() -> Value {
+    c("SCULPTING_STRIKE", "Sculpting Strike", "Attack", 1, "Deal 9 damage. Add Ethereal to a card in your Hand.", "Common")
+}
+fn SHARED_FATE() -> Value {
+    c("SHARED_FATE", "Shared Fate", "Skill", 0, "Lose 2 Strength. Enemy loses 2 Strength. Exhaust.", "Rare")
+}
+fn SOUL_STORM() -> Value {
+    c("SOUL_STORM", "Soul Storm", "Attack", 1, "Deal 9 damage. Deals 4 additional damage for each Soul in your Exhaust Pile.", "Rare")
+}
+fn DEATHS_DOOR() -> Value {
+    c("DEATHS_DOOR", "Death's Door", "Skill", 1, "Gain 6 Block. If you applied Doom this turn, gain Block 2 additional times.", "Uncommon")
+}
+fn PARSE() -> Value {
+    c("PARSE", "Parse", "Skill", 1, "Ethereal. Draw 3 cards.", "Uncommon")
+}
 
 fn STARTER() -> Vec<Value> {
     [vec![STRIKE(); 4], vec![DEFEND(); 4], vec![BODYGUARD(), UNLEASH()]].concat()
@@ -113,7 +128,28 @@ fn approx(a: f64, b: f64) {
     assert!((a - b).abs() < 5e-8, "{a} != {b}"); // (assertAlmostEqual: 7 places)
 }
 
-// TODO(strategy): `chosen(offer, deck, act)` asks strategy.card_reward with a strategy.Memory (src/run/strategy.rs): ported with it.
+/// The card a reward is answered with (None: skipped). (The Python's default: act 1.)
+fn chosen(offer: &[Value], deck: &[Value], act: i64) -> Option<String> {
+    let mut mem = Memory::new();
+    (mem.deck, mem.deck_size) = (deck.to_vec(), deck.len() as i64);
+    let cards: Vec<Value> = offer.iter().enumerate().map(|(i, x)| with(x.clone(), json!({"index": i}))).collect();
+    let state = json!({"state_type": "card_reward", "run": {"act": act}, "player": {"character": "The Necrobinder"}, "card_reward": {"cards": cards}});
+    let first = strategy::card_reward(&state, &mut mem).remove(0);
+    if first.0 == "skip_card_reward" {
+        None
+    } else {
+        Some(offer[first.1["card_index"].as_i64().unwrap() as usize]["name"].as_str().unwrap().to_string())
+    }
+}
+
+fn name(card: &str) -> Option<String> {
+    Some(card.to_string())
+}
+
+/// STARTER + [REAVE, SCULPTING_STRIKE, POKE, GRAVE_WARDEN, NEGATIVE_PULSE, SCOURGE] * times
+fn grown(times: usize) -> Vec<Value> {
+    [STARTER(), vec![vec![REAVE(), SCULPTING_STRIKE(), POKE(), GRAVE_WARDEN(), NEGATIVE_PULSE(), SCOURGE()]; times].concat()].concat()
+}
 
 // TurnEnergy
 
@@ -128,7 +164,22 @@ fn test_what_a_power_gives_every_turn_and_energy_once_is_not_energy_every_turn()
 
 // EnergyAtAReward (under CROWD)
 
-// TODO(strategy): test_friendship_over_the_cards_that_used_to_beat_it and test_demesne_is_no_longer_skipped need `chosen`.
+#[test]
+fn test_friendship_over_the_cards_that_used_to_beat_it() {
+    let _crowd = CROWD();
+    // Grave Warden 6.0 and Scourge 7.3 were taken over Friendship 5.0-5.1 in a deck of 16.
+    let deck = grown(1);
+    assert_eq!(chosen(&[GRAVE_WARDEN(), FRIENDSHIP(), BORROWED_TIME()], &deck, 1), name("Friendship"));
+    assert_eq!(chosen(&[SCOURGE(), FRIENDSHIP(), NEGATIVE_PULSE()], &deck, 1), name("Friendship"));
+}
+
+#[test]
+fn test_demesne_is_no_longer_skipped() {
+    let _crowd = CROWD();
+    // Seen: "deck 22, need 5.0: Demesne 4.1, Negative Pulse 4.0, Sculpting Strike 2.5" and nothing taken.
+    let deck = grown(2);
+    assert_eq!(chosen(&[DEMESNE(), NEGATIVE_PULSE(), SCULPTING_STRIKE()], &deck, 2), name("Demesne"));
+}
 
 #[test]
 fn test_the_second_is_worth_less_and_more_energy_less_again() {
@@ -139,8 +190,17 @@ fn test_the_second_is_worth_less_and_more_energy_less_again() {
     approx(decks::deck_fit(&DEMESNE(), &PLAIN(), Some(2), 4), first / 2.0); // a relic's energy counts too
 }
 
-// TODO(decks): test_friendship_costs_more_where_every_hit_takes_strength patches decks._hitters (return_value=99), and src/run/decks.rs
-// has no stand-in for it yet (a thread-local hook there, added with this test).
+#[test]
+fn test_friendship_costs_more_where_every_hit_takes_strength() {
+    let _crowd = CROWD();
+    let osty = [STARTER()[4..].to_vec(), vec![POKE(); 4]].concat(); // Defends, Bodyguard, Unleash and Pokes: nothing that takes Strength
+    let hitters = [STARTER(), vec![REAVE(); 4]].concat();
+    {
+        let _hitters = decks::with_hitters_hook(|_| 99); // (the lean to attacks is not what is tested)
+        assert!(decks::deck_fit(&FRIENDSHIP(), &osty, Some(2), 3) > decks::deck_fit(&FRIENDSHIP(), &hitters, Some(2), 3) + 1.0);
+    }
+    assert!(decks::deck_fit(&FRIENDSHIP(), &[hitters, vec![FRIENDSHIP()]].concat(), Some(2), 3) < 0.0); // a second one: less Strength still
+}
 
 // TurnDamage
 
@@ -167,7 +227,25 @@ fn test_capped() {
 
 // DamageAtAReward (under CROWD)
 
-// TODO(strategy): test_reaper_form_over_the_cards_that_beat_it and test_countdown_is_no_longer_skipped need `chosen`.
+/// STARTER + [REAVE, SCULPTING_STRIKE, POKE, GRAVE_WARDEN, NEGATIVE_PULSE, SCOURGE, REAVE, SCULPTING_STRIKE]
+fn DECK() -> Vec<Value> {
+    [grown(1), vec![REAVE(), SCULPTING_STRIKE()]].concat()
+}
+
+#[test]
+fn test_reaper_form_over_the_cards_that_beat_it() {
+    let _crowd = CROWD();
+    // Seen: "Shared Fate 4.3, Soul Storm 3.9, Reaper Form 3.7" and "Soul Storm 7.1, Undeath 5.1, Reaper Form 4.9".
+    assert_eq!(chosen(&[SHARED_FATE(), SOUL_STORM(), REAPER_FORM()], &DECK(), 2), name("Reaper Form"));
+}
+
+#[test]
+fn test_countdown_is_no_longer_skipped() {
+    let _crowd = CROWD();
+    // Seen: "deck 24, need 4.5: Death's Door 4.4, Parse 3.7, Countdown 3.6" and nothing taken.
+    let deck = [DECK(), vec![vec![DEFEND(), STRIKE()]; 4].concat(), vec![REAVE(); 2]].concat();
+    assert_eq!(chosen(&[DEATHS_DOOR(), PARSE(), COUNTDOWN()], &deck, 2), name("Countdown"));
+}
 
 // TimesUpNeedsDoom (under CROWD)
 // Time's Up deals the Doom an enemy already has: in 20 of 63 fights the Necrobinder held it, the deck had no Doom card.

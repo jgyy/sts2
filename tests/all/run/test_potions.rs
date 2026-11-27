@@ -3,6 +3,8 @@
 use serde_json::{json, Value};
 use sts2bot::fight::combat;
 use sts2bot::learn;
+use sts2bot::run::events::{self, EventOptionValueArgs};
+use sts2bot::run::strategy::{self, Memory};
 
 use crate::helpers::{combat_state, enemy, STRIKE};
 
@@ -11,7 +13,13 @@ fn potion(slot: i64, name: &str, text: &str) -> Value {
     json!({"slot": slot, "name": name, "description": text, "target_type": "AnyPlayer", "can_use_in_combat": true})
 }
 
-// TODO(strategy): `bought(items, floor, gold, held)` asks strategy.shop (src/run/strategy.rs): ported with it.
+/// What a shop of these items sells, in order, to a belt of two slots holding `held` Fire Potions.
+fn bought(items: &[Value], floor: i64, gold: i64, held: i64) -> Vec<Value> {
+    let potions: Vec<Value> = (0..held).map(|i| potion(i, "Fire Potion", "Deal 20 damage.")).collect();
+    let player = json!({"gold": gold, "hp": 60, "max_hp": 75, "max_potion_slots": 2, "potions": potions, "relics": []});
+    let state = json!({"state_type": "shop", "run": {"act": if floor > 33 { 3 } else { 2 }, "floor": floor}, "player": player, "shop": {"items": items}});
+    strategy::shop(&state, &mut Memory::new(), "shop").iter().filter(|a| a.0 == "shop_purchase").map(|a| a.1["index"].clone()).collect()
+}
 
 // KeptForTheBoss
 
@@ -51,5 +59,39 @@ fn test_slay_the_spire_2_keeps_a_full_belt_from_hallway_fights() {
     assert_eq!(drunk(20, 75), 1);
 }
 
-// TODO(strategy): test_an_act_3_merchant_fills_the_belt_first and test_a_merchant_before_the_boss_sells_the_best_potion_first need strategy.shop
-// and strategy.Memory; test_an_event_that_takes_a_potion_is_charged_for_it needs events._event_option_value (src/run/events/mod.rs): ported with them.
+#[test]
+fn test_an_act_3_merchant_fills_the_belt_first() {
+    let shelf = || {
+        [json!({"index": 0, "category": "relic", "relic_id": "ANCHOR", "relic_name": "Anchor", "price": 150, "is_stocked": true}),
+         json!({"index": 1, "category": "potion", "potion_name": "Fire Potion", "potion_description": "Deal 20 damage.", "price": 50, "is_stocked": true})]
+    };
+    assert_eq!(bought(&shelf(), 38, 160, 1)[0], 1); // the potion before the relic, ten floors from the last boss
+    assert_eq!(bought(&shelf(), 22, 160, 1)[0], 0); // in act 2, far from the boss, the relic
+}
+
+#[test]
+fn test_a_merchant_before_the_boss_sells_the_best_potion_first() {
+    // (All three stood at 9.5, and the first listed, Liquid Bronze, was bought.)
+    let shelf = [(0, "Liquid Bronze", 76), (1, "Heart of Iron", 78), (2, "Radiant Tincture", 76)];
+    let items: Vec<Value> = shelf.iter().map(|(i, n, p)| json!({"index": i, "category": "potion", "potion_name": n, "potion_description": "", "price": p, "is_stocked": true, "can_afford": true})).collect();
+    for held in [0, 1] {
+        assert_eq!(bought(&items, 31, 100, held), [json!(2), json!(1), json!(0)]);
+    }
+}
+
+#[test]
+fn test_an_event_that_takes_a_potion_is_charged_for_it() {
+    let belt = [potion(0, "Attack Potion", "Add 1 of 3 random Attack cards into your Hand."), potion(1, "Strength Potion", "Gain 2 Strength.")];
+    // (The Python's defaults: text "Obtain a random Relic.", act 3, held the belt.)
+    let value_ = |title: &str, text: &str, act: i64, held: &[Value]| {
+        events::_event_option_value(&json!({"title": title, "description": text}), 60, 80, EventOptionValueArgs { act: Some(act), potions: Some(held), ..Default::default() })
+    };
+    let value = |title: &str| value_(title, "Obtain a random Relic.", 3, &belt);
+    assert!(value("Give 100 Gold") > value("Give Attack Potion"));
+    assert!(value("Give Attack Potion") > value("Give Strength Potion")); // the better potion costs more
+    assert_eq!(value("Give Fire Potion"), value("Take It")); // a potion we do not hold: nothing to charge
+    let lose = "Lose Strength Potion. Obtain an Upgraded Common Skill.";
+    assert!(value_("Insert Common Potion", lose, 3, &belt) < value_("Insert Common Potion", lose, 1, &belt)); // dearer in act 3
+    // A potion on offer is worth more to a belt with room for it.
+    assert!(value_("Bottle", "Procure 1 random Potion.", 3, &[]) > value_("Bottle", "Procure 1 random Potion.", 3, &belt));
+}
