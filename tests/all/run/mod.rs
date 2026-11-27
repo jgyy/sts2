@@ -1,0 +1,9 @@
+mod test_energy;
+mod test_events;
+mod test_foolcrowd;
+mod test_payoffs;
+mod test_potions;
+mod test_relics;
+mod test_relicworth;
+mod test_route;
+mod test_strategy;
