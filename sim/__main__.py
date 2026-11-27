@@ -6,7 +6,6 @@
     python3 -m sim trace --game sts1 --runs 2                             # one hash per character: changes iff a decision does
     python3 -m sim prior sts2.jsonl sts1.jsonl --out sts2bot/run/model_cards.json   # the card table `model_lean` weighs in
     python3 -m sim prior runs.jsonl --onto sts2bot/run/model_cards.json --out new.json  # ... plus what runs that played it still say
-    python3 -m sim prior runs.jsonl --onto TABLE --forgive 2 --out tried.json           # ... and the cards it buried tried again
     python3 -m sim run --game sts2 --vary --only model_table,caution --alt-cards new.json   # two tables (and caution) drawn per run
     python3 -m sim run --game sts1 --vary --only caution,belt_spare --grid caution=1,1.35       # ... caution from these two values only
 """
@@ -42,8 +41,6 @@ GRID = {  # the settings tried with --vary: the bot's own choices (learn.CHOICES
     "cards_first": [0.0, 1.0],
     "debuff_worth": [1.0, 2.0, 3.0],
     "model_lean": [0.0, 1.0, 2.0],
-    "boss_caution": [0.75, 1.0, 1.35],  # `caution` times this in boss fights
-    "early_rows": [5.0, 8.0],  # act 1 rows where an elite is a starter deck's fight (strategy.EARLY_ROWS)
     "belt_spare": [0.0, 1.0],  # a full belt is a reason to drink in a hallway fight (round 5: 0 in Slay the Spire 2, 1 in the first game)
 }
 
@@ -53,8 +50,7 @@ def content(game: str):
     return importlib.import_module(f"sim.content.{game}")
 
 
-FORGIVE_RATING = 4.0  # `sim prior --forgive`: the rating of its own (cards.deck_value) from which a card the table buried is tried again
-TABLES: dict = {}  # model_table setting -> the card table learn.model_shift reads (1: --alt-cards)
+TABLES: dict = {}  # model_table setting -> the card table learn.model_shift reads (1, 2, ...: --alt-cards)
 
 
 def _job(args: tuple) -> dict:
@@ -140,8 +136,7 @@ def cmd_prior(a) -> int:
     played with the table (model_lean) are left out, so that it never learns from itself."""
     from collections import defaultdict
     from .report import load, score
-    from sts2bot.cards import deck_value, key_of, parse
-    from .cards import Card
+    from sts2bot.cards import key_of
     groups = defaultdict(list)
     base = json.load(open(a.onto)) if a.onto else None
     for r in load(a.files):
@@ -171,14 +166,6 @@ def cmd_prior(a) -> int:
             name = key_of(mod.CARDS[key].name if key in mod.CARDS else key)
             shift = max(-a.most, min(a.most, table.get(name, 0.0) + (sum(g) - par * len(g)) / (len(g) + a.prior)))
             table[name] = round(shift, 2)
-        if a.forgive is not None:
-            # A card the table has put below the bar is never picked again, so no run can speak for it: those that the bot's own
-            # rating thinks well of (FORGIVE_RATING), and Block cards, go back to 0 and are tried again by the runs that play this table.
-            learn.KNOB.update(learn.defaults(game))
-            for d in mod.pool(ch):
-                name, view = key_of(d.name), Card(d).view()
-                if len(gained.get(d.key, ())) <= a.forgive and table.get(name, 0.0) < 0 and (deck_value(view) >= FORGIVE_RATING or parse(view).block >= 5):
-                    table[name] = 0.0
         out.setdefault(game, {})[who] = dict(sorted((k, v) for k, v in table.items() if abs(v) >= 0.05))
         print(f"{game} {ch}: {len(runs)} runs, {picks} picks, {len(table)} cards", file=sys.stderr)
     text = json.dumps(out, indent=1, sort_keys=True) + "\n"
@@ -232,7 +219,6 @@ def main(argv=None) -> int:
     q.add_argument("--prior", type=float, default=40.0, help="picks before a card's own record counts for half")
     q.add_argument("--most", type=float, default=3.0, help="no card moves further than this")
     q.add_argument("--onto", metavar="TABLE", help="add to this table what the runs that played it (at the game's default model_lean) still say")
-    q.add_argument("--forgive", type=int, metavar="PICKS", help="cards with a negative shift and at most this many picks in these runs start again from 0 (those rated FORGIVE_RATING or more, and Block cards)")
     q.add_argument("--table", type=int, default=0, help="with --onto: the runs whose model_table was this (1: run with --alt-cards TABLE)")
     a = ap.parse_args(argv)
     learn.KNOB.update(learn.DEFAULTS)
