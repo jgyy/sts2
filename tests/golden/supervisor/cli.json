@@ -1,0 +1,5129 @@
+{
+"parse": [
+{
+"argv": [],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"-v"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": true
+}
+},
+{
+"argv": [
+"--verbose"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": true
+}
+},
+{
+"argv": [
+"-vv"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": true
+}
+},
+{
+"argv": [
+"--verb"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": true
+}
+},
+{
+"argv": [
+"--game",
+"sts1"
+],
+"columns": 80,
+"parsed": {
+"game": "sts1",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--game=sts2"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--ga",
+"both"
+],
+"columns": 80,
+"parsed": {
+"game": "both",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--game",
+"both",
+"-v"
+],
+"columns": 80,
+"parsed": {
+"game": "both",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": true
+}
+},
+{
+"argv": [
+"--game",
+"STS1"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --game: invalid choice: 'STS1' (choose from 'sts2', 'sts1', 'both')\n"
+}
+},
+{
+"argv": [
+"--game",
+"x"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --game: invalid choice: 'x' (choose from 'sts2', 'sts1', 'both')\n"
+}
+},
+{
+"argv": [
+"--game"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --game: expected one argument\n"
+}
+},
+{
+"argv": [
+"--game="
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --game: invalid choice: '' (choose from 'sts2', 'sts1', 'both')\n"
+}
+},
+{
+"argv": [
+"--host",
+"localhost"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "localhost",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--host",
+""
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--ho",
+"h"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "h",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--h"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: ambiguous option: --h could match --help, --host\n"
+}
+},
+{
+"argv": [
+"--h",
+"x"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: ambiguous option: --h could match --help, --host\n"
+}
+},
+{
+"argv": [
+"--he"
+],
+"columns": 80,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\n\nPlays Slay the Spire 2 nonstop through the STS2_MCP mod, the first Slay the\nSpire through CommunicationMod (--game sts1), or both at the same time (--game\nboth).\n\noptions:\n  -h, --help            show this help message and exit\n  --game {sts2,sts1,both}\n                        which game to play: sts2 (default), sts1 (the first\n                        Slay the Spire), or both at once (a bot process for\n                        each, with the other options passed on to both)\n  --host HOST\n  --port PORT           where the bridge listens (default: 15526 for sts2,\n                        15527 for sts1's relay)\n  --character CHARACTER\n                        \"auto\" and \"random\" play a character with the lowest\n                        ascension unlocked (drawn at random among those on\n                        that level), always at the highest ascension it has\n                        unlocked; or a character id (e.g. IRONCLAD;\n                        THE_SILENT, DEFECT or WATCHER in sts1), or \"cycle\"\n                        over unlocked ones (default: auto)\n  --runs RUNS           stop after this many runs (default: never stop)\n  --first CHARACTER     with --character auto: play this character until it\n                        has earned all of its own epochs, then carry on as\n                        usual\n  --no-tuning           always play with the default settings instead of\n                        trying variations and learning from the results\n  --no-launch           never start or kill the game; only play when it is up\n  --launch-cmd LAUNCH_CMD\n                        command that starts the game (default for sts2: 'steam\n                        -applaunch 2868840'; for sts1: ModTheSpire with\n                        BaseMod and CommunicationMod)\n  --fast-mode {instant,fast,normal,keep}\n                        game animation speed, set through the mod each time\n                        the bot connects; \"keep\" leaves the setting alone\n                        (default: instant, the fastest)\n  --full-graphics       keep the game's normal window and graphics (default:\n                        maximised window, no anti-aliasing, uncapped frame\n                        rate)\n  --small-window        shrink the game window to 960x540 instead of full\n                        screen\n  --windowed            a maximised window instead of full screen (both games)\n  --time-scale TIME_SCALE\n                        how many times faster the game's clock runs, set\n                        through the mod for the session (default: 16; 1 leaves\n                        it alone)\n  --sts1-time-scale STS1_TIME_SCALE\n                        the same for the first Slay the Spire, through the\n                        bot's own ModTheSpire mod (default: 16; 1 leaves it\n                        alone)\n  --stuck-timeout STUCK_TIMEOUT\n                        seconds without any change before the game is\n                        restarted\n  --poll POLL           seconds between state polls when there is nothing to\n                        do (0.2 until 2026-11-26)\n  --log-dir LOG_DIR     logs and run history (default: ~/.local/state/sts2bot,\n                        and its sts1/ for the first game)\n  -v, --verbose         log every action\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"-h"
+],
+"columns": 80,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\n\nPlays Slay the Spire 2 nonstop through the STS2_MCP mod, the first Slay the\nSpire through CommunicationMod (--game sts1), or both at the same time (--game\nboth).\n\noptions:\n  -h, --help            show this help message and exit\n  --game {sts2,sts1,both}\n                        which game to play: sts2 (default), sts1 (the first\n                        Slay the Spire), or both at once (a bot process for\n                        each, with the other options passed on to both)\n  --host HOST\n  --port PORT           where the bridge listens (default: 15526 for sts2,\n                        15527 for sts1's relay)\n  --character CHARACTER\n                        \"auto\" and \"random\" play a character with the lowest\n                        ascension unlocked (drawn at random among those on\n                        that level), always at the highest ascension it has\n                        unlocked; or a character id (e.g. IRONCLAD;\n                        THE_SILENT, DEFECT or WATCHER in sts1), or \"cycle\"\n                        over unlocked ones (default: auto)\n  --runs RUNS           stop after this many runs (default: never stop)\n  --first CHARACTER     with --character auto: play this character until it\n                        has earned all of its own epochs, then carry on as\n                        usual\n  --no-tuning           always play with the default settings instead of\n                        trying variations and learning from the results\n  --no-launch           never start or kill the game; only play when it is up\n  --launch-cmd LAUNCH_CMD\n                        command that starts the game (default for sts2: 'steam\n                        -applaunch 2868840'; for sts1: ModTheSpire with\n                        BaseMod and CommunicationMod)\n  --fast-mode {instant,fast,normal,keep}\n                        game animation speed, set through the mod each time\n                        the bot connects; \"keep\" leaves the setting alone\n                        (default: instant, the fastest)\n  --full-graphics       keep the game's normal window and graphics (default:\n                        maximised window, no anti-aliasing, uncapped frame\n                        rate)\n  --small-window        shrink the game window to 960x540 instead of full\n                        screen\n  --windowed            a maximised window instead of full screen (both games)\n  --time-scale TIME_SCALE\n                        how many times faster the game's clock runs, set\n                        through the mod for the session (default: 16; 1 leaves\n                        it alone)\n  --sts1-time-scale STS1_TIME_SCALE\n                        the same for the first Slay the Spire, through the\n                        bot's own ModTheSpire mod (default: 16; 1 leaves it\n                        alone)\n  --stuck-timeout STUCK_TIMEOUT\n                        seconds without any change before the game is\n                        restarted\n  --poll POLL           seconds between state polls when there is nothing to\n                        do (0.2 until 2026-11-26)\n  --log-dir LOG_DIR     logs and run history (default: ~/.local/state/sts2bot,\n                        and its sts1/ for the first game)\n  -v, --verbose         log every action\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"--help"
+],
+"columns": 80,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\n\nPlays Slay the Spire 2 nonstop through the STS2_MCP mod, the first Slay the\nSpire through CommunicationMod (--game sts1), or both at the same time (--game\nboth).\n\noptions:\n  -h, --help            show this help message and exit\n  --game {sts2,sts1,both}\n                        which game to play: sts2 (default), sts1 (the first\n                        Slay the Spire), or both at once (a bot process for\n                        each, with the other options passed on to both)\n  --host HOST\n  --port PORT           where the bridge listens (default: 15526 for sts2,\n                        15527 for sts1's relay)\n  --character CHARACTER\n                        \"auto\" and \"random\" play a character with the lowest\n                        ascension unlocked (drawn at random among those on\n                        that level), always at the highest ascension it has\n                        unlocked; or a character id (e.g. IRONCLAD;\n                        THE_SILENT, DEFECT or WATCHER in sts1), or \"cycle\"\n                        over unlocked ones (default: auto)\n  --runs RUNS           stop after this many runs (default: never stop)\n  --first CHARACTER     with --character auto: play this character until it\n                        has earned all of its own epochs, then carry on as\n                        usual\n  --no-tuning           always play with the default settings instead of\n                        trying variations and learning from the results\n  --no-launch           never start or kill the game; only play when it is up\n  --launch-cmd LAUNCH_CMD\n                        command that starts the game (default for sts2: 'steam\n                        -applaunch 2868840'; for sts1: ModTheSpire with\n                        BaseMod and CommunicationMod)\n  --fast-mode {instant,fast,normal,keep}\n                        game animation speed, set through the mod each time\n                        the bot connects; \"keep\" leaves the setting alone\n                        (default: instant, the fastest)\n  --full-graphics       keep the game's normal window and graphics (default:\n                        maximised window, no anti-aliasing, uncapped frame\n                        rate)\n  --small-window        shrink the game window to 960x540 instead of full\n                        screen\n  --windowed            a maximised window instead of full screen (both games)\n  --time-scale TIME_SCALE\n                        how many times faster the game's clock runs, set\n                        through the mod for the session (default: 16; 1 leaves\n                        it alone)\n  --sts1-time-scale STS1_TIME_SCALE\n                        the same for the first Slay the Spire, through the\n                        bot's own ModTheSpire mod (default: 16; 1 leaves it\n                        alone)\n  --stuck-timeout STUCK_TIMEOUT\n                        seconds without any change before the game is\n                        restarted\n  --poll POLL           seconds between state polls when there is nothing to\n                        do (0.2 until 2026-11-26)\n  --log-dir LOG_DIR     logs and run history (default: ~/.local/state/sts2bot,\n                        and its sts1/ for the first game)\n  -v, --verbose         log every action\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"-hv"
+],
+"columns": 80,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\n\nPlays Slay the Spire 2 nonstop through the STS2_MCP mod, the first Slay the\nSpire through CommunicationMod (--game sts1), or both at the same time (--game\nboth).\n\noptions:\n  -h, --help            show this help message and exit\n  --game {sts2,sts1,both}\n                        which game to play: sts2 (default), sts1 (the first\n                        Slay the Spire), or both at once (a bot process for\n                        each, with the other options passed on to both)\n  --host HOST\n  --port PORT           where the bridge listens (default: 15526 for sts2,\n                        15527 for sts1's relay)\n  --character CHARACTER\n                        \"auto\" and \"random\" play a character with the lowest\n                        ascension unlocked (drawn at random among those on\n                        that level), always at the highest ascension it has\n                        unlocked; or a character id (e.g. IRONCLAD;\n                        THE_SILENT, DEFECT or WATCHER in sts1), or \"cycle\"\n                        over unlocked ones (default: auto)\n  --runs RUNS           stop after this many runs (default: never stop)\n  --first CHARACTER     with --character auto: play this character until it\n                        has earned all of its own epochs, then carry on as\n                        usual\n  --no-tuning           always play with the default settings instead of\n                        trying variations and learning from the results\n  --no-launch           never start or kill the game; only play when it is up\n  --launch-cmd LAUNCH_CMD\n                        command that starts the game (default for sts2: 'steam\n                        -applaunch 2868840'; for sts1: ModTheSpire with\n                        BaseMod and CommunicationMod)\n  --fast-mode {instant,fast,normal,keep}\n                        game animation speed, set through the mod each time\n                        the bot connects; \"keep\" leaves the setting alone\n                        (default: instant, the fastest)\n  --full-graphics       keep the game's normal window and graphics (default:\n                        maximised window, no anti-aliasing, uncapped frame\n                        rate)\n  --small-window        shrink the game window to 960x540 instead of full\n                        screen\n  --windowed            a maximised window instead of full screen (both games)\n  --time-scale TIME_SCALE\n                        how many times faster the game's clock runs, set\n                        through the mod for the session (default: 16; 1 leaves\n                        it alone)\n  --sts1-time-scale STS1_TIME_SCALE\n                        the same for the first Slay the Spire, through the\n                        bot's own ModTheSpire mod (default: 16; 1 leaves it\n                        alone)\n  --stuck-timeout STUCK_TIMEOUT\n                        seconds without any change before the game is\n                        restarted\n  --poll POLL           seconds between state polls when there is nothing to\n                        do (0.2 until 2026-11-26)\n  --log-dir LOG_DIR     logs and run history (default: ~/.local/state/sts2bot,\n                        and its sts1/ for the first game)\n  -v, --verbose         log every action\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"-vh"
+],
+"columns": 80,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\n\nPlays Slay the Spire 2 nonstop through the STS2_MCP mod, the first Slay the\nSpire through CommunicationMod (--game sts1), or both at the same time (--game\nboth).\n\noptions:\n  -h, --help            show this help message and exit\n  --game {sts2,sts1,both}\n                        which game to play: sts2 (default), sts1 (the first\n                        Slay the Spire), or both at once (a bot process for\n                        each, with the other options passed on to both)\n  --host HOST\n  --port PORT           where the bridge listens (default: 15526 for sts2,\n                        15527 for sts1's relay)\n  --character CHARACTER\n                        \"auto\" and \"random\" play a character with the lowest\n                        ascension unlocked (drawn at random among those on\n                        that level), always at the highest ascension it has\n                        unlocked; or a character id (e.g. IRONCLAD;\n                        THE_SILENT, DEFECT or WATCHER in sts1), or \"cycle\"\n                        over unlocked ones (default: auto)\n  --runs RUNS           stop after this many runs (default: never stop)\n  --first CHARACTER     with --character auto: play this character until it\n                        has earned all of its own epochs, then carry on as\n                        usual\n  --no-tuning           always play with the default settings instead of\n                        trying variations and learning from the results\n  --no-launch           never start or kill the game; only play when it is up\n  --launch-cmd LAUNCH_CMD\n                        command that starts the game (default for sts2: 'steam\n                        -applaunch 2868840'; for sts1: ModTheSpire with\n                        BaseMod and CommunicationMod)\n  --fast-mode {instant,fast,normal,keep}\n                        game animation speed, set through the mod each time\n                        the bot connects; \"keep\" leaves the setting alone\n                        (default: instant, the fastest)\n  --full-graphics       keep the game's normal window and graphics (default:\n                        maximised window, no anti-aliasing, uncapped frame\n                        rate)\n  --small-window        shrink the game window to 960x540 instead of full\n                        screen\n  --windowed            a maximised window instead of full screen (both games)\n  --time-scale TIME_SCALE\n                        how many times faster the game's clock runs, set\n                        through the mod for the session (default: 16; 1 leaves\n                        it alone)\n  --sts1-time-scale STS1_TIME_SCALE\n                        the same for the first Slay the Spire, through the\n                        bot's own ModTheSpire mod (default: 16; 1 leaves it\n                        alone)\n  --stuck-timeout STUCK_TIMEOUT\n                        seconds without any change before the game is\n                        restarted\n  --poll POLL           seconds between state polls when there is nothing to\n                        do (0.2 until 2026-11-26)\n  --log-dir LOG_DIR     logs and run history (default: ~/.local/state/sts2bot,\n                        and its sts1/ for the first game)\n  -v, --verbose         log every action\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"-vx"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: -x\n"
+}
+},
+{
+"argv": [
+"-v=3"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument -v/--verbose: ignored explicit argument '3'\n"
+}
+},
+{
+"argv": [
+"-v-x"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument -v/--verbose: ignored explicit argument '-x'\n"
+}
+},
+{
+"argv": [
+"-x"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: -x\n"
+}
+},
+{
+"argv": [
+"--verbose=3"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument -v/--verbose: ignored explicit argument '3'\n"
+}
+},
+{
+"argv": [
+"--verbose="
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument -v/--verbose: ignored explicit argument ''\n"
+}
+},
+{
+"argv": [
+"--port",
+"1234"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": 1234,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--port=0"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": 0,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--port",
+"-5"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": -5,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--port",
+"+7"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": 7,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--port",
+" 12 "
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": 12,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--port",
+"1_000"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": 1000,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--port",
+"1__0"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --port: invalid int value: '1__0'\n"
+}
+},
+{
+"argv": [
+"--port",
+"_1"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --port: invalid int value: '_1'\n"
+}
+},
+{
+"argv": [
+"--port",
+"1.5"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --port: invalid int value: '1.5'\n"
+}
+},
+{
+"argv": [
+"--port",
+"x"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --port: invalid int value: 'x'\n"
+}
+},
+{
+"argv": [
+"--port",
+""
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --port: invalid int value: ''\n"
+}
+},
+{
+"argv": [
+"--port="
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --port: invalid int value: ''\n"
+}
+},
+{
+"argv": [
+"--port"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --port: expected one argument\n"
+}
+},
+{
+"argv": [
+"--port",
+"--runs"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --port: expected one argument\n"
+}
+},
+{
+"argv": [
+"--port",
+"99999999999"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": 99999999999,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--po",
+"3"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: ambiguous option: --po could match --port, --poll\n"
+}
+},
+{
+"argv": [
+"--por",
+"3"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": 3,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--port",
+"1",
+"--port",
+"2"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": 2,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--character",
+"IRONCLAD"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "IRONCLAD",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--character",
+"Auto",
+"--first",
+"DEFECT"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "Auto",
+"runs": null,
+"first": "DEFECT",
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--char",
+"cycle"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "cycle",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--runs",
+"3"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": 3,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--runs",
+"0"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": 0,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--runs",
+"three"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --runs: invalid int value: 'three'\n"
+}
+},
+{
+"argv": [
+"--run=2"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": 2,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--first",
+"THE_SILENT"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": "THE_SILENT",
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--no-tuning"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": true,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--no-launch"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": true,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--no"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: ambiguous option: --no could match --no-tuning, --no-launch\n"
+}
+},
+{
+"argv": [
+"--no-",
+"x"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: ambiguous option: --no- could match --no-tuning, --no-launch\n"
+}
+},
+{
+"argv": [
+"--no-launch=3"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --no-launch: ignored explicit argument '3'\n"
+}
+},
+{
+"argv": [
+"--no-t",
+"--no-l"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": true,
+"no_launch": true,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--launch-cmd",
+"steam -applaunch 1"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": "steam -applaunch 1",
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--launch-cmd",
+"-x y"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": "-x y",
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--launch-cmd",
+"-x"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --launch-cmd: expected one argument\n"
+}
+},
+{
+"argv": [
+"--launch-cmd",
+"--game x"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": "--game x",
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--launch-cmd=--foo"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": "--foo",
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--fast-mode",
+"keep"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "keep",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--fast-mode",
+"fast"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "fast",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--fast-mode",
+"slow"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --fast-mode: invalid choice: 'slow' (choose from 'instant', 'fast', 'normal', 'keep')\n"
+}
+},
+{
+"argv": [
+"--fast",
+"normal"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "normal",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--f",
+"x"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: ambiguous option: --f could match --first, --fast-mode, --full-graphics\n"
+}
+},
+{
+"argv": [
+"--fu"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": true,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--full-graphics",
+"--small-window",
+"--windowed"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": true,
+"small_window": true,
+"windowed": true,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--s"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: ambiguous option: --s could match --small-window, --sts1-time-scale, --stuck-timeout\n"
+}
+},
+{
+"argv": [
+"--sm"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": true,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--st",
+"9"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: ambiguous option: --st could match --sts1-time-scale, --stuck-timeout\n"
+}
+},
+{
+"argv": [
+"--sts1",
+"2"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "2.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--time-scale",
+"6"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "6.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--time-scale",
+"1e1"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "10.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--time-scale",
+".5"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "0.5"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--time-scale",
+"5."
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "5.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--time-scale",
+"inf"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "inf"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--time-scale",
+"-Infinity"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --time-scale: expected one argument\n"
+}
+},
+{
+"argv": [
+"--time-scale",
+"nan"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "nan"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--time-scale",
+"1_0.5"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "10.5"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--time-scale",
+"1,5"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --time-scale: invalid float value: '1,5'\n"
+}
+},
+{
+"argv": [
+"--time-scale",
+"0x10"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --time-scale: invalid float value: '0x10'\n"
+}
+},
+{
+"argv": [
+"--time-scale",
+"-2.5"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "-2.5"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--time-scale",
+"-.5e-3"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --time-scale: expected one argument\n"
+}
+},
+{
+"argv": [
+"--time-scale",
+"e5"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --time-scale: invalid float value: 'e5'\n"
+}
+},
+{
+"argv": [
+"--time-scale",
+"."
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --time-scale: invalid float value: '.'\n"
+}
+},
+{
+"argv": [
+"--sts1-time-scale",
+"8",
+"--stuck-timeout",
+"60",
+"--poll",
+"0.2"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "8.0"
+},
+"stuck_timeout": {
+"f": "60.0"
+},
+"poll": {
+"f": "0.2"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--poll",
+"abc"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --poll: invalid float value: 'abc'\n"
+}
+},
+{
+"argv": [
+"--stuck-timeout=1e3"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "1000.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--log-dir",
+"/tmp/x"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": "/tmp/x",
+"verbose": false
+}
+},
+{
+"argv": [
+"--log-dir",
+"a//b/./c/"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": "a/b/c",
+"verbose": false
+}
+},
+{
+"argv": [
+"--log-dir",
+"./x"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": "x",
+"verbose": false
+}
+},
+{
+"argv": [
+"--log-dir",
+"//x"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": "//x",
+"verbose": false
+}
+},
+{
+"argv": [
+"--log-dir",
+"///x"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": "/x",
+"verbose": false
+}
+},
+{
+"argv": [
+"--log-dir",
+""
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": ".",
+"verbose": false
+}
+},
+{
+"argv": [
+"--log-dir",
+"."
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": ".",
+"verbose": false
+}
+},
+{
+"argv": [
+"--log-dir",
+"/"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": "/",
+"verbose": false
+}
+},
+{
+"argv": [
+"--log",
+"x",
+"-v"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": "x",
+"verbose": true
+}
+},
+{
+"argv": [
+"extra"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: extra\n"
+}
+},
+{
+"argv": [
+"--",
+"x"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: -- x\n"
+}
+},
+{
+"argv": [
+"--"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: --\n"
+}
+},
+{
+"argv": [
+"-v",
+"--",
+"-v"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: -- -v\n"
+}
+},
+{
+"argv": [
+"--port",
+"--",
+"3"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --port: expected one argument\n"
+}
+},
+{
+"argv": [
+"a",
+"--bogus",
+"b",
+"-v",
+"c"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: a --bogus b c\n"
+}
+},
+{
+"argv": [
+"--bogus=1"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: --bogus=1\n"
+}
+},
+{
+"argv": [
+"-"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: -\n"
+}
+},
+{
+"argv": [
+"-5"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: -5\n"
+}
+},
+{
+"argv": [
+"-5.5"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: -5.5\n"
+}
+},
+{
+"argv": [
+"---x"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: ---x\n"
+}
+},
+{
+"argv": [
+"--port",
+"1",
+"x y"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: x y\n"
+}
+},
+{
+"argv": [
+"-q r"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: -q r\n"
+}
+},
+{
+"argv": [
+""
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: \n"
+}
+},
+{
+"argv": [
+"--runs",
+"2",
+"--game",
+"sts1",
+"--character",
+"WATCHER",
+"--no-launch",
+"-v",
+"--poll=0.1"
+],
+"columns": 80,
+"parsed": {
+"game": "sts1",
+"host": "127.0.0.1",
+"port": null,
+"character": "WATCHER",
+"runs": 2,
+"first": null,
+"no_tuning": false,
+"no_launch": true,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.1"
+},
+"log_dir": null,
+"verbose": true
+}
+},
+{
+"argv": [
+"--windowed=yes"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --windowed: ignored explicit argument 'yes'\n"
+}
+},
+{
+"argv": [
+"-hx"
+],
+"columns": 80,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\n\nPlays Slay the Spire 2 nonstop through the STS2_MCP mod, the first Slay the\nSpire through CommunicationMod (--game sts1), or both at the same time (--game\nboth).\n\noptions:\n  -h, --help            show this help message and exit\n  --game {sts2,sts1,both}\n                        which game to play: sts2 (default), sts1 (the first\n                        Slay the Spire), or both at once (a bot process for\n                        each, with the other options passed on to both)\n  --host HOST\n  --port PORT           where the bridge listens (default: 15526 for sts2,\n                        15527 for sts1's relay)\n  --character CHARACTER\n                        \"auto\" and \"random\" play a character with the lowest\n                        ascension unlocked (drawn at random among those on\n                        that level), always at the highest ascension it has\n                        unlocked; or a character id (e.g. IRONCLAD;\n                        THE_SILENT, DEFECT or WATCHER in sts1), or \"cycle\"\n                        over unlocked ones (default: auto)\n  --runs RUNS           stop after this many runs (default: never stop)\n  --first CHARACTER     with --character auto: play this character until it\n                        has earned all of its own epochs, then carry on as\n                        usual\n  --no-tuning           always play with the default settings instead of\n                        trying variations and learning from the results\n  --no-launch           never start or kill the game; only play when it is up\n  --launch-cmd LAUNCH_CMD\n                        command that starts the game (default for sts2: 'steam\n                        -applaunch 2868840'; for sts1: ModTheSpire with\n                        BaseMod and CommunicationMod)\n  --fast-mode {instant,fast,normal,keep}\n                        game animation speed, set through the mod each time\n                        the bot connects; \"keep\" leaves the setting alone\n                        (default: instant, the fastest)\n  --full-graphics       keep the game's normal window and graphics (default:\n                        maximised window, no anti-aliasing, uncapped frame\n                        rate)\n  --small-window        shrink the game window to 960x540 instead of full\n                        screen\n  --windowed            a maximised window instead of full screen (both games)\n  --time-scale TIME_SCALE\n                        how many times faster the game's clock runs, set\n                        through the mod for the session (default: 16; 1 leaves\n                        it alone)\n  --sts1-time-scale STS1_TIME_SCALE\n                        the same for the first Slay the Spire, through the\n                        bot's own ModTheSpire mod (default: 16; 1 leaves it\n                        alone)\n  --stuck-timeout STUCK_TIMEOUT\n                        seconds without any change before the game is\n                        restarted\n  --poll POLL           seconds between state polls when there is nothing to\n                        do (0.2 until 2026-11-26)\n  --log-dir LOG_DIR     logs and run history (default: ~/.local/state/sts2bot,\n                        and its sts1/ for the first game)\n  -v, --verbose         log every action\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"-h=1"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument -h/--help: ignored explicit argument '1'\n"
+}
+},
+{
+"argv": [
+"--help=1"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument -h/--help: ignored explicit argument '1'\n"
+}
+},
+{
+"argv": [
+"--game",
+"both",
+"--port",
+"1"
+],
+"columns": 80,
+"parsed": {
+"game": "both",
+"host": "127.0.0.1",
+"port": 1,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--character",
+"a b"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "a b",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--character",
+"-c"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: argument --character: expected one argument\n"
+}
+},
+{
+"argv": [
+"--characte=-c"
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "-c",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "16.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"--time-scale",
+" 3 "
+],
+"columns": 80,
+"parsed": {
+"game": "sts2",
+"host": "127.0.0.1",
+"port": null,
+"character": "auto",
+"runs": null,
+"first": null,
+"no_tuning": false,
+"no_launch": false,
+"launch_cmd": null,
+"fast_mode": "instant",
+"full_graphics": false,
+"small_window": false,
+"windowed": false,
+"time_scale": {
+"f": "3.0"
+},
+"sts1_time_scale": {
+"f": "16.0"
+},
+"stuck_timeout": {
+"f": "300.0"
+},
+"poll": {
+"f": "0.08"
+},
+"log_dir": null,
+"verbose": false
+}
+},
+{
+"argv": [
+"sts1-setup"
+],
+"columns": 80,
+"parsed": {
+"port": 15527
+}
+},
+{
+"argv": [
+"sts1-setup",
+"--port",
+"15599"
+],
+"columns": 80,
+"parsed": {
+"port": 15599
+}
+},
+{
+"argv": [
+"sts1-setup",
+"--port=x"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot sts1-setup [-h] [--port PORT]\nsts2bot sts1-setup: error: argument --port: invalid int value: 'x'\n"
+}
+},
+{
+"argv": [
+"sts1-setup",
+"-h"
+],
+"columns": 80,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot sts1-setup [-h] [--port PORT]\n\nPoint CommunicationMod (Slay the Spire) at the bot's relay.\n\noptions:\n  -h, --help   show this help message and exit\n  --port PORT\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"sts1-setup",
+"--help"
+],
+"columns": 80,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot sts1-setup [-h] [--port PORT]\n\nPoint CommunicationMod (Slay the Spire) at the bot's relay.\n\noptions:\n  -h, --help   show this help message and exit\n  --port PORT\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"sts1-setup",
+"--p",
+"1"
+],
+"columns": 80,
+"parsed": {
+"port": 1
+}
+},
+{
+"argv": [
+"sts1-setup",
+"x"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot sts1-setup [-h] [--port PORT]\nsts2bot sts1-setup: error: unrecognized arguments: x\n"
+}
+},
+{
+"argv": [
+"sts1-setup",
+"--port"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot sts1-setup [-h] [--port PORT]\nsts2bot sts1-setup: error: argument --port: expected one argument\n"
+}
+},
+{
+"argv": [
+"sts1-setup",
+"--verbose"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot sts1-setup [-h] [--port PORT]\nsts2bot sts1-setup: error: unrecognized arguments: --verbose\n"
+}
+},
+{
+"argv": [
+"sts1-setup",
+"-v"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot sts1-setup [-h] [--port PORT]\nsts2bot sts1-setup: error: unrecognized arguments: -v\n"
+}
+},
+{
+"argv": [
+"sts1-setup",
+"--",
+"y"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot sts1-setup [-h] [--port PORT]\nsts2bot sts1-setup: error: unrecognized arguments: -- y\n"
+}
+},
+{
+"argv": [
+"sts1-setup",
+"--port",
+"1",
+"2"
+],
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot sts1-setup [-h] [--port PORT]\nsts2bot sts1-setup: error: unrecognized arguments: 2\n"
+}
+},
+{
+"argv": [
+"--help"
+],
+"columns": 40,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot [-h]\n               [--game {sts2,sts1,both}]\n               [--host HOST]\n               [--port PORT]\n               [--character CHARACTER]\n               [--runs RUNS]\n               [--first CHARACTER]\n               [--no-tuning]\n               [--no-launch]\n               [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}]\n               [--full-graphics]\n               [--small-window]\n               [--windowed]\n               [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT]\n               [--poll POLL]\n               [--log-dir LOG_DIR]\n               [-v]\n\nPlays Slay the Spire 2 nonstop through\nthe STS2_MCP mod, the first Slay the\nSpire through CommunicationMod (--game\nsts1), or both at the same time\n(--game both).\n\noptions:\n  -h, --help      show this help\n                  message and exit\n  --game {sts2,sts1,both}\n                  which game to play:\n                  sts2 (default), sts1\n                  (the first Slay the\n                  Spire), or both at\n                  once (a bot process\n                  for each, with the\n                  other options passed\n                  on to both)\n  --host HOST\n  --port PORT     where the bridge\n                  listens (default:\n                  15526 for sts2,\n                  15527 for sts1's\n                  relay)\n  --character CHARACTER\n                  \"auto\" and \"random\"\n                  play a character\n                  with the lowest\n                  ascension unlocked\n                  (drawn at random\n                  among those on that\n                  level), always at\n                  the highest\n                  ascension it has\n                  unlocked; or a\n                  character id (e.g.\n                  IRONCLAD;\n                  THE_SILENT, DEFECT\n                  or WATCHER in sts1),\n                  or \"cycle\" over\n                  unlocked ones\n                  (default: auto)\n  --runs RUNS     stop after this many\n                  runs (default: never\n                  stop)\n  --first CHARACTER\n                  with --character\n                  auto: play this\n                  character until it\n                  has earned all of\n                  its own epochs, then\n                  carry on as usual\n  --no-tuning     always play with the\n                  default settings\n                  instead of trying\n                  variations and\n                  learning from the\n                  results\n  --no-launch     never start or kill\n                  the game; only play\n                  when it is up\n  --launch-cmd LAUNCH_CMD\n                  command that starts\n                  the game (default\n                  for sts2: 'steam\n                  -applaunch 2868840';\n                  for sts1:\n                  ModTheSpire with\n                  BaseMod and\n                  CommunicationMod)\n  --fast-mode {instant,fast,normal,keep}\n                  game animation\n                  speed, set through\n                  the mod each time\n                  the bot connects;\n                  \"keep\" leaves the\n                  setting alone\n                  (default: instant,\n                  the fastest)\n  --full-graphics\n                  keep the game's\n                  normal window and\n                  graphics (default:\n                  maximised window, no\n                  anti-aliasing,\n                  uncapped frame rate)\n  --small-window  shrink the game\n                  window to 960x540\n                  instead of full\n                  screen\n  --windowed      a maximised window\n                  instead of full\n                  screen (both games)\n  --time-scale TIME_SCALE\n                  how many times\n                  faster the game's\n                  clock runs, set\n                  through the mod for\n                  the session\n                  (default: 16; 1\n                  leaves it alone)\n  --sts1-time-scale STS1_TIME_SCALE\n                  the same for the\n                  first Slay the\n                  Spire, through the\n                  bot's own\n                  ModTheSpire mod\n                  (default: 16; 1\n                  leaves it alone)\n  --stuck-timeout STUCK_TIMEOUT\n                  seconds without any\n                  change before the\n                  game is restarted\n  --poll POLL     seconds between\n                  state polls when\n                  there is nothing to\n                  do (0.2 until\n                  2026-11-26)\n  --log-dir LOG_DIR\n                  logs and run history\n                  (default: ~/.local/s\n                  tate/sts2bot, and\n                  its sts1/ for the\n                  first game)\n  -v, --verbose   log every action\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"--bogus"
+],
+"columns": 40,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h]\n               [--game {sts2,sts1,both}]\n               [--host HOST]\n               [--port PORT]\n               [--character CHARACTER]\n               [--runs RUNS]\n               [--first CHARACTER]\n               [--no-tuning]\n               [--no-launch]\n               [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}]\n               [--full-graphics]\n               [--small-window]\n               [--windowed]\n               [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT]\n               [--poll POLL]\n               [--log-dir LOG_DIR]\n               [-v]\nsts2bot: error: unrecognized arguments: --bogus\n"
+}
+},
+{
+"argv": [
+"sts1-setup",
+"-h"
+],
+"columns": 40,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot sts1-setup [-h]\n                          [--port PORT]\n\nPoint CommunicationMod (Slay the\nSpire) at the bot's relay.\n\noptions:\n  -h, --help   show this help message\n               and exit\n  --port PORT\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"sts1-setup",
+"x"
+],
+"columns": 40,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot sts1-setup [-h]\n                          [--port PORT]\nsts2bot sts1-setup: error: unrecognized arguments: x\n"
+}
+},
+{
+"argv": [
+"--help"
+],
+"columns": 60,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot [-h] [--game {sts2,sts1,both}]\n               [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS]\n               [--first CHARACTER] [--no-tuning]\n               [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}]\n               [--full-graphics] [--small-window]\n               [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT]\n               [--poll POLL] [--log-dir LOG_DIR] [-v]\n\nPlays Slay the Spire 2 nonstop through the STS2_MCP mod,\nthe first Slay the Spire through CommunicationMod (--game\nsts1), or both at the same time (--game both).\n\noptions:\n  -h, --help            show this help message and exit\n  --game {sts2,sts1,both}\n                        which game to play: sts2\n                        (default), sts1 (the first Slay\n                        the Spire), or both at once (a bot\n                        process for each, with the other\n                        options passed on to both)\n  --host HOST\n  --port PORT           where the bridge listens (default:\n                        15526 for sts2, 15527 for sts1's\n                        relay)\n  --character CHARACTER\n                        \"auto\" and \"random\" play a\n                        character with the lowest\n                        ascension unlocked (drawn at\n                        random among those on that level),\n                        always at the highest ascension it\n                        has unlocked; or a character id\n                        (e.g. IRONCLAD; THE_SILENT, DEFECT\n                        or WATCHER in sts1), or \"cycle\"\n                        over unlocked ones (default: auto)\n  --runs RUNS           stop after this many runs\n                        (default: never stop)\n  --first CHARACTER     with --character auto: play this\n                        character until it has earned all\n                        of its own epochs, then carry on\n                        as usual\n  --no-tuning           always play with the default\n                        settings instead of trying\n                        variations and learning from the\n                        results\n  --no-launch           never start or kill the game; only\n                        play when it is up\n  --launch-cmd LAUNCH_CMD\n                        command that starts the game\n                        (default for sts2: 'steam\n                        -applaunch 2868840'; for sts1:\n                        ModTheSpire with BaseMod and\n                        CommunicationMod)\n  --fast-mode {instant,fast,normal,keep}\n                        game animation speed, set through\n                        the mod each time the bot\n                        connects; \"keep\" leaves the\n                        setting alone (default: instant,\n                        the fastest)\n  --full-graphics       keep the game's normal window and\n                        graphics (default: maximised\n                        window, no anti-aliasing, uncapped\n                        frame rate)\n  --small-window        shrink the game window to 960x540\n                        instead of full screen\n  --windowed            a maximised window instead of full\n                        screen (both games)\n  --time-scale TIME_SCALE\n                        how many times faster the game's\n                        clock runs, set through the mod\n                        for the session (default: 16; 1\n                        leaves it alone)\n  --sts1-time-scale STS1_TIME_SCALE\n                        the same for the first Slay the\n                        Spire, through the bot's own\n                        ModTheSpire mod (default: 16; 1\n                        leaves it alone)\n  --stuck-timeout STUCK_TIMEOUT\n                        seconds without any change before\n                        the game is restarted\n  --poll POLL           seconds between state polls when\n                        there is nothing to do (0.2 until\n                        2026-11-26)\n  --log-dir LOG_DIR     logs and run history (default:\n                        ~/.local/state/sts2bot, and its\n                        sts1/ for the first game)\n  -v, --verbose         log every action\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"--bogus"
+],
+"columns": 60,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}]\n               [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS]\n               [--first CHARACTER] [--no-tuning]\n               [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}]\n               [--full-graphics] [--small-window]\n               [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT]\n               [--poll POLL] [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: --bogus\n"
+}
+},
+{
+"argv": [
+"sts1-setup",
+"-h"
+],
+"columns": 60,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot sts1-setup [-h] [--port PORT]\n\nPoint CommunicationMod (Slay the Spire) at the bot's\nrelay.\n\noptions:\n  -h, --help   show this help message and exit\n  --port PORT\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"sts1-setup",
+"x"
+],
+"columns": 60,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot sts1-setup [-h] [--port PORT]\nsts2bot sts1-setup: error: unrecognized arguments: x\n"
+}
+},
+{
+"argv": [
+"--help"
+],
+"columns": 72,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST]\n               [--port PORT] [--character CHARACTER] [--runs RUNS]\n               [--first CHARACTER] [--no-tuning] [--no-launch]\n               [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}]\n               [--full-graphics] [--small-window] [--windowed]\n               [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\n\nPlays Slay the Spire 2 nonstop through the STS2_MCP mod, the first\nSlay the Spire through CommunicationMod (--game sts1), or both at the\nsame time (--game both).\n\noptions:\n  -h, --help            show this help message and exit\n  --game {sts2,sts1,both}\n                        which game to play: sts2 (default), sts1 (the\n                        first Slay the Spire), or both at once (a bot\n                        process for each, with the other options\n                        passed on to both)\n  --host HOST\n  --port PORT           where the bridge listens (default: 15526 for\n                        sts2, 15527 for sts1's relay)\n  --character CHARACTER\n                        \"auto\" and \"random\" play a character with the\n                        lowest ascension unlocked (drawn at random\n                        among those on that level), always at the\n                        highest ascension it has unlocked; or a\n                        character id (e.g. IRONCLAD; THE_SILENT,\n                        DEFECT or WATCHER in sts1), or \"cycle\" over\n                        unlocked ones (default: auto)\n  --runs RUNS           stop after this many runs (default: never\n                        stop)\n  --first CHARACTER     with --character auto: play this character\n                        until it has earned all of its own epochs,\n                        then carry on as usual\n  --no-tuning           always play with the default settings instead\n                        of trying variations and learning from the\n                        results\n  --no-launch           never start or kill the game; only play when\n                        it is up\n  --launch-cmd LAUNCH_CMD\n                        command that starts the game (default for\n                        sts2: 'steam -applaunch 2868840'; for sts1:\n                        ModTheSpire with BaseMod and CommunicationMod)\n  --fast-mode {instant,fast,normal,keep}\n                        game animation speed, set through the mod each\n                        time the bot connects; \"keep\" leaves the\n                        setting alone (default: instant, the fastest)\n  --full-graphics       keep the game's normal window and graphics\n                        (default: maximised window, no anti-aliasing,\n                        uncapped frame rate)\n  --small-window        shrink the game window to 960x540 instead of\n                        full screen\n  --windowed            a maximised window instead of full screen\n                        (both games)\n  --time-scale TIME_SCALE\n                        how many times faster the game's clock runs,\n                        set through the mod for the session (default:\n                        16; 1 leaves it alone)\n  --sts1-time-scale STS1_TIME_SCALE\n                        the same for the first Slay the Spire, through\n                        the bot's own ModTheSpire mod (default: 16; 1\n                        leaves it alone)\n  --stuck-timeout STUCK_TIMEOUT\n                        seconds without any change before the game is\n                        restarted\n  --poll POLL           seconds between state polls when there is\n                        nothing to do (0.2 until 2026-11-26)\n  --log-dir LOG_DIR     logs and run history (default:\n                        ~/.local/state/sts2bot, and its sts1/ for the\n                        first game)\n  -v, --verbose         log every action\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"--bogus"
+],
+"columns": 72,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST]\n               [--port PORT] [--character CHARACTER] [--runs RUNS]\n               [--first CHARACTER] [--no-tuning] [--no-launch]\n               [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}]\n               [--full-graphics] [--small-window] [--windowed]\n               [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: --bogus\n"
+}
+},
+{
+"argv": [
+"sts1-setup",
+"-h"
+],
+"columns": 72,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot sts1-setup [-h] [--port PORT]\n\nPoint CommunicationMod (Slay the Spire) at the bot's relay.\n\noptions:\n  -h, --help   show this help message and exit\n  --port PORT\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"sts1-setup",
+"x"
+],
+"columns": 72,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot sts1-setup [-h] [--port PORT]\nsts2bot sts1-setup: error: unrecognized arguments: x\n"
+}
+},
+{
+"argv": [
+"--help"
+],
+"columns": 100,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT] [--character CHARACTER]\n               [--runs RUNS] [--first CHARACTER] [--no-tuning] [--no-launch]\n               [--launch-cmd LAUNCH_CMD] [--fast-mode {instant,fast,normal,keep}]\n               [--full-graphics] [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE] [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\n\nPlays Slay the Spire 2 nonstop through the STS2_MCP mod, the first Slay the Spire through\nCommunicationMod (--game sts1), or both at the same time (--game both).\n\noptions:\n  -h, --help            show this help message and exit\n  --game {sts2,sts1,both}\n                        which game to play: sts2 (default), sts1 (the first Slay the Spire), or\n                        both at once (a bot process for each, with the other options passed on to\n                        both)\n  --host HOST\n  --port PORT           where the bridge listens (default: 15526 for sts2, 15527 for sts1's relay)\n  --character CHARACTER\n                        \"auto\" and \"random\" play a character with the lowest ascension unlocked\n                        (drawn at random among those on that level), always at the highest\n                        ascension it has unlocked; or a character id (e.g. IRONCLAD; THE_SILENT,\n                        DEFECT or WATCHER in sts1), or \"cycle\" over unlocked ones (default: auto)\n  --runs RUNS           stop after this many runs (default: never stop)\n  --first CHARACTER     with --character auto: play this character until it has earned all of its\n                        own epochs, then carry on as usual\n  --no-tuning           always play with the default settings instead of trying variations and\n                        learning from the results\n  --no-launch           never start or kill the game; only play when it is up\n  --launch-cmd LAUNCH_CMD\n                        command that starts the game (default for sts2: 'steam -applaunch\n                        2868840'; for sts1: ModTheSpire with BaseMod and CommunicationMod)\n  --fast-mode {instant,fast,normal,keep}\n                        game animation speed, set through the mod each time the bot connects;\n                        \"keep\" leaves the setting alone (default: instant, the fastest)\n  --full-graphics       keep the game's normal window and graphics (default: maximised window, no\n                        anti-aliasing, uncapped frame rate)\n  --small-window        shrink the game window to 960x540 instead of full screen\n  --windowed            a maximised window instead of full screen (both games)\n  --time-scale TIME_SCALE\n                        how many times faster the game's clock runs, set through the mod for the\n                        session (default: 16; 1 leaves it alone)\n  --sts1-time-scale STS1_TIME_SCALE\n                        the same for the first Slay the Spire, through the bot's own ModTheSpire\n                        mod (default: 16; 1 leaves it alone)\n  --stuck-timeout STUCK_TIMEOUT\n                        seconds without any change before the game is restarted\n  --poll POLL           seconds between state polls when there is nothing to do (0.2 until\n                        2026-11-26)\n  --log-dir LOG_DIR     logs and run history (default: ~/.local/state/sts2bot, and its sts1/ for\n                        the first game)\n  -v, --verbose         log every action\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"--bogus"
+],
+"columns": 100,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT] [--character CHARACTER]\n               [--runs RUNS] [--first CHARACTER] [--no-tuning] [--no-launch]\n               [--launch-cmd LAUNCH_CMD] [--fast-mode {instant,fast,normal,keep}]\n               [--full-graphics] [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE] [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: --bogus\n"
+}
+},
+{
+"argv": [
+"sts1-setup",
+"-h"
+],
+"columns": 100,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot sts1-setup [-h] [--port PORT]\n\nPoint CommunicationMod (Slay the Spire) at the bot's relay.\n\noptions:\n  -h, --help   show this help message and exit\n  --port PORT\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"sts1-setup",
+"x"
+],
+"columns": 100,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot sts1-setup [-h] [--port PORT]\nsts2bot sts1-setup: error: unrecognized arguments: x\n"
+}
+},
+{
+"argv": [
+"--help"
+],
+"columns": 120,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT] [--character CHARACTER] [--runs RUNS]\n               [--first CHARACTER] [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics] [--small-window] [--windowed]\n               [--time-scale TIME_SCALE] [--sts1-time-scale STS1_TIME_SCALE] [--stuck-timeout STUCK_TIMEOUT]\n               [--poll POLL] [--log-dir LOG_DIR] [-v]\n\nPlays Slay the Spire 2 nonstop through the STS2_MCP mod, the first Slay the Spire through CommunicationMod (--game\nsts1), or both at the same time (--game both).\n\noptions:\n  -h, --help            show this help message and exit\n  --game {sts2,sts1,both}\n                        which game to play: sts2 (default), sts1 (the first Slay the Spire), or both at once (a bot\n                        process for each, with the other options passed on to both)\n  --host HOST\n  --port PORT           where the bridge listens (default: 15526 for sts2, 15527 for sts1's relay)\n  --character CHARACTER\n                        \"auto\" and \"random\" play a character with the lowest ascension unlocked (drawn at random among\n                        those on that level), always at the highest ascension it has unlocked; or a character id (e.g.\n                        IRONCLAD; THE_SILENT, DEFECT or WATCHER in sts1), or \"cycle\" over unlocked ones (default:\n                        auto)\n  --runs RUNS           stop after this many runs (default: never stop)\n  --first CHARACTER     with --character auto: play this character until it has earned all of its own epochs, then\n                        carry on as usual\n  --no-tuning           always play with the default settings instead of trying variations and learning from the\n                        results\n  --no-launch           never start or kill the game; only play when it is up\n  --launch-cmd LAUNCH_CMD\n                        command that starts the game (default for sts2: 'steam -applaunch 2868840'; for sts1:\n                        ModTheSpire with BaseMod and CommunicationMod)\n  --fast-mode {instant,fast,normal,keep}\n                        game animation speed, set through the mod each time the bot connects; \"keep\" leaves the\n                        setting alone (default: instant, the fastest)\n  --full-graphics       keep the game's normal window and graphics (default: maximised window, no anti-aliasing,\n                        uncapped frame rate)\n  --small-window        shrink the game window to 960x540 instead of full screen\n  --windowed            a maximised window instead of full screen (both games)\n  --time-scale TIME_SCALE\n                        how many times faster the game's clock runs, set through the mod for the session (default: 16;\n                        1 leaves it alone)\n  --sts1-time-scale STS1_TIME_SCALE\n                        the same for the first Slay the Spire, through the bot's own ModTheSpire mod (default: 16; 1\n                        leaves it alone)\n  --stuck-timeout STUCK_TIMEOUT\n                        seconds without any change before the game is restarted\n  --poll POLL           seconds between state polls when there is nothing to do (0.2 until 2026-11-26)\n  --log-dir LOG_DIR     logs and run history (default: ~/.local/state/sts2bot, and its sts1/ for the first game)\n  -v, --verbose         log every action\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"--bogus"
+],
+"columns": 120,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT] [--character CHARACTER] [--runs RUNS]\n               [--first CHARACTER] [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics] [--small-window] [--windowed]\n               [--time-scale TIME_SCALE] [--sts1-time-scale STS1_TIME_SCALE] [--stuck-timeout STUCK_TIMEOUT]\n               [--poll POLL] [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: --bogus\n"
+}
+},
+{
+"argv": [
+"sts1-setup",
+"-h"
+],
+"columns": 120,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot sts1-setup [-h] [--port PORT]\n\nPoint CommunicationMod (Slay the Spire) at the bot's relay.\n\noptions:\n  -h, --help   show this help message and exit\n  --port PORT\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"sts1-setup",
+"x"
+],
+"columns": 120,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot sts1-setup [-h] [--port PORT]\nsts2bot sts1-setup: error: unrecognized arguments: x\n"
+}
+},
+{
+"argv": [
+"--help"
+],
+"columns": 200,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT] [--character CHARACTER] [--runs RUNS] [--first CHARACTER] [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics] [--small-window] [--windowed] [--time-scale TIME_SCALE] [--sts1-time-scale STS1_TIME_SCALE] [--stuck-timeout STUCK_TIMEOUT]\n               [--poll POLL] [--log-dir LOG_DIR] [-v]\n\nPlays Slay the Spire 2 nonstop through the STS2_MCP mod, the first Slay the Spire through CommunicationMod (--game sts1), or both at the same time (--game both).\n\noptions:\n  -h, --help            show this help message and exit\n  --game {sts2,sts1,both}\n                        which game to play: sts2 (default), sts1 (the first Slay the Spire), or both at once (a bot process for each, with the other options passed on to both)\n  --host HOST\n  --port PORT           where the bridge listens (default: 15526 for sts2, 15527 for sts1's relay)\n  --character CHARACTER\n                        \"auto\" and \"random\" play a character with the lowest ascension unlocked (drawn at random among those on that level), always at the highest ascension it has unlocked; or a\n                        character id (e.g. IRONCLAD; THE_SILENT, DEFECT or WATCHER in sts1), or \"cycle\" over unlocked ones (default: auto)\n  --runs RUNS           stop after this many runs (default: never stop)\n  --first CHARACTER     with --character auto: play this character until it has earned all of its own epochs, then carry on as usual\n  --no-tuning           always play with the default settings instead of trying variations and learning from the results\n  --no-launch           never start or kill the game; only play when it is up\n  --launch-cmd LAUNCH_CMD\n                        command that starts the game (default for sts2: 'steam -applaunch 2868840'; for sts1: ModTheSpire with BaseMod and CommunicationMod)\n  --fast-mode {instant,fast,normal,keep}\n                        game animation speed, set through the mod each time the bot connects; \"keep\" leaves the setting alone (default: instant, the fastest)\n  --full-graphics       keep the game's normal window and graphics (default: maximised window, no anti-aliasing, uncapped frame rate)\n  --small-window        shrink the game window to 960x540 instead of full screen\n  --windowed            a maximised window instead of full screen (both games)\n  --time-scale TIME_SCALE\n                        how many times faster the game's clock runs, set through the mod for the session (default: 16; 1 leaves it alone)\n  --sts1-time-scale STS1_TIME_SCALE\n                        the same for the first Slay the Spire, through the bot's own ModTheSpire mod (default: 16; 1 leaves it alone)\n  --stuck-timeout STUCK_TIMEOUT\n                        seconds without any change before the game is restarted\n  --poll POLL           seconds between state polls when there is nothing to do (0.2 until 2026-11-26)\n  --log-dir LOG_DIR     logs and run history (default: ~/.local/state/sts2bot, and its sts1/ for the first game)\n  -v, --verbose         log every action\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"--bogus"
+],
+"columns": 200,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT] [--character CHARACTER] [--runs RUNS] [--first CHARACTER] [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics] [--small-window] [--windowed] [--time-scale TIME_SCALE] [--sts1-time-scale STS1_TIME_SCALE] [--stuck-timeout STUCK_TIMEOUT]\n               [--poll POLL] [--log-dir LOG_DIR] [-v]\nsts2bot: error: unrecognized arguments: --bogus\n"
+}
+},
+{
+"argv": [
+"sts1-setup",
+"-h"
+],
+"columns": 200,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot sts1-setup [-h] [--port PORT]\n\nPoint CommunicationMod (Slay the Spire) at the bot's relay.\n\noptions:\n  -h, --help   show this help message and exit\n  --port PORT\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"sts1-setup",
+"x"
+],
+"columns": 200,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot sts1-setup [-h] [--port PORT]\nsts2bot sts1-setup: error: unrecognized arguments: x\n"
+}
+},
+{
+"argv": [
+"--help"
+],
+"columns": 30,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot [-h]\n               [--game {sts2,sts1,both}]\n               [--host HOST]\n               [--port PORT]\n               [--character CHARACTER]\n               [--runs RUNS]\n               [--first CHARACTER]\n               [--no-tuning]\n               [--no-launch]\n               [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}]\n               [--full-graphics]\n               [--small-window]\n               [--windowed]\n               [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT]\n               [--poll POLL]\n               [--log-dir LOG_DIR]\n               [-v]\n\nPlays Slay the Spire 2\nnonstop through the STS2_MCP\nmod, the first Slay the\nSpire through\nCommunicationMod (--game\nsts1), or both at the same\ntime (--game both).\n\noptions:\n  -h, --help\n        show this help\n        message and exit\n  --game {sts2,sts1,both}\n        which game to play:\n        sts2 (default), sts1\n        (the first Slay the\n        Spire), or both at\n        once (a bot process\n        for each, with the\n        other options passed\n        on to both)\n  --host HOST\n  --port PORT\n        where the bridge\n        listens (default:\n        15526 for sts2,\n        15527 for sts1's\n        relay)\n  --character CHARACTER\n        \"auto\" and \"random\"\n        play a character\n        with the lowest\n        ascension unlocked\n        (drawn at random\n        among those on that\n        level), always at\n        the highest\n        ascension it has\n        unlocked; or a\n        character id (e.g.\n        IRONCLAD;\n        THE_SILENT, DEFECT\n        or WATCHER in sts1),\n        or \"cycle\" over\n        unlocked ones\n        (default: auto)\n  --runs RUNS\n        stop after this many\n        runs (default: never\n        stop)\n  --first CHARACTER\n        with --character\n        auto: play this\n        character until it\n        has earned all of\n        its own epochs, then\n        carry on as usual\n  --no-tuning\n        always play with the\n        default settings\n        instead of trying\n        variations and\n        learning from the\n        results\n  --no-launch\n        never start or kill\n        the game; only play\n        when it is up\n  --launch-cmd LAUNCH_CMD\n        command that starts\n        the game (default\n        for sts2: 'steam\n        -applaunch 2868840';\n        for sts1:\n        ModTheSpire with\n        BaseMod and\n        CommunicationMod)\n  --fast-mode {instant,fast,normal,keep}\n        game animation\n        speed, set through\n        the mod each time\n        the bot connects;\n        \"keep\" leaves the\n        setting alone\n        (default: instant,\n        the fastest)\n  --full-graphics\n        keep the game's\n        normal window and\n        graphics (default:\n        maximised window, no\n        anti-aliasing,\n        uncapped frame rate)\n  --small-window\n        shrink the game\n        window to 960x540\n        instead of full\n        screen\n  --windowed\n        a maximised window\n        instead of full\n        screen (both games)\n  --time-scale TIME_SCALE\n        how many times\n        faster the game's\n        clock runs, set\n        through the mod for\n        the session\n        (default: 16; 1\n        leaves it alone)\n  --sts1-time-scale STS1_TIME_SCALE\n        the same for the\n        first Slay the\n        Spire, through the\n        bot's own\n        ModTheSpire mod\n        (default: 16; 1\n        leaves it alone)\n  --stuck-timeout STUCK_TIMEOUT\n        seconds without any\n        change before the\n        game is restarted\n  --poll POLL\n        seconds between\n        state polls when\n        there is nothing to\n        do (0.2 until\n        2026-11-26)\n  --log-dir LOG_DIR\n        logs and run history\n        (default: ~/.local/s\n        tate/sts2bot, and\n        its sts1/ for the\n        first game)\n  -v, --verbose\n        log every action\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"--bogus"
+],
+"columns": 30,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h]\n               [--game {sts2,sts1,both}]\n               [--host HOST]\n               [--port PORT]\n               [--character CHARACTER]\n               [--runs RUNS]\n               [--first CHARACTER]\n               [--no-tuning]\n               [--no-launch]\n               [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}]\n               [--full-graphics]\n               [--small-window]\n               [--windowed]\n               [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT]\n               [--poll POLL]\n               [--log-dir LOG_DIR]\n               [-v]\nsts2bot: error: unrecognized arguments: --bogus\n"
+}
+},
+{
+"argv": [
+"sts1-setup",
+"-h"
+],
+"columns": 30,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot sts1-setup\n       [-h] [--port PORT]\n\nPoint CommunicationMod (Slay\nthe Spire) at the bot's\nrelay.\n\noptions:\n  -h, --help\n        show this help\n        message and exit\n  --port PORT\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"sts1-setup",
+"x"
+],
+"columns": 30,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot sts1-setup\n       [-h] [--port PORT]\nsts2bot sts1-setup: error: unrecognized arguments: x\n"
+}
+},
+{
+"argv": [
+"--help"
+],
+"columns": 20,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot\n       [-h]\n       [--game {sts2,sts1,both}]\n       [--host HOST]\n       [--port PORT]\n       [--character CHARACTER]\n       [--runs RUNS]\n       [--first CHARACTER]\n       [--no-tuning]\n       [--no-launch]\n       [--launch-cmd LAUNCH_CMD]\n       [--fast-mode {instant,fast,normal,keep}]\n       [--full-graphics]\n       [--small-window]\n       [--windowed]\n       [--time-scale TIME_SCALE]\n       [--sts1-time-scale STS1_TIME_SCALE]\n       [--stuck-timeout STUCK_TIMEOUT]\n       [--poll POLL]\n       [--log-dir LOG_DIR]\n       [-v]\n\nPlays Slay the\nSpire 2 nonstop\nthrough the\nSTS2_MCP mod, the\nfirst Slay the\nSpire through\nCommunicationMod\n(--game sts1), or\nboth at the same\ntime (--game\nboth).\n\noptions:\n  -h, --help\n    show this help\n    message and\n    exit\n  --game {sts2,sts1,both}\n    which game to\n    play: sts2\n    (default),\n    sts1 (the\n    first Slay the\n    Spire), or\n    both at once\n    (a bot process\n    for each, with\n    the other\n    options passed\n    on to both)\n  --host HOST\n  --port PORT\n    where the\n    bridge listens\n    (default:\n    15526 for\n    sts2, 15527\n    for sts1's\n    relay)\n  --character CHARACTER\n    \"auto\" and\n    \"random\" play\n    a character\n    with the\n    lowest\n    ascension\n    unlocked\n    (drawn at\n    random among\n    those on that\n    level), always\n    at the highest\n    ascension it\n    has unlocked;\n    or a character\n    id (e.g.\n    IRONCLAD;\n    THE_SILENT,\n    DEFECT or\n    WATCHER in\n    sts1), or\n    \"cycle\" over\n    unlocked ones\n    (default:\n    auto)\n  --runs RUNS\n    stop after\n    this many runs\n    (default:\n    never stop)\n  --first CHARACTER\n    with\n    --character\n    auto: play\n    this character\n    until it has\n    earned all of\n    its own\n    epochs, then\n    carry on as\n    usual\n  --no-tuning\n    always play\n    with the\n    default\n    settings\n    instead of\n    trying\n    variations and\n    learning from\n    the results\n  --no-launch\n    never start or\n    kill the game;\n    only play when\n    it is up\n  --launch-cmd LAUNCH_CMD\n    command that\n    starts the\n    game (default\n    for sts2:\n    'steam\n    -applaunch\n    2868840'; for\n    sts1:\n    ModTheSpire\n    with BaseMod\n    and Communicat\n    ionMod)\n  --fast-mode {instant,fast,normal,keep}\n    game animation\n    speed, set\n    through the\n    mod each time\n    the bot\n    connects;\n    \"keep\" leaves\n    the setting\n    alone\n    (default:\n    instant, the\n    fastest)\n  --full-graphics\n    keep the\n    game's normal\n    window and\n    graphics\n    (default:\n    maximised\n    window, no\n    anti-aliasing,\n    uncapped frame\n    rate)\n  --small-window\n    shrink the\n    game window to\n    960x540\n    instead of\n    full screen\n  --windowed\n    a maximised\n    window instead\n    of full screen\n    (both games)\n  --time-scale TIME_SCALE\n    how many times\n    faster the\n    game's clock\n    runs, set\n    through the\n    mod for the\n    session\n    (default: 16;\n    1 leaves it\n    alone)\n  --sts1-time-scale STS1_TIME_SCALE\n    the same for\n    the first Slay\n    the Spire,\n    through the\n    bot's own\n    ModTheSpire\n    mod (default:\n    16; 1 leaves\n    it alone)\n  --stuck-timeout STUCK_TIMEOUT\n    seconds\n    without any\n    change before\n    the game is\n    restarted\n  --poll POLL\n    seconds\n    between state\n    polls when\n    there is\n    nothing to do\n    (0.2 until\n    2026-11-26)\n  --log-dir LOG_DIR\n    logs and run\n    history\n    (default: ~/.l\n    ocal/state/sts\n    2bot, and its\n    sts1/ for the\n    first game)\n  -v, --verbose\n    log every\n    action\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"--bogus"
+],
+"columns": 20,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot\n       [-h]\n       [--game {sts2,sts1,both}]\n       [--host HOST]\n       [--port PORT]\n       [--character CHARACTER]\n       [--runs RUNS]\n       [--first CHARACTER]\n       [--no-tuning]\n       [--no-launch]\n       [--launch-cmd LAUNCH_CMD]\n       [--fast-mode {instant,fast,normal,keep}]\n       [--full-graphics]\n       [--small-window]\n       [--windowed]\n       [--time-scale TIME_SCALE]\n       [--sts1-time-scale STS1_TIME_SCALE]\n       [--stuck-timeout STUCK_TIMEOUT]\n       [--poll POLL]\n       [--log-dir LOG_DIR]\n       [-v]\nsts2bot: error: unrecognized arguments: --bogus\n"
+}
+},
+{
+"argv": [
+"sts1-setup",
+"-h"
+],
+"columns": 20,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot sts1-setup\n       [-h]\n       [--port PORT]\n\nPoint\nCommunicationMod\n(Slay the Spire)\nat the bot's\nrelay.\n\noptions:\n  -h, --help\n    show this help\n    message and\n    exit\n  --port PORT\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"sts1-setup",
+"x"
+],
+"columns": 20,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot sts1-setup\n       [-h]\n       [--port PORT]\nsts2bot sts1-setup: error: unrecognized arguments: x\n"
+}
+},
+{
+"argv": [
+"--help"
+],
+"columns": 12,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot\n       [-h]\n       [--game {sts2,sts1,both}]\n       [--host HOST]\n       [--port PORT]\n       [--character CHARACTER]\n       [--runs RUNS]\n       [--first CHARACTER]\n       [--no-tuning]\n       [--no-launch]\n       [--launch-cmd LAUNCH_CMD]\n       [--fast-mode {instant,fast,normal,keep}]\n       [--full-graphics]\n       [--small-window]\n       [--windowed]\n       [--time-scale TIME_SCALE]\n       [--sts1-time-scale STS1_TIME_SCALE]\n       [--stuck-timeout STUCK_TIMEOUT]\n       [--poll POLL]\n       [--log-dir LOG_DIR]\n       [-v]\n\nPlays Slay\nthe Spire 2\nnonstop\nthrough the\nSTS2_MCP\nmod, the\nfirst Slay\nthe Spire\nthrough Com\nmunicationM\nod (--game\nsts1), or\nboth at the\nsame time\n(--game\nboth).\n\noptions:\n  -h, --help\n    show this\n    help\n    message and\n    exit\n  --game {sts2,sts1,both}\n    which game\n    to play:\n    sts2\n    (default),\n    sts1 (the\n    first Slay\n    the Spire),\n    or both at\n    once (a bot\n    process for\n    each, with\n    the other\n    options\n    passed on\n    to both)\n  --host HOST\n  --port PORT\n    where the\n    bridge\n    listens\n    (default:\n    15526 for\n    sts2, 15527\n    for sts1's\n    relay)\n  --character CHARACTER\n    \"auto\" and\n    \"random\"\n    play a\n    character\n    with the\n    lowest\n    ascension\n    unlocked\n    (drawn at\n    random\n    among those\n    on that\n    level),\n    always at\n    the highest\n    ascension\n    it has\n    unlocked;\n    or a\n    character\n    id (e.g.\n    IRONCLAD;\n    THE_SILENT,\n    DEFECT or\n    WATCHER in\n    sts1), or\n    \"cycle\"\n    over\n    unlocked\n    ones\n    (default:\n    auto)\n  --runs RUNS\n    stop after\n    this many\n    runs\n    (default:\n    never stop)\n  --first CHARACTER\n    with\n    --character\n    auto: play\n    this\n    character\n    until it\n    has earned\n    all of its\n    own epochs,\n    then carry\n    on as usual\n  --no-tuning\n    always play\n    with the\n    default\n    settings\n    instead of\n    trying\n    variations\n    and\n    learning\n    from the\n    results\n  --no-launch\n    never start\n    or kill the\n    game; only\n    play when\n    it is up\n  --launch-cmd LAUNCH_CMD\n    command\n    that starts\n    the game\n    (default\n    for sts2:\n    'steam\n    -applaunch\n    2868840';\n    for sts1:\n    ModTheSpire\n    with\n    BaseMod and\n    Communicati\n    onMod)\n  --fast-mode {instant,fast,normal,keep}\n    game\n    animation\n    speed, set\n    through the\n    mod each\n    time the\n    bot\n    connects;\n    \"keep\"\n    leaves the\n    setting\n    alone\n    (default:\n    instant,\n    the\n    fastest)\n  --full-graphics\n    keep the\n    game's\n    normal\n    window and\n    graphics\n    (default:\n    maximised\n    window, no\n    anti-\n    aliasing,\n    uncapped\n    frame rate)\n  --small-window\n    shrink the\n    game window\n    to 960x540\n    instead of\n    full screen\n  --windowed\n    a maximised\n    window\n    instead of\n    full screen\n    (both\n    games)\n  --time-scale TIME_SCALE\n    how many\n    times\n    faster the\n    game's\n    clock runs,\n    set through\n    the mod for\n    the session\n    (default:\n    16; 1\n    leaves it\n    alone)\n  --sts1-time-scale STS1_TIME_SCALE\n    the same\n    for the\n    first Slay\n    the Spire,\n    through the\n    bot's own\n    ModTheSpire\n    mod\n    (default:\n    16; 1\n    leaves it\n    alone)\n  --stuck-timeout STUCK_TIMEOUT\n    seconds\n    without any\n    change\n    before the\n    game is\n    restarted\n  --poll POLL\n    seconds\n    between\n    state polls\n    when there\n    is nothing\n    to do (0.2\n    until\n    2026-11-26)\n  --log-dir LOG_DIR\n    logs and\n    run history\n    (default: ~\n    /.local/sta\n    te/sts2bot,\n    and its\n    sts1/ for\n    the first\n    game)\n  -v, --verbose\n    log every\n    action\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"--bogus"
+],
+"columns": 12,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot\n       [-h]\n       [--game {sts2,sts1,both}]\n       [--host HOST]\n       [--port PORT]\n       [--character CHARACTER]\n       [--runs RUNS]\n       [--first CHARACTER]\n       [--no-tuning]\n       [--no-launch]\n       [--launch-cmd LAUNCH_CMD]\n       [--fast-mode {instant,fast,normal,keep}]\n       [--full-graphics]\n       [--small-window]\n       [--windowed]\n       [--time-scale TIME_SCALE]\n       [--sts1-time-scale STS1_TIME_SCALE]\n       [--stuck-timeout STUCK_TIMEOUT]\n       [--poll POLL]\n       [--log-dir LOG_DIR]\n       [-v]\nsts2bot: error: unrecognized arguments: --bogus\n"
+}
+},
+{
+"argv": [
+"sts1-setup",
+"-h"
+],
+"columns": 12,
+"exit": {
+"code": 0,
+"stdout": "usage: sts2bot sts1-setup\n       [-h]\n       [--port PORT]\n\nPoint Commu\nnicationMod\n(Slay the\nSpire) at\nthe bot's\nrelay.\n\noptions:\n  -h, --help\n    show this\n    help\n    message and\n    exit\n  --port PORT\n",
+"stderr": ""
+}
+},
+{
+"argv": [
+"sts1-setup",
+"x"
+],
+"columns": 12,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot sts1-setup\n       [-h]\n       [--port PORT]\nsts2bot sts1-setup: error: unrecognized arguments: x\n"
+}
+}
+],
+"service": [
+{
+"argv": [
+"service",
+"disable"
+],
+"rc": 0,
+"code": 0,
+"calls": [
+[
+"systemctl",
+"--user",
+"disable",
+"--now",
+"sts2bot"
+]
+],
+"stdout": "The bot is stopped and will not start at login. Start it again with: sts2bot service enable\nThe game keeps running; close it from the game or Steam if you want it gone too.\n",
+"stderr": ""
+},
+{
+"argv": [
+"service",
+"disable"
+],
+"rc": 3,
+"code": 3,
+"calls": [
+[
+"systemctl",
+"--user",
+"disable",
+"--now",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"service",
+"disable"
+],
+"rc": "missing",
+"code": 127,
+"calls": [
+[
+"systemctl",
+"--user",
+"disable",
+"--now",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"service",
+"enable"
+],
+"rc": 0,
+"code": 0,
+"calls": [
+[
+"systemctl",
+"--user",
+"enable",
+"--now",
+"sts2bot"
+]
+],
+"stdout": "The bot is started now and at every login.\n",
+"stderr": ""
+},
+{
+"argv": [
+"service",
+"enable"
+],
+"rc": 3,
+"code": 3,
+"calls": [
+[
+"systemctl",
+"--user",
+"enable",
+"--now",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"service",
+"enable"
+],
+"rc": "missing",
+"code": 127,
+"calls": [
+[
+"systemctl",
+"--user",
+"enable",
+"--now",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"service",
+"stop"
+],
+"rc": 0,
+"code": 0,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"sts2bot"
+]
+],
+"stdout": "The bot is stopped until you start it again or log in next time.\nThe game keeps running; close it from the game or Steam if you want it gone too.\n",
+"stderr": ""
+},
+{
+"argv": [
+"service",
+"stop"
+],
+"rc": 3,
+"code": 3,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"service",
+"stop"
+],
+"rc": "missing",
+"code": 127,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"service",
+"start"
+],
+"rc": 0,
+"code": 0,
+"calls": [
+[
+"systemctl",
+"--user",
+"start",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"service",
+"start"
+],
+"rc": 3,
+"code": 3,
+"calls": [
+[
+"systemctl",
+"--user",
+"start",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"service",
+"start"
+],
+"rc": "missing",
+"code": 127,
+"calls": [
+[
+"systemctl",
+"--user",
+"start",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"service",
+"status"
+],
+"rc": 0,
+"code": 0,
+"calls": [
+[
+"systemctl",
+"--user",
+"status",
+"--no-pager",
+"--lines=0",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"service",
+"status"
+],
+"rc": 3,
+"code": 3,
+"calls": [
+[
+"systemctl",
+"--user",
+"status",
+"--no-pager",
+"--lines=0",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"service",
+"status"
+],
+"rc": "missing",
+"code": 127,
+"calls": [
+[
+"systemctl",
+"--user",
+"status",
+"--no-pager",
+"--lines=0",
+"sts2bot"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"service",
+"restart"
+],
+"rc": 0,
+"code": 2,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'restart' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"service",
+"restart"
+],
+"rc": 3,
+"code": 2,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'restart' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"service",
+"restart"
+],
+"rc": "missing",
+"code": 2,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: argument action: invalid choice: 'restart' (choose from 'disable', 'enable', 'start', 'status', 'stop')\n"
+},
+{
+"argv": [
+"service"
+],
+"rc": 0,
+"code": 2,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: the following arguments are required: action\n"
+},
+{
+"argv": [
+"service"
+],
+"rc": 3,
+"code": 2,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: the following arguments are required: action\n"
+},
+{
+"argv": [
+"service"
+],
+"rc": "missing",
+"code": 2,
+"calls": [],
+"stdout": "",
+"stderr": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\nsts2bot service: error: the following arguments are required: action\n"
+},
+{
+"argv": [
+"service",
+"stop",
+"--unit",
+"x"
+],
+"rc": 0,
+"code": 0,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"x"
+]
+],
+"stdout": "The bot is stopped until you start it again or log in next time.\nThe game keeps running; close it from the game or Steam if you want it gone too.\n",
+"stderr": ""
+},
+{
+"argv": [
+"service",
+"stop",
+"--unit",
+"x"
+],
+"rc": 3,
+"code": 3,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"x"
+]
+],
+"stdout": "",
+"stderr": ""
+},
+{
+"argv": [
+"service",
+"stop",
+"--unit",
+"x"
+],
+"rc": "missing",
+"code": 127,
+"calls": [
+[
+"systemctl",
+"--user",
+"stop",
+"x"
+]
+],
+"stdout": "",
+"stderr": "systemctl was not found: this only works on a systemd Linux desktop\n"
+},
+{
+"argv": [
+"service",
+"-h"
+],
+"rc": 0,
+"code": 0,
+"calls": [],
+"stdout": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\n\nStart, stop, enable or disable the bot's systemd user service.\n\npositional arguments:\n  {disable,enable,start,status,stop}\n\noptions:\n  -h, --help            show this help message and exit\n  --unit UNIT           unit name (default: sts2bot)\n",
+"stderr": ""
+},
+{
+"argv": [
+"service",
+"-h"
+],
+"rc": 3,
+"code": 0,
+"calls": [],
+"stdout": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\n\nStart, stop, enable or disable the bot's systemd user service.\n\npositional arguments:\n  {disable,enable,start,status,stop}\n\noptions:\n  -h, --help            show this help message and exit\n  --unit UNIT           unit name (default: sts2bot)\n",
+"stderr": ""
+},
+{
+"argv": [
+"service",
+"-h"
+],
+"rc": "missing",
+"code": 0,
+"calls": [],
+"stdout": "usage: sts2bot service [-h] [--unit UNIT] {disable,enable,start,status,stop}\n\nStart, stop, enable or disable the bot's systemd user service.\n\npositional arguments:\n  {disable,enable,start,status,stop}\n\noptions:\n  -h, --help            show this help message and exit\n  --unit UNIT           unit name (default: sts2bot)\n",
+"stderr": ""
+}
+],
+"main": [
+{
+"argv": [
+"--game",
+"both",
+"--port",
+"1"
+],
+"config": null,
+"log_dir": false,
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: --port cannot be used with --game both: each game needs its own (run the two bots separately instead)\n"
+},
+"logs": [],
+"both": [],
+"played": []
+},
+{
+"argv": [
+"--game",
+"both",
+"--log-dir",
+"x"
+],
+"config": null,
+"log_dir": false,
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: --log-dir cannot be used with --game both: each game needs its own (run the two bots separately instead)\n"
+},
+"logs": [],
+"both": [],
+"played": []
+},
+{
+"argv": [
+"--game",
+"both",
+"--launch-cmd",
+"x"
+],
+"config": null,
+"log_dir": false,
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: --launch-cmd cannot be used with --game both: each game needs its own (run the two bots separately instead)\n"
+},
+"logs": [],
+"both": [],
+"played": []
+},
+{
+"argv": [
+"--game",
+"both",
+"--port",
+"1",
+"--log-dir",
+"x",
+"--launch-cmd",
+"y",
+"-v"
+],
+"config": null,
+"log_dir": false,
+"columns": 50,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}]\n               [--host HOST] [--port PORT]\n               [--character CHARACTER]\n               [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch]\n               [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}]\n               [--full-graphics]\n               [--small-window] [--windowed]\n               [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT]\n               [--poll POLL] [--log-dir LOG_DIR]\n               [-v]\nsts2bot: error: --port, --log-dir, --launch-cmd cannot be used with --game both: each game needs its own (run the two bots separately instead)\n"
+},
+"logs": [],
+"both": [],
+"played": []
+},
+{
+"argv": [
+"--game",
+"both",
+"--port",
+"0"
+],
+"config": null,
+"log_dir": false,
+"columns": 80,
+"exit": {
+"code": 2,
+"stdout": "",
+"stderr": "usage: sts2bot [-h] [--game {sts2,sts1,both}] [--host HOST] [--port PORT]\n               [--character CHARACTER] [--runs RUNS] [--first CHARACTER]\n               [--no-tuning] [--no-launch] [--launch-cmd LAUNCH_CMD]\n               [--fast-mode {instant,fast,normal,keep}] [--full-graphics]\n               [--small-window] [--windowed] [--time-scale TIME_SCALE]\n               [--sts1-time-scale STS1_TIME_SCALE]\n               [--stuck-timeout STUCK_TIMEOUT] [--poll POLL]\n               [--log-dir LOG_DIR] [-v]\nsts2bot: error: --port cannot be used with --game both: each game needs its own (run the two bots separately instead)\n"
+},
+"logs": [],
+"both": [],
+"played": []
+},
+{
+"argv": [
+"--game",
+"both",
+"-v"
+],
+"config": null,
+"log_dir": false,
+"columns": 80,
+"code": 2,
+"logs": [
+[
+"ERROR",
+"CommunicationMod has no command to start (<T>/cfg/ModTheSpire/CommunicationMod/config.properties). Neither game is started: the first game's bot would wait for a relay that never starts and restart the game for ever. Run `sts2bot sts1-setup` to point CommunicationMod at the bot's relay"
+]
+],
+"both": [],
+"played": []
+},
+{
+"argv": [
+"--game",
+"both",
+"-v"
+],
+"config": "ok:15527",
+"log_dir": false,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"INFO",
+"playing Slay the Spire 2 and Slay the Spire; logs in <T>/state/sts2bot and <T>/state/sts2bot/sts1"
+]
+],
+"both": [
+[
+"--game",
+"both",
+"-v"
+]
+],
+"played": []
+},
+{
+"argv": [
+"--game=both",
+"--runs",
+"2"
+],
+"config": "ok:15599",
+"log_dir": false,
+"columns": 80,
+"code": 2,
+"logs": [
+[
+"ERROR",
+"CommunicationMod starts the relay on another port than 15527: {RELAY} --port 15599. Neither game is started: the first game's bot would wait for a relay that never starts and restart the game for ever. Run `sts2bot sts1-setup` to point CommunicationMod at the bot's relay"
+]
+],
+"both": [],
+"played": []
+},
+{
+"argv": [
+"--game",
+"both"
+],
+"config": "command=python3 /elsewhere/main.py --ascension 0\nrunAtGameStart=true\n",
+"log_dir": false,
+"columns": 80,
+"code": 2,
+"logs": [
+[
+"ERROR",
+"CommunicationMod starts another program with the game: python3 /elsewhere/main.py --ascension 0. Neither game is started: the first game's bot would wait for a relay that never starts and restart the game for ever. Run `sts2bot sts1-setup` to point CommunicationMod at the bot's relay"
+]
+],
+"both": [],
+"played": []
+},
+{
+"argv": [
+"--game",
+"both",
+"--no-launch"
+],
+"config": null,
+"log_dir": false,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"INFO",
+"playing Slay the Spire 2 and Slay the Spire; logs in <T>/state/sts2bot and <T>/state/sts2bot/sts1"
+]
+],
+"both": [
+[
+"--game",
+"both",
+"--no-launch"
+]
+],
+"played": []
+},
+{
+"argv": [
+"--game",
+"both",
+"--no-launch",
+"--runs",
+"1"
+],
+"config": "command=python3 /elsewhere/main.py --ascension 0\nrunAtGameStart=true\n",
+"log_dir": false,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"INFO",
+"playing Slay the Spire 2 and Slay the Spire; logs in <T>/state/sts2bot and <T>/state/sts2bot/sts1"
+]
+],
+"both": [
+[
+"--game",
+"both",
+"--no-launch",
+"--runs",
+"1"
+]
+],
+"played": []
+},
+{
+"argv": [
+"--game",
+"both"
+],
+"config": "command={RELAY}\n",
+"log_dir": false,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"INFO",
+"playing Slay the Spire 2 and Slay the Spire; logs in <T>/state/sts2bot and <T>/state/sts2bot/sts1"
+]
+],
+"both": [
+[
+"--game",
+"both"
+]
+],
+"played": []
+},
+{
+"argv": [
+"--game",
+"both"
+],
+"config": "runAtGameStart=true\n",
+"log_dir": false,
+"columns": 80,
+"code": 2,
+"logs": [
+[
+"ERROR",
+"CommunicationMod has no command to start (<T>/cfg/ModTheSpire/CommunicationMod/config.properties). Neither game is started: the first game's bot would wait for a relay that never starts and restart the game for ever. Run `sts2bot sts1-setup` to point CommunicationMod at the bot's relay"
+]
+],
+"both": [],
+"played": []
+},
+{
+"argv": [
+"--game",
+"sts1"
+],
+"config": "command=python3 /elsewhere/main.py --ascension 0\nrunAtGameStart=true\n",
+"log_dir": true,
+"columns": 80,
+"code": 2,
+"logs": [
+[
+"ERROR",
+"CommunicationMod starts another program with the game: python3 /elsewhere/main.py --ascension 0. Not launching the game: the bot would wait for a relay that never starts and restart the game for ever. Run `sts2bot sts1-setup` to point CommunicationMod at the bot's relay"
+]
+],
+"both": [],
+"played": []
+},
+{
+"argv": [
+"--game",
+"sts1"
+],
+"config": null,
+"log_dir": true,
+"columns": 80,
+"code": 2,
+"logs": [
+[
+"ERROR",
+"CommunicationMod has no command to start (<T>/cfg/ModTheSpire/CommunicationMod/config.properties). Not launching the game: the bot would wait for a relay that never starts and restart the game for ever. Run `sts2bot sts1-setup` to point CommunicationMod at the bot's relay"
+]
+],
+"both": [],
+"played": []
+},
+{
+"argv": [
+"--game",
+"sts1"
+],
+"config": "ok:15527",
+"log_dir": true,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"INFO",
+"playing Slay the Spire; logs and run history in <T>/logs"
+],
+[
+"INFO",
+"stopped after 0 runs (0 wins)"
+]
+],
+"both": [],
+"played": [
+{
+"runs": null,
+"launch_cmd": "steam -applaunch 646570",
+"manage_game": true,
+"fast_mode": "instant",
+"light_graphics": true,
+"small_window": false,
+"fullscreen": true,
+"time_scale": "16.0",
+"boot_timeout": "240.0",
+"outage_grace": "45.0",
+"heal_mod": false,
+"host": "Slay the Spire",
+"character": "auto",
+"poll": "0.08",
+"stuck_timeout": "300.0",
+"tune": true,
+"room_pause": "0.0",
+"room_poll": "0.03",
+"log_dir": "<T>/logs",
+"base": "http://127.0.0.1:15527",
+"game": "sts1"
+}
+]
+},
+{
+"argv": [
+"--game",
+"sts1",
+"--port",
+"15599"
+],
+"config": "ok:15527",
+"log_dir": true,
+"columns": 80,
+"code": 2,
+"logs": [
+[
+"ERROR",
+"CommunicationMod starts the relay on another port than 15599: {RELAY} --port 15527. Not launching the game: the bot would wait for a relay that never starts and restart the game for ever. Run `sts2bot sts1-setup` to point CommunicationMod at the bot's relay"
+]
+],
+"both": [],
+"played": []
+},
+{
+"argv": [
+"--game",
+"sts1",
+"--port",
+"15599",
+"--runs",
+"3",
+"--windowed",
+"--sts1-time-scale",
+"4",
+"--character",
+"WATCHER"
+],
+"config": "ok:15599",
+"log_dir": true,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"INFO",
+"playing Slay the Spire; logs and run history in <T>/logs"
+],
+[
+"INFO",
+"stopped after 0 runs (0 wins)"
+]
+],
+"both": [],
+"played": [
+{
+"runs": 3,
+"launch_cmd": "steam -applaunch 646570",
+"manage_game": true,
+"fast_mode": "instant",
+"light_graphics": true,
+"small_window": false,
+"fullscreen": false,
+"time_scale": "16.0",
+"boot_timeout": "240.0",
+"outage_grace": "45.0",
+"heal_mod": false,
+"host": "Slay the Spire",
+"character": "WATCHER",
+"poll": "0.08",
+"stuck_timeout": "300.0",
+"tune": true,
+"room_pause": "0.0",
+"room_poll": "0.03",
+"log_dir": "<T>/logs",
+"base": "http://127.0.0.1:15599",
+"game": "sts1"
+}
+]
+},
+{
+"argv": [
+"--game",
+"sts1",
+"--no-launch"
+],
+"config": "command=python3 /elsewhere/main.py --ascension 0\nrunAtGameStart=true\n",
+"log_dir": true,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"WARNING",
+"CommunicationMod starts another program with the game: python3 /elsewhere/main.py --ascension 0; the bot cannot reach the game until you run `sts2bot sts1-setup`"
+],
+[
+"INFO",
+"playing Slay the Spire; logs and run history in <T>/logs"
+],
+[
+"INFO",
+"stopped after 0 runs (0 wins)"
+]
+],
+"both": [],
+"played": [
+{
+"runs": null,
+"launch_cmd": "steam -applaunch 646570",
+"manage_game": false,
+"fast_mode": "instant",
+"light_graphics": true,
+"small_window": false,
+"fullscreen": true,
+"time_scale": "16.0",
+"boot_timeout": "240.0",
+"outage_grace": "45.0",
+"heal_mod": false,
+"host": "Slay the Spire",
+"character": "auto",
+"poll": "0.08",
+"stuck_timeout": "300.0",
+"tune": true,
+"room_pause": "0.0",
+"room_poll": "0.03",
+"log_dir": "<T>/logs",
+"base": "http://127.0.0.1:15527",
+"game": "sts1"
+}
+]
+},
+{
+"argv": [
+"--game",
+"sts1",
+"--no-launch",
+"--first",
+"DEFECT",
+"--launch-cmd",
+"java -jar x"
+],
+"config": null,
+"log_dir": true,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"WARNING",
+"CommunicationMod has no command to start (<T>/cfg/ModTheSpire/CommunicationMod/config.properties); the bot cannot reach the game until you run `sts2bot sts1-setup`"
+],
+[
+"INFO",
+"playing Slay the Spire; logs and run history in <T>/logs"
+],
+[
+"INFO",
+"stopped after 0 runs (0 wins)"
+]
+],
+"both": [],
+"played": [
+{
+"runs": null,
+"launch_cmd": "java -jar x",
+"manage_game": false,
+"fast_mode": "instant",
+"light_graphics": true,
+"small_window": false,
+"fullscreen": true,
+"time_scale": "16.0",
+"boot_timeout": "240.0",
+"outage_grace": "45.0",
+"heal_mod": false,
+"host": "Slay the Spire",
+"character": "auto:DEFECT",
+"poll": "0.08",
+"stuck_timeout": "300.0",
+"tune": true,
+"room_pause": "0.0",
+"room_poll": "0.03",
+"log_dir": "<T>/logs",
+"base": "http://127.0.0.1:15527",
+"game": "sts1"
+}
+]
+},
+{
+"argv": [
+"--game",
+"sts1",
+"--port",
+"0"
+],
+"config": "command={RELAY} --port=15527\n",
+"log_dir": true,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"INFO",
+"playing Slay the Spire; logs and run history in <T>/logs"
+],
+[
+"INFO",
+"stopped after 0 runs (0 wins)"
+]
+],
+"both": [],
+"played": [
+{
+"runs": null,
+"launch_cmd": "steam -applaunch 646570",
+"manage_game": true,
+"fast_mode": "instant",
+"light_graphics": true,
+"small_window": false,
+"fullscreen": true,
+"time_scale": "16.0",
+"boot_timeout": "240.0",
+"outage_grace": "45.0",
+"heal_mod": false,
+"host": "Slay the Spire",
+"character": "auto",
+"poll": "0.08",
+"stuck_timeout": "300.0",
+"tune": true,
+"room_pause": "0.0",
+"room_poll": "0.03",
+"log_dir": "<T>/logs",
+"base": "http://127.0.0.1:15527",
+"game": "sts1"
+}
+]
+},
+{
+"argv": [
+"--game",
+"sts1"
+],
+"config": "command={RELAY}   --port   15528 \n",
+"log_dir": true,
+"columns": 80,
+"code": 2,
+"logs": [
+[
+"ERROR",
+"CommunicationMod starts the relay on another port than 15527: {RELAY}   --port   15528. Not launching the game: the bot would wait for a relay that never starts and restart the game for ever. Run `sts2bot sts1-setup` to point CommunicationMod at the bot's relay"
+]
+],
+"both": [],
+"played": []
+},
+{
+"argv": [],
+"config": null,
+"log_dir": true,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"INFO",
+"playing Slay the Spire 2; logs and run history in <T>/logs"
+],
+[
+"INFO",
+"stopped after 0 runs (0 wins)"
+]
+],
+"both": [],
+"played": [
+{
+"runs": null,
+"launch_cmd": "steam -applaunch 2868840",
+"manage_game": true,
+"fast_mode": "instant",
+"light_graphics": true,
+"small_window": false,
+"fullscreen": true,
+"time_scale": "16.0",
+"boot_timeout": "240.0",
+"outage_grace": "45.0",
+"heal_mod": true,
+"host": "Slay the Spire 2",
+"character": "auto",
+"poll": "0.08",
+"stuck_timeout": "300.0",
+"tune": true,
+"room_pause": "0.1",
+"room_poll": "0.06",
+"log_dir": "<T>/logs",
+"base": "http://127.0.0.1:15526",
+"game": "sts2"
+}
+]
+},
+{
+"argv": [
+"--runs",
+"5",
+"-v"
+],
+"config": null,
+"log_dir": true,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"INFO",
+"playing Slay the Spire 2; logs and run history in <T>/logs"
+],
+[
+"INFO",
+"stopped after 0 runs (0 wins)"
+]
+],
+"both": [],
+"played": [
+{
+"runs": 5,
+"launch_cmd": "steam -applaunch 2868840",
+"manage_game": true,
+"fast_mode": "instant",
+"light_graphics": true,
+"small_window": false,
+"fullscreen": true,
+"time_scale": "16.0",
+"boot_timeout": "240.0",
+"outage_grace": "45.0",
+"heal_mod": true,
+"host": "Slay the Spire 2",
+"character": "auto",
+"poll": "0.08",
+"stuck_timeout": "300.0",
+"tune": true,
+"room_pause": "0.1",
+"room_poll": "0.06",
+"log_dir": "<T>/logs",
+"base": "http://127.0.0.1:15526",
+"game": "sts2"
+}
+]
+},
+{
+"argv": [
+"--first",
+"IRONCLAD"
+],
+"config": null,
+"log_dir": true,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"INFO",
+"playing Slay the Spire 2; logs and run history in <T>/logs"
+],
+[
+"INFO",
+"stopped after 0 runs (0 wins)"
+]
+],
+"both": [],
+"played": [
+{
+"runs": null,
+"launch_cmd": "steam -applaunch 2868840",
+"manage_game": true,
+"fast_mode": "instant",
+"light_graphics": true,
+"small_window": false,
+"fullscreen": true,
+"time_scale": "16.0",
+"boot_timeout": "240.0",
+"outage_grace": "45.0",
+"heal_mod": true,
+"host": "Slay the Spire 2",
+"character": "auto:IRONCLAD",
+"poll": "0.08",
+"stuck_timeout": "300.0",
+"tune": true,
+"room_pause": "0.1",
+"room_poll": "0.06",
+"log_dir": "<T>/logs",
+"base": "http://127.0.0.1:15526",
+"game": "sts2"
+}
+]
+},
+{
+"argv": [
+"--character",
+"AUTO",
+"--first",
+"REGENT"
+],
+"config": null,
+"log_dir": true,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"INFO",
+"playing Slay the Spire 2; logs and run history in <T>/logs"
+],
+[
+"INFO",
+"stopped after 0 runs (0 wins)"
+]
+],
+"both": [],
+"played": [
+{
+"runs": null,
+"launch_cmd": "steam -applaunch 2868840",
+"manage_game": true,
+"fast_mode": "instant",
+"light_graphics": true,
+"small_window": false,
+"fullscreen": true,
+"time_scale": "16.0",
+"boot_timeout": "240.0",
+"outage_grace": "45.0",
+"heal_mod": true,
+"host": "Slay the Spire 2",
+"character": "auto:REGENT",
+"poll": "0.08",
+"stuck_timeout": "300.0",
+"tune": true,
+"room_pause": "0.1",
+"room_poll": "0.06",
+"log_dir": "<T>/logs",
+"base": "http://127.0.0.1:15526",
+"game": "sts2"
+}
+]
+},
+{
+"argv": [
+"--character",
+"cycle",
+"--first",
+"REGENT"
+],
+"config": null,
+"log_dir": true,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"INFO",
+"playing Slay the Spire 2; logs and run history in <T>/logs"
+],
+[
+"INFO",
+"stopped after 0 runs (0 wins)"
+]
+],
+"both": [],
+"played": [
+{
+"runs": null,
+"launch_cmd": "steam -applaunch 2868840",
+"manage_game": true,
+"fast_mode": "instant",
+"light_graphics": true,
+"small_window": false,
+"fullscreen": true,
+"time_scale": "16.0",
+"boot_timeout": "240.0",
+"outage_grace": "45.0",
+"heal_mod": true,
+"host": "Slay the Spire 2",
+"character": "cycle",
+"poll": "0.08",
+"stuck_timeout": "300.0",
+"tune": true,
+"room_pause": "0.1",
+"room_poll": "0.06",
+"log_dir": "<T>/logs",
+"base": "http://127.0.0.1:15526",
+"game": "sts2"
+}
+]
+},
+{
+"argv": [
+"--no-tuning",
+"--no-launch",
+"--fast-mode",
+"keep",
+"--full-graphics",
+"--small-window",
+"--windowed"
+],
+"config": null,
+"log_dir": true,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"INFO",
+"playing Slay the Spire 2; logs and run history in <T>/logs"
+],
+[
+"INFO",
+"stopped after 0 runs (0 wins)"
+]
+],
+"both": [],
+"played": [
+{
+"runs": null,
+"launch_cmd": "steam -applaunch 2868840",
+"manage_game": false,
+"fast_mode": null,
+"light_graphics": false,
+"small_window": true,
+"fullscreen": false,
+"time_scale": "16.0",
+"boot_timeout": "240.0",
+"outage_grace": "45.0",
+"heal_mod": false,
+"host": "Slay the Spire 2",
+"character": "auto",
+"poll": "0.08",
+"stuck_timeout": "300.0",
+"tune": false,
+"room_pause": "0.1",
+"room_poll": "0.06",
+"log_dir": "<T>/logs",
+"base": "http://127.0.0.1:15526",
+"game": "sts2"
+}
+]
+},
+{
+"argv": [
+"--fast-mode",
+"normal",
+"--time-scale",
+"1",
+"--stuck-timeout",
+"60",
+"--poll",
+"0.25",
+"--host",
+"localhost",
+"--port",
+"1234",
+"--launch-cmd",
+"run it"
+],
+"config": null,
+"log_dir": true,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"INFO",
+"playing Slay the Spire 2; logs and run history in <T>/logs"
+],
+[
+"INFO",
+"stopped after 0 runs (0 wins)"
+]
+],
+"both": [],
+"played": [
+{
+"runs": null,
+"launch_cmd": "run it",
+"manage_game": true,
+"fast_mode": "normal",
+"light_graphics": true,
+"small_window": false,
+"fullscreen": true,
+"time_scale": "1.0",
+"boot_timeout": "240.0",
+"outage_grace": "45.0",
+"heal_mod": true,
+"host": "Slay the Spire 2",
+"character": "auto",
+"poll": "0.25",
+"stuck_timeout": "60.0",
+"tune": true,
+"room_pause": "0.1",
+"room_poll": "0.06",
+"log_dir": "<T>/logs",
+"base": "http://localhost:1234",
+"game": "sts2"
+}
+]
+},
+{
+"argv": [
+"--game",
+"sts2",
+"--port",
+"0",
+"--launch-cmd",
+""
+],
+"config": null,
+"log_dir": true,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"INFO",
+"playing Slay the Spire 2; logs and run history in <T>/logs"
+],
+[
+"INFO",
+"stopped after 0 runs (0 wins)"
+]
+],
+"both": [],
+"played": [
+{
+"runs": null,
+"launch_cmd": "steam -applaunch 2868840",
+"manage_game": true,
+"fast_mode": "instant",
+"light_graphics": true,
+"small_window": false,
+"fullscreen": true,
+"time_scale": "16.0",
+"boot_timeout": "240.0",
+"outage_grace": "45.0",
+"heal_mod": true,
+"host": "Slay the Spire 2",
+"character": "auto",
+"poll": "0.08",
+"stuck_timeout": "300.0",
+"tune": true,
+"room_pause": "0.1",
+"room_poll": "0.06",
+"log_dir": "<T>/logs",
+"base": "http://127.0.0.1:15526",
+"game": "sts2"
+}
+]
+},
+{
+"argv": [
+"--runs",
+"0"
+],
+"config": null,
+"log_dir": false,
+"columns": 80,
+"code": 0,
+"logs": [
+[
+"INFO",
+"playing Slay the Spire 2; logs and run history in <T>/state/sts2bot"
+],
+[
+"INFO",
+"stopped after 0 runs (0 wins)"
+]
+],
+"both": [],
+"played": [
+{
+"runs": 0,
+"launch_cmd": "steam -applaunch 2868840",
+"manage_game": true,
+"fast_mode": "instant",
+"light_graphics": true,
+"small_window": false,
+"fullscreen": true,
+"time_scale": "16.0",
+"boot_timeout": "240.0",
+"outage_grace": "45.0",
+"heal_mod": true,
+"host": "Slay the Spire 2",
+"character": "auto",
+"poll": "0.08",
+"stuck_timeout": "300.0",
+"tune": true,
+"room_pause": "0.1",
+"room_poll": "0.06",
+"log_dir": "<T>/state/sts2bot",
+"base": "http://127.0.0.1:15526",
+"game": "sts2"
+}
+]
+}
+]
+}

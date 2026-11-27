@@ -111,7 +111,8 @@ pub enum Sink {
     File(RotatingFile),
 }
 
-/// Where records go and how a line looks. `format` knows `%(asctime)s`, `%(levelname)s`, `%(name)s` and `%(message)s`.
+/// Where records go and how a line looks. `format` knows `%(asctime)s`, `%(levelname)s`, `%(name)s` and `%(message)s`,
+/// and `%(datetime)s`: the time without its milliseconds (Python's `%(asctime)s` under `datefmt="%Y-%m-%d %H:%M:%S"`).
 pub struct Handler {
     pub sink: Sink,
     pub level: Level,
@@ -198,6 +199,7 @@ pub fn emit(logger: &'static str, level: Level, message: String) {
         let line = h
             .format
             .replace("%(asctime)s", when.get_or_insert_with(asctime))
+            .replace("%(datetime)s", when.get_or_insert_with(asctime).split(',').next().unwrap_or(""))
             .replace("%(levelname)s", level.name())
             .replace("%(name)s", logger)
             .replace("%(message)s", &message);

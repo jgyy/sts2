@@ -15,22 +15,13 @@ use sts2bot::py::JsonExt;
 use sts2bot::run::events::EventOptionValueArgs;
 use sts2bot::run::strategy::{self, Memory};
 use sts2bot::run::decks;
+use sts2bot::games::both::{Popen, Proc};
+use sts2bot::supervisor::{self, Completed, Supervisor, SupervisorArgs};
 use sts2bot::Action;
 
 use crate::fake_game::{card, game_impl, with, FakeGame};
 use crate::helpers::{combat_state, enemy, make_bot, make_bot_kw, FakeClock, DEFEND, STRIKE};
 
-// TODO(supervisor): FastMode.test_sent_through_the_mod_and_tolerates_an_old_mod (supervisor.set_fast_mode)
-// TODO(supervisor): CrashRecovery.test_a_crashed_child_is_not_counted_as_running (supervisor.game_running, supervisor._children)
-// TODO(supervisor): CrashLoop.test_repeated_crashes_in_one_place_slow_the_bot_then_abandon_the_run (Supervisor._note_crash over a mock bot: `crashing`)
-// TODO(supervisor): CrashLoop.test_while_there_is_something_else_to_try_the_run_is_not_given_up (the same)
-// TODO(supervisor): SteamUpkeep.test_steam_is_started_before_the_game_when_it_is_not_running (supervisor.launch_game)
-// TODO(supervisor): SteamUpkeep.test_under_systemd_the_game_gets_a_scope_of_its_own (supervisor._detached)
-// TODO(supervisor): ModUpkeep.test_load_failure_is_read_from_the_game_log (supervisor.mod_load_error)
-// TODO(supervisor): ModUpkeep.test_mod_is_stale_when_the_game_files_change (supervisor.mod_is_stale)
-// TODO(supervisor): ModUpkeep.test_rebuilds_and_relaunches_when_the_game_rejects_the_mod (Supervisor.ensure_game)
-// TODO(supervisor): ModUpkeep.test_rebuilds_before_launch_after_a_game_update (Supervisor.ensure_game)
-// (No method of test_bot.py goes through the command line.)
 
 const ICON: &str = "[ironclad_energy_icon.png]";
 
@@ -901,4 +892,302 @@ fn test_round_trip_and_errors() {
 #[test]
 fn test_chunked_answers_are_read_whole() {
     assert_eq!(_dechunk(b"4\r\n{\"a\"\r\n5;x=1\r\n: 12}\r\n0\r\n\r\n").unwrap(), b"{\"a\": 12}".to_vec());
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The supervisor's tests (in test_bot.py among the classes above).
+
+/// A supervisor over a bot that stands at `at` (its progress(): runs finished, act, floor), its clock at 100.
+/// (The Python's was a mock bot; its `note_crash.return_value = True` is `another_way(&mut sup, n)` before each crash here.)
+fn crashing(at: (i64, i64, i64)) -> Supervisor {
+    let mut bot = Bot::new(Rc::new(RefCell::new(crate::fake_game::NoGame)), BotArgs { clock: Some(Box::new(|| 100.0)), sleep: Some(Box::new(|_| {})), ..Default::default() });
+    stand_at(&mut bot, at);
+    bot.abandon_next = false;
+    Supervisor::new(bot, Rc::new(RefCell::new(crate::fake_game::NoGame)), SupervisorArgs { launch_cmd: "game".to_string(), ..Default::default() })
+}
+
+fn stand_at(bot: &mut Bot, at: (i64, i64, i64)) {
+    bot.runs_finished = at.0;
+    bot._last_where = Some((Some(at.1), Some(at.2)));
+}
+
+fn progress(at: (i64, i64, i64)) -> Progress {
+    Progress(at.0, Some((Some(at.1), Some(at.2))))
+}
+
+/// The bot had asked for something it can now leave alone (`bot.note_crash()` will say so, once).
+fn another_way(sup: &mut Supervisor, n: i64) {
+    sup.bot._last_sent = Some((json!(3), json!(46), "shop_purchase".to_string(), format!("{{\"index\": {n}}}")));
+}
+
+// FastMode
+
+#[test]
+fn test_sent_through_the_mod_and_tolerates_an_old_mod() {
+    struct Mod {
+        reply: Value,
+        calls: Vec<(String, Value)>,
+    }
+    impl Mod {
+        fn state(&mut self) -> Value {
+            panic!("'Mod' object has no attribute 'state'")
+        }
+        fn act(&mut self, action: &str, params: &Value) -> Value {
+            self.calls.push((action.to_string(), params.clone()));
+            self.reply.clone()
+        }
+    }
+    game_impl!(Mod);
+
+    let mut new = Mod { reply: json!({"status": "ok", "fast_mode": "instant"}), calls: vec![] };
+    assert!(supervisor::set_fast_mode(&mut new, "instant").unwrap());
+    assert_eq!(new.calls, vec![("set_fast_mode".to_string(), json!({"mode": "instant"}))]);
+    assert_logs("sts2bot.supervisor", Level::Warning, || {
+        assert!(!supervisor::set_fast_mode(&mut Mod { reply: json!({"status": "error", "error": "Unknown action"}), calls: vec![] }, "instant").unwrap());
+    });
+}
+
+// CrashRecovery
+
+#[test]
+fn test_a_crashed_child_is_not_counted_as_running() {
+    let child = std::process::Command::new("true").spawn().unwrap();
+    let pid = child.id() as i64;
+    std::thread::sleep(std::time::Duration::from_millis(300)); // exited, not yet collected: a zombie
+    supervisor::_children(|c| c.push(Box::new(Popen { child, returncode: None })));
+    {
+        let _p = supervisor::patch(|s| s.set_run(|_, _| Ok(Completed { stdout: "Z\n".to_string(), ..Default::default() })));
+        assert!(!supervisor::game_running());
+    }
+    assert!(supervisor::_children(|c| c.iter().all(|p| p.pid() != pid)));
+    {
+        let _p = supervisor::patch(|s| s.set_run(|_, _| Ok(Completed { stdout: "Sl\n".to_string(), ..Default::default() })));
+        assert!(supervisor::game_running());
+    }
+}
+
+// CrashLoop
+
+#[test]
+fn test_repeated_crashes_in_one_place_slow_the_bot_then_abandon_the_run() {
+    let mut sup = crashing((3, 1, 6));
+    sup.bot.careful_until = 0.0;
+    sup._note_crash(); // a first crash can be chance
+    assert_eq!((sup.bot.careful_until, sup.bot.abandon_next), (0.0, false));
+    assert_logs("sts2bot.supervisor", Level::Warning, || sup._note_crash());
+    assert_eq!((sup.bot.careful_until, sup.bot.abandon_next), (220.0, false));
+    assert_logs("sts2bot.supervisor", Level::Warning, || sup._note_crash()); // the third crash in the same place: the run is given up
+    assert!(sup.bot.abandon_next);
+    // Getting somewhere new starts the count again.
+    sup.bot.abandon_next = false;
+    stand_at(&mut sup.bot, (3, 1, 7));
+    sup._note_crash();
+    assert!(!sup.bot.abandon_next);
+}
+
+#[test]
+fn test_while_there_is_something_else_to_try_the_run_is_not_given_up() {
+    let mut sup = crashing((3, 3, 46)); // each time the bot had asked for something it can now leave alone
+    logging::capture(|| {
+        another_way(&mut sup, 0);
+        sup._note_crash();
+    });
+    for n in 1..4 {
+        another_way(&mut sup, n);
+        assert_logs("sts2bot.supervisor", Level::Warning, || sup._note_crash());
+        assert!(!sup.bot.abandon_next);
+    }
+    assert_eq!(sup.bot.careful_at, Some(progress((3, 3, 46)))); // slowly, and only there
+    another_way(&mut sup, 4);
+    assert_logs("sts2bot.supervisor", Level::Warning, || sup._note_crash()); // the fifth crash in one room: whatever was tried, it is not the bot
+    assert!(sup.bot.abandon_next);
+}
+
+// SteamUpkeep: the game started directly needs the Steam client; the supervisor starts it.
+
+/// `os.environ` without `name`.
+fn environ_without(name: &str) -> IndexMap<String, String> {
+    let mut env: IndexMap<String, String> = std::env::vars().collect();
+    env.shift_remove(name);
+    env
+}
+
+#[test]
+fn test_steam_is_started_before_the_game_when_it_is_not_running() {
+    struct Running;
+    impl Proc for Running {
+        fn pid(&self) -> i64 {
+            1
+        }
+        fn poll(&mut self) -> Option<i64> {
+            None
+        }
+        fn send_signal(&mut self, _sig: i32) {}
+        fn kill(&mut self) {}
+        fn wait(&mut self) -> Option<i64> {
+            None
+        }
+    }
+    let events: Rc<RefCell<Vec<String>>> = Rc::default();
+    let up = Rc::new(std::cell::Cell::new(false));
+    let _p = supervisor::patch(|s| {
+        let steam = Rc::clone(&up);
+        s.set_process_running(move |_| steam.get());
+        s.set_which(|_| Some("/usr/bin/steam".to_string()));
+        let (seen, steam) = (Rc::clone(&events), Rc::clone(&up));
+        s.set_popen(move |argv, _| {
+            let name = std::path::Path::new(&argv[0]).file_name().unwrap().to_string_lossy().into_owned();
+            steam.set(steam.get() || name == "steam");
+            seen.borrow_mut().push(name);
+            Ok(Box::new(Running))
+        });
+        s.set_sleep(|_| Ok(()));
+        s.environ = Some(environ_without("INVOCATION_ID")); // not under systemd: started directly
+    });
+    logging::capture(|| {
+        supervisor::launch_game("/games/sts2/SlayTheSpire2").unwrap();
+        assert_eq!(*events.borrow(), ["steam", "SlayTheSpire2"]);
+        supervisor::launch_game("/games/sts2/SlayTheSpire2").unwrap(); // Steam is up now: not started twice
+        assert_eq!(*events.borrow(), ["steam", "SlayTheSpire2", "SlayTheSpire2"]);
+    });
+    supervisor::_children(|c| c.clear());
+}
+
+#[test]
+fn test_under_systemd_the_game_gets_a_scope_of_its_own() {
+    let words = |w: &[&str]| w.iter().map(|x| x.to_string()).collect::<Vec<String>>();
+    {
+        let _p = supervisor::patch(|s| {
+            let mut env = environ_without("INVOCATION_ID");
+            env.insert("INVOCATION_ID".to_string(), "abc".to_string());
+            s.environ = Some(env);
+            s.set_which(|_| Some("/usr/bin/systemd-run".to_string()));
+        });
+        assert_eq!(supervisor::_detached(&words(&["game", "-x"]))[..3], words(&["systemd-run", "--user", "--scope"]));
+        let detached = supervisor::_detached(&words(&["game", "-x"]));
+        assert_eq!(detached[detached.len() - 2..], words(&["game", "-x"]));
+    }
+    let _p = supervisor::patch(|s| s.environ = Some(environ_without("INVOCATION_ID")));
+    assert_eq!(supervisor::_detached(&words(&["game"])), words(&["game"]));
+}
+
+// ModUpkeep: a game update breaks the bridge mod; the supervisor rebuilds it by itself.
+
+#[test]
+fn test_load_failure_is_read_from_the_game_log() {
+    let d = tempfile::tempdir().unwrap();
+    let logf = d.path().join("godot.log");
+    let _p = supervisor::patch(|s| s.GAME_LOG = Some(logf.clone()));
+    assert_eq!(supervisor::mod_load_error(0.0), None);
+    std::fs::write(&logf, "[INFO] Loading assembly DLL mods/STS2_MCP.dll\n[INFO]  --- RUNNING MODDED! --- Loaded 1 mods\n").unwrap();
+    assert_eq!(supervisor::mod_load_error(0.0), None);
+    std::fs::write(
+        &logf,
+        "[ERROR] Exception thrown while loading mod STS2_MCP: System.Reflection.ReflectionTypeLoadException: x\n   at System.Reflection.RuntimeModule.GetTypes()\nSystem.TypeLoadException: Could not load type 'A.LobbyPlayer' from assembly 'sts2'.\n",
+    )
+    .unwrap();
+    assert!(supervisor::mod_load_error(0.0).unwrap().contains("LobbyPlayer"));
+    // A log from before this launch says nothing about it.
+    let then = std::time::SystemTime::now() - std::time::Duration::from_secs(100);
+    std::fs::File::options().write(true).open(&logf).unwrap().set_modified(then).unwrap();
+    assert_eq!(supervisor::mod_load_error(supervisor::time() - 10.0), None);
+}
+
+#[test]
+fn test_mod_is_stale_when_the_game_files_change() {
+    let d = tempfile::tempdir().unwrap();
+    let stamp = d.path().join("stamp");
+    {
+        let _p = supervisor::patch(|s| {
+            s.MOD_STAMP = Some(stamp.clone());
+            s.set_game_fingerprint(|| Some("v1".to_string()));
+        });
+        assert!(supervisor::mod_is_stale()); // never built by the bot
+        std::fs::write(&stamp, "v1\n").unwrap();
+        assert!(!supervisor::mod_is_stale());
+    }
+    let _p = supervisor::patch(|s| {
+        s.MOD_STAMP = Some(stamp.clone());
+        s.set_game_fingerprint(|| Some("v2".to_string()));
+    });
+    assert!(supervisor::mod_is_stale());
+}
+
+/// A game that only answers (or not) when asked whether it is there: the answers in turn (the last one from then on).
+struct Api {
+    up: Rc<RefCell<Vec<bool>>>,
+}
+
+impl Game for Api {
+    fn state(&mut self) -> Result<Value, GameUnavailable> {
+        panic!("'Api' object has no attribute 'state'")
+    }
+    fn act(&mut self, _action: &str, _params: &Value) -> Result<Value, GameUnavailable> {
+        panic!("'Api' object has no attribute 'act'")
+    }
+    fn profile(&mut self) -> Result<Value, GameUnavailable> {
+        panic!("'Api' object has no attribute 'profile'")
+    }
+    fn card(&mut self, _card_id: &str) -> Result<Option<Value>, GameUnavailable> {
+        Ok(None)
+    }
+    fn ping(&mut self) -> bool {
+        let mut up = self.up.borrow_mut();
+        if up.len() > 1 {
+            up.remove(0)
+        } else {
+            up[0]
+        }
+    }
+}
+
+#[test]
+fn test_rebuilds_and_relaunches_when_the_game_rejects_the_mod() {
+    let up = Rc::new(RefCell::new(vec![false]));
+    let events: Rc<RefCell<Vec<&str>>> = Rc::default();
+    let error: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(Some("Could not load type X".to_string())));
+    let mut sup = Supervisor::new(crate::helpers::make_bot_none(), shared(Api { up: Rc::clone(&up) }), SupervisorArgs { launch_cmd: "game".to_string(), boot_timeout: 0.05, ..Default::default() });
+    let _p = supervisor::patch(|s| {
+        s.set_game_running(|| false);
+        s.set_mod_is_stale(|| false);
+        let state = Rc::clone(&error);
+        s.set_mod_load_error(move |_| state.borrow().clone());
+        let (seen, state) = (Rc::clone(&events), Rc::clone(&error));
+        s.set_rebuild_mod(move || {
+            seen.borrow_mut().push("rebuild");
+            *state.borrow_mut() = None;
+            true
+        });
+        let (seen, state, api) = (Rc::clone(&events), Rc::clone(&error), Rc::clone(&up));
+        s.set_launch_game(move |_| {
+            seen.borrow_mut().push("launch");
+            *api.borrow_mut() = vec![state.borrow().is_none()];
+        });
+        let seen = Rc::clone(&events);
+        s.set_kill_game(move |_| seen.borrow_mut().push("kill"));
+        s.set_sleep(|_| Ok(()));
+    });
+    assert_logs("sts2bot.supervisor", Level::Error, || sup.ensure_game().unwrap());
+    assert_eq!(*events.borrow(), ["launch", "kill", "rebuild", "launch"]);
+}
+
+#[test]
+fn test_rebuilds_before_launch_after_a_game_update() {
+    let events: Rc<RefCell<Vec<&str>>> = Rc::default();
+    let api = shared(Api { up: Rc::new(RefCell::new(vec![false, true])) });
+    let mut sup = Supervisor::new(crate::helpers::make_bot_none(), api, SupervisorArgs { launch_cmd: "game".to_string(), ..Default::default() });
+    let _p = supervisor::patch(|s| {
+        s.set_game_running(|| false);
+        s.set_mod_is_stale(|| true);
+        s.set_mod_load_error(|_| None);
+        let seen = Rc::clone(&events);
+        s.set_rebuild_mod(move || {
+            seen.borrow_mut().push("rebuild");
+            true
+        });
+        let seen = Rc::clone(&events);
+        s.set_launch_game(move |_| seen.borrow_mut().push("launch"));
+    });
+    assert_logs("sts2bot.supervisor", Level::Warning, || sup.ensure_game().unwrap());
+    assert_eq!(*events.borrow(), ["rebuild", "launch"]);
 }
