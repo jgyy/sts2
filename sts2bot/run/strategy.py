@@ -258,19 +258,10 @@ def _upgrade_worth(act) -> float:
     return UPGRADE_EARLY if act == 1 else knob("upgrade_worth")
 
 
-def fight_cost(kind: str, act: int, row) -> float:
-    """HP a fight of this kind costs on average, by where in the act it is met."""
-    cost = FIGHT_COST.get(act, FIGHT_COST[3])[kind]
-    if kind == "Elite" and act == 1 and isinstance(row, int) and row < knob("early_rows"):
-        cost = 32  # a starter deck against an elite
-    if kind == "Monster" and act in LATE_COST and isinstance(row, int):
-        cost *= LATE_COST[act][row >= LATE_ROW]
-    return cost
-
-
 def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, act: int, harsh: float = 1.0) -> float:
     """Expected worth of walking through `rooms` (type, row) in order, starting at `hp`: rewards along the way weighed
     against the state we reach the boss in, and at each rest site whichever of resting and upgrading comes out ahead."""
+    costs = FIGHT_COST.get(act, FIGHT_COST[3])
     score = 0.0
     for n, (kind, row) in enumerate(rooms):
         if kind.startswith(SPOILS):
@@ -278,12 +269,16 @@ def path_value(rooms: list[tuple[str, int]], hp: float, max_hp: int, gold: int, 
         if kind == "EmeraldElite":
             score, kind = score + EMERALD_WORTH.get(act, EMERALD_WORTH[3]), "Elite"
         if kind in ("Monster", "Elite"):
-            cost = fight_cost(kind, act, row)
+            cost = costs[kind]
+            if kind == "Elite" and act == 1 and isinstance(row, int) and row < EARLY_ROWS:
+                cost = 32  # a starter deck against an elite
             if kind == "Elite" and hp < 0.75 * max_hp:
                 # Elites met below three quarters HP end runs far more often than their average cost says.
                 score -= 2.5 if hp >= 0.65 * max_hp else 6.0 if hp >= 0.5 * max_hp else 14.0
             if kind == "Elite" and act >= 3:
                 score -= 6.0  # an act 3 elite ends the run one time in five whatever the HP, and its relic has one boss left
+            if kind == "Monster" and act in LATE_COST and isinstance(row, int):
+                cost *= LATE_COST[act][row >= LATE_ROW]
             if kind == "Monster" and act >= 2 and hp < 0.3 * max_hp:
                 score -= 14.0 if act >= 3 else 10.0  # the same for an ordinary fight met badly hurt (a run ended is 30 here)
             elif kind == "Monster" and act >= 2 and hp < 0.6 * max_hp:
@@ -349,7 +344,7 @@ def map_screen(state: dict, mem: Memory) -> list[Action]:
             log.debug("map: the Spoils Map's gold at %s", key)
 
     def is_early(row) -> bool:
-        return act == 1 and isinstance(row, int) and row < knob("early_rows")
+        return act == 1 and isinstance(row, int) and row < EARLY_ROWS
 
     def value(opt: dict) -> float:
         key = (opt.get("col"), opt.get("row"))

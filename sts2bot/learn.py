@@ -192,7 +192,7 @@ def seed_from_history(stats: CardStats, runs_file: Path) -> None:
 # ----------------------------------------------------------------- knobs
 # Judgement calls that are plain numbers: each run plays one setting of each, drawn by Thompson sampling from those whose runs went furthest.
 DEFAULTS = {"caution": 1.0, "elite_worth": 2.5, "upgrade_worth": 1.3, "pickiness": 0.0, "crowd": 0.6, "punch": 0.9, "weak_want": 0.0, "attack_room": 99.0, "block_want": 0.0, "cards_first": 0.0, "debuff_worth": 1.0, "free_lean": 1.0,
-            "model_lean": 0.0, "belt_spare": 1.0, "boss_caution": 1.0, "early_rows": 8.0}
+            "model_lean": 0.0, "belt_spare": 1.0}
 CHOICES = {
     "caution": [0.75, 1.0, 1.35],  # weight of HP lost in the combat planner (model runs: 1.35 best in Slay the Spire 2 at A5, no better at A7)
     "elite_worth": [2.5, 6.0],  # what an elite's rewards count for when planning a route
