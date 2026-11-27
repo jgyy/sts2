@@ -1,10 +1,12 @@
 //! The Fool's Sadness in a boss fight, as a model played by the bot's own planner.
 //!
-//!     scripts bosses/sadfight [FIGHTS ARM ...]   arms: "on" (as the bot plays), NAME=VALUE (a constant of
-//!                                                battle/combat/triggers), S.NAME=VALUE (a constant of
-//!                                                fight/fool/sadness.rs), K.name=VALUE (a setting), joined by "+"
-//!     scripts bosses/sadfight trace [SEED] [DECK] [ARM]   one fight, play by play
-//!     scripts bosses/sadfight flips DECK ARM [ARM]        the fights one arm wins and the other loses
+//! ```text
+//! scripts bosses/sadfight [FIGHTS ARM ...]   arms: "on" (as the bot plays), NAME=VALUE (a constant of
+//!                                            battle/combat/triggers), S.NAME=VALUE (a constant of
+//!                                            fight/fool/sadness.rs), K.name=VALUE (a setting), joined by "+"
+//! scripts bosses/sadfight trace [SEED] [DECK] [ARM]   one fight, play by play
+//! scripts bosses/sadfight flips DECK ARM [ARM]        the fights one arm wins and the other loses
+//! ```
 //!
 //! A Fool deck with Sorrowful Strike (13 damage, 2 Sadness), Mourning Blow (0 cost, 10 damage, then a Sadness itself) and
 //! Ennui (a Sadness and 2 more cards every turn) against an act 1 boss on a fixed cycle (12, 6x2, 16, +2 Strength, 10) that

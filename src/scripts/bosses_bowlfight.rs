@@ -1,8 +1,10 @@
 //! Bowlbug Rock and Bowlbug Nectar (an act 2 hallway fight) as a model, played by the bot's own planner.
 //!
-//!     scripts bosses/bowlfight [FIGHTS A DECK] [ARMS]       each arm on the same shuffles (default arms: off on)
-//!     scripts bosses/bowlfight trace [SEED] [DECK] [ARM]    one fight, play by play (DECK: its place in DECKS)
-//!     scripts bosses/bowlfight flips [DECK] [ARM ARM]       the fights where the arms differ most in HP lost
+//! ```text
+//! scripts bosses/bowlfight [FIGHTS A DECK] [ARMS]       each arm on the same shuffles (default arms: off on)
+//! scripts bosses/bowlfight trace [SEED] [DECK] [ARM]    one fight, play by play (DECK: its place in DECKS)
+//! scripts bosses/bowlfight flips [DECK] [ARM ARM]       the fights where the arms differ most in HP lost
+//! ```
 //!
 //! Arms ("+" joins them): "on" as the bot plays (battle::KNOWN_THREAT as it stands), "off" without BOWLBUG_NECTAR in it,
 //! "egg" adds a Bowlbug Egg, "nectar=N" puts the Nectar in KNOWN_THREAT at N, NAME=VALUE a constant of battle/combat/triggers.

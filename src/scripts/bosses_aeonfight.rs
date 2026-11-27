@@ -1,11 +1,13 @@
 //! Aeonglass (the act 3 boss with the Withers) as a model fight, played by the bot's own planner.
 //!
-//!     scripts bosses/aeonfight [FIGHTS ARM ...]   arms: "on" (as the bot plays), NAME=VALUE (a constant of
-//!                                                 battle/combat/triggers), WB=X (the planner's Wither bill
-//!                                                 times X), K.name=VALUE (a setting of learn::CHOICES),
-//!                                                 joined by "+" for several
-//!     scripts bosses/aeonfight trace [SEED] [DECK] [ARM]   one fight, play by play
-//!     scripts bosses/aeonfight flips DECK ARM [ARM]        the fights one arm wins and the other loses
+//! ```text
+//! scripts bosses/aeonfight [FIGHTS ARM ...]   arms: "on" (as the bot plays), NAME=VALUE (a constant of
+//!                                             battle/combat/triggers), WB=X (the planner's Wither bill
+//!                                             times X), K.name=VALUE (a setting of learn::CHOICES),
+//!                                             joined by "+" for several
+//! scripts bosses/aeonfight trace [SEED] [DECK] [ARM]   one fight, play by play
+//! scripts bosses/aeonfight flips DECK ARM [ARM]        the fights one arm wins and the other loses
+//! ```
 //!
 //! The fight is the Ascension 0 logs' (`intent`): Artifact 3; Withering Presence puts a Wither in our hand every 6 cards
 //! played; a Wither left in the hand takes 3 damage a level (Block first), a level for each time the boss has buffed.
