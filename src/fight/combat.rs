@@ -4,7 +4,7 @@
 //! and returns the first card of the winning line; re-planning after every card picks up draws and other surprises.
 
 use std::borrow::{Borrow, Cow};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -81,8 +81,16 @@ fn fmin(a: f64, b: f64) -> f64 {
 }
 
 thread_local! {
+    // scripts/bosses/aeonfight.rs's WB=X: the planner's Wither bill times X while this is set
+    // (the script's `mock.patch.object(combat, "_wither_bill", lambda *a: bill(*a) * value)`)
+    static WITHER_BILL_TIMES: Cell<Option<f64>> = const { Cell::new(None) };
     static NEXT_ROOM: RefCell<Option<Rc<dyn Fn(&Value) -> (f64, f64)>>> = const { RefCell::new(None) };
     static CHOOSE_CARD: RefCell<Option<Rc<dyn Fn(&Value, Option<&mut Plan>) -> Option<Action>>>> = const { RefCell::new(None) };
+}
+
+/// The planner's Wither bill times `times` on this thread from now on (None: as battle.rs has it).
+pub fn set_wither_bill_times(times: Option<f64>) -> Option<f64> {
+    WITHER_BILL_TIMES.with(|t| t.replace(times))
 }
 
 /// battle.rs's `next_room`, or what a test has put in its place (`with_next_room`): `_context` asks here.
@@ -1315,7 +1323,10 @@ pub fn _context(state: &Value) -> SimulateArgs {
         hand_size: player["hand"].list().len() as i64,
         wither_in: foes.iter().map(|e| power_amount(e, "WITHERING_PRESENCE")).max().unwrap_or(0),
         wither_hp,
-        wither_bill: _wither_bill(player, round_no, wither_hp),
+        wither_bill: match WITHER_BILL_TIMES.with(|t| t.get()) {
+            Some(times) => _wither_bill(player, round_no, wither_hp) * times,
+            None => _wither_bill(player, round_no, wither_hp),
+        },
         draw_worth: draws,
         orbs: player["orbs"].list().iter().map(|o| (o["id"].or(&o["name"]).text().to_uppercase().replace("_ORB", ""), o["passive_val"].int(), o["evoke_val"].int())).collect(),
         orb_slots: player["orb_slots"].int(),
