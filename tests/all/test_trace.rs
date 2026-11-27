@@ -1,0 +1,67 @@
+//! The decision trace: every seeded model run of tests/golden/trace.jsonl (played by the Python) must come out the
+//! same here, decision for decision, and end the same way.
+
+use indexmap::IndexMap;
+use serde_json::Value;
+use sts2bot::py::{self, JsonExt};
+use sts2bot::sim::cli::trace_run;
+
+const GOLDEN: &str = include_str!("../golden/trace.jsonl");
+
+/// What differs between the run played here and the golden one, if anything.
+fn compare(want: &Value) -> Option<String> {
+    let (game, character, seed, asc) = (want["game"].s(), want["character"].s(), want["seed"].int(), want["ascension"].int());
+    let who = format!("{game} {character} seed {seed} ascension {asc}");
+    let (digest, result) = trace_run(game, character, seed, asc, &IndexMap::new());
+    let golden: Vec<&str> = want["digest"].list().iter().map(|d| d.s()).collect();
+    if golden.len() < 10 || digest.is_empty() {
+        return Some(format!("{who}: {} decisions here, {} in the golden run", digest.len(), golden.len()));
+    }
+    for i in 0..digest.len().max(golden.len()) {
+        let (got, wanted) = (digest.get(i).map(|d| d.as_str()), golden.get(i).copied());
+        if got != wanted {
+            let from = i.saturating_sub(4);
+            let window = |d: &[&str]| d[from.min(d.len())..(i + 3).min(d.len())].join(" | ");
+            let got_all: Vec<&str> = digest.iter().map(|d| d.as_str()).collect();
+            return Some(format!("{who}: decision {i} of {} differs\n   got: {:?}\n  want: {:?}\n   got around: {}\n  want around: {}", golden.len(), got, wanted, window(&got_all), window(&golden)));
+        }
+    }
+    // (everything a run returns but the wall-clock time it took)
+    for (key, value) in want["result"].entries() {
+        if key == "secs" {
+            continue;
+        }
+        if py::json_dumps(&result[key.as_str()]) != py::json_dumps(value) {
+            return Some(format!("{who}: result[{key}] differs\n   got: {}\n  want: {}", py::json_dumps(&result[key.as_str()]), py::json_dumps(value)));
+        }
+    }
+    let keys = |v: &Value| v.entries().map(|(k, _)| k.clone()).collect::<Vec<_>>();
+    if keys(&result) != keys(&want["result"]) {
+        return Some(format!("{who}: the result's keys differ\n   got: {:?}\n  want: {:?}", keys(&result), keys(&want["result"])));
+    }
+    None
+}
+
+/// Every golden run of `game`, on a few threads; the runs that differ.
+fn check(game: &str) {
+    let lines: Vec<Value> = GOLDEN.lines().filter(|l| !l.trim().is_empty()).map(|l| serde_json::from_str::<Value>(l).unwrap()).filter(|v| v["game"].s() == game).collect();
+    assert!(!lines.is_empty(), "no golden runs of {game}");
+    let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(2).min(8);
+    let per = lines.len().div_ceil(threads);
+    let failures: Vec<String> = std::thread::scope(|s| {
+        let handles: Vec<_> = lines.chunks(per).map(|chunk| s.spawn(move || chunk.iter().filter_map(compare).collect::<Vec<String>>())).collect();
+        handles.into_iter().flat_map(|h| h.join().expect("a run panicked")).collect()
+    });
+    assert!(failures.is_empty(), "{} of {} runs differ:\n{}", failures.len(), lines.len(), failures.join("\n"));
+}
+
+#[test]
+fn test_the_first_games_runs_are_the_pythons() {
+    check("sts1");
+}
+
+#[test]
+#[ignore = "TODO(sts2 content): Slay the Spire 2's content is not ported yet"]
+fn test_slay_the_spire_2s_runs_are_the_pythons() {
+    check("sts2");
+}
