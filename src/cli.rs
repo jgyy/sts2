@@ -878,7 +878,8 @@ pub fn parse_args(argv: &[String]) -> Result<Args, Exit> {
 }
 
 /// `--game both`: a bot process for each game (games/both.rs), started and kept going from here.
-pub fn play_both(ap: &Parser, args: &Args, raw: &[String]) -> i32 {
+/// (Err: Python's `ap.error`, which left with SystemExit.)
+pub fn play_both(ap: &Parser, args: &Args, raw: &[String]) -> Result<i32, Exit> {
     let given = |opt: &str| match opt {
         "--port" => args.port.is_some(),
         "--log-dir" => args.log_dir.is_some(),
@@ -886,41 +887,46 @@ pub fn play_both(ap: &Parser, args: &Args, raw: &[String]) -> i32 {
     };
     let clash: Vec<&str> = both::GAME_OPTIONS.iter().copied().filter(|opt| given(opt)).collect();
     if !clash.is_empty() {
-        return ap.error(&format!("{} cannot be used with --game both: each game needs its own (run the two bots separately instead)", clash.join(", "))).leave();
+        return Err(ap.error(&format!("{} cannot be used with --game both: each game needs its own (run the two bots separately instead)", clash.join(", "))));
     }
     basic_config(Level::Info, vec![Handler { sink: Sink::Stderr, level: Level::Debug, format: "%(datetime)s both %(levelname)s %(message)s".to_string() }]);
     let why = sts1_host::comm_config_problem(games::default_port("sts1") as i64, None);
     if let Some(why) = why.filter(|w| !w.is_empty() && !args.no_launch) {
         log_error!(log, "{}. Neither game is started: the first game's bot {}", why, STS1_SETUP_HINT);
-        return 2;
+        return Ok(2);
     }
     let titles: Vec<&str> = games::GAMES.iter().map(|g| games::title(g)).collect();
     log_info!(log, "playing {}; logs in {} and {}", titles.join(" and "), default_log_dir(games::GAMES[0]).display(), default_log_dir(games::GAMES[1]).display());
-    match HOOKS.with(|h| h.borrow().both_run.clone()) {
+    Ok(match HOOKS.with(|h| h.borrow().both_run.clone()) {
         Some(hook) => hook(raw),
         None => both::run(raw, both::RunArgs::default()),
-    }
+    })
 }
 
 /// `args`: the command line after the program's name (Python's `sys.argv[1:]`). Returns the exit code.
 pub fn main(args: Vec<String>) -> i32 {
+    match try_main(args) {
+        Ok(code) => code,
+        Err(exit) => exit.leave(),
+    }
+}
+
+/// `main`, with what the parser had to say when it left by itself (Python's SystemExit) handed back instead of printed.
+pub fn try_main(args: Vec<String>) -> Result<i32, Exit> {
     let raw = args;
     if raw.first().is_some_and(|w| w == "service") {
         // `sts2bot service disable` and friends: no game, no bot
-        return service::main(&raw[1..], None);
+        return Ok(service::main(&raw[1..], None));
     }
     if raw.first().is_some_and(|w| w == "sts1-setup") {
-        return sts1_setup(&raw[1..]);
+        return Ok(sts1_setup(&raw[1..]));
     }
     if raw.first().is_some_and(|w| w == "relay") {
         // what CommunicationMod starts with the game (Python's `python3 -m sts2bot.games.sts1.relay`)
-        return relay::main(raw[1..].to_vec());
+        return Ok(relay::main(raw[1..].to_vec()));
     }
     let ap = parser();
-    let mut args = match parse_args(&raw) {
-        Ok(args) => args,
-        Err(exit) => return exit.leave(),
-    };
+    let mut args = parse_args(&raw)?;
     if args.game == "both" {
         return play_both(&ap, &args, &raw);
     }
@@ -930,7 +936,7 @@ pub fn main(args: Vec<String>) -> i32 {
     args.port = Some(port);
     let Ok(port16) = u16::try_from(port) else {
         // (Python took any number and then never reached the game)
-        return ap.error(&format!("argument --port: no such port: {port}")).leave();
+        return Err(ap.error(&format!("argument --port: no such port: {port}")));
     };
     let log_dir = args.log_dir.clone().filter(|d| !d.as_os_str().is_empty()).unwrap_or_else(|| default_log_dir(&args.game));
     args.log_dir = Some(log_dir.clone());
@@ -952,7 +958,7 @@ pub fn main(args: Vec<String>) -> i32 {
         if let Some(why) = sts1_host::comm_config_problem(port, None).filter(|w| !w.is_empty()) {
             if !args.no_launch {
                 log_error!(log, "{}. Not launching the game: the bot {}", why, STS1_SETUP_HINT);
-                return 2;
+                return Ok(2);
             }
             log_warning!(log, "{}; the bot cannot reach the game until you run `sts2bot sts1-setup`", why);
         }
@@ -996,5 +1002,178 @@ pub fn main(args: Vec<String>) -> i32 {
         }
     };
     log_info!(log, "stopped after {} runs ({} wins)", sup.bot.runs_finished, sup.bot.wins);
-    0
+    Ok(0)
+}
+
+#[cfg(test)]
+mod tests {
+    //! Against Python: tests/golden/supervisor/cli.json holds what `python3 -m sts2bot ...` made of some two hundred
+    //! command lines (the settings parsed, or the exit code and what was printed), of `service` command lines, and of
+    //! whole `main` calls with the games' side faked (what was logged, what `both.run` and the supervisor were given).
+
+    use super::*;
+    use serde_json::{json, Map, Value};
+
+    const GOLDEN: &str = include_str!("../tests/golden/supervisor/cli.json");
+
+    fn golden() -> Value {
+        serde_json::from_str(GOLDEN).unwrap()
+    }
+
+    fn words(v: &Value) -> Vec<String> {
+        v.as_array().unwrap().iter().map(|w| w.as_str().unwrap().to_string()).collect()
+    }
+
+    fn float(x: f64) -> Value {
+        json!({"f": py::float_repr(x)})
+    }
+
+    /// The seams as the golden cases were made: no home, Steam's launch command, a terminal `columns` wide.
+    fn world(columns: &Value, more: &[(&str, String)]) -> supervisor::Patched {
+        let mut env: IndexMap<String, String> = IndexMap::new();
+        env.insert("HOME".to_string(), "/nonexistent-home".to_string());
+        env.insert("PATH".to_string(), "/usr/bin:/bin".to_string());
+        env.insert("COLUMNS".to_string(), columns.to_string());
+        for (k, v) in more {
+            env.insert(k.to_string(), v.clone());
+        }
+        supervisor::patch(|s| {
+            s.environ = Some(env);
+            s.DEFAULT_LAUNCH = Some(supervisor::STEAM_LAUNCH.to_string());
+        })
+    }
+
+    fn exit_json(exit: &Exit) -> Value {
+        json!({"code": exit.code, "stdout": exit.stdout, "stderr": exit.stderr})
+    }
+
+    #[test]
+    fn the_command_line_is_read_as_python_read_it() {
+        let golden = golden();
+        let cases = golden["parse"].as_array().unwrap();
+        assert!(cases.len() >= 170);
+        for case in cases {
+            let argv = words(&case["argv"]);
+            let _world = world(&case["columns"], &[]);
+            let got: Result<Value, Exit> = if argv.first().is_some_and(|w| w == "sts1-setup") {
+                sts1_setup_parser().parse_args(&argv[1..]).map(|values| match values["port"] {
+                    Val::Int(port) => json!({"port": port}),
+                    _ => unreachable!(),
+                })
+            } else {
+                parse_args(&argv).map(|a| {
+                    json!({"game": a.game, "host": a.host, "port": a.port, "character": a.character, "runs": a.runs, "first": a.first, "no_tuning": a.no_tuning, "no_launch": a.no_launch,
+                           "launch_cmd": a.launch_cmd, "fast_mode": a.fast_mode, "full_graphics": a.full_graphics, "small_window": a.small_window, "windowed": a.windowed,
+                           "time_scale": float(a.time_scale), "sts1_time_scale": float(a.sts1_time_scale), "stuck_timeout": float(a.stuck_timeout), "poll": float(a.poll),
+                           "log_dir": a.log_dir.map(|d| d.to_string_lossy().into_owned()), "verbose": a.verbose})
+                })
+            };
+            match got {
+                Ok(parsed) => assert_eq!(parsed, case["parsed"], "{argv:?}"),
+                Err(exit) => assert_eq!(exit_json(&exit), case["exit"], "{argv:?} at {} columns", case["columns"]),
+            }
+        }
+    }
+
+    #[test]
+    fn service_commands_go_to_the_service() {
+        let golden = golden();
+        let cases = golden["service"].as_array().unwrap();
+        assert!(cases.len() >= 27);
+        for case in cases {
+            let calls: Rc<RefCell<Vec<Vec<String>>>> = Rc::default();
+            let (seen, rc) = (Rc::clone(&calls), case["rc"].clone());
+            let _run = service::patch_run(move |args| {
+                seen.borrow_mut().push(args.to_vec());
+                match rc.as_i64() {
+                    Some(code) => Ok(code as i32),
+                    None => Err(std::io::Error::from(std::io::ErrorKind::NotFound)),
+                }
+            });
+            let (code, printed) = service::capture_print(|| try_main(words(&case["argv"])).unwrap());
+            let got = json!({"argv": case["argv"], "rc": case["rc"], "code": code, "calls": *calls.borrow(), "stdout": printed.stdout, "stderr": printed.stderr});
+            assert_eq!(&got, case);
+        }
+    }
+
+    #[test]
+    fn main_starts_what_python_started() {
+        let golden = golden();
+        let cases = golden["main"].as_array().unwrap();
+        assert!(cases.len() >= 31);
+        let relay = format!("{} relay", sts1_host::executable());
+        for case in cases {
+            let tmp = tempfile::tempdir().unwrap();
+            let t = tmp.path().canonicalize().unwrap().to_string_lossy().into_owned();
+            let _world = world(&case["columns"], &[("XDG_CONFIG_HOME", format!("{t}/cfg")), ("XDG_STATE_HOME", format!("{t}/state"))]);
+            let _game = games::playing("sts2");
+            let _knobs = learn::with_knobs(&[]);
+            let both_calls: Rc<RefCell<Vec<Vec<String>>>> = Rc::default();
+            let played: Rc<RefCell<Vec<Value>>> = Rc::default();
+            let (seen_both, seen_play) = (Rc::clone(&both_calls), Rc::clone(&played));
+            let _hooks = patch(|h| {
+                h.basic_config = Some(Rc::new(|_, _| {}));
+                h.both_run = Some(Rc::new(move |raw| {
+                    seen_both.borrow_mut().push(raw.to_vec());
+                    0
+                }));
+                h.play = Some(Rc::new(move |sup, max_runs| {
+                    let b = &sup.bot;
+                    seen_play.borrow_mut().push(json!({"runs": max_runs, "launch_cmd": sup.launch_cmd, "manage_game": sup.manage_game, "fast_mode": sup.fast_mode, "light_graphics": sup.light_graphics,
+                        "small_window": sup.small_window, "fullscreen": sup.fullscreen, "time_scale": py::float_repr(sup.time_scale), "boot_timeout": py::float_repr(sup.boot_timeout),
+                        "outage_grace": py::float_repr(sup.outage_grace), "heal_mod": sup.heal_mod, "host": sup.host.name(), "character": b.character, "poll": py::float_repr(b.poll),
+                        "stuck_timeout": py::float_repr(b.stuck_timeout), "tune": b.tune, "room_pause": py::float_repr(b.room_pause), "room_poll": py::float_repr(b.room_poll),
+                        "log_dir": b.log_dir.as_ref().map(|d| d.to_string_lossy().into_owned()), "game": games::active()}));
+                    Ok(())
+                }));
+            });
+            if let Some(config) = case["config"].as_str() {
+                match config.strip_prefix("ok:") {
+                    Some(port) => {
+                        sts1_host::write_comm_config(port.parse().unwrap(), None).unwrap();
+                    }
+                    None => {
+                        std::fs::create_dir_all(sts1_host::comm_config_path().parent().unwrap()).unwrap();
+                        std::fs::write(sts1_host::comm_config_path(), config.replace("{RELAY}", &relay)).unwrap();
+                    }
+                }
+            }
+            let mut argv = words(&case["argv"]);
+            if case["log_dir"] == true {
+                argv.extend(["--log-dir".to_string(), format!("{t}/logs")]);
+            }
+            let (ended, records) = logging::capture(|| try_main(argv));
+            let logs: Vec<Value> = records.iter().filter(|r| r.logger == "sts2bot").map(|r| json!([r.level.name(), r.message])).collect();
+            let mut got: Map<String, Value> = Map::new();
+            for key in ["argv", "config", "log_dir", "columns"] {
+                got.insert(key.to_string(), case[key].clone());
+            }
+            match ended {
+                Ok(code) => got.insert("code".to_string(), json!(code)),
+                Err(exit) => got.insert("exit".to_string(), exit_json(&exit)),
+            };
+            got.insert("logs".to_string(), json!(logs));
+            got.insert("both".to_string(), json!(*both_calls.borrow()));
+            got.insert("played".to_string(), json!(*played.borrow()));
+            let got: Value = serde_json::from_str(&Value::Object(got).to_string().replace(&t, "<T>").replace(&relay, "{RELAY}")).unwrap();
+            // (which address the client was given cannot be read back through the shared game: left out here)
+            let mut want = case.clone();
+            for run in want["played"].as_array_mut().unwrap() {
+                run.as_object_mut().unwrap().shift_remove("base");
+            }
+            assert_eq!(got, want, "{}", case["argv"]);
+        }
+    }
+
+    #[test]
+    fn numbers_and_paths_as_python_reads_them() {
+        assert_eq!(py_int(" +1_0 "), Some(10));
+        assert_eq!(py_int("1__0"), None);
+        assert_eq!(py_float("-.5e-3"), Some(-0.0005));
+        assert!(py_float("NaN").unwrap().is_nan());
+        assert_eq!(py_path("a//b/./c/"), "a/b/c");
+        assert_eq!(py_path(""), ".");
+        assert_eq!(py_path("//x"), "//x");
+        assert_eq!(py_path("///x"), "/x");
+    }
 }
