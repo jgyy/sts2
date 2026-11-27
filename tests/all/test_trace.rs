@@ -60,6 +60,30 @@ fn test_the_first_games_runs_are_the_pythons() {
     check("sts1");
 }
 
+/// More seeded runs of the first game than trace.jsonl holds (seeds 5..44 at Ascension 0 and at Ascension 15), kept as
+/// the start of the SHA-256 of each run's digest and of its result.
+#[test]
+fn test_more_of_the_first_games_runs_are_the_pythons() {
+    use sha2::{Digest, Sha256};
+    let hash = |text: &str| Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect::<String>()[..16].to_string();
+    let lines: Vec<Value> = include_str!("../golden/trace_sts1_more.jsonl").lines().filter(|l| !l.trim().is_empty()).map(|l| serde_json::from_str::<Value>(l).unwrap()).collect();
+    assert!(lines.len() >= 100, "{} golden runs", lines.len());
+    let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(2).min(8);
+    let per = lines.len().div_ceil(threads);
+    let one = |want: &Value| -> Option<String> {
+        let (digest, mut result) = trace_run(want["game"].s(), want["character"].s(), want["seed"].int(), want["ascension"].int(), &IndexMap::new());
+        result.as_object_mut().unwrap().shift_remove("secs");
+        let got = (digest.len() as i64, hash(&digest.join("|")), hash(&py::json_dumps(&result)));
+        let wanted = (want["n"].int(), want["digest"].s().to_string(), want["result"].s().to_string());
+        (got != wanted).then(|| format!("{} {} seed {} ascension {}: got {:?}, want {:?}", want["game"].s(), want["character"].s(), want["seed"], want["ascension"], got, wanted))
+    };
+    let failures: Vec<String> = std::thread::scope(|s| {
+        let handles: Vec<_> = lines.chunks(per).map(|chunk| s.spawn(move || chunk.iter().filter_map(one).collect::<Vec<String>>())).collect();
+        handles.into_iter().flat_map(|h| h.join().expect("a run panicked")).collect()
+    });
+    assert!(failures.is_empty(), "{} of {} runs differ:\n{}", failures.len(), lines.len(), failures.join("\n"));
+}
+
 #[test]
 #[ignore = "TODO(sts2 content): Slay the Spire 2's content is not ported yet"]
 fn test_slay_the_spire_2s_runs_are_the_pythons() {
