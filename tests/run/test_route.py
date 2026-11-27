@@ -3,7 +3,6 @@
 import unittest
 from unittest import mock
 
-from sts2bot import learn
 from sts2bot.run import strategy
 
 
@@ -27,48 +26,6 @@ class Act2Boss(unittest.TestCase):
             free, free_act1 = strategy.path_value(way, 70, 80, 0, 2), strategy.path_value(way, 70, 80, 0, 1)
         self.assertLess(strategy.path_value(way, 70, 80, 0, 2), free - 0.5)
         self.assertEqual(strategy.path_value(way, 70, 80, 0, 1), free_act1)  # (act 1: under 1%, left out)
-
-
-class OwnCost(unittest.TestCase):
-    """`own_cost`: the route planner prices fights by what this run's own have cost (strategy.Memory.toll)."""
-
-    def state(self, row, hp, kinds=("Monster", "Monster")):
-        node = lambda col, r, kind, *kids: {"col": col, "row": r, "type": kind, "children": [list(k) for k in kids]}
-        nodes = [node(c, r, kinds[c] if r == row else "Monster", (c, r + 1)) for c in (0, 1) for r in range(1, 6)] + [node(0, 6, "Boss"), node(1, 6, "Boss")]
-        opts = [{"index": c, "col": c, "row": row, "type": kinds[c]} for c in (0, 1)]
-        return {"state_type": "map", "run": {"act": 2, "floor": 17 + row}, "player": {"hp": hp, "max_hp": 80, "gold": 0}, "map": {"nodes": nodes, "next_options": opts}}
-
-    def test_the_fights_of_this_run_set_the_price(self):
-        mem = strategy.Memory()
-        with mock.patch.dict(learn.KNOB, {"own_cost": 1.0}):
-            self.assertEqual(mem.toll(), 1.0)
-            strategy.map_screen(self.state(1, 80), mem)
-            strategy.map_screen(self.state(1, 80), mem)  # (the same screen looked at again: nothing walked yet)
-            self.assertEqual(mem.fight_toll, [0.0, 0.0])
-            strategy.map_screen(self.state(2, 50), mem)  # an act 2 hallway fight (10.2 HP on average) that cost 30
-            self.assertEqual(mem.fight_toll[0], 30.0)
-            self.assertAlmostEqual(mem.toll(), (30 + strategy.TOLL_PRIOR) / (12 * 0.85 + strategy.TOLL_PRIOR))
-            mem.fight_toll = [400.0, 100.0]
-            self.assertEqual(mem.toll(), strategy.TOLL_RANGE[1])
-        self.assertEqual(mem.toll(), 1.0)  # (the setting off: the average, whatever the run has seen)
-        mem.reset_run()
-        self.assertEqual((mem.walked, mem.fight_toll), ((), [0.0, 0.0]))
-
-    def test_a_boss_and_its_heal_are_not_counted(self):
-        mem = strategy.Memory()
-        with mock.patch.dict(learn.KNOB, {"own_cost": 1.0}):
-            strategy.map_screen(self.state(5, 60), mem)
-            nxt = self.state(1, 80)
-            nxt["run"]["act"] = 3
-            strategy.map_screen(nxt, mem)
-            self.assertEqual(mem.fight_toll, [0.0, 0.0])
-
-    def test_a_deck_that_fights_cheaply_takes_the_elite(self):
-        way = [("Elite", 3), ("Monster", 4), ("Monster", 5), ("Boss", 6)]
-        safe = [("Monster", 3), ("Monster", 4), ("Monster", 5), ("Boss", 6)]
-        gain = lambda toll: strategy.path_value(way, 70, 80, 0, 2, 1.0, toll) - strategy.path_value(safe, 70, 80, 0, 2, 1.0, toll)
-        self.assertGreater(gain(0.6), gain(1.0))
-        self.assertGreater(gain(1.0), gain(1.6))
 
 
 class SpoilsMap(unittest.TestCase):

@@ -42,7 +42,6 @@ GRID = {  # the settings tried with --vary: the bot's own choices (learn.CHOICES
     "cards_first": [0.0, 1.0],
     "debuff_worth": [1.0, 2.0, 3.0],
     "model_lean": [0.0, 1.0, 2.0],
-    "own_cost": [0.0, 1.0],  # the route planner prices fights by what this run's own have cost (strategy.Memory.toll)
     "boss_caution": [0.75, 1.0, 1.35],  # `caution` times this in boss fights
     "early_rows": [5.0, 8.0],  # act 1 rows where an elite is a starter deck's fight (strategy.EARLY_ROWS)
     "belt_spare": [0.0, 1.0],  # a full belt is a reason to drink in a hallway fight (round 5: 0 in Slay the Spire 2, 1 in the first game)
