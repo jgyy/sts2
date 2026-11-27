@@ -103,3 +103,41 @@ mod tests {
         assert_eq!(rating("STRIKE_R"), None);
     }
 }
+
+#[cfg(test)]
+mod first_game_ratings {
+    //! What the cards and crowd ports could not check before this module was there: `cards::deck_value` and
+    //! `run::crowd::rating` while playing the first game, over every first-game card of tests/golden/cards.json
+    //! (tests/golden/cards_sts1.json, written by CPython 3.13).
+    use serde_json::Value;
+
+    use crate::run::crowd;
+    use crate::{cards, games, learn};
+
+    #[test]
+    fn every_first_game_card_is_worth_what_python_says() {
+        let g: Value = serde_json::from_str(include_str!("../../../tests/golden/cards_sts1.json")).unwrap();
+        let all: Value = serde_json::from_str(include_str!("../../../tests/golden/cards.json")).unwrap();
+        let cases = all["cases"].as_array().unwrap();
+        let _game = games::playing("sts1");
+        let rows = g["deck_value"].as_array().unwrap();
+        assert_eq!(rows.len(), cases.iter().filter(|c| c["g"] == "sts1").count());
+        assert!(rows.len() > 700);
+        for row in rows {
+            let case = &cases[row[0].as_u64().unwrap() as usize];
+            assert_eq!(case["g"], "sts1");
+            let card = &case["card"];
+            for (share, want) in [0.0, 0.3, 0.6].iter().zip(row[1].as_array().unwrap()) {
+                let _knob = learn::with_knobs(&[("crowd", *share)]);
+                assert_eq!(cards::deck_value(card), want.as_f64().unwrap(), "deck_value at crowd {share}: {card}");
+            }
+            assert_eq!(crowd::rating(&cards::_card_key(card)), row[2].as_f64(), "crowd::rating of {card}");
+        }
+        let keys = g["rating"].as_array().unwrap();
+        assert!(keys.len() > 400);
+        for row in keys {
+            assert_eq!(crowd::rating(row[0].as_str().unwrap()), row[1].as_f64(), "crowd::rating({})", row[0]);
+            assert_eq!(crowd::rating(row[0].as_str().unwrap()), super::rating(row[0].as_str().unwrap()));
+        }
+    }
+}
