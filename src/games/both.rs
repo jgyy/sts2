@@ -143,6 +143,25 @@ impl Drop for Handling {
     }
 }
 
+/// Ctrl+C notes that we are to stop (`stopped()`), until dropped: a bot by itself, where Python raised KeyboardInterrupt
+/// (SIGTERM ends such a bot at once, there as here: only `run` above catches it).
+#[must_use = "Ctrl+C is the system's again when this is dropped"]
+pub struct CtrlC(libc::sighandler_t);
+
+impl CtrlC {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        STOPPED.store(false, Ordering::SeqCst);
+        CtrlC(unsafe { libc::signal(libc::SIGINT, stop as extern "C" fn(libc::c_int) as libc::sighandler_t) })
+    }
+}
+
+impl Drop for CtrlC {
+    fn drop(&mut self) {
+        unsafe { libc::signal(libc::SIGINT, self.0) };
+    }
+}
+
 /// `time.monotonic()`.
 pub fn monotonic() -> f64 {
     static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();

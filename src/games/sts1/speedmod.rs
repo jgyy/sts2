@@ -414,8 +414,30 @@ impl Drop for TemporaryDirectory {
     }
 }
 
+thread_local! {
+    static ENSURE: std::cell::RefCell<Option<std::rc::Rc<dyn Fn(&Path, Option<&Path>) -> bool>>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Puts the earlier `ensure` back when dropped.
+#[must_use = "the override ends when this is dropped"]
+pub struct EnsureGuard(Option<std::rc::Rc<dyn Fn(&Path, Option<&Path>) -> bool>>);
+
+impl Drop for EnsureGuard {
+    fn drop(&mut self) {
+        ENSURE.with(|h| *h.borrow_mut() = self.0.take());
+    }
+}
+
+/// `mock.patch.object(speedmod, "ensure", f)`: on this thread, until the guard is dropped.
+pub fn with_ensure_hook(f: impl Fn(&Path, Option<&Path>) -> bool + 'static) -> EnsureGuard {
+    EnsureGuard(ENSURE.with(|h| h.borrow_mut().replace(std::rc::Rc::new(f))))
+}
+
 /// Build and install the mod if it is missing or out of date. True if it is in place.
 pub fn ensure(game_dir: &Path, mts_jar: Option<&Path>) -> bool {
+    if let Some(hook) = ENSURE.with(|h| h.borrow().clone()) {
+        return hook(game_dir, mts_jar);
+    }
     let target = game_dir.join("mods").join(format!("{MOD_ID}.jar"));
     let stamp = target.with_extension("stamp");
     if target.is_file() && stamp.is_file() && std::fs::read_to_string(&stamp).map(|s| s.trim() == _stamp()).unwrap_or(false) {
