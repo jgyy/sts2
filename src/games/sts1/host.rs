@@ -500,3 +500,291 @@ impl Host for Sts1Host {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    //! Against Python: tests/golden/supervisor/host.json holds what games/sts1/host.py made of made-up save folders,
+    //! game folders, CommunicationMod configs and process lists, the machine faked on both sides.
+
+    use super::*;
+    use crate::supervisor::testing::{env, logged, norm, relay, words};
+    use crate::supervisor::Completed;
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    const GOLDEN: &str = include_str!("../../../tests/golden/supervisor/host.json");
+
+    fn golden(part: &str) -> Vec<Value> {
+        let all: Value = serde_json::from_str(GOLDEN).unwrap();
+        all[part].as_array().unwrap().clone()
+    }
+
+    fn text(p: &Path) -> String {
+        p.to_string_lossy().into_owned()
+    }
+
+    /// Every file under `root` and what it holds, by its path from there.
+    fn tree(root: &Path) -> Map<String, Value> {
+        fn walk(dir: &Path, root: &Path, out: &mut Map<String, Value>) {
+            for entry in std::fs::read_dir(dir).unwrap().flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    walk(&path, root, out);
+                } else {
+                    out.insert(text(path.strip_prefix(root).unwrap()), json!(std::fs::read_to_string(&path).unwrap()));
+                }
+            }
+        }
+        let mut out = Map::new();
+        walk(root, root, &mut out);
+        out
+    }
+
+    /// The files (a name ending in "/": a folder) in `dir`.
+    fn fill(dir: &Path, files: &Value) {
+        for (name, body) in files.as_object().unwrap() {
+            match name.strip_suffix('/') {
+                Some(folder) => std::fs::create_dir(dir.join(folder)).unwrap(),
+                None => std::fs::write(dir.join(name), body.as_str().unwrap()).unwrap(),
+            }
+        }
+    }
+
+    #[test]
+    fn the_save_files_are_read_as_python_read_them() {
+        let cases = golden("read_prefs");
+        assert!(cases.len() >= 26);
+        for case in cases {
+            let d = tempfile::tempdir().unwrap();
+            fill(d.path(), &case["files"]);
+            let got = if case["env"] == true {
+                let _p = supervisor::patch(|s| s.environ = Some(env(&[("STS1_PREFS_DIR", json!(text(d.path())))])));
+                read_prefs(None)
+            } else {
+                read_prefs(Some(d.path()))
+            };
+            assert_eq!(got, case["want"], "{}", case["files"]);
+        }
+    }
+
+    #[test]
+    fn the_game_is_prepared_as_python_prepared_it() {
+        let cases = golden("prepare_game");
+        assert!(cases.len() >= 150);
+        for case in cases {
+            let d = tempfile::tempdir().unwrap();
+            let game = d.path().join("game");
+            let prefs = game.join("preferences");
+            std::fs::create_dir(&game).unwrap();
+            fill(&game, &case["game"]);
+            if case["prefs"] == "file" {
+                std::fs::write(&prefs, "in the way").unwrap();
+            } else if !case["prefs"].is_null() {
+                std::fs::create_dir(&prefs).unwrap();
+                fill(&prefs, &case["prefs"]);
+            }
+            let fullscreen = case["fullscreen"].as_bool().unwrap();
+            let ((changed, again), logs) = logged(|| (prepare_game(fullscreen, Some(&prefs), Some(&game)), prepare_game(fullscreen, Some(&prefs), Some(&game))));
+            let got = json!({"game": case["game"], "prefs": case["prefs"], "fullscreen": fullscreen, "changed": changed, "again": again, "logs": logs, "after": tree(d.path())});
+            assert_eq!(norm(got, d.path()), case, "{} {}", case["game"], case["prefs"]);
+        }
+    }
+
+    #[test]
+    fn communicationmods_config_is_read_and_written_as_in_python() {
+        let cases = golden("comm_config");
+        assert!(cases.len() >= 21);
+        for case in cases {
+            let d = tempfile::tempdir().unwrap();
+            let path = d.path().join("config.properties");
+            if case["text"].is_null() && case["command"].is_null() && case["problems"].is_null() {
+                let _p = supervisor::patch(|s| s.environ = Some(env(&[])));
+                assert_eq!(json!({"path": text(&comm_config_path())}), case);
+                continue;
+            }
+            if case["env"] == true {
+                let _p = supervisor::patch(|s| s.environ = Some(env(&[("XDG_CONFIG_HOME", json!(text(d.path())))])));
+                let got = json!({"text": null, "env": true, "command": comm_command(None), "problems": [comm_config_problem(15527, None)], "path": text(&comm_config_path())});
+                assert_eq!(norm(got, d.path()), case);
+                continue;
+            }
+            if let Some(config) = case["text"].as_str() {
+                std::fs::write(&path, config.replace("{RELAY}", &relay())).unwrap();
+            }
+            let problems: Vec<Option<String>> = [15527, 15599, 15528, 0].iter().map(|port| comm_config_problem(*port, Some(&path))).collect();
+            let got = json!({"text": case["text"], "command": comm_command(Some(&path)), "problems": problems});
+            assert_eq!(norm(got, d.path()), case);
+        }
+        for case in golden("write_comm_config") {
+            let d = tempfile::tempdir().unwrap();
+            let port = case["port"].as_i64().unwrap();
+            let path = write_comm_config(port, Some(&d.path().join("a").join("CommunicationMod").join("config.properties"))).unwrap();
+            let other = {
+                let _p = supervisor::patch(|s| s.environ = Some(env(&[("XDG_CONFIG_HOME", json!(text(d.path())))])));
+                write_comm_config(port, None).unwrap()
+            };
+            let got = json!({"port": port, "path": text(&path), "text": std::fs::read_to_string(&path).unwrap(), "other": text(&other), "other_text": std::fs::read_to_string(&other).unwrap(),
+                             "command": comm_command(Some(&path)), "problem": comm_config_problem(15527, Some(&path))});
+            assert_eq!(norm(got, d.path()), case);
+        }
+    }
+
+    #[test]
+    fn the_first_game_is_found_as_in_python() {
+        use std::os::unix::fs::PermissionsExt;
+        let cases = golden("where");
+        assert!(cases.len() >= 11);
+        for case in cases {
+            let d = tempfile::tempdir().unwrap();
+            let sc = &case["sc"];
+            for f in sc["files"].as_array().into_iter().flatten() {
+                let path = d.path().join(f.as_str().unwrap());
+                std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+                std::fs::write(&path, "x").unwrap();
+                if sc["exec"] == true && f.as_str().unwrap().ends_with("java") {
+                    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+                } else {
+                    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+                }
+            }
+            let mut more: Vec<(&str, Value)> = Vec::new();
+            for (k, key) in [("STS1_GAME_DIR", "game"), ("STS1_MTS_JAR", "jar"), ("STS1_PREFS_DIR", "prefs")] {
+                if let Some(v) = sc[key].as_str() {
+                    more.push((k, json!(if v.is_empty() { String::new() } else { text(&d.path().join(v)) })));
+                }
+            }
+            let _p = supervisor::patch(|s| {
+                let mut e = env(&more);
+                e.insert("HOME".to_string(), text(&d.path().join("home")));
+                s.environ = Some(e);
+            });
+            let got = json!({"sc": sc, "steam_root": text(&steam_root()), "game_dir": text(&game_dir()), "prefs_dir": text(&prefs_dir()), "mts_jar": mts_jar().map(|j| text(&j)), "java": java(),
+                             "default_launch": default_launch()});
+            assert_eq!(norm(got, d.path()), case);
+        }
+    }
+
+    #[test]
+    fn the_games_processes_are_found_as_in_python() {
+        let cases = golden("game_processes");
+        assert!(cases.len() >= 7);
+        for case in cases {
+            let stdout = case["stdout"].as_str().unwrap().replace("{RELAY}", &relay());
+            let _p = supervisor::patch(|s| s.set_run(move |_, _| Ok(Completed { stdout: stdout.clone(), ..Default::default() })));
+            assert_eq!(json!({"stdout": case["stdout"], "want": _game_processes(), "running": Sts1Host::default().running()}), case);
+        }
+    }
+
+    #[test]
+    fn the_first_game_is_launched_as_in_python() {
+        use std::io::Write;
+        let cases = golden("launch");
+        assert!(cases.len() >= 8);
+        for case in cases {
+            let d = tempfile::tempdir().unwrap();
+            let sc = &case["sc"];
+            let (game, logs_dir) = (d.path().join("game"), d.path().join("logs"));
+            if sc["no_game_dir"] != true {
+                std::fs::create_dir(&game).unwrap();
+            }
+            std::fs::create_dir(&logs_dir).unwrap();
+            if sc["old_log"] == true {
+                std::fs::write(logs_dir.join("game.log"), "the launch before\n").unwrap();
+            }
+            if sc["old_old"] == true {
+                std::fs::write(logs_dir.join("game.log.1"), "the one before that\n").unwrap();
+            }
+            let spawned: Rc<RefCell<Vec<Value>>> = Rc::default();
+            let asked: Rc<RefCell<Vec<Value>>> = Rc::default();
+            let (seen, game_log) = (Rc::clone(&spawned), logs_dir.join("game.log"));
+            let _p = supervisor::patch(|s| {
+                s.environ = Some(env(&[("KEPT", json!("yes")), ("STS1_GAME_DIR", json!(text(&game))), ("STS1_PREFS_DIR", json!(text(&game.join("preferences"))))]));
+                s.set_spawn(move |argv, kw| {
+                    // (the file the output goes to is the game.log just opened: what is written to it lands there)
+                    let mut out = None;
+                    if let Some(mut file) = kw.out.as_ref() {
+                        file.write_all(b"from the game").unwrap();
+                        assert_eq!(std::fs::read_to_string(&game_log).unwrap(), "from the game");
+                        file.set_len(0).unwrap();
+                        out = Some(text(&game_log));
+                    }
+                    let mut keys = vec!["cwd"];
+                    keys.extend(kw.env.as_ref().map(|_| "env"));
+                    keys.extend(out.as_ref().map(|_| "stderr"));
+                    keys.extend(out.as_ref().map(|_| "stdout"));
+                    seen.borrow_mut().push(json!({"argv": argv, "cwd": kw.cwd.as_ref().map(|c| text(c)), "scale": kw.env.as_ref().map(|e| e.get(speedmod::ENV)), "kept": kw.env.as_ref().map(|e| e.get("KEPT")),
+                                                  "out": out, "err": out, "keys": keys}));
+                    Ok(())
+                });
+            });
+            let (seen, ensure) = (Rc::clone(&asked), sc["ensure"].as_bool().unwrap());
+            let _e = speedmod::with_ensure_hook(move |game_dir, mts_jar| {
+                seen.borrow_mut().push(json!([text(game_dir), mts_jar.map(text)]));
+                ensure
+            });
+            let log_dir = match &sc["log_dir"] {
+                Value::Bool(true) => Some(logs_dir.clone()),
+                Value::Bool(false) => None,
+                _ => Some(d.path().join("nowhere")),
+            };
+            let h = Sts1Host::new(log_dir, sc["windowed"] != true, sc["scale"].as_f64().unwrap());
+            if sc["prepared"] == true {
+                logged(|| prepare_game(true, None, None));
+            }
+            let (_, logs) = logged(|| h.launch(sc["cmd"].as_str().unwrap()));
+            let after: Map<String, Value> = tree(d.path()).into_iter().filter(|(k, _)| k.starts_with("logs/")).collect();
+            let got = json!({"sc": sc, "spawned": *spawned.borrow(), "asked": *asked.borrow(), "logs": logs, "after": after, "display": std::fs::read_to_string(game.join("info.displayconfig")).ok(),
+                             "hint": h.no_api_hint(), "flags": [json!(Sts1Host::name), json!(Sts1Host::heals_mod), json!(h.mod_is_stale()), json!(h.rebuild_mod()), json!(h.mod_load_error(0.0)), json!(h.missing_steam(0.0))]});
+            assert_eq!(norm(got, d.path()), case, "{sc}");
+        }
+    }
+
+    #[test]
+    fn the_first_game_is_killed_as_in_python() {
+        /// The first game's processes: gone `dies` seconds after the signal `on` ("-TERM", "-KILL"; none: never).
+        #[derive(Default)]
+        struct Game {
+            sc: Value,
+            t: f64,
+            trace: Vec<Value>,
+            sent: Vec<(String, f64)>,
+        }
+        impl Game {
+            fn alive(&self) -> bool {
+                let dies = self.sc["dies"].as_f64().unwrap_or(0.0);
+                !self.sent.iter().any(|(sig, at)| self.sc["on"] == sig.as_str() && self.t >= at + dies)
+            }
+        }
+        let cases = golden("kill");
+        assert!(cases.len() >= 9);
+        for case in cases {
+            let world = Rc::new(RefCell::new(Game { sc: case["sc"].clone(), ..Default::default() }));
+            let _p = supervisor::patch(|s| {
+                let w = Rc::clone(&world);
+                s.set_run(move |argv, _| {
+                    let mut w = w.borrow_mut();
+                    w.trace.push(json!(["run", argv]));
+                    let mut stdout = String::new();
+                    if argv[0] == "ps" {
+                        stdout = if w.alive() { words(&w.sc["pids"]).iter().map(|pid| format!(" {pid} Sl java -jar ModTheSpire.jar\n")).collect() } else { "1 Sl init\n".to_string() };
+                    } else if !w.sent.iter().any(|(sig, _)| *sig == argv[1]) {
+                        let at = w.t;
+                        w.sent.push((argv[1].clone(), at));
+                    }
+                    Ok(Completed { stdout, ..Default::default() })
+                });
+                let w = Rc::clone(&world);
+                s.set_sleep(move |dt| {
+                    let mut w = w.borrow_mut();
+                    w.trace.push(json!(["sleep", dt]));
+                    w.t += dt;
+                    Ok(())
+                });
+                let w = Rc::clone(&world);
+                s.set_monotonic(move || w.borrow().t);
+            });
+            Sts1Host::default().kill(case["sc"]["grace"].as_f64().unwrap_or(10.0)).unwrap();
+            assert_eq!(json!({"sc": case["sc"], "trace": world.borrow().trace}), case);
+        }
+    }
+}
