@@ -62,7 +62,7 @@ fn test_the_first_games_runs_are_the_pythons() {
 
 /// More seeded runs than trace.jsonl holds, kept as the start of the SHA-256 of each run's digest and of its result:
 /// the first game's (seeds 5..44 at Ascension 0 and at Ascension 15), and Slay the Spire 2's (seeds 5..44 at Ascension 0
-/// and 8, then seeds 100..119 with each run's own settings, `knobs_for(seed, True)`: the line's "knobs").
+/// and 8, seeds 100..119 with each run's own settings, `knobs_for(seed, True)`: the line's "knobs"; seeds 200..203 at Ascension 10, and at 9 with drawn settings).
 fn more(golden: &str, every: usize) {
     use sha2::{Digest, Sha256};
     let hash = |text: &str| Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect::<String>()[..16].to_string();
@@ -108,7 +108,7 @@ fn test_more_of_slay_the_spire_2s_runs_are_the_pythons() {
 }
 
 #[test]
-#[ignore = "all 600 runs: a minute or more (cargo test -- --ignored test_all_the_more_runs)"]
+#[ignore = "all 640 runs: a minute or more (cargo test -- --ignored test_all_the_more_runs)"]
 fn test_all_the_more_runs_of_slay_the_spire_2_are_the_pythons() {
     more(MORE_STS2, 1);
 }
