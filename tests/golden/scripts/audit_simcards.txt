@@ -1,0 +1,444 @@
+$ sts2
+ADAPTIVE_STRIKE        cards made {'ADAPTIVE_STRIKE': 1}; hand 5->5 discard 3->5 draw 5->5
+    Deal 18 damage. Add a 0[energy_icon.png] copy of this card into your Discard Pile.
+AGGRESSION             powers.AGGRESSION None->1; hand 5->5 discard 3->3 draw 5->5
+    At the start of your turn, put a random Attack from your Discard Pile into your Hand and Upgrade it.
+ANGER                  cards made {'ANGER': 2}; hand 5->5 discard 3->6 draw 5->5
+    Deal 6 damage. Add a copy of this card into your Discard Pile.
+ANOINTED               hand 5->5 discard 3->3 draw 5->5
+    Put every Rare card from your Draw Pile into your Hand.
+ANTICIPATE             this turn.DEXTERITY None->2; hand 7->7 discard 3->4 draw 5->5
+    Gain 2 Dexterity this turn.
+BATTLE_TRANCE          hand 5->8 discard 3->4 draw 5->2
+    Draw 3 cards. You cannot draw additional cards this turn.
+BEAT_INTO_SHAPE        powers.FORGE None->5; cards made {'SOVEREIGN_BLADE': 1}; hand 5->6 discard 3->4 draw 5->5
+    Deal 5 damage. Forge 5. Forges an additional 5 for every other time you've hit the enemy this turn.
+BIASED_COGNITION       powers.BIASED_COGNITION None->1; powers.FOCUS None->5; hand 5->5 discard 3->3 draw 5->5
+    Gain 5 Focus. At the start of your turn, lose 1 Focus.
+BLADE_DANCE            cards made {'SHIV': 3}; hand 7->10 discard 3->3 draw 5->5
+    Add 3 Shivs into your Hand.
+BLADE_OF_INK           cards made {'SHIV': 2}; hand 7->9 discard 3->4 draw 5->5
+    Add 2 Inky Shivs into your Hand.
+BLOODLETTING           hp 80->77; hand 5->5 discard 3->4 draw 5->5
+    Lose 3 HP. Gain [energy_icon.png][energy_icon.png].
+BLOOD_WALL             hp 80->78; hand 5->5 discard 3->4 draw 5->5
+    Lose 2 HP. Gain 16 Block.
+BONE_SHARDS            osty 5->0; hand 5->5 discard 3->4 draw 5->5
+    If Osty is alive, he deals 9 damage to ALL enemies and you gain 9 Block. Osty dies.
+BOOST_AWAY             cards made {'DAZED': 1}; hand 5->5 discard 3->5 draw 5->5
+    Gain 6 Block. Add a Dazed into your Discard Pile.
+BORROWED_TIME          hand 5->5 discard 3->4 draw 5->5
+    Gain [energy_icon.png][energy_icon.png][energy_icon.png][energy_icon.png]. Cards cost an additional [energy_icon.png] this turn.
+BRAND                  hp 80->79; powers.STRENGTH None->1; hand 5->5 discard 3->4 draw 5->5
+    Lose 1 HP. Exhaust 1 card. Gain 1 Strength.
+BREAKTHROUGH           hp 80->79; hand 5->5 discard 3->4 draw 5->5
+    Lose 1 HP. Deal 9 damage to ALL enemies.
+BULK_UP                powers.BULK_UP None->1; powers.DEXTERITY None->2; powers.STRENGTH None->2; orb slots 3->2; hand 5->5 discard 3->3 draw 5->5
+    Lose 1 Orb Slot. Gain 2 Strength. Gain 2 Dexterity.
+BULLET_TIME            hand 7->7 discard 3->4 draw 5->5
+    You cannot draw additional cards this turn. ALL cards in your Hand are free to play this turn.
+BUNDLE_OF_JOY          cards made {'SECRET_WEAPON': 1, 'OMNISLICE': 1, 'FASTEN': 1}; hand 5->8 discard 3->3 draw 5->5
+    Add 3 random Colorless cards into your Hand.
+BURST                  hand 7->7 discard 3->4 draw 5->5
+    This turn, your next Skill is played an extra time.
+CALAMITY               powers.CALAMITY None->1; hand 5->5 discard 3->3 draw 5->5
+    Whenever you play an Attack, add a random Attack into your Hand.
+CALL_OF_THE_VOID       powers.CALL_OF_THE_VOID None->1; hand 5->5 discard 3->3 draw 5->5
+    At the start of your turn, add 1 random card into your Hand. It gains Ethereal.
+CAPACITOR              powers.CAPACITOR None->2; orb slots 3->5; hand 5->5 discard 3->3 draw 5->5
+    Gain 2 Orb Slots.
+CAPTURE_SPIRIT         cards made {'SOUL': 3}; hand 5->5 discard 3->4 draw 5->8
+    Enemy loses 3 HP. Add 3 Souls into your Draw Pile.
+CLOAK_AND_DAGGER       cards made {'SHIV': 1}; hand 7->8 discard 3->4 draw 5->5
+    Gain 6 Block. Add 1 Shiv into your Hand.
+COLLISION_COURSE       cards made {'DEBRIS': 1}; hand 5->6 discard 3->4 draw 5->5
+    Deal 10 damage. Add a Debris into your Hand.
+COLOSSUS               hand 5->5 discard 3->4 draw 5->5
+    Gain 4 Block. You receive 50% less damage from Vulnerable enemies this turn.
+CONQUEROR              powers.FORGE None->3; cards made {'SOVEREIGN_BLADE': 1}; hand 5->6 discard 3->4 draw 5->5
+    Forge 3. Sovereign Blade deals double damage to the enemy this turn.
+CONVERGENCE            powers.ENERGY_NEXT_TURN None->1; hand 5->5 discard 3->4 draw 5->5
+    Next turn, gain [energy_icon.png] and [star_icon.png]. Retain your Hand this turn.
+CORROSIVE_WAVE         powers.CORROSIVE_WAVE None->2; hand 7->7 discard 3->4 draw 5->5
+    Whenever you draw a card this turn, apply 2 Poison to ALL enemies.
+CREATIVE_AI            powers.CREATIVE_AI None->1; hand 5->5 discard 3->3 draw 5->5
+    At the start of your turn, add a random Power into your Hand.
+CRIMSON_MANTLE         powers.CRIMSON_MANTLE None->1; hand 5->5 discard 3->3 draw 5->5
+    At the start of your turn, lose 1 HP and gain 7 Block.
+CRUSH_UNDER            enemy.STRENGTH None->-1; hand 5->5 discard 3->4 draw 5->5
+    Deal 8 damage to ALL enemies. All enemies lose 1 Strength this turn.
+DARK_SHACKLES          enemy.STRENGTH None->-9; hand 5->5 discard 3->3 draw 5->5
+    Enemy loses 9 Strength this turn.
+DEATHS_DOOR            hand 5->5 discard 3->4 draw 5->5
+    Gain 6 Block. If you applied Doom this turn, gain Block 2 additional times.
+DIRGE                  powers.OSTY_MAX 1->23; osty 5->23; hand 5->5 discard 3->3 draw 5->5
+    Summon 3 X times. Add X Souls into your Draw Pile.
+DISCOVERY              hand 5->5 discard 3->3 draw 5->5
+    Choose 1 of 3 random cards to add into your Hand. It's free to play this turn.
+DREDGE                 hand 5->8 discard 3->0 draw 5->5
+    Put 3 cards from your Discard Pile into your Hand.
+DYING_STAR             enemy.STRENGTH None->-9; hand 5->5 discard 3->4 draw 5->5
+    Deal 9 damage to ALL enemies. ALL enemies lose 9 Strength this turn.
+ENFEEBLING_TOUCH       enemy.STRENGTH None->-8; hand 5->5 discard 3->4 draw 5->5
+    Enemy loses 8 Strength this turn.
+EQUILIBRIUM            hand 5->5 discard 3->4 draw 5->5
+    Gain 13 Block. Retain your Hand this turn.
+EVIL_EYE               hand 5->5 discard 3->4 draw 5->5
+    Gain 8 Block. Gain another 8 Block if you have Exhausted a card this turn.
+EXPERTISE              hand 7->9 discard 3->4 draw 5->3
+    Draw 2 cards. They gain Retain this turn.
+FAN_OF_KNIVES          powers.FAN_OF_KNIVES None->4; cards made {'SHIV': 4}; hand 7->10 discard 3->4 draw 5->5
+    Shivs now hit ALL enemies. Add 4 Shivs into your Hand.
+FETCH                  hand 5->5 discard 3->4 draw 5->5
+    Osty deals 3 damage. If this is the first time this card has been played this turn, draw 1 card.
+FIGHT_ME               powers.STRENGTH None->3; enemy.STRENGTH None->1; hand 5->5 discard 3->4 draw 5->5
+    Deal 5 damage twice. Gain 3 Strength. The enemy gains 1 Strength.
+FIGHT_THROUGH          cards made {'WOUND': 2}; hand 5->5 discard 3->6 draw 5->5
+    Gain 13 Block. Add 2 Wounds into your Discard Pile.
+FINISHER               hand 7->7 discard 3->4 draw 5->5
+    Deal 6 damage for each Attack already played this turn.
+FLAME_BARRIER          hand 5->5 discard 3->4 draw 5->5
+    Gain 12 Block. Whenever you are attacked this turn, deal 4 damage back.
+FLATTEN                hand 5->5 discard 3->4 draw 5->5
+    Osty deals 12 damage. This card costs 0 [energy_icon.png] if Osty has attacked this turn.
+FOCUSED_STRIKE         hand 5->5 discard 3->4 draw 5->5
+    Deal 9 damage. Gain 1 Focus this turn.
+FOREGONE_CONCLUSION    hand 5->5 discard 3->4 draw 5->5
+    Next turn, put 2 cards from your Draw Pile into your Hand.
+FRIENDSHIP             powers.FRIENDSHIP None->2; powers.STRENGTH None->-2; powers.TURN_ENERGY None->1; hand 5->5 discard 3->3 draw 5->5
+    Lose 2 Strength. Gain [energy_icon.png] at the start of each turn.
+FTL                    hand 5->5 discard 3->4 draw 5->5
+    Deal 5 damage. If you have played fewer than 3 cards this turn, draw 1 card.
+GRAND_FINALE           not playable
+    Can only be played if there are no cards in your Draw Pile. Deal 60 damage to ALL enemies.
+GRAVEBLAST             hand 5->6 discard 3->2 draw 5->5
+    Deal 4 damage. Put a card from your Discard Pile into your Hand.
+GRAVE_WARDEN           cards made {'SOUL': 1}; hand 5->5 discard 3->4 draw 5->6
+    Gain 8 Block. Add a Soul into your Draw Pile.
+GUNK_UP                cards made {'SLIMED': 1}; hand 5->5 discard 3->5 draw 5->5
+    Deal 4 damage 3 times. Add a Slimed into your Discard Pile.
+HAND_TRICK             hand 7->7 discard 3->4 draw 5->5
+    Gain 7 Block. Add Sly to a Skill in your Hand this turn.
+HEIRLOOM_HAMMER        hand 5->5 discard 3->4 draw 5->5
+    Deal 20 damage. Choose a Colorless card in your Hand. Add a copy of that card into your Hand.
+HELIX_DRILL            hand 5->5 discard 3->4 draw 5->5
+    Deal 3 damage for each [energy_icon.png] spent on other cards this turn.
+HEMOKINESIS            hp 80->78; hand 5->5 discard 3->4 draw 5->5
+    Lose 2 HP. Deal 15 damage.
+HIDDEN_DAGGERS         cards made {'SHIV': 2}; hand 7->9 discard 3->4 draw 5->5
+    Discard 2 cards. Add 2 Shivs into your Hand.
+HOLOGRAM               hand 5->6 discard 3->2 draw 5->5
+    Gain 3 Block. Put a card from your Discard Pile into your Hand.
+HOTFIX                 this turn.FOCUS None->2; hand 5->5 discard 3->3 draw 5->5
+    Gain 2 Focus this turn.
+HYPERBEAM              this turn.FOCUS None->-3; hand 5->5 discard 3->4 draw 5->5
+    Deal 24 damage to ALL enemies. Lose 3 Focus this turn.
+INFERNAL_BLADE         cards made {'ASHEN_STRIKE': 1}; hand 5->6 discard 3->3 draw 5->5
+    Add a random Attack into your Hand. It's free to play this turn.
+INFERNO                powers.INFERNO None->1; hand 5->5 discard 3->3 draw 5->5
+    At the start of your turn, lose 1 HP. Whenever you lose HP on your turn, deal 6 damage to ALL enemies.
+INFINITE_BLADES        powers.INFINITE_BLADES None->1; hand 7->7 discard 3->3 draw 5->5
+    At the start of your turn, add 1 Shiv into your Hand.
+JACK_OF_ALL_TRADES     cards made {'SECRET_WEAPON': 1}; hand 5->6 discard 3->3 draw 5->5
+    Add 1 random Colorless card into your Hand.
+JUGGLING               powers.JUGGLING None->1; hand 5->5 discard 3->3 draw 5->5
+    Add a copy of the third Attack you play each turn into your Hand.
+LEADING_STRIKE         cards made {'SHIV': 2}; hand 7->9 discard 3->4 draw 5->5
+    Deal 3 damage. Add 2 Shivs into your Hand.
+LUNAR_BLAST            hand 5->5 discard 3->4 draw 5->5
+    Deal 4 damage for each Skill already played this turn.
+MAKE_IT_SO             hand 5->5 discard 3->4 draw 5->5
+    Deal 6 damage. Every 3 Skills you play in a turn, put this into your Hand.
+MANGLE                 enemy.STRENGTH None->-10; hand 5->5 discard 3->4 draw 5->5
+    Deal 20 damage. Enemy loses 10 Strength this turn.
+MANIFEST_AUTHORITY     cards made {'SECRET_WEAPON': 1}; hand 5->6 discard 3->4 draw 5->5
+    Gain 7 Block. Add 1 random Colorless card into your Hand.
+MEMENTO_MORI           hand 7->7 discard 3->4 draw 5->5
+    Deal 9 damage. Deals 4 additional damage for each card discarded this turn.
+MODDED                 hand 5->6 discard 3->4 draw 5->4
+    Gain 1 Orb Slot. Draw 1 card. Increase this card's cost by 1.
+MONARCHS_GAZE          powers.MONARCHS_GAZE None->1; hand 5->5 discard 3->3 draw 5->5
+    Whenever you attack an enemy, it loses 1 Strength this turn.
+MONOLOGUE              powers.MONOLOGUE None->1; this turn.STRENGTH None->1; hand 5->5 discard 3->4 draw 5->5
+    Whenever you play a card this turn, gain 1 Strength this turn.
+NIGHTMARE              hand 7->7 discard 3->3 draw 5->5
+    Choose a card. Next turn, add 3 copies of that card into your Hand.
+OBLIVION               enemy.DOOM None->3; hand 5->5 discard 3->4 draw 5->5
+    Whenever you play a card this turn, apply 3 Doom to the enemy.
+OFFERING               hp 80->74; hand 5->8 discard 3->3 draw 5->2
+    Lose 6 HP. Gain [energy_icon.png][energy_icon.png]. Draw 3 cards.
+ONE_TWO_PUNCH          hand 5->5 discard 3->4 draw 5->5
+    This turn, your next Attack is played an extra time.
+OVERCLOCK              cards made {'BURN': 1}; hand 5->7 discard 3->5 draw 5->3
+    Draw 2 cards. Add a Burn into your Discard Pile.
+PIERCING_WAIL          enemy.STRENGTH None->-6; hand 7->7 discard 3->3 draw 5->5
+    ALL enemies lose 6 Strength this turn.
+PINPOINT               hand 7->7 discard 3->4 draw 5->5
+    Deal 15 damage. Costs 1 less [energy_icon.png] for each Skill played this turn.
+QUASAR                 cards made {'FASTEN': 1}; hand 5->6 discard 3->4 draw 5->5
+    Choose 1 of 3 random Colorless cards to add into your Hand.
+RADIATE                hand 5->5 discard 3->4 draw 5->5
+    Deal 3 damage to ALL enemies for each [star_icon.png] gained this turn.
+RAGE                   powers.RAGE None->3; hand 5->5 discard 3->4 draw 5->5
+    Whenever you play an Attack this turn, gain 3 Block.
+RATTLE                 hand 5->5 discard 3->4 draw 5->5
+    Osty deals 7 damage. Hits an additional time for each other time he has attacked this turn.
+REAVE                  cards made {'SOUL': 1}; hand 5->5 discard 3->4 draw 5->6
+    Deal 10 damage. Add a Soul into your Draw Pile.
+REBOOT                 hand 5->4 discard 3->0 draw 5->9
+    Shuffle ALL your cards into your Draw Pile. Draw 4 cards.
+REFLECT                hand 5->5 discard 3->4 draw 5->5
+    Gain 15 Block. Blocked attack damage is reflected to your attacker this turn.
+RESONANCE              powers.STRENGTH None->1; enemy.STRENGTH None->-1; hand 5->5 discard 3->4 draw 5->5
+    Gain 1 Strength. ALL enemies lose 1 Strength.
+SACRIFICE              osty 5->0; hand 5->5 discard 3->4 draw 5->5
+    If Osty is alive, he dies and you gain Block equal to triple his Max HP.
+SALVO                  hand 5->5 discard 3->4 draw 5->5
+    Deal 12 damage. Retain your Hand this turn.
+SECRET_TECHNIQUE       hand 5->6 discard 3->3 draw 5->4
+    Put a Skill from your Draw Pile into your Hand.
+SECRET_WEAPON          hand 5->5 discard 3->3 draw 5->5
+    Put an Attack from your Draw Pile into your Hand.
+SEEKER_STRIKE          hand 5->5 discard 3->4 draw 5->5
+    Deal 9 damage. Choose 1 of 3 cards in your Draw Pile to add into your Hand.
+SENTRY_MODE            powers.SENTRY_MODE None->1; hand 5->5 discard 3->3 draw 5->5
+    At the start of your turn, add 1 Sweeping Gaze into your Hand.
+SETUP_STRIKE           this turn.STRENGTH None->3; hand 5->5 discard 3->4 draw 5->5
+    Deal 7 damage. Gain 3 Strength this turn.
+SEVERANCE              cards made {'SOUL': 1}; hand 5->5 discard 3->4 draw 5->6
+    Deal 13 damage. Add a Soul into your Draw Pile, Hand, and Discard Pile.
+SHADOWMELD             powers.SHADOWMELD None->1; hand 7->7 discard 3->4 draw 5->5
+    Double your Block gain this turn.
+SHARED_FATE            powers.STRENGTH None->-2; enemy.STRENGTH None->-2; hand 5->5 discard 3->3 draw 5->5
+    Lose 2 Strength. Enemy loses 2 Strength.
+SIC_EM                 hand 5->5 discard 3->4 draw 5->5
+    Osty deals 5 damage. Whenever Osty hits this enemy this turn, Summon 3.
+SPECTRUM_SHIFT         powers.SPECTRUM_SHIFT None->1; cards made {'SECRET_WEAPON': 1}; hand 5->6 discard 3->3 draw 5->5
+    At the start of your turn, add 1 random Colorless card into your Hand.
+SPITE                  hand 5->5 discard 3->4 draw 5->5
+    Deal 5 damage. If you lost HP this turn, hits 2 times.
+SPLASH                 hand 5->5 discard 3->4 draw 5->5
+    Choose 1 of 3 random Attacks from another character to add into your Hand. It's free to play this turn.
+STOKE                  cards made {'COLOSSUS': 1, 'SETUP_STRIKE': 1, 'DEMON_FORM': 1, 'BODY_SLAM': 1, 'STOMP': 1}; hand 5->5 discard 3->4 draw 5->5
+    Exhaust your Hand. Add 1 random card into your Hand for each card Exhausted.
+STOMP                  hand 5->5 discard 3->4 draw 5->5
+    Deal 12 damage to ALL enemies. Costs 1 less [energy_icon.png] for each Attack played this turn.
+STORM_OF_STEEL         powers.DISCARDED_TURN None->8; cards made {'SHIV': 9}; hand 7->8 discard 3->12 draw 5->5
+    Discard your Hand. Add 1 Shiv into your Hand for each card discarded.
+STRANGLE               hand 7->7 discard 3->4 draw 5->5
+    Deal 8 damage. Whenever you play a card this turn, the enemy loses 2 HP.
+STRATAGEM              powers.STRATAGEM None->1; hand 5->5 discard 3->3 draw 5->5
+    Whenever you shuffle your Draw Pile, choose a card from it to put into your Hand.
+SUMMON_FORTH           powers.FORGE None->8; cards made {'SOVEREIGN_BLADE': 1}; hand 5->6 discard 3->4 draw 5->5
+    Put Sovereign Blade into your Hand from anywhere. Forge 8.
+SYNCHRONIZE            hand 5->5 discard 3->4 draw 5->5
+    Gain 1 Focus this turn for each unique Orb you have.
+TURBO                  cards made {'VOID': 1}; hand 5->5 discard 3->5 draw 5->5
+    Gain [energy_icon.png][energy_icon.png]. Add a Void into your Discard Pile.
+UNDEATH                cards made {'UNDEATH': 1}; hand 5->5 discard 3->5 draw 5->5
+    Gain 7 Block. Add a copy of this card into your Discard Pile.
+UP_MY_SLEEVE           cards made {'SHIV': 3}; hand 7->10 discard 3->4 draw 5->5
+    Add 3 Shivs into your Hand. Reduce this card's cost by 1.
+VOID_FORM              powers.TURN_OVER None->1; powers.VOID_FORM None->2; hand 5->5 discard 3->3 draw 5->5
+    End your turn. The first 2 cards you play each turn are free to play.
+WHITE_NOISE            cards made {'SMOKESTACK': 1}; hand 5->6 discard 3->3 draw 5->5
+    Add a random Power into your Hand. It's free to play this turn.
+WRAITH_FORM            powers.INTANGIBLE None->2; powers.WRAITH_FORM None->1; hand 7->7 discard 3->3 draw 5->5
+    Gain 2 Intangible. At the start of your turn, lose 1 Dexterity.
+
+Strength or Dexterity unlike the parse's:
+$ sts1
+ALL_FOR_ONE            hand 5->5 discard 3->4 draw 5->5
+    Deal 10 damage. Put all cost 0 cards from your discard pile into your hand.
+ALPHA                  cards made {'BETA': 1}; hand 6->6 discard 3->3 draw 5->6
+    Shuffle a Beta into your draw pile. Exhaust.
+AMPLIFY                powers.AMPLIFY None->1; hand 5->5 discard 3->4 draw 5->5
+    This turn, your next 1 Power is played twice.
+ANGER                  cards made {'ANGER': 1}; hand 5->5 discard 3->5 draw 5->5
+    Deal 6 damage. Add a copy of this card into your discard pile.
+BATTLE_HYMN            powers.BATTLE_HYMN None->1; hand 6->6 discard 3->3 draw 5->5
+    At the start of each turn, add a Smite into your hand.
+BATTLE_TRANCE          hand 5->8 discard 3->4 draw 5->2
+    Draw 3 cards. You cannot draw additional cards this turn.
+BERSERK                powers.BERSERK None->1; powers.VULNERABLE None->2; hand 5->5 discard 3->3 draw 5->5
+    Gain 2 Vulnerable. At the start of your turn, Gain 1[energy_icon.png].
+BETA                   cards made {'OMEGA': 1}; hand 5->5 discard 3->3 draw 5->6
+    Shuffle an Omega into your draw pile. Exhaust.
+BIASED_COGNITION       powers.BIASED_COGNITION None->1; powers.FOCUS None->4; hand 5->5 discard 3->3 draw 5->5
+    Gain 4 Focus. At the start of each turn, lose 1 Focus.
+BLADE_DANCE            cards made {'SHIV': 3}; hand 7->10 discard 3->4 draw 5->5
+    Add 3 Shivs into your hand.
+BLOODLETTING           hp 80->77; hand 5->5 discard 3->4 draw 5->5
+    Lose 3 HP. Gain 2[energy_icon.png].
+BRUTALITY              powers.BRUTALITY None->1; hand 5->5 discard 3->3 draw 5->5
+    At the start of your turn, lose 1 HP and draw 1 card.
+BULLET_TIME            hand 7->7 discard 3->4 draw 5->5
+    You cannot draw any cards this turn. Reduce the cost of all cards in your hand to 0 this turn.
+BURST                  hand 7->7 discard 3->4 draw 5->5
+    This turn, your next 1 Skill is played twice.
+CAPACITOR              orb slots 3->5; hand 5->5 discard 3->3 draw 5->5
+    Gain 2 Orb slots.
+CARVE_REALITY          cards made {'SMITE': 1}; hand 6->7 discard 3->4 draw 5->5
+    Deal 6 damage. Add a Smite into your hand.
+CHOKE                  hand 7->7 discard 3->4 draw 5->5
+    Deal 12 damage. Whenever you play a card this turn, the enemy loses 3 HP.
+CHRYSALIS              hand 5->5 discard 3->3 draw 5->5
+    Shuffle 3 random Skills into your draw pile. They cost 0 this combat. Exhaust.
+CLASH                  hand 5->5 discard 3->4 draw 5->5
+    Can only be played if every card in your hand is an Attack. Deal 14 damage.
+CLOAK_AND_DAGGER       cards made {'SHIV': 1}; hand 7->8 discard 3->4 draw 5->5
+    Gain 6 Block. Add 1 Shiv into your hand.
+COLLECT                hand 6->6 discard 3->3 draw 5->5
+    Put an Miracle+ into your hand at the start of your next X turns. Exhaust.
+COMBUST                powers.COMBUST None->5; powers.COMBUST_HP None->1; hand 5->5 discard 3->3 draw 5->5
+    At the end of your turn, lose 1 HP and deal 5 damage to ALL enemies.
+CONCLUDE               powers.TURN_OVER None->1; hand 6->6 discard 3->4 draw 5->5
+    Deal 12 damage to ALL enemies. End your turn.
+CONJURE_BLADE          powers.EXPUNGER_X None->6; cards made {'EXPUNGER': 1}; hand 6->6 discard 3->3 draw 5->6
+    Shuffle an Expunger into your draw pile. Exhaust.
+CONSUME                powers.FOCUS None->2; orb slots 3->2; hand 5->5 discard 3->4 draw 5->5
+    Gain 2 Focus. Lose 1 Orb slot.
+CREATIVE_AI            powers.CREATIVE_AI None->1; hand 5->5 discard 3->3 draw 5->5
+    At the start of your turn, add a random Power card into your hand.
+DARK_SHACKLES          enemy.STRENGTH None->-9; hand 5->5 discard 3->3 draw 5->5
+    Enemy loses 9 Strength this turn. Exhaust.
+DECEIVE_REALITY        cards made {'SAFETY': 1}; hand 6->7 discard 3->4 draw 5->5
+    Gain 4 Block. Add a Safety into your hand.
+DEEP_BREATH            hand 5->7 discard 3->1 draw 5->6
+    Shuffle your discard pile into your draw pile. Draw 1 card.
+DEUS_EX_MACHINA        not playable
+    Unplayable. When you draw this card, add 2 Miracles into your hand and Exhaust.
+DISCOVERY              cards made {'BLUDGEON': 1}; hand 5->6 discard 3->3 draw 5->5
+    Choose 1 of 3 random cards to add into your hand. It costs 0 this turn. Exhaust.
+DISTRACTION            cards made {'NIGHTMARE': 1}; hand 7->8 discard 3->3 draw 5->5
+    Add a random Skill into your hand. It costs 0 this turn. Exhaust.
+DOUBLE_TAP             hand 5->5 discard 3->4 draw 5->5
+    This turn, your next 1 Attack is played twice.
+DOUBT                  not playable
+    Unplayable. At the end of your turn, gain 1 Weak.
+ENDLESS_AGONY          hand 7->7 discard 3->3 draw 5->5
+    Whenever you draw this card, add a copy of it into your hand. Deal 4 damage. Exhaust.
+ENLIGHTENMENT          hand 5->5 discard 3->4 draw 5->5
+    Reduce the cost of all cards in your hand to 1 this turn.
+EQUILIBRIUM            powers.KEEP_HAND None->1; hand 5->5 discard 3->4 draw 5->5
+    Gain 13 Block. Retain your hand this turn.
+EVALUATE               cards made {'INSIGHT': 1}; hand 6->6 discard 3->4 draw 5->6
+    Gain 6 Block. Shuffle an Insight into your draw pile.
+EVISCERATE             hand 7->7 discard 3->4 draw 5->5
+    Costs 1 less Energy for each card discarded this turn. Deal 7 damage three times.
+EXHUME                 hand 5->5 discard 3->3 draw 5->5
+    Put a card from your exhaust pile into your hand. Exhaust.
+FINISHER               hand 7->7 discard 3->4 draw 5->5
+    Deal 6 damage for each Attack played this turn.
+FLAME_BARRIER          this turn.FLAME_BARRIER None->4; hand 5->5 discard 3->4 draw 5->5
+    Gain 12 Block. Whenever you are attacked this turn, deal 4 damage back.
+FLEX                   this turn.STRENGTH None->2; hand 5->5 discard 3->4 draw 5->5
+    Gain 2 Strength this turn.
+FOREIGN_INFLUENCE      cards made {'FLYING_SLEEVES': 1}; hand 6->7 discard 3->3 draw 5->5
+    Choose 1 of 3 Attacks of any color to add into your hand. Exhaust.
+FTL                    hand 5->5 discard 3->4 draw 5->5
+    Deal 5 damage. If you have played less than 3 cards this turn, draw 1 card.
+GRAND_FINALE           not playable
+    Can only be played if there are no cards in your draw pile. Deal 50 damage to ALL enemies.
+HELLO_WORLD            powers.HELLO_WORLD None->1; hand 5->5 discard 3->3 draw 5->5
+    At the start of your turn, add a random Common card into your hand.
+HEMOKINESIS            hp 80->78; hand 5->5 discard 3->4 draw 5->5
+    Lose 2 HP. Deal 15 damage.
+HOLOGRAM               hand 5->6 discard 3->2 draw 5->5
+    Gain 3 Block. Put a card from your discard pile into your hand. Exhaust.
+HYPERBEAM              powers.FOCUS None->-3; hand 5->5 discard 3->4 draw 5->5
+    Deal 26 damage to ALL enemies. Lose 3 Focus.
+IMMOLATE               cards made {'BURN': 1}; hand 5->5 discard 3->5 draw 5->5
+    Deal 21 damage to ALL enemies. Add a Burn into your discard pile.
+INFERNAL_BLADE         cards made {'BLUDGEON': 1}; hand 5->6 discard 3->3 draw 5->5
+    Add a random Attack into your hand. It costs 0 this turn. Exhaust.
+INFINITE_BLADES        powers.INFINITE_BLADES None->1; hand 7->7 discard 3->3 draw 5->5
+    At the start of your turn, add a Shiv into your hand.
+JACK_OF_ALL_TRADES     cards made {'IMPERVIOUS': 1}; hand 5->6 discard 3->3 draw 5->5
+    Add 1 random Colorless card into your hand. Exhaust.
+J_A_X                  hp 80->77; powers.STRENGTH None->2; hand 5->5 discard 3->4 draw 5->5
+    Lose 3 HP. Gain 2 Strength.
+MAGNETISM              powers.MAGNETISM None->1; hand 5->5 discard 3->3 draw 5->5
+    At the start of each turn, add a random colorless card into your hand.
+MEDITATE               powers.TURN_OVER None->1; hand 6->7 discard 3->3 draw 5->5
+    Put 1 card from your discard pile into your hand and Retain it. Enter Calm. End your turn.
+METAMORPHOSIS          hand 5->5 discard 3->3 draw 5->5
+    Shuffle 3 random Attacks into your draw pile. They cost 0 this combat. Exhaust.
+NIGHTMARE              hand 7->7 discard 3->3 draw 5->5
+    Choose a card. Next turn, add 3 copies of that card into your hand. Exhaust.
+NORMALITY              not playable
+    Unplayable. You cannot play more than 3 cards this turn.
+OFFERING               hp 80->74; hand 5->8 discard 3->3 draw 5->2
+    Lose 6 HP. Gain 2[energy_icon.png]. Draw 3 cards. Exhaust.
+OVERCLOCK              cards made {'BURN': 1}; hand 5->7 discard 3->5 draw 5->3
+    Draw 2 cards. Add a Burn into your discard pile.
+PAIN                   not playable
+    Unplayable. While in hand, lose 1 HP when other cards are played.
+PIERCING_WAIL          enemy.STRENGTH None->-6; hand 7->7 discard 3->3 draw 5->5
+    ALL enemies lose 6 Strength this turn. Exhaust.
+POWER_THROUGH          cards made {'WOUND': 2}; hand 5->7 discard 3->4 draw 5->5
+    Add 2 Wounds into your hand. Gain 15 Block.
+PRAY                   powers.MANTRA_GAINED None->3; cards made {'INSIGHT': 1}; hand 6->6 discard 3->4 draw 5->6
+    Gain 3 Mantra. Shuffle an Insight into your draw pile.
+PRIDE                  hand 5->5 discard 3->3 draw 5->5
+    Innate. At the end of your turn, put a copy of this card on top of your draw pile. Exhaust.
+RAGE                   powers.RAGE None->3; hand 5->5 discard 3->4 draw 5->5
+    Whenever you play an Attack this turn, gain 3 Block.
+REACH_HEAVEN           cards made {'THROUGH_VIOLENCE': 1}; hand 6->6 discard 3->4 draw 5->6
+    Deal 10 damage. Shuffle a Through Violence into your draw pile.
+REBOOT                 hand 5->4 discard 3->0 draw 5->9
+    Shuffle all of your cards into your draw pile, then draw 4 cards. Exhaust.
+REBOUND                hand 5->5 discard 3->4 draw 5->5
+    Deal 9 damage. Put the next card you play this turn on top of your draw pile.
+RECKLESS_CHARGE        cards made {'DAZED': 1}; hand 5->5 discard 3->4 draw 5->6
+    Deal 7 damage. Shuffle a Dazed into your draw pile.
+REGRET                 not playable
+    Unplayable. At the end of your turn, if this is in your hand, lose 1 HP for each card in your hand.
+REPROGRAM              powers.DEXTERITY None->1; powers.FOCUS None->-1; powers.STRENGTH None->1; hand 5->5 discard 3->4 draw 5->5
+    Lose 1 Focus. Gain 1 Strength. Gain 1 Dexterity.
+SECRET_TECHNIQUE       hand 5->6 discard 3->3 draw 5->4
+    Put a Skill from your draw pile into your hand. Exhaust.
+SECRET_WEAPON          hand 5->6 discard 3->3 draw 5->4
+    Put an Attack from your draw pile into your hand. Exhaust.
+SEEK                   hand 5->6 discard 3->3 draw 5->4
+    Choose 1 card from your draw pile and place it into your hand. Exhaust.
+SHAME                  not playable
+    Unplayable. At the end of your turn, gain 1 Frail.
+SIGNATURE_MOVE         not playable
+    Can only be played if this is the only Attack in your hand. Deal 30 damage.
+SNEAKY_STRIKE          hand 7->7 discard 3->4 draw 5->5
+    Deal 12 damage. If you have discarded a card this turn, Gain 2[energy_icon.png].
+STORM_OF_STEEL         powers.DISCARDED_TURN None->8; cards made {'SHIV': 9}; hand 7->8 discard 3->12 draw 5->5
+    Discard your hand. Add 1 Shiv into your hand for each card discarded.
+STUDY                  powers.STUDY None->1; hand 6->6 discard 3->3 draw 5->5
+    At the end of your turn, shuffle an Insight into your draw pile.
+TANTRUM                hand 6->6 discard 3->3 draw 5->6
+    Deal 3 damage 3 times. Enter Wrath. Shuffle this card into your draw pile.
+TRANSMUTATION          hand 5->5 discard 3->3 draw 5->5
+    Add X random colorless cards into your hand. They cost 0 this turn. Exhaust.
+TURBO                  cards made {'VOID': 1}; hand 5->5 discard 3->5 draw 5->5
+    Gain 2[energy_icon.png]. Add a Void into your discard pile.
+VAULT                  powers.EXTRA_TURN None->1; powers.TURN_OVER None->1; hand 6->6 discard 3->3 draw 5->5
+    Take an extra turn after this one. End your turn. Exhaust.
+VIOLENCE               hand 5->5 discard 3->3 draw 5->5
+    Put 3 random Attacks from your draw pile into your hand. Exhaust.
+WAVE_OF_THE_HAND       powers.WAVE_OF_THE_HAND None->1; hand 6->6 discard 3->4 draw 5->5
+    Whenever you gain Block this turn, apply 1 Weak to ALL enemies.
+WHITE_NOISE            cards made {'ELECTRODYNAMICS': 1}; hand 5->6 discard 3->3 draw 5->5
+    Add a random Power card into your hand. It costs 0 this turn. Exhaust.
+WILD_STRIKE            cards made {'WOUND': 1}; hand 5->5 discard 3->4 draw 5->6
+    Deal 12 damage. Shuffle a Wound into your draw pile.
+WRAITH_FORM            powers.INTANGIBLE None->2; powers.WRAITH_FORM None->1; hand 7->7 discard 3->3 draw 5->5
+    Gain 2 Intangible. At the end of your turn, lose 1 Dexterity.
+
+Strength or Dexterity unlike the parse's:
+$ sts2 bone_shards FIGHT_ME hyperbeam
+BONE_SHARDS            osty 5->0; hand 5->5 discard 3->4 draw 5->5
+    If Osty is alive, he deals 9 damage to ALL enemies and you gain 9 Block. Osty dies.
+FIGHT_ME               powers.STRENGTH None->3; enemy.STRENGTH None->1; hand 5->5 discard 3->4 draw 5->5
+    Deal 5 damage twice. Gain 3 Strength. The enemy gains 1 Strength.
+HYPERBEAM              this turn.FOCUS None->-3; hand 5->5 discard 3->4 draw 5->5
+    Deal 24 damage to ALL enemies. Lose 3 Focus this turn.
+$ sts1 REPROGRAM
+REPROGRAM              powers.DEXTERITY None->1; powers.FOCUS None->-1; powers.STRENGTH None->1; hand 5->5 discard 3->4 draw 5->5
+    Lose 1 Focus. Gain 1 Strength. Gain 1 Dexterity.

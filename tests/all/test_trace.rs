@@ -60,22 +60,24 @@ fn test_the_first_games_runs_are_the_pythons() {
     check("sts1");
 }
 
-/// More seeded runs of the first game than trace.jsonl holds (seeds 5..44 at Ascension 0 and at Ascension 15), kept as
-/// the start of the SHA-256 of each run's digest and of its result.
-fn more(every: usize) {
+/// More seeded runs than trace.jsonl holds, kept as the start of the SHA-256 of each run's digest and of its result:
+/// the first game's (seeds 5..44 at Ascension 0 and at Ascension 15), and Slay the Spire 2's (seeds 5..44 at Ascension 0
+/// and 8, seeds 100..119 with each run's own settings, `knobs_for(seed, True)`: the line's "knobs"; seeds 200..203 at Ascension 10, and at 9 with drawn settings).
+fn more(golden: &str, every: usize) {
     use sha2::{Digest, Sha256};
     let hash = |text: &str| Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect::<String>()[..16].to_string();
-    let lines: Vec<Value> = include_str!("../golden/trace_sts1_more.jsonl").lines().filter(|l| !l.trim().is_empty()).map(|l| serde_json::from_str::<Value>(l).unwrap()).collect();
+    let lines: Vec<Value> = golden.lines().filter(|l| !l.trim().is_empty()).map(|l| serde_json::from_str::<Value>(l).unwrap()).collect();
     assert!(lines.len() >= 300, "{} golden runs", lines.len());
     let lines: Vec<Value> = lines.into_iter().step_by(every).collect();
     let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(2).min(8);
     let per = lines.len().div_ceil(threads);
     let one = |want: &Value| -> Option<String> {
-        let (digest, mut result) = trace_run(want["game"].s(), want["character"].s(), want["seed"].int(), want["ascension"].int(), &IndexMap::new());
+        let knobs: IndexMap<String, f64> = want["knobs"].entries().map(|(k, v)| (k.clone(), v.float())).collect();
+        let (digest, mut result) = trace_run(want["game"].s(), want["character"].s(), want["seed"].int(), want["ascension"].int(), &knobs);
         result.as_object_mut().unwrap().shift_remove("secs");
         let got = (digest.len() as i64, hash(&digest.join("|")), hash(&py::json_dumps(&result)));
         let wanted = (want["n"].int(), want["digest"].s().to_string(), want["result"].s().to_string());
-        (got != wanted).then(|| format!("{} {} seed {} ascension {}: got {:?}, want {:?}", want["game"].s(), want["character"].s(), want["seed"], want["ascension"], got, wanted))
+        (got != wanted).then(|| format!("{} {} seed {} ascension {} {}: got {:?}, want {:?}", want["game"].s(), want["character"].s(), want["seed"], want["ascension"], want["knobs"], got, wanted))
     };
     let failures: Vec<String> = std::thread::scope(|s| {
         let handles: Vec<_> = lines.chunks(per).map(|chunk| s.spawn(move || chunk.iter().filter_map(one).collect::<Vec<String>>())).collect();
@@ -84,20 +86,34 @@ fn more(every: usize) {
     assert!(failures.is_empty(), "{} of {} runs differ:\n{}", failures.len(), lines.len(), failures.join("\n"));
 }
 
+const MORE_STS1: &str = include_str!("../golden/trace_sts1_more.jsonl");
+const MORE_STS2: &str = include_str!("../golden/trace_sts2_more.jsonl");
+
 /// (One run in four, so that the tests stay quick: the next test plays them all.)
 #[test]
 fn test_more_of_the_first_games_runs_are_the_pythons() {
-    more(4);
+    more(MORE_STS1, 4);
 }
 
 #[test]
 #[ignore = "all 320 runs: half a minute or more (cargo test -- --ignored test_all_the_more_runs)"]
 fn test_all_the_more_runs_of_the_first_game_are_the_pythons() {
-    more(1);
+    more(MORE_STS1, 1);
+}
+
+/// (One run in seven: both ascensions, every character, default settings and drawn ones.)
+#[test]
+fn test_more_of_slay_the_spire_2s_runs_are_the_pythons() {
+    more(MORE_STS2, 7);
 }
 
 #[test]
-#[ignore = "TODO(sts2 content): Slay the Spire 2's content is not ported yet"]
+#[ignore = "all 640 runs: a minute or more (cargo test -- --ignored test_all_the_more_runs)"]
+fn test_all_the_more_runs_of_slay_the_spire_2_are_the_pythons() {
+    more(MORE_STS2, 1);
+}
+
+#[test]
 fn test_slay_the_spire_2s_runs_are_the_pythons() {
     check("sts2");
 }
