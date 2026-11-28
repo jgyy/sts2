@@ -1,4 +1,4 @@
-== sts2 cards: 242  read 112  rule 55  unseen 41  partial 29  unread 3  power 2
+== sts2 cards: 242  read 112  rule 56  unseen 40  partial 29  unread 3  power 2
    partial     42  Charge Battery             Gain 7 Block. Next turn, gain [energy_icon.png].
    partial     36  Go for the Eyes            Deal 3 damage. If the enemy intends to attack, apply 1 Weak.
    partial     33  Glitterstream              Gain 11 Block. Next turn, gain 5 Block.

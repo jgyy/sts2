@@ -1,4 +1,4 @@
-== sts1 cards: 370  read 140  unread 91  partial 71  rule 68
+== sts1 cards: 370  read 140  unread 91  partial 70  rule 69
    partial     10  Miracle                    Retain. Gain 1 Energy. Exhaust.
    partial      6  Flame Barrier              Gain 12 Block. Whenever you are attacked this turn, deal 4 damage back.
    unread       0  After Image                Whenever you play a card, gain 1 Block.
@@ -19,11 +19,11 @@
    partial      0  BLASPHEMY                  Enter Divinity. Die next turn. Exhaust.
    unread       0  Blizzard                   Deal damage equal to 2 times the number of Frost Channeled this combat to ALL enemies.
    partial      0  BLOOD_FOR_BLOOD            Costs 1 less Energy for each time you lose HP in combat. Deal 18 damage.
-   partial      0  BLUR                       Gain 5 Block. Block is not removed at the start of your next turn.
    unread       0  BODY_SLAM                  Deal damage equal to your Block.
    partial      0  BOWLING_BASH               Deal 7 damage for each enemy in combat.
    unread       0  BRUTALITY                  At the start of your turn, lose 1 HP and draw 1 card.
    unread       0  BURN                       Unplayable. At the end of your turn, if this is in your hand, take 2 damage.
+   partial      0  Burning Pact               Exhaust 1 card. Draw 2 cards.
 == sts1 powers: 22  rule 14  unnamed 8
    unnamed      0  Combust_Power              Seen in the log:  combust_power .
    unnamed      0  Curl_Up_Power              Seen in the log:  curl_up_power .

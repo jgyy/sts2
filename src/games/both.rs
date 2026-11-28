@@ -204,7 +204,7 @@ pub fn without_game(argv: &[String]) -> Vec<String> {
 
 /// (the original's `[sys.executable, "-m", "sts2bot", "--game", game, *rest]`: here the program itself stands for the first three.)
 pub fn command(game: &str, rest: &[String]) -> Vec<String> {
-    let exe = std::env::current_exe().map(|p| p.to_string_lossy().into_owned()).unwrap_or_else(|_| "sts2bot".to_string());
+    let exe = crate::games::sts1::host::executable(); // (the build as it is on disk now: a reload after a rebuild starts the new one)
     let mut out = vec![exe, "--game".to_string(), game.to_string()];
     out.extend(rest.iter().cloned());
     out

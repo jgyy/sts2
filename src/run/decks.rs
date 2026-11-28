@@ -8,7 +8,7 @@ use serde_json::{json, Value};
 use super::crowd;
 use crate::cards::{_card_key, deck_value, is_basic, parse as _parse};
 use crate::learn::knob;
-use crate::base::{self, JsonExt};
+use crate::base::{self, fmax, fmin, JsonExt};
 
 crate::tunables! {
     pub SKIP_THRESHOLD: f64 = 3.0; // card rewards scoring below this are skipped
@@ -17,24 +17,6 @@ crate::tunables! {
 pub const BIG_DECK: i64 = 24;
 pub const SHOT_SPARE: f64 = 0.5; // each Shot beyond the Arrows keeps this share of the one before it (a Shot needs our Arrow back: about one a turn)
 pub const STARS_AT_START: f64 = 1.0; // Stars a cycle of the deck from the Regent's starting relic (3 a fight, once; a boss fight cycles two or three times)
-
-/// `max(a, b)` of two floats as the original picks: the first unless the second is greater.
-fn fmax(a: f64, b: f64) -> f64 {
-    if b > a {
-        b
-    } else {
-        a
-    }
-}
-
-/// `min(a, b)` of two floats as the original picks: the first unless the second is smaller.
-fn fmin(a: f64, b: f64) -> f64 {
-    if b < a {
-        b
-    } else {
-        a
-    }
-}
 
 /// `str(card.get("description") or "")`.
 fn _text(card: &Value) -> String {

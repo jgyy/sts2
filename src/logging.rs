@@ -135,14 +135,6 @@ pub fn configure(level: Level, handlers: Vec<Handler>) {
     *HANDLERS.lock().unwrap_or_else(|e| e.into_inner()) = handlers;
 }
 
-pub fn add_handler(handler: Handler) {
-    HANDLERS.lock().unwrap_or_else(|e| e.into_inner()).push(handler);
-}
-
-pub fn set_level(level: Level) {
-    ROOT_LEVEL.store(level as u8, Ordering::Relaxed);
-}
-
 /// `logging.disable(level)` for this thread: records at `level` and below are dropped (None: nothing is).
 pub fn disable(level: Option<Level>) {
     DISABLED.with(|d| d.set(level.map(|l| l as u8).unwrap_or(0)));

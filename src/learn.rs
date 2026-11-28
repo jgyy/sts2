@@ -12,7 +12,7 @@ use serde_json::{Map, Value};
 pub use crate::cards::key_of as card_key;
 use crate::games;
 use crate::logging::Logger;
-use crate::base::{self, JsonExt, Random};
+use crate::base::{self, fmax, fmin, JsonExt, Random};
 
 static LOG: Logger = Logger::new("sts2bot.learn");
 pub const WIN_BONUS: i64 = 15; // a win counts as this many floors beyond the last one
@@ -23,24 +23,6 @@ pub const MAX_SHIFT: f64 = 2.5; // a rating never moves further than this
 pub const CURIOSITY: f64 = 0.4; // head start for a card never tried, so that it gets tried (shrinks with picks)
 pub const KIND_PRIOR: f64 = 300.0; // picks of a kind (cards.kind) before the kind's record counts for half of where its cards start
 pub const MAX_KIND: f64 = 1.5; // ... and a kind never moves its cards further than this
-
-/// the original's `max(a, b)` of two floats: the first unless the second is larger.
-fn fmax(a: f64, b: f64) -> f64 {
-    if b > a {
-        b
-    } else {
-        a
-    }
-}
-
-/// the original's `min(a, b)` of two floats: the first unless the second is smaller.
-fn fmin(a: f64, b: f64) -> f64 {
-    if b < a {
-        b
-    } else {
-        a
-    }
-}
 
 fn shown(path: &Path) -> String {
     path.display().to_string()

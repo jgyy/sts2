@@ -11,8 +11,8 @@ use std::collections::HashSet;
 
 use serde_json::Value;
 
-use super::fightlog::{read_text, state_home, upto};
-use super::modelfight::{exit_code, out};
+use crate::scripts::fightlog::{read_text, state_home, upto};
+use crate::scripts::modelfight::{exit_code, out};
 use crate::cards::{self, CardInfo};
 use crate::base::{self, JsonExt};
 
@@ -65,13 +65,13 @@ pub fn main(_args: Vec<String>) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::super::fightlog::tests::state;
-    use super::super::modelfight::golden;
+    use crate::scripts::fightlog::tests::state;
+    use crate::scripts::modelfight::golden;
     use super::main;
 
     #[test]
     fn as_recorded() {
         let _state = state();
-        golden(main, &[], include_str!("../../tests/golden/logs/audit_parse_vs_text.txt"));
+        golden(main, &[], include_str!("../../../tests/golden/logs/audit_parse_vs_text.txt"));
     }
 }

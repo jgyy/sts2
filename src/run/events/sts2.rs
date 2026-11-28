@@ -19,7 +19,7 @@ use super::value::{
     counts, curse, gold, heal, hp_cost, max_hp_gain, max_hp_loss, num, potions_gained, random_upgrades, removals, transforms, Ctx, CARD_REWARD, POTION, RANDOM_CURSE, RELIC,
     UPGRADE,
 };
-use crate::base::{self, JsonExt};
+use crate::base::{self, fmax, fmin, JsonExt};
 use crate::run::relicworth::{id_of as relic_id, worth as relic_worth};
 
 pub const BASE: f64 = 0.5; // an option's worth before what it gives and costs (as the generic scorer)
@@ -30,24 +30,6 @@ pub const MEET_WAR_HISTORIAN: f64 = 0.35;
 /// `str.strip()`: the original's blanks (those of Unicode and the four separators 0x1c-0x1f).
 fn strip(s: &str) -> &str {
     s.trim_matches(|c: char| c.is_whitespace() || ('\x1c'..='\x1f').contains(&c))
-}
-
-/// `max(a, b)` of two floats as the original has it (the first of equals).
-fn fmax(a: f64, b: f64) -> f64 {
-    if b > a {
-        b
-    } else {
-        a
-    }
-}
-
-/// `min(a, b)` of two floats as the original has it (the first of equals).
-fn fmin(a: f64, b: f64) -> f64 {
-    if b < a {
-        b
-    } else {
-        a
-    }
 }
 
 /// `dataclasses.replace(ctx, hp=hp)`.

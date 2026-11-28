@@ -1,4 +1,4 @@
-== sts2 cards: 242  read 112  rule 55  unseen 41  partial 29  unread 3  power 2
+== sts2 cards: 242  read 112  rule 56  unseen 40  partial 29  unread 3  power 2
    partial     42  Charge Battery             Gain 7 Block. Next turn, gain [energy_icon.png].
    partial     36  Go for the Eyes            Deal 3 damage. If the enemy intends to attack, apply 1 Weak.
    partial     33  Glitterstream              Gain 11 Block. Next turn, gain 5 Block.
@@ -31,9 +31,8 @@
    partial      1  Fetch                      Osty deals 3 damage. If this is the first time this card has been played this turn, draw 1 card.
    partial      1  Stomp                      Deal 12 damage to ALL enemies. Costs 1 less [energy_icon.png] for each Attack played this turn.
    partial      1  Tear Asunder               Deal 5 damage. Hits an additional time for each time you lost HP this combat.
-== sts2 powers: 56  rule 41  unnamed 15
+== sts2 powers: 56  rule 42  unnamed 14
    unnamed    219  Dexterity                  Smart: Dexterity: whenever this is here, things go as its name says.
-   unnamed    105  Steam Eruption             Steam Eruption: whenever this is here, things go as its name says.
    unnamed     46  Ravenous                   Ravenous: whenever this is here, things go as its name says.
    unnamed     43  Frail                      Frail: whenever this is here, things go as its name says.
    unnamed     32  Suck                       Suck: whenever this is here, things go as its name says.

@@ -9,7 +9,7 @@ use indexmap::IndexMap;
 use serde_json::{json, Map, Value};
 
 use crate::cards::{parse, CardInfo};
-use crate::base::{self, JsonExt};
+use crate::base::{self, fmax, fmin, JsonExt};
 use crate::run::crowd::rating as crowd_rating;
 use crate::Action;
 
@@ -268,6 +268,8 @@ enemy! {
     malleable: i64 = 0;
     /// ... that Block, still to come: it lands once the card being played has done its hits
     soft: i64 = 0;
+    /// Steam Eruption (the Waterfall Giant): killed, it deals this much at the end of our next turn (eruption.rs)
+    blast: i64 = 0;
 }
 
 impl Enemy {
@@ -301,26 +303,6 @@ impl Enemy {
 #[inline]
 pub fn clone(e: &Enemy) -> Enemy {
     e.clone()
-}
-
-/// `max(a, b)` of two floats as the original has it: the first unless the second is greater.
-#[inline]
-fn fmax(a: f64, b: f64) -> f64 {
-    if b > a {
-        b
-    } else {
-        a
-    }
-}
-
-/// `min(a, b)` of two floats as the original has it: the first unless the second is less.
-#[inline]
-fn fmin(a: f64, b: f64) -> f64 {
-    if b < a {
-        b
-    } else {
-        a
-    }
 }
 
 /// `str(d.get(key, ""))`.
@@ -694,6 +676,8 @@ pub fn read_enemies(state: &Value) -> Vec<Enemy> {
             impaled: _stacks(e, "IMPALED"),
             beat: _stacks(e, "BEAT_OF_DEATH"),
             malleable: _stacks(e, "MALLEABLE"),
+            // (not once the blast is its intent: it is in `incoming` then)
+            blast: if crate::fight::eruption::ERUPTION.get() && (!spent || intents.iter().map(intent_damage).sum::<i64>() == 0) { _stacks(e, "STEAM_ERUPTION") } else { 0 },
             ..Enemy::default()
         });
     }
@@ -1404,7 +1388,7 @@ pub(crate) mod testing {
     }
 
     pub fn env(v: &Value) -> Env {
-        let mut constants = Vec::new();
+        let mut constants = vec![crate::fight::eruption::ERUPTION.set(false)]; // (the recordings are older than eruption.rs)
         for (name, x) in v["tun"].entries() {
             constants.push(match name.as_str() {
                 "RAGE_BLOCK" => RAGE_BLOCK.set(x.int()),

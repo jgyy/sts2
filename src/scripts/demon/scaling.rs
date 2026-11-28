@@ -10,8 +10,8 @@
 //! (This script's `plays`, which it put in demonfight's place, is demonfight's own here: that one reads the deck's `pc`
 //! and `pd`, which are 1 and 0 in any deck but a `Deck2`.)
 
-use super::demonfight::{self as D, Deck, DeckArgs};
-use super::modelfight::{exit_code, on_all_cores, out, quiet};
+use crate::scripts::demonfight::{self as D, Deck, DeckArgs};
+use crate::scripts::modelfight::{exit_code, on_all_cores, out, quiet};
 use crate::base::trunc;
 
 /// The keyword arguments of `Deck2` beyond `Deck`'s.
@@ -38,7 +38,7 @@ pub fn Deck2(counts: [i64; 6], more: Deck2Args, args: DeckArgs) -> Deck {
     Deck { pd: more.pd, pc: more.pc, pm: more.pm, hit_fn: Some(hit), ..Deck::new(counts, args) }
 }
 
-pub use super::demonfight::plays;
+pub use crate::scripts::demonfight::plays;
 
 pub fn BASES() -> Vec<([i64; 6], DeckArgs)> {
     vec![
@@ -110,11 +110,11 @@ pub fn main(args: Vec<String>) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::super::modelfight::golden;
+    use crate::scripts::modelfight::golden;
     use super::main;
 
     #[test]
     fn as_recorded() {
-        golden(main, &[], include_str!("../../tests/golden/scripts/demon_scaling.txt"));
+        golden(main, &[], include_str!("../../../tests/golden/scripts/demon_scaling.txt"));
     }
 }

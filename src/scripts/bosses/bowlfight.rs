@@ -12,7 +12,7 @@
 
 use serde_json::{json, Map, Value};
 
-use super::modelfight::{
+use crate::scripts::modelfight::{
     aimed, attack, counter, deal, exit_code, face, firsts, flips, float, game_state, hand_cards, hit, index, int, mean, mean_of, name_value, out, piles, played, quiet, setting, shuffled, status,
     table, target, trace_args, turn, under, Face, GameStateArgs, Datum,
 };
@@ -254,10 +254,10 @@ pub fn main(args: Vec<String>) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::super::modelfight::{golden, section};
+    use crate::scripts::modelfight::{golden, section};
     use super::main;
 
-    const GOLDEN: &str = include_str!("../../tests/golden/scripts/bosses_bowlfight.txt");
+    const GOLDEN: &str = include_str!("../../../tests/golden/scripts/bosses_bowlfight.txt");
 
     #[test]
     fn as_recorded() {

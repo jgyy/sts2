@@ -15,7 +15,7 @@ pub use self::value::Ctx;
 use crate::cards::{deck_value, is_basic, is_known as _known_card};
 use crate::games::uses_sts2_tables;
 use crate::logging::{Level, Logger};
-use crate::base::{self, JsonExt};
+use crate::base::{self, fmax, fmin, JsonExt};
 use crate::run::potions::boss_worth;
 use crate::run::relics;
 use crate::run::relicworth::{energy_lean, id_of as relic_id, worth as relic_worth};
@@ -118,24 +118,6 @@ fn int(digits: &str) -> i64 {
 /// `str.strip()`: the original's blanks (those of Unicode and the four separators 0x1c-0x1f).
 fn strip(s: &str) -> &str {
     s.trim_matches(|c: char| c.is_whitespace() || ('\x1c'..='\x1f').contains(&c))
-}
-
-/// `min(a, b)` of two floats as the original has it (the first of equals).
-fn fmin(a: f64, b: f64) -> f64 {
-    if b < a {
-        b
-    } else {
-        a
-    }
-}
-
-/// `max(a, b)` of two floats as the original has it (the first of equals).
-fn fmax(a: f64, b: f64) -> f64 {
-    if b > a {
-        b
-    } else {
-        a
-    }
 }
 
 /// The keyword arguments of [`_event_option_value`], with the original's defaults (`potions`, `held`, `deck`: None when not given).

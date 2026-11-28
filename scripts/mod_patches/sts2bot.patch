@@ -198,10 +198,10 @@ index 2553f3f..7b74129 100644
              {
 diff --git a/McpMod.CrashGuards.cs b/McpMod.CrashGuards.cs
 new file mode 100644
-index 0000000..02cf6e5
+index 0000000..c5322e2
 --- /dev/null
 +++ b/McpMod.CrashGuards.cs
-@@ -0,0 +1,77 @@
+@@ -0,0 +1,118 @@
 +using System;
 +using System.Threading.Tasks;
 +using Godot;
@@ -264,6 +264,47 @@ index 0000000..02cf6e5
 +                GD.Print($"[STS2 MCP] Crash guard skipped: {ex.GetType().Name}: {ex.Message}");
 +            }
 +        }
++
++        // A card flying to a pile leaves a trail (NCardTrail, a Line2D): CreatePoint fills the gap to
++        // the last point with one point every 48 pixels, `for (d = 48f; d < dist - 12f; d += 48f)`.
++        // When the card's position is infinite (or so far off that a float no longer moves by 48)
++        // that loop never ends: the list grows until "OutOfMemoryException: Array dimensions exceeded
++        // supported range" and the game stands still, answering pings and nothing else (2026-11-28
++        // 10:21, a Ceremonial Beast fight at 16 times the clock). Such a point is left out.
++        try
++        {
++            var type = AccessTools.TypeByName("MegaCrit.Sts2.Core.Nodes.Vfx.NCardTrail");
++            var method = type == null ? null : AccessTools.Method(type, "CreatePoint");
++            if (method == null)
++            {
++                GD.Print("[STS2 MCP] Crash guard skipped: NCardTrail.CreatePoint not found");
++            }
++            else
++            {
++                harmony.Patch(method, prefix: new HarmonyMethod(typeof(McpMod), nameof(SkipWildTrailPoint)));
++                GD.Print("[STS2 MCP] Crash guard on: card trails skip points out of range");
++            }
++        }
++        catch (Exception ex)
++        {
++            GD.Print($"[STS2 MCP] Crash guard skipped: {ex.GetType().Name}: {ex.Message}");
++        }
++    }
++
++    private const float TrailRange = 100000f;
++    private static bool _wildTrailSeen;
++
++    // False (the point is not made) unless both coordinates are finite and within TrailRange.
++    private static bool SkipWildTrailPoint(Vector2 pointPos)
++    {
++        bool sane = float.IsFinite(pointPos.X) && float.IsFinite(pointPos.Y)
++            && Math.Abs(pointPos.X) < TrailRange && Math.Abs(pointPos.Y) < TrailRange;
++        if (!sane && !_wildTrailSeen)
++        {
++            _wildTrailSeen = true;
++            GD.Print($"[STS2 MCP] Crash guard: card trail point out of range ({pointPos.X}, {pointPos.Y}) left out");
++        }
++        return sane;
 +    }
 +
 +    private static Exception? DropException(Exception? __exception)

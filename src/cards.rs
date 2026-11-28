@@ -10,7 +10,7 @@ use indexmap::IndexMap;
 use serde_json::{json, Value};
 
 use crate::games;
-use crate::base::{self, JsonExt};
+use crate::base::{self, fmax, fmin, JsonExt};
 use crate::run::crowd::rating as crowd_rating;
 
 pub const _WORD_NUM: [(&str, i64); 2] = [("twice", 2), ("thrice", 3)];
@@ -42,24 +42,6 @@ macro_rules! int {
 /// `int(digits)` of what `\d+` matched.
 fn to_int(digits: &str) -> i64 {
     digits.parse().unwrap_or(0)
-}
-
-/// the original's `max(a, b)` of two floats: the first unless the second is larger.
-fn fmax(a: f64, b: f64) -> f64 {
-    if b > a {
-        b
-    } else {
-        a
-    }
-}
-
-/// the original's `min(a, b)` of two floats: the first unless the second is smaller.
-fn fmin(a: f64, b: f64) -> f64 {
-    if b < a {
-        b
-    } else {
-        a
-    }
 }
 
 /// What a card does, as read from its text. A plain value: `CardInfo { cost: 0, ..c.clone() }` for `dataclasses.replace(c, cost=0)`.

@@ -24,8 +24,16 @@ pub const MODS: &str = "basemod,CommunicationMod";
 pub const PROCESS_MARKS: [&str; 2] = ["ModTheSpire", "desktop-1.0.jar"]; // what the game's java process has on its command line
 
 /// This program, which is the relay too (the original's `sys.executable`, there followed by the path of relay.rs).
+/// After a rebuild the running program's file is gone and Linux names it "... (deleted)": the path without that is the new build,
+/// which is the one to start (2026-11-28: a reload after `cargo build` could not start the name with it, and took both bots down).
 pub fn executable() -> String {
-    std::env::current_exe().map(|p| p.to_string_lossy().into_owned()).unwrap_or_else(|_| "sts2bot".to_string())
+    let path = std::env::current_exe().map(|p| p.to_string_lossy().into_owned()).unwrap_or_else(|_| "sts2bot".to_string());
+    as_built(&path).to_string()
+}
+
+/// `path` without the " (deleted)" Linux adds to a program whose file was replaced.
+pub fn as_built(path: &str) -> &str {
+    path.strip_suffix(" (deleted)").unwrap_or(path)
 }
 
 /// What a command line that starts the relay has in it: this program's name and its `relay` subcommand
@@ -507,6 +515,13 @@ mod tests {
     //! game folders, CommunicationMod configs and process lists, the machine faked on both sides.
 
     use super::*;
+
+    #[test]
+    fn a_rebuilt_program_is_started_by_its_new_file() {
+        assert_eq!(as_built("/repo/target/release/sts2bot (deleted)"), "/repo/target/release/sts2bot");
+        assert_eq!(as_built("/repo/target/release/sts2bot"), "/repo/target/release/sts2bot");
+        assert!(!executable().ends_with(" (deleted)"));
+    }
     use crate::supervisor::testing::{env, logged, norm, relay, words};
     use crate::supervisor::Completed;
     use std::cell::RefCell;

@@ -10,8 +10,8 @@
 
 use indexmap::IndexMap;
 
-use super::fightlog::{io_error, read_text, state_home, upto};
-use super::modelfight::{exit_code, out};
+use crate::scripts::fightlog::{io_error, read_text, state_home, upto};
+use crate::scripts::modelfight::{exit_code, out};
 use crate::re;
 
 /// (our side, the enemies, the cards in hand) of a `combat r` line.
@@ -118,14 +118,14 @@ pub fn main(args: Vec<String>) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::super::fightlog::tests::state;
-    use super::super::modelfight::golden;
+    use crate::scripts::fightlog::tests::state;
+    use crate::scripts::modelfight::golden;
     use super::main;
 
     #[test]
     fn as_recorded() {
         let _state = state();
-        golden(main, &[], include_str!("../../tests/golden/logs/audit_noeffect.txt"));
-        golden(main, &["2026-11-22 12:00"], include_str!("../../tests/golden/logs/audit_noeffect_since.txt"));
+        golden(main, &[], include_str!("../../../tests/golden/logs/audit_noeffect.txt"));
+        golden(main, &["2026-11-22 12:00"], include_str!("../../../tests/golden/logs/audit_noeffect_since.txt"));
     }
 }

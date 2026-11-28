@@ -1,6 +1,5 @@
 on enemy  RAMPART                      Living Shield          Rampart: whenever this is here, things go as its name says.
 on enemy  RAVENOUS                     Corpse Slug            Ravenous: whenever this is here, things go as its name says.
-on enemy  STEAM_ERUPTION               Waterfall Giant        Steam Eruption: whenever this is here, things go as its name says.
 on enemy  SUCK                         Fossil Stalker         Suck: whenever this is here, things go as its name says.
 on enemy  SURPRISE                     Gremlin Merc           Surprise: whenever this is here, things go as its name says.
 on us     CALCIFY                      The Necrobinder        Calcify: whenever this is here, things go as its name says.

@@ -96,9 +96,14 @@ pub fn trace_run(game: &str, character: &str, seed: i64, ascension: i64, knobs: 
 /// One run of `sim run`: (game, character, seed, knobs, ascension).
 pub type Job = (String, String, i64, Map<String, Value>, i64);
 
+/// A name in capitals is a constant of the planner (`--set WARP_CUT=0`), not one of the bot's settings.
+pub fn is_constant(name: &str) -> bool {
+    name.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')
+}
+
 /// A run's settings as the bot reads them (numbers).
 pub fn floats(knobs: &Map<String, Value>) -> IndexMap<String, f64> {
-    knobs.iter().map(|(k, v)| (k.clone(), v.float())).collect()
+    knobs.iter().filter(|(k, _)| !is_constant(k)).map(|(k, v)| (k.clone(), v.float())).collect()
 }
 
 /// `_job(args)`: the run's result, or what went wrong in it (`tables`: the original's TABLES, which its workers inherit).
@@ -108,6 +113,11 @@ pub fn _job(args: &Job, tables: &Tables) -> Value {
     if !tables.is_empty() {
         let n = knobs.get("model_table").map_or(0, |v| base::trunc(v.float()));
         learn::set_model_shared(Some(tables.get(&n).unwrap_or_else(|| panic!("KeyError: {n}")).clone()));
+    }
+    for (name, value) in knobs.iter().filter(|(k, _)| is_constant(k)) {
+        // (for this worker thread from now on: every run of a batch names the same constants)
+        let set = crate::fight::eruption::set_tunable(name, value.float()) || crate::fight::closing::set_tunable(name, value.float()) || crate::scripts::modelfight::setting(name, value.float()).is_ok();
+        assert!(set, "{name} is not a constant that can be set by name");
     }
     let played = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Run::new(&content(game), character, *seed, Some(&floats(knobs)), *asc).play()));
     match played {

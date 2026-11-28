@@ -156,7 +156,7 @@ service restarts it.
 | `scripts fightlog COMMAND` | read `bot.log` fight by fight: `bosses`, `costs`, `show 'YYYY-MM-DD HH:MM'`, `knobs`, `deaths`, `pace`, `rooms SETTING`, `bosspace`, `reads`, `unplayed`, `surprises`, `idle`, `powers`, `events`, `pit`, `crabs`, `artifact`, `ancients`, `wiki` |
 | `scripts decklog [bosses]` | what a fight costs against what the deck holds (`fights.jsonl`) |
 | `scripts relearn` | rebuild `card_stats.json` from `runs.jsonl` |
-| `scripts demonfight`, `crabfight`, `kinfight`, `knightfight`, `roomfight`, `bosses/NAME` (`aeonfight`, `bowlfight`, `matriarchfight`, `queenfight`, `sadfight`, `subjectfight`) | model fights: one boss or room played by the real planner thousands of times (most take `NAME=VALUE` to try a constant); `demonfight` also solves the Knowledge Demon exactly |
+| `scripts demonfight`, `crabfight`, `kinfight`, `knightfight`, `roomfight`, `bosses/NAME` (`aeonfight`, `bowlfight`, `giantfight`, `matriarchfight`, `queenfight`, `sadfight`, `subjectfight`) | model fights: one boss or room played by the real planner thousands of times (most take `NAME=VALUE` to try a constant); `demonfight` also solves the Knowledge Demon exactly |
 | `scripts demon/*`, `scripts audit/*` | relic and affliction prices at the Demon; cards played for nothing and text the parser misreads; what the model runs do with each card's text (`audit/simcards`) |
 
 ## Model runs
@@ -175,6 +175,7 @@ sim prior sts2.jsonl sts1.jsonl --out src/run/model_cards.json         # the car
 sim prior runs.jsonl --onto src/run/model_cards.json --out new.json     # ... corrected by runs that played it
 sim run --game sts2 --runs 400 --vary --only model_table,caution --alt-cards new.json   # vary only these; two tables (more: a,b)
 sim run --game sts1 --runs 400 --vary --only caution,belt_spare --grid caution=1,1.35      # caution drawn from these values only
+sim run --game sts2 --runs 300 --ascension 9 --set ERUPTION=0                              # a name in capitals: a constant of the planner
 ```
 
 `trace` hashes every decision of seeded runs: a change that should not alter behaviour must leave the hashes as they
@@ -188,7 +189,8 @@ cargo test --release -- --ignored   # the long ones: hundreds more seeded model 
 sim trace                     # unchanged hashes = unchanged decisions
 ```
 
-`tests/all/test_size.rs` keeps source files under 2500 lines and directories under 25 files.
+`tests/all/test_size.rs` keeps source files under 2000 lines, directories under 20 files and `tests/golden/` under
+100 MB in all (53 MB on 2026-11-28).
 
 `tests/golden/` holds recorded answers (card readings, planner choices, whole bot sessions, the decisions of seeded
 model runs): the tests replay them and compare exactly. After a change that is meant to alter decisions, write the

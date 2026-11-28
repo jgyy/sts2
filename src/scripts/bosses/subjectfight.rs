@@ -14,8 +14,8 @@
 
 use serde_json::{json, Value};
 
-use super::bosses_aeonfight::flip_arms;
-use super::modelfight::{
+use crate::scripts::bosses::aeonfight::flip_arms;
+use crate::scripts::modelfight::{
     attack, deal, differ, exit_code, face, flips, game_state, hand_cards, index, int, knob_setting, mean, mean_of, out, patched, piles, played, quiet, shuffled, status, table, through, trace_args,
     turn, under, Face, GameStateArgs, Datum,
 };
@@ -268,10 +268,10 @@ pub fn main(args: Vec<String>) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::super::modelfight::{golden, section};
+    use crate::scripts::modelfight::{golden, section};
     use super::main;
 
-    const GOLDEN: &str = include_str!("../../tests/golden/scripts/bosses_subjectfight.txt");
+    const GOLDEN: &str = include_str!("../../../tests/golden/scripts/bosses_subjectfight.txt");
 
     #[test]
     fn as_recorded() {

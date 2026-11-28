@@ -295,7 +295,7 @@ pub fn _initial(f: &mut Fight, i: usize, m: &Value, states: &IndexMap<String, Va
 }
 
 // what the data leaves out: the Test Subject's first form (the planner's notes put it at 100 HP), the Pressure Gun's 20 (23),
-// the Aeonglass's Withering Presence (the bot's logs, scripts/bosses_aeonfight.rs)
+// the Aeonglass's Withering Presence (the bot's logs, scripts/bosses/aeonfight.rs)
 pub fn FIXES(key: &str) -> Option<Value> {
     Some(match key {
         "TEST_SUBJECT" => json!({"hp": [100, 100], "hp_a8": [110, 110]}),
@@ -392,7 +392,7 @@ pub fn _shriek_hit(f: &mut Fight, i: usize, _amount: i64, _attack: bool) {
     }
 }
 
-/// The Test Subject as the bot's logs have it (scripts/bosses_subjectfight.rs): a form beaten does not attack, and the
+/// The Test Subject as the bot's logs have it (scripts/bosses/subjectfight.rs): a form beaten does not attack, and the
 /// next (100 HP more) acts the round after with its Strength and debuffs at nothing. Form 2 has Painful Stabs and a
 /// Multi-Claw of 3 hits and one more each round; form 3 Nemesis, Intangible on its first round and every other one.
 pub fn _adaptable_death(f: &mut Fight, i: usize) -> bool {

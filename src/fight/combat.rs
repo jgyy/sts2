@@ -23,11 +23,11 @@ use crate::cards::{order_key, parse, CardInfo};
 use crate::fight::battle::{self, _pick_target_among};
 use crate::fight::fool::sadness as sad_hand;
 use crate::fight::fool::turn::{arrows_owned, concerns, fool_powers, impaled_pool, played_melodies, FoolTurn, Powers};
-use crate::fight::{artifact, closing, sandpit as pit, triggers};
+use crate::fight::{artifact, closing, eruption, sandpit as pit, triggers};
 use crate::games::sts1::stance::{carry_cost, read as read_stance, stuck_odds, Stance, CALM_EXIT, CALM_LATER, MANTRA_DIVINITY, MANTRA_LATER, TAKEN};
 use crate::learn::knob;
 use crate::logging::{Level, Logger};
-use crate::base::{self, JsonExt};
+use crate::base::{self, fmax, fmin, JsonExt};
 pub use crate::run::potions::{describe, fortifier, potion_actions};
 pub use crate::Action;
 
@@ -58,26 +58,6 @@ pub use own::{DEBUFF_CAP, ENRAGE_PRICE, FORM_WORTH, HIVE_COST, HIVE_PACE, HP_BAS
 /// (in the original `combat.RAGE_COST` was the planner's own binding of it; here there is one). False if neither has it.
 pub fn set_tunable(name: &str, value: f64) -> bool {
     own::set_tunable(name, value) || battle::set_tunable(name, value)
-}
-
-/// `max(a, b)` of two floats as the original has it: the first unless the second is greater.
-#[inline]
-fn fmax(a: f64, b: f64) -> f64 {
-    if b > a {
-        b
-    } else {
-        a
-    }
-}
-
-/// `min(a, b)` of two floats as the original has it: the first unless the second is less.
-#[inline]
-fn fmin(a: f64, b: f64) -> f64 {
-    if b < a {
-        b
-    } else {
-        a
-    }
 }
 
 thread_local! {
@@ -134,8 +114,6 @@ pub fn with_choose_card_hook(f: impl Fn(&Value, Option<&mut Plan>) -> Option<Act
 
 /// stands in for a rule that cannot apply in this fight
 #[inline]
-pub fn _idle() {}
-
 /// `sum(_progress(e, _hit(e, amount, 1, raw=True), chip_rate) * dmg_value * e.worth for e in foes if e.alive [and e is not skip])`.
 fn _hit_all(foes: &mut [Enemy], amount: i64, skip: Option<usize>, chip_rate: f64, dmg_value: f64) -> f64 {
     let mut total = base::Sum::new(0.0);
@@ -331,6 +309,8 @@ pub struct SimulateArgs {
     pub sadness: Option<sad_hand::View>,
     /// the Watcher's Mantra
     pub mantra0: i64,
+    /// the Waterfall Giant's Steam Eruption: what the next hand can do about the blast (fight/eruption.rs `outlook`)
+    pub eruption: Option<eruption::View>,
 }
 
 impl Default for SimulateArgs {
@@ -393,6 +373,7 @@ impl Default for SimulateArgs {
             wrath: None,
             sadness: None,
             mantra0: 0,
+            eruption: None,
         }
     }
 }
@@ -465,6 +446,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
     let (mut lasting, mut enduring, mut future) = (0.0, 0.0, 0.0); // worth of effects that pay off over the fight (x `span`), of what stays all fight, of all that pays off after this turn
     let (mut later, mut nexte, mut kept) = (0.0, 0i64, false); // worth of things that arrive next turn; energy next turn, and whether the hand is Retained
     let mut mantra = args.mantra0; // the Watcher's Mantra as the line goes on
+    let mut carried = 0i64; // Block the line gives us next turn (what stands against a Steam Eruption)
     let (mut sad, mut sad_rate, mut sad_draw) = (0i64, 0i64, 0i64); // Sadness the line puts in the hand, and more (or fewer) each turn from its Powers, with their draw
     // What a lasting effect is still worth: boss fights go on for a dozen turns, ordinary ones are over in four.
     let mut span = match fight {
@@ -875,6 +857,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
         stars += c.star_gain;
         enduring += c.forge as f64 * 0.5;
         later = later + c.next_draw as f64 * 2.0 * dmg_value + c.next_block as f64 * 0.8;
+        carried += c.next_block;
         nexte += c.next_energy * xs; // (energy: priced after the line)
         kept = kept || (c.keeps_hand.len() == 1 && c.keeps_hand[0] == "ANY") || c.keeps_hand.iter().any(|m| ft.tune.contains(m)); // (Ki Rest with a Wah or Cho Melody)
         energy += st.enter(&c.stance); // (after the card's own damage: Eruption hits, then she is in Wrath)
@@ -1130,6 +1113,9 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
     if respawn {
         _respawns(&mut foes); // a Stock enemy killed by the last card comes back too
     }
+    // A Steam Eruption set off: by this line's kill, or earlier this turn (the Giant stands Stunned, out of reach, the power still on it).
+    // (blast, still Weak when it comes: one turn of its Weak wears off in the Stun)
+    let blast_due: Option<(i64, bool)> = foes.iter().zip(enemies).find(|(e, orig)| orig.blast > 0 && (!e.alive() || orig.spent)).map(|(e, orig)| (orig.blast, e.weak_turns >= 2));
     let kills = foes.iter().zip(enemies).filter(|(e, orig)| !e.alive() && orig.alive()).count() as i64;
     score += 25.0 * base::fsum(foes.iter().zip(enemies).filter(|(e, orig)| !e.alive() && orig.alive()).map(|(e, _)| e.worth()));
     score += FORM_WORTH.get() * foes.iter().filter(|e| e.adapted).count() as f64; // a form beaten: that much of the fight is done
@@ -1251,11 +1237,28 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
         score += WIN_BONUS.get() / 2.0;
     }
     // A point of our HP is worth more than a point of enemy HP even at full health, and more still when this one turn would take a big bite of what is left.
-    let bite = fmin(1.0, lost as f64 / 1.max(hp) as f64);
+    // The Waterfall Giant blows up after it falls: while it stands, part of our HP is spoken for (eruption.rs), and a turn's losses
+    // are priced against the rest.
+    let steaming = args.eruption.as_ref().and_then(|view| survivors.iter().find(|e| e.blast > 0 && !e.spent).map(|e| (view, e.blast, e.hp + e.block)));
+    let spare = match steaming {
+        Some((view, blast, left)) => 1.max(hp - view.reserve(blast, left, args.pace)),
+        None => hp,
+    };
+    let ratio = if steaming.is_some() { spare as f64 / 1.max(max_hp) as f64 } else { ratio };
+    let bite = fmin(1.0, lost as f64 / 1.max(spare) as f64);
     let worth = HP_BASE.get() + HP_SLOPE.get() * (1.0 - ratio) + HP_BITE.get() * bite;
     let mut price = lost as f64 * worth * (if doomed { 4.0 } else { 1.0 }) * caution;
-    price *= closing::discount(args.pace, lost, hp, &survivors); // (a boss about to die: the HP we keep past its death buys nothing)
+    if steaming.is_none() {
+        price *= closing::discount(args.pace, lost, hp, &survivors); // (a boss about to die: the HP we keep past its death buys nothing)
+    }
     score -= price;
+    if let (Some(view), Some((blast, weak)), true) = (&args.eruption, blast_due, lost < hp) {
+        // ... and once it has fallen (in this line, or earlier this turn) the fight is won only if the next hand stops the blast
+        // (Block that is still there then: Barricade, or Blur played in this line or before it)
+        let holds = args.holds || view.blurred || line.iter().any(|c| info(c).key == "BLUR");
+        let (dead, taken) = view.after(blast, weak, carried + if holds { 0.max(block - pet.max(0) - scorch - incoming) } else { 0 }, hp - lost);
+        score -= eruption::BLAST_DEATH.get() * dead + taken * worth * caution;
+    }
     if let (Some((odds, blows, odds_fury)), true) = (&args.wrath, (st.now == "WRATH" || fury) && !survivors.is_empty() && lost < hp) {
         // Ending the turn in Wrath: next turn's blows land double unless the next hand holds a way out (2026-11-25: a Hyper Beam of 104).
         let odds = if fury { *odds_fury } else { *odds }; // (Simmering Fury's cards drawn are more chances of a way out)
@@ -1365,6 +1368,7 @@ pub fn _context(state: &Value) -> SimulateArgs {
         wrath: _wrath_outlook(state),
         sadness: sad_hand::outlook(state, draws),
         mantra0: 0.max(power_amount(player, "MANTRA")),
+        eruption: eruption::outlook(state),
         fight,
         // (the rest: as `simulate` has them when they are not given)
         end_loss: 0,
@@ -1701,389 +1705,9 @@ pub fn actions(state: &Value) -> Vec<Action> {
 
 /// What the golden tests of the planner and of run/potions.rs share: the cases of tests/golden/combat, read back.
 #[cfg(test)]
-pub(crate) mod testing {
-    use super::*;
-    use crate::fight::battle::testing::card_from_json;
-    use crate::games;
-
-    /// The tables the cases refer to: whole cards, relics and potions of the states (`atoms`), parsed cards, and the settings in force.
-    pub struct Golden {
-        pub atoms: Vec<Value>,
-        pub cards: Vec<CardInfo>,
-        pub knobs: Vec<Vec<(String, f64)>>,
-    }
-
-    /// Every list under `key` in these files, one after the other.
-    pub fn rows(texts: &[&str], key: &str) -> Vec<Value> {
-        let mut out = Vec::new();
-        for text in texts {
-            let v: Value = serde_json::from_str(text).unwrap();
-            out.extend(v[key].list().iter().cloned());
-        }
-        out
-    }
-
-    pub fn golden() -> Golden {
-        let meta = [include_str!("../../tests/golden/combat/meta.json")];
-        let atoms = rows(&[include_str!("../../tests/golden/combat/atoms0.json"), include_str!("../../tests/golden/combat/atoms1.json")], "atoms");
-        let knobs = rows(&meta, "knobs").iter().map(|k| k.entries().map(|(name, x)| (name.clone(), x.float())).collect()).collect();
-        Golden { atoms, cards: rows(&meta, "cards").iter().map(card_from_json).collect(), knobs }
-    }
-
-    /// The game and settings a case was recorded under, in force until dropped.
-    pub struct Env {
-        _game: games::Playing,
-        _knobs: crate::learn::KnobGuard,
-    }
-
-    impl Golden {
-        pub fn env(&self, v: &Value) -> Env {
-            let knobs: Vec<(&str, f64)> = self.knobs[v["k"].int() as usize].iter().map(|(name, x)| (name.as_str(), *x)).collect();
-            Env { _game: games::playing(v["g"].s()), _knobs: crate::learn::with_knobs(&knobs) }
-        }
-
-        fn item(&self, x: &Value) -> Value {
-            match x {
-                Value::Number(id) => self.atoms[id.as_u64().unwrap() as usize].clone(),
-                Value::Array(pair) => {
-                    let mut card = serde_json::Map::new();
-                    card.insert("index".to_string(), pair[1].clone());
-                    card.extend(self.atoms[pair[0].int() as usize].as_object().unwrap().clone());
-                    Value::Object(card)
-                }
-                other => other["="].clone(),
-            }
-        }
-
-        /// The player as recorded: the cards, relics and potions of its piles put back.
-        pub fn player(&self, packed: &Value) -> Value {
-            let mut player = packed.clone();
-            for pile in ["hand", "draw_pile", "discard_pile", "exhaust_pile", "relics", "potions"] {
-                if packed[pile].is_array() {
-                    player[pile] = packed[pile].list().iter().map(|x| self.item(x)).collect();
-                }
-            }
-            player
-        }
-
-        pub fn state(&self, packed: &Value) -> Value {
-            let mut state = packed.clone();
-            if packed["player"].is_object() {
-                state["player"] = self.player(&packed["player"]);
-            }
-            if packed["_costs"].has("@") {
-                state["_costs"] = self.atoms[packed["_costs"]["@"].int() as usize].clone();
-            }
-            state
-        }
-
-        /// Parsed cards by their place in the table (None for null).
-        pub fn line(&self, ids: &Value) -> Option<Vec<CardInfo>> {
-            ids.as_array().map(|ids| ids.iter().map(|id| self.cards[id.int() as usize].clone()).collect())
-        }
-    }
-
-    pub fn wrath(v: &Value) -> Option<Wrath> {
-        if v.is_null() {
-            return None;
-        }
-        Some((v[0].float(), v[1].entries().map(|(id, seen)| (id.clone(), (seen[0].float(), seen[1].float()))).collect(), v[2].float()))
-    }
-
-    /// `simulate`'s keywords from the ones a case gives (the rest: the defaults).
-    pub fn args(v: &Value) -> SimulateArgs {
-        let mut a = SimulateArgs::default();
-        let two = |x: &Value| (x[0].float(), x[1].float());
-        let whole = |x: &Value| {
-            assert!(x.is_int() || x.is_boolean(), "not an int: {x}");
-            x.int()
-        };
-        for (k, x) in v.entries() {
-            match k.as_str() {
-                "energy" => a.energy = whole(x),
-                "stars" => a.stars = whole(x),
-                "hp" => a.hp = whole(x),
-                "max_hp" => a.max_hp = whole(x),
-                "block" => a.block = whole(x),
-                "fight" => a.fight = x.s().to_string(),
-                "round_no" => a.round_no = whole(x),
-                "card_limit" => a.card_limit = if x.is_null() { None } else { Some(whole(x)) },
-                "can_block" => a.can_block = x.truthy(),
-                "sandpit" => a.sandpit = if x.is_null() { None } else { Some(whole(x)) },
-                "end_loss" => a.end_loss = whole(x),
-                "burns" => a.burns = x.list().iter().map(|b| (whole(&b[0]), whole(&b[1]), b[2].truthy())).collect(),
-                "hand_size" => a.hand_size = whole(x),
-                "focus" => {
-                    a.focus = if x.is_null() {
-                        None
-                    } else if x.has("last") {
-                        Some(Focus::Last(x["last"].s().to_string()))
-                    } else {
-                        Some(Focus::At(x["at"].s().to_string()))
-                    }
-                }
-                "orbs" => a.orbs = x.list().iter().map(|o| (o[0].s().to_string(), whole(&o[1]), whole(&o[2]))).collect(),
-                "orb_slots" => a.orb_slots = whole(x),
-                "shiv_damage" => a.shiv_damage = whole(x),
-                "tender" => a.tender = x.truthy(),
-                "vigor" => a.vigor = whole(x),
-                "giant" => a.giant = x.truthy(),
-                "buffer" => a.buffer = whole(x),
-                "loss_cap" => a.loss_cap = whole(x),
-                "taint" => a.taint = whole(x),
-                "draw_worth" => a.draw_worth = (x[0].float(), x[1].float(), x[2].float()),
-                "bare_block" => a.bare_block = whole(x),
-                "regen" => a.regen = whole(x),
-                "focus_power" => a.focus_power = whole(x),
-                "escape_odds" => a.escape_odds = two(x),
-                "wither_in" => a.wither_in = whole(x),
-                "wither_hp" => a.wither_hp = whole(x),
-                "wither_bill" => a.wither_bill = x.float(),
-                "trig" => {
-                    let table = |t: &Value| t.entries().map(|(id, n)| (id.clone(), n.int())).collect::<IndexMap<String, i64>>();
-                    a.trig = if x.is_null() {
-                        None
-                    } else {
-                        Some(triggers::Triggers {
-                            per_debuff: x["per_debuff"].int(),
-                            per_card: x["per_card"].int(),
-                            per_soul: x["per_soul"].int(),
-                            card_block: x["card_block"].int(),
-                            attack_block: x["attack_block"].int(),
-                            costly_block: x["costly_block"].int(),
-                            doom_block: x["doom_block"].int(),
-                            strangle: table(&x["strangle"]),
-                            oblivion: table(&x["oblivion"]),
-                        })
-                    }
-                }
-                "pet" => a.pet = whole(x),
-                "hail" => a.hail = whole(x),
-                "deck" => a.deck = (whole(&x[0]), whole(&x[1])),
-                "mastery" => a.mastery = whole(x),
-                "might0" => a.might0 = whole(x),
-                "holds" => a.holds = x.truthy(),
-                "strip" => a.strip = two(x),
-                "friends" => a.friends = whole(x),
-                "drained" => a.drained = whole(x),
-                "free" => a.free = whole(x),
-                "doubled" => a.doubled = x.truthy(),
-                "fortify" => a.fortify = whole(x),
-                "pace" => a.pace = x.float(),
-                "room" => a.room = two(x),
-                "arrows" => a.arrows = whole(x),
-                "aiming" => a.aiming = whole(x),
-                "stretch" => a.stretch = whole(x),
-                "tune" => a.tune = x.list().iter().map(|m| m.s().to_string()).collect(),
-                "chord" => a.chord = whole(x),
-                "boom" => a.boom = whole(x),
-                "fool" => a.fool = if x.is_null() { None } else { Some((whole(&x[0]), whole(&x[1]), whole(&x[2]), whole(&x[3]), whole(&x[4]))) },
-                "stance0" => a.stance0 = x.s().to_string(),
-                "wrath" => a.wrath = wrath(x),
-                "sadness" => a.sadness = if x.is_null() { None } else { Some((whole(&x[0]), whole(&x[1]), whole(&x[2]), x[3].float(), x[4].float())) },
-                "mantra0" => a.mantra0 = whole(x),
-                other => panic!("no keyword {other}"),
-            }
-        }
-        a
-    }
-
-    pub fn action(a: &Option<Action>) -> Value {
-        match a {
-            Some((name, params)) => json!([name, params]),
-            None => Value::Null,
-        }
-    }
-
-    pub fn actions_json(all: &[Action]) -> Value {
-        all.iter().map(|(name, params)| json!([name, params])).collect()
-    }
-
-    pub const CALLS: &str = include_str!("../../tests/golden/combat/calls.json");
-}
+#[path = "combat_testing.rs"]
+pub(crate) mod testing;
 
 #[cfg(test)]
-mod tests {
-    use super::testing::*;
-    use super::*;
-
-    #[test]
-    fn golden_choose_card() {
-        let g = golden();
-        let cases = rows(
-            &[
-                include_str!("../../tests/golden/combat/choose0.json"),
-                include_str!("../../tests/golden/combat/choose1.json"),
-                include_str!("../../tests/golden/combat/choose2.json"),
-            ],
-            "choose",
-        );
-        assert!(cases.len() >= 3000, "{} cases", cases.len());
-        let (mut played, mut bad) = (0, Vec::new());
-        for (n, rec) in cases.iter().enumerate() {
-            let _env = g.env(&rec["env"]);
-            let state = g.state(&rec["s"]);
-            let mut plan = Plan::default();
-            let got = _choose_card(&state, Some(&mut plan));
-            played += got.is_some() as usize;
-            let want = &rec["plan"];
-            let line: Option<Vec<i64>> = want["line"].as_array().map(|l| l.iter().map(|i| i.int()).collect());
-            let same = action(&got) == rec["r"]
-                && plan.lost == want["lost"].as_i64()
-                && plan.score == want["score"].as_f64()
-                && plan.line.as_ref().map(|l| l.iter().map(|c| c.index).collect::<Vec<_>>()) == line
-                && (!rec.has("ctx") || _context(&state) == args(&rec["ctx"]))
-                && (!rec.has("describe") || json!(describe(&state)) == rec["describe"])
-                && json!(expected_end_loss(&state)) == rec["end"]
-                && json!(fortifier(&state["player"])) == rec["fort"]
-                && _wrath_outlook(&state) == wrath(&rec["wrath"]);
-            if !same {
-                if bad.len() < 5 {
-                    eprintln!(
-                        "case {n} ({}): got {} lost {:?} score {:?} line {:?}\n  want {} plan {}\n  ctx {}\n  describe {}",
-                        rec["env"],
-                        action(&got),
-                        plan.lost,
-                        plan.score,
-                        plan.line.as_ref().map(|l| l.iter().map(|c| c.index).collect::<Vec<_>>()),
-                        rec["r"],
-                        want,
-                        !rec.has("ctx") || _context(&state) == args(&rec["ctx"]),
-                        describe(&state),
-                    );
-                }
-                bad.push(n);
-            }
-        }
-        assert!(bad.is_empty(), "{} of {} cases differ: {:?}", bad.len(), cases.len(), &bad[..bad.len().min(40)]);
-        assert!(played > 1500, "{played} cards played");
-    }
-
-    #[test]
-    fn golden_simulate() {
-        let g = golden();
-        let cases = rows(&[include_str!("../../tests/golden/combat/sim0.json"), include_str!("../../tests/golden/combat/sim1.json")], "sim");
-        assert!(cases.len() >= 3000, "{} cases", cases.len());
-        let (mut none, mut bad) = (0, Vec::new());
-        for (n, rec) in cases.iter().enumerate() {
-            let _env = g.env(&rec["env"]);
-            let line = g.line(&rec["line"]).unwrap();
-            let foes: Vec<Enemy> = rec["foes"].list().iter().map(Enemy::from_json).collect();
-            let before = foes.clone();
-            let got = simulate(&line, &foes, args(&rec["kw"]));
-            assert_eq!(foes, before);
-            none += got.is_none() as usize;
-            let shown = match &got {
-                Some(out) => json!([out.score, out.first_target.as_deref(), out.lost]),
-                None => Value::Null,
-            };
-            if shown != rec["r"] {
-                if bad.len() < 5 {
-                    eprintln!("case {n}: got {shown} want {}\n  {}", rec["r"], rec);
-                }
-                bad.push(n);
-            }
-        }
-        assert!(bad.is_empty(), "{} of {} cases differ: {:?}", bad.len(), cases.len(), &bad[..bad.len().min(40)]);
-        assert!(none > 100, "{none} lines that cannot be played");
-    }
-
-    #[test]
-    fn golden_actions() {
-        let g = golden();
-        let cases = rows(&[CALLS], "actions");
-        assert!(cases.len() >= 300, "{} cases", cases.len());
-        let mut potions = 0;
-        for (n, rec) in cases.iter().enumerate() {
-            let _env = g.env(&rec["env"]);
-            let got = actions(&g.state(&rec["s"]));
-            potions += got.iter().filter(|a| a.0 == "use_potion").count();
-            assert_eq!(actions_json(&got), rec["r"], "case {n}");
-        }
-        assert!(potions > 50, "{potions} potions drunk");
-    }
-
-    #[test]
-    fn golden_small() {
-        let g = golden();
-        let cases = rows(&[CALLS], "small");
-        let mut seen: HashMap<String, usize> = HashMap::new();
-        for (n, rec) in cases.iter().enumerate() {
-            let _env = g.env(&rec["env"]);
-            let (a, m) = (&rec["a"], &rec["m"]);
-            *seen.entry(rec["f"].s().to_string()).or_default() += 1;
-            match rec["f"].s() {
-                "_orb_damage" => {
-                    let mut foes: Vec<Enemy> = a[2].list().iter().map(Enemy::from_json).collect();
-                    let got = _orb_damage(a[0].s(), a[1].int(), &mut foes, a[3].float(), a[4].float());
-                    assert_eq!(json!(got), rec["r"], "case {n}: {rec}");
-                    assert_eq!(foes, m[2].list().iter().map(Enemy::from_json).collect::<Vec<_>>(), "case {n}");
-                }
-                "_debuff" => {
-                    let mut e = Enemy::from_json(&a[0]);
-                    _debuff(&mut e, &g.cards[a[1].int() as usize], a[2].int());
-                    assert_eq!(e, Enemy::from_json(&m[0]), "case {n}: {rec}");
-                }
-                "_expose" => {
-                    let mut e = Enemy::from_json(&a[0]);
-                    _expose(&mut e, a[1].int());
-                    assert_eq!(e, Enemy::from_json(&m[0]), "case {n}: {rec}");
-                }
-                "_weaken" => {
-                    let mut e = Enemy::from_json(&a[0]);
-                    _weaken(&mut e, a[1].int());
-                    assert_eq!(e, Enemy::from_json(&m[0]), "case {n}: {rec}");
-                }
-                other => panic!("no function {other}"),
-            }
-        }
-        for f in ["_orb_damage", "_debuff", "_expose", "_weaken"] {
-            assert!(seen.get(f).copied().unwrap_or(0) >= 100, "{f}: {:?}", seen.get(f));
-        }
-    }
-
-    #[test]
-    fn the_orders_of_itertools() {
-        let mut picked = vec![0, 1];
-        let mut all = vec![picked.clone()];
-        while next_combination(&mut picked, 4) {
-            all.push(picked.clone());
-        }
-        assert_eq!(all, [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]]);
-        let mut order = vec![0, 1, 2];
-        let mut all = vec![order.clone()];
-        while next_permutation(&mut order) {
-            all.push(order.clone());
-        }
-        assert_eq!(all, [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]]);
-        let mut one = vec![0];
-        assert!(!next_permutation(&mut one) && !next_combination(&mut one, 1));
-    }
-
-    #[test]
-    fn the_hooks_and_the_constants() {
-        let state = json!({"player": {"hp": 50, "max_hp": 80, "energy": 3, "hand": []}, "battle": {"round": 1, "enemies": []}});
-        assert_eq!(next_room(&state), (99.0, 1.0));
-        {
-            let _room = with_next_room(|_| (0.0, 1.0));
-            assert_eq!(_context(&state).room, (0.0, 1.0));
-        }
-        assert_eq!(_context(&state).room, (99.0, 1.0));
-        let calls = Rc::new(std::cell::Cell::new(0));
-        {
-            let spy = calls.clone();
-            let _hook = with_choose_card_hook(move |s, plan| {
-                spy.set(spy.get() + 1);
-                _choose_card(s, plan)
-            });
-            assert_eq!(actions(&state), vec![("end_turn".to_string(), json!({}))]);
-        }
-        assert_eq!((calls.get(), choose_card(&state, None)), (1, None));
-        assert_eq!((MAX_SEARCH_CARDS.get(), HP_BASE.get(), HP_SLOPE.get(), HP_BITE.get(), HIVE_COST.get(), HIVE_PACE.get()), (11, 1.5, 2.5, 3.0, 9.0, 22.0));
-        assert_eq!((DEBUFF_CAP.get(), FORM_WORTH.get(), ENRAGE_PRICE.get()), (4, 40.0, 2.0));
-        assert!(TUNABLES.contains(&"HP_BASE") && !set_tunable("NO_SUCH", 1.0));
-        let defaults = SimulateArgs::default();
-        assert_eq!((defaults.fight.as_str(), defaults.round_no, defaults.pet, defaults.arrows, defaults.fortify, defaults.shiv_damage, defaults.wither_hp), ("monster", 1, -1, -1, 1, 4, 5));
-        assert_eq!((defaults.draw_worth, defaults.escape_odds, defaults.room, defaults.deck, defaults.wither_bill), ((2.0, 0.0, 0.0), (0.3, 0.3), (99.0, 1.0), (20, 0), 7.0));
-    }
-}
+#[path = "combat_tests.rs"]
+mod tests;

@@ -536,7 +536,8 @@ pub fn bosses(min_ascension: i64) -> Result<(), String> {
     let mut table: IndexMap<(i64, String, Option<String>), [i64; 2]> = IndexMap::new();
     for f in load()?.0 {
         if f.kind == "boss" && f.died.is_some() && f.asc.int() >= min_ascension {
-            let enemies = f.enemies.clone().ok_or("TypeError: 'NoneType' object is not subscriptable")?;
+            // A boss room left before its first combat line (the game restarted there) has no enemies: not a fight.
+            let Some(enemies) = f.enemies.clone() else { continue };
             for who in [Some("all".to_string()), f.char.clone()] {
                 let row = table.entry((f.act, enemies.clone(), who)).or_insert([0, 0]);
                 row[0] += (f.died == Some(false)) as i64;

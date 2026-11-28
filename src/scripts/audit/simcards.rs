@@ -199,10 +199,10 @@ pub fn main(args: Vec<String>) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::super::modelfight::{golden, section};
+    use crate::scripts::modelfight::{golden, section};
     use super::main;
 
-    const GOLDEN: &str = include_str!("../../tests/golden/scripts/audit_simcards.txt");
+    const GOLDEN: &str = include_str!("../../../tests/golden/scripts/audit_simcards.txt");
 
     #[test]
     fn as_recorded() {

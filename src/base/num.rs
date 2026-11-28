@@ -55,6 +55,26 @@ pub fn fsum_from<I: IntoIterator<Item = f64>>(start: f64, items: I) -> f64 {
     s.get()
 }
 
+/// `max(a, b)` of two floats as the original has it: the first unless the second is greater.
+#[inline]
+pub fn fmax(a: f64, b: f64) -> f64 {
+    if b > a {
+        b
+    } else {
+        a
+    }
+}
+
+/// `min(a, b)` of two floats as the original has it: the first unless the second is less.
+#[inline]
+pub fn fmin(a: f64, b: f64) -> f64 {
+    if b < a {
+        b
+    } else {
+        a
+    }
+}
+
 /// `round(x)`: to the nearest integer, halves to the even one.
 pub fn round(x: f64) -> i64 {
     x.round_ties_even() as i64
@@ -161,18 +181,6 @@ pub fn max_of<T: PartialOrd, I: IntoIterator<Item = T>>(items: I) -> Option<T> {
     for item in items {
         match &best {
             Some(b) if cmp(&item, b) != Ordering::Greater => {}
-            _ => best = Some(item),
-        }
-    }
-    best
-}
-
-/// `min(items)`: the first of the smallest.
-pub fn min_of<T: PartialOrd, I: IntoIterator<Item = T>>(items: I) -> Option<T> {
-    let mut best: Option<T> = None;
-    for item in items {
-        match &best {
-            Some(b) if cmp(&item, b) != Ordering::Less => {}
             _ => best = Some(item),
         }
     }

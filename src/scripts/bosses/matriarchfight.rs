@@ -16,7 +16,7 @@
 
 use serde_json::{json, Value};
 
-use super::modelfight::{attack, deal, exit_code, face, game_state, hand_cards, hit, knob_setting, mean, out, patched, piles, played, quiet, shuffled, status, table, through, trace_args, turn, under, Face, GameStateArgs, Datum};
+use crate::scripts::modelfight::{attack, deal, exit_code, face, game_state, hand_cards, hit, knob_setting, mean, out, patched, piles, played, quiet, shuffled, status, table, through, trace_args, turn, under, Face, GameStateArgs, Datum};
 use crate::base::{self, trunc, Random};
 
 pub const BOSS_HP: i64 = 233;

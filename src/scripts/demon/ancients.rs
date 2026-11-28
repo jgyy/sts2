@@ -9,8 +9,8 @@
 use std::cell::Cell;
 use std::collections::HashMap;
 
-use super::demonfight::{self as D, Burns, Deck, DeckArgs, Rules};
-use super::modelfight::{exit_code, on_all_cores, out, quiet};
+use crate::scripts::demonfight::{self as D, Burns, Deck, DeckArgs, Rules};
+use crate::scripts::modelfight::{exit_code, on_all_cores, out, quiet};
 use crate::base::{floordiv, fsum};
 
 /// A relic, as changes to the rules (the original's dict: a key it does not hold is 0 here).
@@ -124,11 +124,11 @@ pub fn main(args: Vec<String>) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::super::modelfight::golden;
+    use crate::scripts::modelfight::golden;
     use super::main;
 
     #[test]
     fn as_recorded() {
-        golden(main, &[], include_str!("../../tests/golden/scripts/demon_ancients.txt"));
+        golden(main, &[], include_str!("../../../tests/golden/scripts/demon_ancients.txt"));
     }
 }

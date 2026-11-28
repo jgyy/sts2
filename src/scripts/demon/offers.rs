@@ -11,8 +11,8 @@
 use std::cell::Cell;
 use std::collections::HashMap;
 
-use super::demonfight::{self as d, Burns, Deck, DeckArgs, Rules};
-use super::modelfight::{exit_code, int, on_all_cores, out, quiet};
+use crate::scripts::demonfight::{self as d, Burns, Deck, DeckArgs, Rules};
+use crate::scripts::modelfight::{exit_code, int, on_all_cores, out, quiet};
 use crate::base::{sort_by_key, trunc};
 
 thread_local! {
@@ -122,11 +122,11 @@ pub fn main(args: Vec<String>) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::super::modelfight::{capture, golden};
+    use crate::scripts::modelfight::{capture, golden};
     use super::*;
 
-    const OFFER2: &str = include_str!("../../tests/golden/scripts/demon_offers.txt");
-    const OFFER3: &str = include_str!("../../tests/golden/scripts/demon_offers_3.txt");
+    const OFFER2: &str = include_str!("../../../tests/golden/scripts/demon_offers.txt");
+    const OFFER3: &str = include_str!("../../../tests/golden/scripts/demon_offers_3.txt");
 
     /// The rows of the original's table for every 19th deck of the grid: the same decks priced here.
     #[test]

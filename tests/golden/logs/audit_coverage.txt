@@ -1,4 +1,4 @@
-== sts2 cards: 242  read 112  rule 55  unseen 41  partial 29  unread 3  power 2
+== sts2 cards: 242  read 112  rule 56  unseen 40  partial 29  unread 3  power 2
    partial     42  Charge Battery             Gain 7 Block. Next turn, gain [energy_icon.png].
    partial     36  Go for the Eyes            Deal 3 damage. If the enemy intends to attack, apply 1 Weak.
    partial     33  Glitterstream              Gain 11 Block. Next turn, gain 5 Block.
@@ -24,9 +24,8 @@
    unread       4  Transfigure                Add Replay to a card in your Hand. It costs an extra [energy_icon.png].
    unread       3  White Noise                Add a random Power into your Hand. It's free to play this turn.
    partial      2  Hegemony                   Deal 15 damage. Next turn, gain [energy_icon.png][energy_icon.png].
-== sts2 powers: 56  rule 41  unnamed 15
+== sts2 powers: 56  rule 42  unnamed 14
    unnamed    219  Dexterity                  Smart: Dexterity: whenever this is here, things go as its name says.
-   unnamed    105  Steam Eruption             Steam Eruption: whenever this is here, things go as its name says.
    unnamed     46  Ravenous                   Ravenous: whenever this is here, things go as its name says.
    unnamed     43  Frail                      Frail: whenever this is here, things go as its name says.
    unnamed     32  Suck                       Suck: whenever this is here, things go as its name says.

@@ -20,8 +20,8 @@ use std::path::{Path, PathBuf};
 use indexmap::IndexMap;
 use serde_json::{json, Value};
 
-use super::fightlog::{io_error, read_jsonl, read_text, state_home, upto, Counter};
-use super::modelfight::{exit_code, out};
+use crate::scripts::fightlog::{io_error, read_jsonl, read_text, state_home, upto, Counter};
+use crate::scripts::modelfight::{exit_code, out};
 use crate::base::{self, JsonExt};
 use crate::re;
 
@@ -500,7 +500,7 @@ fn script(args: &[String]) -> Result<(), String> {
     let game = args.first().map_or("sts2", String::as_str);
     let what = args.get(1).map_or("all", String::as_str);
     let n = match args.get(2) {
-        Some(text) => super::modelfight::int(text)?,
+        Some(text) => crate::scripts::modelfight::int(text)?,
         None => 25,
     };
     // (`rows[:n]` with a negative n leaves that many off the end: no audit asks for that)
@@ -528,8 +528,8 @@ pub fn main(args: Vec<String>) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::super::fightlog::tests::state;
-    use super::super::modelfight::golden;
+    use crate::scripts::fightlog::tests::state;
+    use crate::scripts::modelfight::golden;
     use super::*;
 
     macro_rules! as_recorded {
@@ -538,7 +538,7 @@ mod tests {
             fn $test() {
                 let _state = state();
                 let args: &[&str] = &$args;
-                golden(main, args, include_str!(concat!("../../tests/golden/logs/audit_coverage", $file, ".txt")));
+                golden(main, args, include_str!(concat!("../../../tests/golden/logs/audit_coverage", $file, ".txt")));
             }
         )*};
     }
