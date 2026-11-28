@@ -4251,14 +4251,14 @@
 "--game",
 "both"
 ],
-"config": "command=python3 /elsewhere/main.py --ascension 0\nrunAtGameStart=true\n",
+"config": "command=otherbot /elsewhere/main --ascension 0\nrunAtGameStart=true\n",
 "log_dir": false,
 "columns": 80,
 "code": 2,
 "logs": [
 [
 "ERROR",
-"CommunicationMod starts another program with the game: python3 /elsewhere/main.py --ascension 0. Neither game is started: the first game's bot would wait for a relay that never starts and restart the game for ever. Run `sts2bot sts1-setup` to point CommunicationMod at the bot's relay"
+"CommunicationMod starts another program with the game: otherbot /elsewhere/main --ascension 0. Neither game is started: the first game's bot would wait for a relay that never starts and restart the game for ever. Run `sts2bot sts1-setup` to point CommunicationMod at the bot's relay"
 ]
 ],
 "both": [],
@@ -4297,7 +4297,7 @@
 "--runs",
 "1"
 ],
-"config": "command=python3 /elsewhere/main.py --ascension 0\nrunAtGameStart=true\n",
+"config": "command=otherbot /elsewhere/main --ascension 0\nrunAtGameStart=true\n",
 "log_dir": false,
 "columns": 80,
 "code": 0,
@@ -4364,14 +4364,14 @@
 "--game",
 "sts1"
 ],
-"config": "command=python3 /elsewhere/main.py --ascension 0\nrunAtGameStart=true\n",
+"config": "command=otherbot /elsewhere/main --ascension 0\nrunAtGameStart=true\n",
 "log_dir": true,
 "columns": 80,
 "code": 2,
 "logs": [
 [
 "ERROR",
-"CommunicationMod starts another program with the game: python3 /elsewhere/main.py --ascension 0. Not launching the game: the bot would wait for a relay that never starts and restart the game for ever. Run `sts2bot sts1-setup` to point CommunicationMod at the bot's relay"
+"CommunicationMod starts another program with the game: otherbot /elsewhere/main --ascension 0. Not launching the game: the bot would wait for a relay that never starts and restart the game for ever. Run `sts2bot sts1-setup` to point CommunicationMod at the bot's relay"
 ]
 ],
 "both": [],
@@ -4522,14 +4522,14 @@
 "sts1",
 "--no-launch"
 ],
-"config": "command=python3 /elsewhere/main.py --ascension 0\nrunAtGameStart=true\n",
+"config": "command=otherbot /elsewhere/main --ascension 0\nrunAtGameStart=true\n",
 "log_dir": true,
 "columns": 80,
 "code": 0,
 "logs": [
 [
 "WARNING",
-"CommunicationMod starts another program with the game: python3 /elsewhere/main.py --ascension 0; the bot cannot reach the game until you run `sts2bot sts1-setup`"
+"CommunicationMod starts another program with the game: otherbot /elsewhere/main --ascension 0; the bot cannot reach the game until you run `sts2bot sts1-setup`"
 ],
 [
 "INFO",

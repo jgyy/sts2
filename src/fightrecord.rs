@@ -9,7 +9,7 @@ use serde_json::{json, Map, Value};
 
 use crate::fight::bossfight::mid_fight;
 use crate::logging::Logger;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 static LOG: Logger = Logger::new("sts2bot");
 
@@ -18,9 +18,9 @@ pub const COMBAT: [&str; 3] = ["monster", "elite", "boss"];
 pub const LIMIT: i64 = 64 << 20;
 pub const _PILES: [&str; 4] = ["hand", "draw_pile", "discard_pile", "exhaust_pile"];
 
-/// (The Python's default: `field` "name".)
+/// (the original's default: `field` "name".)
 pub fn _names(player: &Value, key: &str, field: &str) -> Vec<String> {
-    player[key].list().iter().map(|x| py::str_of(x[field].or(&x["name"]).or(&Value::String("?".into())))).collect()
+    player[key].list().iter().map(|x| base::str_of(x[field].or(&x["name"]).or(&Value::String("?".into())))).collect()
 }
 
 /// `time.strftime("%Y-%m-%dT%H:%M:%S")`: the local time now.
@@ -31,7 +31,7 @@ pub fn _now() -> String {
     format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec)
 }
 
-/// An I/O error as Python words an OSError: "[Errno 2] No such file or directory: 'fights.jsonl'" (`named`: the path, as `repr` has it).
+/// An I/O error as the original words an OSError: "[Errno 2] No such file or directory: 'fights.jsonl'" (`named`: the path, as `repr` has it).
 fn _os_error(e: &std::io::Error, named: &str) -> String {
     let said = e.to_string();
     match e.raw_os_error() {
@@ -42,7 +42,7 @@ fn _os_error(e: &std::io::Error, named: &str) -> String {
 
 pub struct FightWatch {
     pub path: Option<PathBuf>,
-    /// The fight being watched (the Python's dict, `where` as `[act, floor]`).
+    /// The fight being watched (the original's dict, `where` as `[act, floor]`).
     pub fight: Option<Value>,
     /// The time a fight is stamped with as it begins (`_now`; a test's or a replay's own clock otherwise).
     pub now: Box<dyn Fn() -> String + Send>,
@@ -55,7 +55,7 @@ impl Default for FightWatch {
 }
 
 impl FightWatch {
-    /// (The Python's default: no path, nothing written.)
+    /// (the original's default: no path, nothing written.)
     pub fn new(path: Option<PathBuf>) -> Self {
         FightWatch::with_clock(path, _now)
     }
@@ -88,7 +88,7 @@ impl FightWatch {
         let foes: BTreeSet<String> = battle["enemies"]
             .list()
             .iter()
-            .map(|e| crate::re!(r"_\d+(\n?)$").replace(&py::str_of(e["entity_id"].or(&e["name"]).or(&Value::String("?".into()))), "${1}").into_owned())
+            .map(|e| crate::re!(r"_\d+(\n?)$").replace(&base::str_of(e["entity_id"].or(&e["name"]).or(&Value::String("?".into()))), "${1}").into_owned())
             .collect();
         let rnd = battle["round"].int();
         if self.fight.is_none() {
@@ -148,9 +148,9 @@ impl FightWatch {
 
     pub fn _write(&self, record: &Value) {
         let Some(path) = &self.path else { return };
-        // (each step with the path Python would name in its OSError)
+        // (each step with the path the original would name in its OSError)
         let written = (|| -> Result<(), (std::io::Error, String)> {
-            let named = |at: &Path| py::str_repr(&at.to_string_lossy());
+            let named = |at: &Path| base::str_repr(&at.to_string_lossy());
             if let Some(parent) = path.parent() {
                 std::fs::create_dir_all(parent).map_err(|e| (e, named(parent)))?;
             }
@@ -161,7 +161,7 @@ impl FightWatch {
                 std::fs::rename(path, &aside).map_err(|e| (e, format!("{} -> {}", named(path), named(&aside))))?;
             }
             let mut out = std::fs::OpenOptions::new().append(true).create(true).open(path).map_err(|e| (e, named(path)))?;
-            out.write_all((py::Dumps { separators: Some((",", ":")), ..Default::default() }.dumps(record) + "\n").as_bytes()).map_err(|e| (e, named(path)))
+            out.write_all((base::Dumps { separators: Some((",", ":")), ..Default::default() }.dumps(record) + "\n").as_bytes()).map_err(|e| (e, named(path)))
         })();
         if let Err((e, named)) = written {
             // a full disk must not stop the bot playing
@@ -179,7 +179,7 @@ mod tests {
     use std::sync::Arc;
 
     fn compact(v: &Value) -> String {
-        py::Dumps { separators: Some((",", ":")), ..Default::default() }.dumps(v)
+        base::Dumps { separators: Some((",", ":")), ..Default::default() }.dumps(v)
     }
 
     #[test]
@@ -235,13 +235,13 @@ mod tests {
         assert_eq!(std::fs::metadata(d.path().join("fights.jsonl.1")).unwrap().len() as i64, LIMIT + 1);
         watch._write(&json!({}));
         assert_eq!(std::fs::read_to_string(&path).unwrap().lines().count(), 2);
-        // A file where the directory should be: Python's "[Errno 17] File exists: '...'", and the bot plays on.
+        // A file where the directory should be: the original's "[Errno 17] File exists: '...'", and the bot plays on.
         let blocked = FightWatch::new(Some(path.join("logs").join("fights.jsonl")));
         let ((), logged) = crate::logging::capture(|| blocked._write(&json!({})));
         assert_eq!(logged.len(), 1);
         assert_eq!((logged[0].logger, logged[0].level.name()), ("sts2bot", "WARNING"));
         let below = path.join("logs");
-        assert_eq!(logged[0].message, format!("could not write {}: [Errno 20] Not a directory: {}", below.join("fights.jsonl").display(), py::str_repr(&below.to_string_lossy())));
+        assert_eq!(logged[0].message, format!("could not write {}: [Errno 20] Not a directory: {}", below.join("fights.jsonl").display(), base::str_repr(&below.to_string_lossy())));
         assert_eq!(_now().len(), 19);
         assert_eq!((COMBAT, LIMIT, _PILES), (["monster", "elite", "boss"], 67108864, ["hand", "draw_pile", "discard_pile", "exhaust_pile"]));
     }

@@ -6,13 +6,13 @@
 //! ```
 //!
 //! The game's own lists: ~/.local/state/sts2bot/loc/<game>/ (STS2's localization/eng from SlayTheSpire2.pck, extracted with
-//! loc/pck.py; the first game's from desktop-1.0.jar). How often each is met: fights.jsonl decks and relics, bot.log power lines.
+//! the game's pack file; the first game's from desktop-1.0.jar). How often each is met: fights.jsonl decks and relics, bot.log power lines.
 //!
-//! Where the Rust differs from scripts/audit/coverage.py: that one walked the bot's Python sources with `ast` for their
+//! Where the Rust differs from the first version of this script: that one walked the bot's sources for their
 //! string constants (docstrings among them). This one reads the Rust sources of the checkout the binary was built from
 //! ([`literals`]): the string literals and the doc comments (the docstrings as ported), an item under `#[cfg(test)]` left out
-//! (Python's tests were other files), and in a rating table (`static _TIER ... IndexMap::from([("KEY", ..), ..])`) the key
-//! that opens each row, as Python left out the keys of the dict.
+//! (the original's tests were other files), and in a rating table (`static _TIER ... IndexMap::from([("KEY", ..), ..])`) the key
+//! that opens each row, as the original left out the keys of the dict.
 
 use std::collections::{BTreeSet, HashSet};
 use std::path::{Path, PathBuf};
@@ -22,7 +22,7 @@ use serde_json::{json, Value};
 
 use super::fightlog::{io_error, read_jsonl, read_text, state_home, upto, Counter};
 use super::modelfight::{exit_code, out};
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 use crate::re;
 
 /// Where a named id is behaviour (not a rating): the planner, deck and relic code, events, the first game's screens and stances.
@@ -280,11 +280,11 @@ pub fn deck_counts(game: &str) -> Result<(Counter, Counter), String> {
     let path = state_file(if game == "sts2" { "fights.jsonl" } else { "sts1/fights.jsonl" });
     let (mut c, mut relics) = (Counter::default(), Counter::default());
     for f in read_jsonl(&path)? {
-        let names: BTreeSet<String> = f["deck"].list().iter().map(py::str_of).collect();
+        let names: BTreeSet<String> = f["deck"].list().iter().map(base::str_of).collect();
         for name in names {
             c.add(&re!(r"\+\d*$").replace(&name, ""));
         }
-        let held: BTreeSet<String> = f["relics"].list().iter().map(py::str_of).collect();
+        let held: BTreeSet<String> = f["relics"].list().iter().map(base::str_of).collect();
         for r in held {
             relics.add(&r);
         }
@@ -307,7 +307,7 @@ pub fn power_mentions(game: &str) -> Result<Counter, String> {
 pub type Row = (String, String, &'static str, i64, String);
 
 fn text_of(v: Option<&Value>, default: &str) -> String {
-    v.map_or_else(|| default.to_string(), py::str_of)
+    v.map_or_else(|| default.to_string(), base::str_of)
 }
 
 /// The ids of a table of "ID.field" keys (only the keys `keep` takes), in order.
@@ -385,7 +385,7 @@ pub fn sts1_cards(named: &HashSet<String>) -> Result<Vec<Row>, String> {
 }
 
 fn words(v: &Value) -> String {
-    upto(&v["DESCRIPTIONS"].list().iter().map(py::str_of).collect::<Vec<_>>().join(" "), 160).to_string()
+    upto(&v["DESCRIPTIONS"].list().iter().map(base::str_of).collect::<Vec<_>>().join(" "), 160).to_string()
 }
 
 pub fn powers(game: &str, named: &HashSet<String>) -> Result<Vec<Row>, String> {
@@ -422,7 +422,7 @@ pub fn powers(game: &str, named: &HashSet<String>) -> Result<Vec<Row>, String> {
 pub fn relics(game: &str, named: &HashSet<String>) -> Result<Vec<Row>, String> {
     use crate::run::{events::_ANCIENT, relicworth};
     let (_, held) = deck_counts(game)?;
-    // (Python asked relicworth for a `_WORTH` it does not have: the Ancients' ratings and the deck-dependent ones are the rated)
+    // (the original asked relicworth for a `_WORTH` it does not have: the Ancients' ratings and the deck-dependent ones are the rated)
     let rated: HashSet<&str> = _ANCIENT.keys().copied().chain(relicworth::_DECK.keys().copied()).collect();
     let mut rows = Vec::new();
     if game == "sts2" {
@@ -465,10 +465,10 @@ pub fn monsters(game: &str, named: &HashSet<String>) -> Result<Vec<Row>, String>
         let data = loc("sts2", "monsters")?;
         for mid in ids(&data, |k| k.ends_with(".name")) {
             let prefix = format!("{mid}.moves.");
-            let moves: BTreeSet<String> = data.iter().filter(|(k, _)| k.starts_with(&prefix)).map(|(_, v)| py::str_of(v)).collect();
+            let moves: BTreeSet<String> = data.iter().filter(|(k, _)| k.starts_with(&prefix)).map(|(_, v)| base::str_of(v)).collect();
             let text = upto(&moves.into_iter().collect::<Vec<_>>().join(", "), 160).to_string();
             let status = if named.contains(&mid) { "rule" } else { "intents" };
-            rows.push((mid.clone(), py::str_of(&data[&format!("{mid}.name")]), status, 0, text));
+            rows.push((mid.clone(), base::str_of(&data[&format!("{mid}.name")]), status, 0, text));
         }
     } else {
         let data = loc("sts1", "monsters")?;
@@ -532,7 +532,7 @@ mod tests {
     use super::super::modelfight::golden;
     use super::*;
 
-    macro_rules! as_python {
+    macro_rules! as_recorded {
         ($($test:ident: $file:literal, $args:expr;)*) => {$(
             #[test]
             fn $test() {
@@ -543,13 +543,13 @@ mod tests {
         )*};
     }
 
-    as_python! {
-        sts2_as_python: "", [];
-        sts2_cards_as_python: "_sts2_cards", ["sts2", "cards", "400"];
-        sts2_powers_as_python: "_sts2_powers", ["sts2", "powers", "5"];
-        sts2_all_as_python: "_sts2_all", ["sts2", "all", "300"];
-        sts1_as_python: "_sts1", ["sts1"];
-        sts1_all_as_python: "_sts1_all", ["sts1", "all", "300"];
+    as_recorded! {
+        sts2_as_recorded: "", [];
+        sts2_cards_as_recorded: "_sts2_cards", ["sts2", "cards", "400"];
+        sts2_powers_as_recorded: "_sts2_powers", ["sts2", "powers", "5"];
+        sts2_all_as_recorded: "_sts2_all", ["sts2", "all", "300"];
+        sts1_as_recorded: "_sts1", ["sts1"];
+        sts1_all_as_recorded: "_sts1_all", ["sts1", "all", "300"];
     }
 
     #[test]

@@ -4,13 +4,13 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 use serde_json::{json, Value};
-use sts2bot::py;
+use sts2bot::base;
 use sts2bot::run::events::{self, EventOptionValueArgs};
 use sts2bot::run::strategy::{self, Memory};
 use sts2bot::run::relics;
 use sts2bot::Action;
 
-/// (The Python's defaults: result "loss", who "The Regent", ascension 7.)
+/// (the original's defaults: result "loss", who "The Regent", ascension 7.)
 fn run_(floor: i64, held: &[&str], result: &str, who: &str, ascension: i64) -> Value {
     json!({"character": who, "ascension": ascension, "floor": floor, "result": result, "relics": held})
 }
@@ -118,8 +118,8 @@ fn test_the_record_is_read_from_the_run_history() {
     {
         let d = tempfile::tempdir().unwrap();
         let path = d.path().join("runs.jsonl");
-        let mut lines: Vec<String> = (0..30).map(|_| py::json_dumps(&run(40, &["STONE_HUMIDIFIER"]))).chain((0..30).map(|_| py::json_dumps(&run(20, &["BOOMING_CONCH"])))).collect();
-        lines.extend(["not json".to_string(), py::json_dumps(&json!({"character": "The Regent", "floor": 33, "result": "loss"}))]); // (an old line: no relics)
+        let mut lines: Vec<String> = (0..30).map(|_| base::json_dumps(&run(40, &["STONE_HUMIDIFIER"]))).chain((0..30).map(|_| base::json_dumps(&run(20, &["BOOMING_CONCH"])))).collect();
+        lines.extend(["not json".to_string(), base::json_dumps(&json!({"character": "The Regent", "floor": 33, "result": "loss"}))]); // (an old line: no relics)
         std::fs::write(&path, lines.join("\n") + "\n").unwrap();
         relics::load(Some(&path), events::_ANCIENT.keys());
     }

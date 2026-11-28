@@ -1,6 +1,6 @@
 //! The first game's monsters, encounters, elites and bosses (Ascension 0 numbers, written from the game's rules).
 //!
-//! (Python's patterns reach the fight through `foe.mem["fight"]`; here every rule is given the fight and the
+//! (the original's patterns reach the fight through `foe.mem["fight"]`; here every rule is given the fight and the
 //! monster's index: see sim/monsters.rs.)
 
 #![allow(non_snake_case)]
@@ -10,7 +10,7 @@ use std::rc::Rc;
 
 use indexmap::IndexMap;
 
-use crate::py::Random;
+use crate::base::Random;
 use crate::sim::effects::{debuff_me, Powers};
 use crate::sim::engine::{Fight, Foe, Fx, Move as M, Spec};
 use crate::sim::monsters::{self, counter, cycle, opening, weighted, weighted_pick, Hook, Pattern};
@@ -33,7 +33,7 @@ fn pat(rule: impl Fn(&mut Fight, usize) -> String + 'static) -> Pattern<Fight> {
     Rc::new(rule)
 }
 
-/// A hook that returns nothing (Python's None).
+/// A hook that returns nothing (the original's None).
 fn hook(rule: impl Fn(&mut Fight, usize, i64, bool) + 'static) -> Hook<Fight> {
     Rc::new(move |f, i, amount, attack| {
         rule(f, i, amount, attack);
@@ -381,7 +381,7 @@ thread_local! {
     static ENCOUNTER_TABLE: Rc<HashMap<i64, HashMap<&'static str, Vec<Encounter>>>> = Rc::new(_encounters());
 }
 
-/// The table of monsters (Python's `S`).
+/// The table of monsters (the original's `S`).
 pub fn S() -> Rc<Table> {
     SPECS.with(|s| s.clone())
 }
@@ -395,7 +395,7 @@ struct Kw {
     hooks: Vec<(&'static str, Hook<Fight>)>,
 }
 
-/// A monster of the table S. (Python's monsters each keep their fight in mind from the start, then do their own
+/// A monster of the table S. (the original's monsters each keep their fight in mind from the start, then do their own
 /// "start" hook, if any: here there is nothing to keep.)
 fn spec(s: &mut Table, key: &str, name: &str, hp: (i64, i64), moves: Vec<(&str, M)>, pattern: Pattern<Fight>, kw: Kw) {
     let mut sp = Spec::new(key, name, hp, moves.into_iter().map(|(k, m)| (k.to_string(), m)), pattern);
@@ -492,7 +492,7 @@ fn _specs() -> Table {
     spec(s, "SENTRY", "Sentry", (38, 42), vec![("beam", m(9)), ("bolt", mx(0, vec![Fx::status("DAZED", 2, "discard")]))], cycle(&["bolt", "beam"], 0), powers(&[("ARTIFACT", 1)]));
     spec(s, "SENTRY_MID", "Sentry", (38, 42), vec![("beam", m(9)), ("bolt", mx(0, vec![Fx::status("DAZED", 2, "discard")]))], cycle(&["beam", "bolt"], 0), powers(&[("ARTIFACT", 1)]));
     spec(s, "SLIME_BOSS", "Slime Boss", (140, 140), vec![("goop", mx(0, vec![_slimed(3)])), ("prep", mk("Unknown")), ("slam", m(35)), ("split", split())],
-         // (the cycle is built anew at every call, as in Python: its count starts over each time)
+         // (the cycle is built anew at every call, as in the original: its count starts over each time)
          pat(|f, i| if f.foes[i].mem.truthy("splitting") { "split".to_string() } else { cycle::<Fight>(&["goop", "prep", "slam"], 0)(f, i) }),
          hooks(vec![("hit", _split_when_half(&["ACID_SLIME_L", "SPIKE_SLIME_L"]))]));
     spec(s, "HEXAGHOST", "Hexaghost", (250, 250),
@@ -528,7 +528,7 @@ fn _specs() -> Table {
          Kw { powers: vec![("FLUTTER", 3)], hooks: vec![("grounded", Rc::new(|f: &mut Fight, i: usize, _, _| {
              f.foes[i].mem.set("grounded", 2);
              f.foes[i].move_name = "stunned".to_string();
-             true // (the Python lambda's tuple)
+             true // (the original lambda's tuple)
          }) as Hook<Fight>)], ..Kw::default() });
     spec(s, "SNAKE_PLANT", "Snake Plant", (75, 79), vec![("chomp", mh(7, 3)), ("spores", mx(0, vec![Fx::n("weak", 2), Fx::n("frail", 2)]))],
          weighted(&[("chomp", 65.0), ("spores", 35.0)], &[("chomp", 2), ("spores", 1)]), powers(&[("MALLEABLE", 3)]));
@@ -624,7 +624,7 @@ pub const GREMLINS: [&str; 8] = ["MAD_GREMLIN", "MAD_GREMLIN", "SNEAKY_GREMLIN",
 pub const SHAPES: [&str; 3] = ["SPIKER", "REPULSOR", "EXPLODER"];
 
 /// An encounter: a list of keys, or a function of the random generator giving one (`name`: what tells it from
-/// the others for the "not the last two again" rule, where Python has the function's id).
+/// the others for the "not the last two again" rule, where the original has the function's id).
 #[derive(Clone)]
 pub enum Encounter {
     Keys(Vec<&'static str>),

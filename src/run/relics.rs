@@ -13,7 +13,7 @@ use serde_json::Value;
 
 use crate::learn::history;
 use crate::logging::Logger;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 static LOG: Logger = Logger::new("sts2bot.relics");
 pub const WIN_BONUS: i64 = 15; // as learn::WIN_BONUS: a win counts as this many floors beyond the last one
@@ -91,7 +91,7 @@ pub fn _rebuild() {
             _table.with_borrow_mut(|table| {
                 table.clear();
                 for (who, band, r#final, held) in runs {
-                    // (Python walks `held & _known` in a set's order, which changes from one process to the next: here by name.)
+                    // (the original walks `held & _known` in a set's order, which changes from one process to the next: here by name.)
                     for relic in held.iter().filter(|r| known.contains(r.as_str())) {
                         let floor = picked_at(relic, held);
                         let par = match usual.get(&(who.as_str(), *band, floor)) {
@@ -108,20 +108,20 @@ pub fn _rebuild() {
     })
 }
 
-/// `int(x or 0)` as Python does it, with its ValueError and TypeError as an Err.
+/// `int(x or 0)` as the original does it, with its ValueError and TypeError as an Err.
 fn _int(x: &Value) -> Result<i64, String> {
     if !x.truthy() {
         return Ok(0);
     }
     match x {
         Value::Bool(b) => Ok(*b as i64),
-        Value::Number(n) => Ok(n.as_i64().unwrap_or_else(|| n.as_f64().map(py::trunc).unwrap_or(0))),
-        Value::String(s) => s.trim().parse::<i64>().map_err(|_| format!("invalid literal for int() with base 10: {}", py::str_repr(s))),
+        Value::Number(n) => Ok(n.as_i64().unwrap_or_else(|| n.as_f64().map(base::trunc).unwrap_or(0))),
+        Value::String(s) => s.trim().parse::<i64>().map_err(|_| format!("invalid literal for int() with base 10: {}", base::str_repr(s))),
         other => Err(format!("int() argument must be a string, a bytes-like object or a real number, not {}", if other.is_array() { "'list'" } else { "'dict'" })),
     }
 }
 
-/// `note`, with what Python raises on a line it cannot read (a ValueError or TypeError) as an Err.
+/// `note`, with what the original raises on a line it cannot read (a ValueError or TypeError) as an Err.
 pub fn try_note(run: &Value, rebuild: bool) -> Result<(), String> {
     let (relics, floor) = (&run["relics"], &run["floor"]);
     if !run["character"].truthy() || relics.is_null() || !(floor.is_int() || floor.is_boolean()) {
@@ -130,21 +130,21 @@ pub fn try_note(run: &Value, rebuild: bool) -> Result<(), String> {
     let r#final = floor.int() + if run["result"].as_str() == Some("win") { WIN_BONUS } else { 0 };
     // (Only the relics the record is about are kept, one shared copy of each name.)
     let names: Vec<String> = match relics {
-        Value::Array(items) => items.iter().map(py::str_of).collect(),
+        Value::Array(items) => items.iter().map(base::str_of).collect(),
         Value::String(s) => s.chars().map(|c| c.to_string()).collect(),
         Value::Object(m) => m.keys().cloned().collect(),
         other => return Err(format!("'{}' object is not iterable", if other.is_boolean() { "bool" } else if other.is_int() { "int" } else { "float" })),
     };
     let held: BTreeSet<String> = _known.with_borrow(|known| names.into_iter().filter(|r| known.contains(r) || ACT2.contains(r.as_str())).collect());
-    let band = py::floordiv(_int(&run["ascension"])?, BAND);
-    _runs.with_borrow_mut(|runs| runs.push((py::str_of(&run["character"]), band, r#final, held)));
+    let band = base::floordiv(_int(&run["ascension"])?, BAND);
+    _runs.with_borrow_mut(|runs| runs.push((base::str_of(&run["character"]), band, r#final, held)));
     if rebuild {
         _rebuild();
     }
     Ok(())
 }
 
-/// Add a finished run (a line of runs.jsonl) to the record. (`rebuild`: true in Python when left out.)
+/// Add a finished run (a line of runs.jsonl) to the record. (`rebuild`: true in the original when left out.)
 pub fn note(run: &Value, rebuild: bool) {
     if let Err(e) = try_note(run, rebuild) {
         panic!("{e}");
@@ -172,7 +172,7 @@ where
     let keys: Vec<String> = _table.with_borrow(|t| t.keys().cloned().collect());
     if !keys.is_empty() {
         let mut moved: Vec<(f64, String)> = keys.into_iter().map(|k| (shift(&k), k)).collect();
-        py::sort_by_key_rev(&mut moved, |m| m.clone());
+        base::sort_by_key_rev(&mut moved, |m| m.clone());
         let show = |rows: &[(f64, String)]| rows.iter().map(|(s, k)| format!("{} {:+.1}", k, s)).collect::<Vec<_>>().join(", ");
         crate::log_info!(
             LOG,
@@ -198,13 +198,13 @@ pub fn shift(relic: &str) -> f64 {
 
 /// relic -> (runs that held it, floors beyond the usual a run), for scripts.
 pub fn record() -> IndexMap<String, (i64, f64)> {
-    _table.with_borrow(|t| t.iter().filter(|(_, [n, _])| *n != 0.0).map(|(k, [n, g])| (k.clone(), (py::trunc(*n), g / n))).collect())
+    _table.with_borrow(|t| t.iter().filter(|(_, [n, _])| *n != 0.0).map(|(k, [n, g])| (k.clone(), (base::trunc(*n), g / n))).collect())
 }
 
 #[cfg(test)]
 mod tests {
-    //! Replays tests/golden/relics.json: what the Python tests and model runs did with the record, one stretch from each
-    //! `load` to the next (written by CPython 3.13 from relics.py).
+    //! Replays tests/golden/relics.json: what the original tests and model runs did with the record, one stretch from each
+    //! `load` to the next (recorded from relics.rs).
     use super::*;
     use serde_json::json;
     use std::io::Write;
@@ -274,10 +274,10 @@ mod tests {
         let run = |floor: i64, relic: &str| json!({"character": "The Ironclad", "ascension": 0, "floor": floor, "result": "loss", "relics": [relic]});
         let mut lines = String::new();
         for _ in 0..30 {
-            lines += &(py::json_dumps(&run(40, "STONE_HUMIDIFIER")) + "\n" + &py::json_dumps(&run(20, "BOOMING_CONCH")) + "\n");
+            lines += &(base::json_dumps(&run(40, "STONE_HUMIDIFIER")) + "\n" + &base::json_dumps(&run(20, "BOOMING_CONCH")) + "\n");
         }
         lines += "not json\n[1, 2]\n";
-        lines += &(py::json_dumps(&json!({"character": "The Ironclad", "floor": 3, "relics": 7})) + "\n");
+        lines += &(base::json_dumps(&json!({"character": "The Ironclad", "floor": 3, "relics": 7})) + "\n");
         let mut file = tempfile::NamedTempFile::new().unwrap();
         file.write_all(lines.as_bytes()).unwrap();
         file.flush().unwrap();

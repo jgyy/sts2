@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use super::battle::{power_amount, Enemy};
 use crate::cards::CardInfo;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 crate::tunables! {
     /// share of what an Ethereal card does when played that keeping it in the deck is worth, as a lasting effect (x span)
@@ -46,7 +46,7 @@ pub fn read(state: &Value) -> Option<Triggers> {
         for e in foes {
             let n = 0.max(power_amount(e, power));
             if n != 0 {
-                out.insert(py::str_of(&e["entity_id"]), n);
+                out.insert(base::str_of(&e["entity_id"]), n);
             }
         }
         out
@@ -177,7 +177,7 @@ pub fn counted(mut hand: Vec<CardInfo>) -> Vec<CardInfo> {
 /// Doom a card applies beyond the number its text begins with (No Escape: "plus an additional 5 Doom for every 10 Doom already on this enemy").
 pub fn more_doom(c: &CardInfo, e: &Enemy) -> i64 {
     if c.key == "NO_ESCAPE" {
-        5 * py::floordiv(e.doom, 10)
+        5 * base::floordiv(e.doom, 10)
     } else {
         0
     }
@@ -219,7 +219,7 @@ pub fn shunned(c: &CardInfo, state: &Value) -> bool {
     } else {
         25.0
     };
-    let turns = -py::ffloordiv((-left) as f64, pace) + 1.0; // (and one to spare: fights run over)
+    let turns = -base::ffloordiv((-left) as f64, pace) + 1.0; // (and one to spare: fights run over)
     let doom = 0.max(power_amount(player, "DOOM")) as f64 + (3 + 0.max(power_amount(player, "NEUROSURGE"))) as f64 * turns;
     let then = player["hp"].int() as f64 - 0.08 * player["max_hp"].int() as f64 * turns; // our HP by then: a boss takes some 8% of Max HP a round
     doom > 0.4 * (if then > 0.0 { then } else { 0.0 })

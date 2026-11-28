@@ -27,7 +27,7 @@ use crate::fight::{artifact, closing, sandpit as pit, triggers};
 use crate::games::sts1::stance::{carry_cost, read as read_stance, stuck_odds, Stance, CALM_EXIT, CALM_LATER, MANTRA_DIVINITY, MANTRA_LATER, TAKEN};
 use crate::learn::knob;
 use crate::logging::{Level, Logger};
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 pub use crate::run::potions::{describe, fortifier, potion_actions};
 pub use crate::Action;
 
@@ -55,12 +55,12 @@ mod own {
 pub use own::{DEBUFF_CAP, ENRAGE_PRICE, FORM_WORTH, HIVE_COST, HIVE_PACE, HP_BASE, HP_BITE, HP_SLOPE, MAX_SEARCH_CARDS, TUNABLES};
 
 /// Give the constant called `name` another value on this thread from now on: one of this module's, or one of battle.rs's
-/// (in Python `combat.RAGE_COST` was the planner's own binding of it; here there is one). False if neither has it.
+/// (in the original `combat.RAGE_COST` was the planner's own binding of it; here there is one). False if neither has it.
 pub fn set_tunable(name: &str, value: f64) -> bool {
     own::set_tunable(name, value) || battle::set_tunable(name, value)
 }
 
-/// `max(a, b)` of two floats as Python has it: the first unless the second is greater.
+/// `max(a, b)` of two floats as the original has it: the first unless the second is greater.
 #[inline]
 fn fmax(a: f64, b: f64) -> f64 {
     if b > a {
@@ -70,7 +70,7 @@ fn fmax(a: f64, b: f64) -> f64 {
     }
 }
 
-/// `min(a, b)` of two floats as Python has it: the first unless the second is less.
+/// `min(a, b)` of two floats as the original has it: the first unless the second is less.
 #[inline]
 fn fmin(a: f64, b: f64) -> f64 {
     if b < a {
@@ -138,7 +138,7 @@ pub fn _idle() {}
 
 /// `sum(_progress(e, _hit(e, amount, 1, raw=True), chip_rate) * dmg_value * e.worth for e in foes if e.alive [and e is not skip])`.
 fn _hit_all(foes: &mut [Enemy], amount: i64, skip: Option<usize>, chip_rate: f64, dmg_value: f64) -> f64 {
-    let mut total = py::Sum::new(0.0);
+    let mut total = base::Sum::new(0.0);
     for (i, e) in foes.iter_mut().enumerate() {
         if e.alive() && skip != Some(i) {
             let removed = _hit(e, amount, 1, false, true);
@@ -158,13 +158,13 @@ pub fn _orb_damage(kind: &str, amount: i64, foes: &mut [Enemy], chip_rate: f64, 
     let targets: &[usize] = if kind == "GLASS" {
         &alive
     } else if kind == "DARK" {
-        dark = [py::min_by_key(alive.iter().copied(), |&i| foes[i].hp).unwrap()];
+        dark = [base::min_by_key(alive.iter().copied(), |&i| foes[i].hp).unwrap()];
         &dark
     } else if alive.len() == 1 {
         &alive
     } else {
         // A bolt at random may kill the wrong crab, and the other gains 99 Block (_rage_blocks).
-        let mut risk = py::Sum::new(0.0);
+        let mut risk = base::Sum::new(0.0);
         for &i in &alive {
             if foes[i].rage && foes[i].hp + foes[i].block <= amount {
                 for &o in &alive {
@@ -176,7 +176,7 @@ pub fn _orb_damage(kind: &str, amount: i64, foes: &mut [Enemy], chip_rate: f64, 
         }
         return amount as f64 * 0.8 * dmg_value - risk.get() / alive.len() as f64;
     };
-    let mut total = py::Sum::new(0.0);
+    let mut total = base::Sum::new(0.0);
     for &i in targets {
         let e = &mut foes[i];
         let removed = _hit(e, amount, 1, false, true);
@@ -185,7 +185,7 @@ pub fn _orb_damage(kind: &str, amount: i64, foes: &mut [Enemy], chip_rate: f64, 
     total.get()
 }
 
-/// (The Python's default: 1 turn.)
+/// (the original's default: 1 turn.)
 pub fn _expose(e: &mut Enemy, turns: i64) {
     if !_resists(e) {
         e.vulnerable = true;
@@ -195,7 +195,7 @@ pub fn _expose(e: &mut Enemy, turns: i64) {
     }
 }
 
-/// Everything a card puts on one enemy. (The Python's default: x 1.)
+/// Everything a card puts on one enemy. (the original's default: x 1.)
 pub fn _debuff(e: &mut Enemy, c: &CardInfo, x: i64) {
     if c.vulnerable != 0 {
         _expose(e, c.vulnerable * x);
@@ -213,13 +213,13 @@ pub fn _debuff(e: &mut Enemy, c: &CardInfo, x: i64) {
     }
     if c.key == "DEBILITATE" && e.vuln_mult < 2.0 && !_resists(e) {
         // "Vulnerable and Weak are twice as effective": for the attacks that follow it this turn too.
-        e.incoming = if e.weak { py::trunc(e.incoming as f64 * 0.5 / e.weak_cut) } else { e.incoming };
+        e.incoming = if e.weak { base::trunc(e.incoming as f64 * 0.5 / e.weak_cut) } else { e.incoming };
         e.vuln_mult = 2.0;
         e.weak_cut = 0.5;
     }
 }
 
-/// A newly Weak enemy hits for 25% less this turn. (The Python's default: 1 turn.)
+/// A newly Weak enemy hits for 25% less this turn. (the original's default: 1 turn.)
 pub fn _weaken(e: &mut Enemy, turns: i64) {
     if _resists(e) {
         return;
@@ -229,7 +229,7 @@ pub fn _weaken(e: &mut Enemy, turns: i64) {
     e.weak_added += fresh;
     if !e.weak {
         e.weak = true;
-        e.incoming = py::trunc(e.incoming as f64 * e.weak_cut);
+        e.incoming = base::trunc(e.incoming as f64 * e.weak_cut);
     }
 }
 
@@ -242,8 +242,8 @@ pub struct Outcome {
     pub lost: i64,
 }
 
-/// `simulate`'s `focus`: aim every targeted card at this enemy while it lives (`At`, Python's plain id), or only the last
-/// aimed card, so that the turn ends facing it (`Last`, Python's `("last", id)`).
+/// `simulate`'s `focus`: aim every targeted card at this enemy while it lives (`At`, the original's plain id), or only the last
+/// aimed card, so that the turn ends facing it (`Last`, the original's `("last", id)`).
 #[derive(Clone, Debug, PartialEq)]
 pub enum Focus {
     At(String),
@@ -254,7 +254,7 @@ pub enum Focus {
 /// the same chance with Simmering Fury's cards drawn).
 pub type Wrath = (f64, IndexMap<String, (f64, f64)>, f64);
 
-/// The keywords of `simulate`, `Default` giving the Python's defaults (its five without one, energy to block: 0).
+/// The keywords of `simulate`, `Default` giving the original's defaults (its five without one, energy to block: 0).
 #[derive(Clone, Debug, PartialEq)]
 pub struct SimulateArgs {
     pub energy: i64,
@@ -447,7 +447,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
         "elite" => 1.3,
         _ => 1.0,
     }) + fmin(0.4, 0.08 * 0.max(round_no - 5) as f64);
-    dmg_value *= 1.0 + fmin(1.5, 0.15 * py::max_of(enemies.iter().filter(|e| e.worth() >= 1.0).map(|e| e.grows)).unwrap_or(0.0));
+    dmg_value *= 1.0 + fmin(1.5, 0.15 * base::max_of(enemies.iter().filter(|e| e.worth() >= 1.0).map(|e| e.grows)).unwrap_or(0.0));
     dmg_value += 0.5 * 0.max(round_no - 12) as f64;
     let chip_rate = fmin(1.0, 0.25 + 0.05 * 0.max(round_no - 10) as f64); // worth of temporary Block removed
     let kept_block: Vec<&Arc<str>> = enemies.iter().filter(|e| e.keeps_block).map(|e| &e.entity_id).collect();
@@ -655,7 +655,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
         let mut t = focused;
         if (c.key == "TIMES_UP" || c.key == "TIME_S_UP") && !alive.is_empty() {
             // "Deal damage equal to the enemy's Doom": no number in its text
-            focused = focused.or_else(|| py::max_by_key(alive.iter().copied(), |&i| foes[i].doom));
+            focused = focused.or_else(|| base::max_by_key(alive.iter().copied(), |&i| foes[i].doom));
             t = focused;
             let c = c.to_mut();
             c.damage = foes[t.unwrap()].doom;
@@ -677,7 +677,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
             if attack {
                 if attacks != 0 {
                     // Vigor and Gigantification went with the first Attack
-                    per = if args.giant { py::round(per as f64 / 3.0) } else { per };
+                    per = if args.giant { base::round(per as f64 / 3.0) } else { per };
                     per -= args.vigor;
                 }
                 attacks += 1;
@@ -723,7 +723,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
                     if !e.alive() {
                         continue;
                     }
-                    let n_hits = py::floordiv(hits, waves);
+                    let n_hits = base::floordiv(hits, waves);
                     self_loss += e.thorns * _hit_count(e, n_hits, c.double_if_vulnerable);
                     dazed += e.hive * _hit_count(e, n_hits, c.double_if_vulnerable) * attack as i64;
                     let done = _fated(e); // damage that does not kill it now changes nothing
@@ -748,13 +748,13 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
         } else if c.needs_target {
             if focused.is_some() {
             } else if c.enemy_strength_loss != 0 {
-                t = py::max_by_key(alive.iter().copied(), |&i| foes[i].incoming.min(c.enemy_strength_loss * foes[i].incoming_hits));
+                t = base::max_by_key(alive.iter().copied(), |&i| foes[i].incoming.min(c.enemy_strength_loss * foes[i].incoming_hits));
             } else if c.weak != 0 && c.vulnerable == 0 {
-                t = py::max_by_key(alive.iter().copied(), |&i| (!foes[i].weak, foes[i].incoming)); // the hardest hitter not Weak yet
+                t = base::max_by_key(alive.iter().copied(), |&i| (!foes[i].weak, foes[i].incoming)); // the hardest hitter not Weak yet
             } else if c.doom != 0 && c.vulnerable == 0 {
                 t = _pick_target(&foes, 0, 0, false); // Doom goes where the attacks go: together they end one enemy sooner
             } else if c.poison_needs {
-                t = py::max_by_key(alive.iter().copied(), |&i| (foes[i].poison, foes[i].worth())); // (Bubble Bubble) only the poisoned one takes it
+                t = base::max_by_key(alive.iter().copied(), |&i| (foes[i].poison, foes[i].worth())); // (Bubble Bubble) only the poisoned one takes it
             } else {
                 // (Uproot: the Impaled one)
                 let refs: Vec<&Enemy> = alive.iter().map(|&i| &foes[i]).collect();
@@ -762,7 +762,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
                 let fresh: Vec<usize> = pool.iter().copied().filter(|&k| !refs[k].vulnerable).collect();
                 let among = if fresh.is_empty() { &pool } else { &fresh };
                 // Vulnerable: on whom we will hit the longest (the next to die, by a kill order)
-                t = py::max_by_key(among.iter().map(|&k| alive[k]), |&i| (foes[i].focus, foes[i].hp + foes[i].block));
+                t = base::max_by_key(among.iter().map(|&k| alive[k]), |&i| (foes[i].focus, foes[i].hp + foes[i].block));
             }
             if let Some(i) = t {
                 _debuff(&mut foes[i], &c, xs);
@@ -815,7 +815,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
                 &one
             } else {
                 // untargeted or random: the enemy that matters most
-                match py::min_by_key(alive_now.iter().copied(), |&i| (-foes[i].worth(), foes[i].hp)) {
+                match base::min_by_key(alive_now.iter().copied(), |&i| (-foes[i].worth(), foes[i].hp)) {
                     Some(i) => {
                         one = [i];
                         &one
@@ -847,7 +847,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
             }
         }
         if c.needs_target && c.damage == 0 && aimed.is_none() && !alive_now.is_empty() && (c.poison != 0 || c.doom != 0) && n == 0 && first_target.is_none() {
-            let i = py::min_by_key(alive_now.iter().copied(), |&i| (-foes[i].worth(), -foes[i].hp)).unwrap();
+            let i = base::min_by_key(alive_now.iter().copied(), |&i| (-foes[i].worth(), -foes[i].hp)).unwrap();
             first_target = Some(foes[i].entity_id.clone());
         }
         if trig.is_some() || c.doom_kills {
@@ -961,7 +961,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
         if c.r#type == "Skill" {
             tainted += taint;
             // Enrage: each Skill, Strength for good
-            score -= py::fsum(foes.iter().filter(|e| e.alive()).map(|e| e.enrage as f64 * ENRAGE_PRICE.get() * 1.max(e.incoming_hits) as f64 * fmin(4.0, 1.0 + e.hp as f64 / 35.0)));
+            score -= base::fsum(foes.iter().filter(|e| e.alive()).map(|e| e.enrage as f64 * ENRAGE_PRICE.get() * 1.max(e.incoming_hits) as f64 * fmin(4.0, 1.0 + e.hp as f64 / 35.0)));
         }
         drawn += c.draw * xs;
         if c.strength != 0 {
@@ -975,17 +975,17 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
             // ... and Strength taken off an enemy for good comes off every hit it has left (this turn's share: in `incoming`)
             let all = c.aoe || t.is_none();
             let on = (if all { &alive[..] } else { &[] }).iter().copied().chain(if all { None } else { t });
-            future += py::fsum(on.filter(|&i| foes[i].alive()).map(|i| (c.enemy_strength_loss * 1.max(foes[i].incoming_hits)) as f64 * 2.0 * foes[i].worth())) * span;
+            future += base::fsum(on.filter(|&i| foes[i].alive()).map(|i| (c.enemy_strength_loss * 1.max(foes[i].incoming_hits)) as f64 * 2.0 * foes[i].worth())) * span;
         }
         if c.enemy_strength_gain != 0 {
             // ... and Strength given to one goes on every hit it has left (Fight Me; until 2026-11-26 not seen at all)
             let all = c.aoe || t.is_none();
             let on = (if all { &alive[..] } else { &[] }).iter().copied().chain(if all { None } else { t });
-            future -= py::fsum(on.filter(|&i| foes[i].alive()).map(|i| (c.enemy_strength_gain * 1.max(foes[i].incoming_hits)) as f64 * 2.0 * foes[i].worth())) * span;
+            future -= base::fsum(on.filter(|&i| foes[i].alive()).map(|i| (c.enemy_strength_gain * 1.max(foes[i].incoming_hits)) as f64 * 2.0 * foes[i].worth())) * span;
         }
         if c.r#type == "Power" {
             // (as Enrage: Curiosity)
-            score -= py::fsum(foes.iter().filter(|e| e.alive()).map(|e| e.curious as f64 * ENRAGE_PRICE.get() * 1.max(e.incoming_hits) as f64 * fmin(4.0, 1.0 + e.hp as f64 / 35.0)));
+            score -= base::fsum(foes.iter().filter(|e| e.alive()).map(|e| e.curious as f64 * ENRAGE_PRICE.get() * 1.max(e.incoming_hits) as f64 * fmin(4.0, 1.0 + e.hp as f64 / 35.0)));
             // (An Ethereal Power not played now is never played: more in a long fight. A second Friendship is energy the hand has no cards for.)
             let again = if c.key == "FRIENDSHIP" {
                 let again = 0.5f64.powf(friends as f64);
@@ -1125,13 +1125,13 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
             score += (0.max(e.weak_added - 1) as f64 + 0.3 * e.weak_added.min(1) as f64) * weak_turn * (if e.incoming_hits != 0 || !e.minion { 1.0 } else { 0.5 });
         }
     }
-    score += py::fsum(foes.iter().zip(enemies).filter(|(e, orig)| e.alive() && e.artifact < orig.artifact).map(|(e, orig)| artifact::gain(orig.artifact, e.artifact, args.strip) * e.worth()));
-    score += 20.0 * py::fsum(foes.iter().zip(enemies).filter(|(e, orig)| e.alive() && e.doom >= e.hp && orig.doom < orig.hp).map(|(e, _)| e.worth())); // Doom kills at the end of its turn
+    score += base::fsum(foes.iter().zip(enemies).filter(|(e, orig)| e.alive() && e.artifact < orig.artifact).map(|(e, orig)| artifact::gain(orig.artifact, e.artifact, args.strip) * e.worth()));
+    score += 20.0 * base::fsum(foes.iter().zip(enemies).filter(|(e, orig)| e.alive() && e.doom >= e.hp && orig.doom < orig.hp).map(|(e, _)| e.worth())); // Doom kills at the end of its turn
     if respawn {
         _respawns(&mut foes); // a Stock enemy killed by the last card comes back too
     }
     let kills = foes.iter().zip(enemies).filter(|(e, orig)| !e.alive() && orig.alive()).count() as i64;
-    score += 25.0 * py::fsum(foes.iter().zip(enemies).filter(|(e, orig)| !e.alive() && orig.alive()).map(|(e, _)| e.worth()));
+    score += 25.0 * base::fsum(foes.iter().zip(enemies).filter(|(e, orig)| !e.alive() && orig.alive()).map(|(e, _)| e.worth()));
     score += FORM_WORTH.get() * foes.iter().filter(|e| e.adapted).count() as f64; // a form beaten: that much of the fight is done
     let mut survivors: Vec<usize> = (0..foes.len()).filter(|&i| foes[i].alive()).collect();
     if survivors.is_empty() || (survivors.iter().all(|&i| foes[i].minion) && !enemies.iter().all(|e| e.minion)) {
@@ -1163,14 +1163,14 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
         for &i in &survivors {
             let e = &mut foes[i];
             if e.flanker && e.behind && e.entity_id == *faced {
-                e.incoming = py::round(e.incoming as f64 / 1.5);
+                e.incoming = base::round(e.incoming as f64 / 1.5);
             } else if e.flanker && !e.behind && e.entity_id != *faced {
-                e.incoming = py::round(e.incoming as f64 * 1.5);
+                e.incoming = base::round(e.incoming as f64 * 1.5);
             }
         }
     }
     let survivors: Vec<&Enemy> = survivors.iter().map(|&i| &foes[i]).collect();
-    let incoming = py::round(survivors.iter().map(|e| e.incoming + tainted * e.incoming_hits).sum::<i64>() as f64 * st.taken());
+    let incoming = base::round(survivors.iter().map(|e| e.incoming + tainted * e.incoming_hits).sum::<i64>() as f64 * st.taken());
     if block <= 0 && can_block {
         block = args.bare_block;
     }
@@ -1181,7 +1181,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
     let mut burnt: i64 = args.burns.iter().filter(|(index, _, blocked)| !*blocked && !played(*index)).map(|(_, amount, _)| if *amount < 0 { left } else { *amount }).sum();
     if args.wither_in > 0 && line.len() as i64 >= args.wither_in {
         // a Wither lands in the hand and burns when the turn ends
-        scorch += args.wither_hp * (1 + py::floordiv(line.len() as i64 - args.wither_in, 6));
+        scorch += args.wither_hp * (1 + base::floordiv(line.len() as i64 - args.wither_in, 6));
     }
     let guard = pet.max(0).min(block.max(0)); // (Osty stops attacks and nothing else)
     let own = 0.max(block - guard) * args.fortify; // Block that is ours
@@ -1194,8 +1194,8 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
         // only the hits that get through leave a scar
         for e in &survivors {
             if e.incoming != 0 && e.scar != 0.0 {
-                let per = 1.max(py::floordiv(e.incoming, 1.max(e.incoming_hits)));
-                score -= e.scar * e.incoming_hits.min(-py::floordiv(-through, per)) as f64;
+                let per = 1.max(base::floordiv(e.incoming, 1.max(e.incoming_hits)));
+                score -= e.scar * e.incoming_hits.min(-base::floordiv(-through, per)) as f64;
             }
         }
     }
@@ -1230,7 +1230,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
             });
         if args.mastery != 0 {
             // ... and under Necro Mastery what he is hit for, every enemy is hit for as well
-            score += ((pet - kept) * args.mastery) as f64 * dmg_value * py::fsum(survivors.iter().map(|e| e.worth()));
+            score += ((pet - kept) * args.mastery) as f64 * dmg_value * base::fsum(survivors.iter().map(|e| e.worth()));
         }
     }
     if args.holds {
@@ -1261,7 +1261,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
         let odds = if fury { *odds_fury } else { *odds }; // (Simmering Fury's cards drawn are more chances of a way out)
         // (a first turn: what it shows now)
         let seen: Vec<(f64, f64)> = survivors.iter().map(|e| blows.get(&*e.entity_id).copied().unwrap_or_else(|| (e.incoming as f64 / TAKEN.get(st.start).copied().unwrap_or(1.0), 1.0))).collect();
-        score -= carry_cost(odds, py::fsum(seen.iter().map(|(b, _)| *b)), hp - lost, py::max_of(seen.iter().filter(|(b, _)| *b > 0.0).map(|(_, share)| *share)).unwrap_or(0.0));
+        score -= carry_cost(odds, base::fsum(seen.iter().map(|(b, _)| *b)), hp - lost, base::max_of(seen.iter().filter(|(b, _)| *b > 0.0).map(|(_, share)| *share)).unwrap_or(0.0));
     }
     if (line.len() as i64) < args.wither_in {
         // stopping short of the next Wither only puts it off (the count carries over) to the next turn's first card
@@ -1389,7 +1389,7 @@ pub fn _wrath_outlook(state: &Value) -> Option<Wrath> {
 }
 
 /// What `choose_card` leaves for its caller: `lost`, the HP the best line still loses; its `score`; the `line` itself.
-/// (Python's `plan` dict: a field is None while the key is not there.)
+/// (the original's `plan` dict: a field is None while the key is not there.)
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Plan {
     pub lost: Option<i64>,
@@ -1475,7 +1475,8 @@ pub fn _choose_card(state: &Value, plan: Option<&mut Plan>) -> Option<Action> {
         return _set_up(&owned(&playable), ctx.energy);
     }
     if enemies.len() == 1 && enemies[0].asleep >= 2 && ctx.round_no <= 2 {
-        // Asleep ("Awakens upon losing HP or after 3 turns"): she wakes on her own time whatever we do, so the turns before the last are for what lasts.
+        // Asleep ("Awakens upon losing HP or after 3 turns"): she wakes on her own time whatever we do, so the turns before the last are for what lasts
+        // (waking her early with a strong hand lost fights in the model: scripts bosses/matriarchfight, 68% -> 63%).
         return _set_up(&owned(&playable), ctx.energy);
     }
     if playable.is_empty() || enemies.is_empty() {
@@ -1508,18 +1509,18 @@ pub fn _choose_card(state: &Value, plan: Option<&mut Plan>) -> Option<Action> {
     }
     let most = MAX_SEARCH_CARDS.get();
     if playable.len() as i64 > most {
-        py::sort_by_key(&mut playable, |c| -(c.total_damage() + c.block + 3 * c.draw));
+        base::sort_by_key(&mut playable, |c| -(c.total_damage() + c.block + 3 * c.draw));
         playable.truncate(most.max(0) as usize);
     }
     if ctx.card_limit.is_some_and(|limit| limit <= 0) {
         return None;
     }
     if ctx.card_limit.is_some_and(|limit| limit <= 3) {
-        py::sort_by_key(&mut playable, |c| (-(c.total_damage() + c.block), c.index)); // few plays allowed: spend them on what does the most now
+        base::sort_by_key(&mut playable, |c| (-(c.total_damage() + c.block), c.index)); // few plays allowed: spend them on what does the most now
     } else if enemies.iter().any(|e| e.slow >= 0) {
-        py::sort_by_key(&mut playable, |c| (if c.damage != 0 { 1 } else { 0 }, c.total_damage(), c.index)); // Slow: every card played makes later attacks hit harder
+        base::sort_by_key(&mut playable, |c| (if c.damage != 0 { 1 } else { 0 }, c.total_damage(), c.index)); // Slow: every card played makes later attacks hit harder
     } else if enemies.iter().any(|e| e.slippery != 0) {
-        py::sort_by_key(&mut playable, |c| (if c.damage == 0 { order_key(c).0 } else { 3 }, c.damage, c.index)); // Slippery: burn it off with the weakest hits
+        base::sort_by_key(&mut playable, |c| (if c.damage == 0 { order_key(c).0 } else { 3 }, c.damage, c.index)); // Slippery: burn it off with the weakest hits
     } else {
         // (Flatten and Rattle after Osty's other attacks: one is free then, the other hits again. No Escape after the other Doom.)
         let after = |c: &CardInfo| -> (i64, f64, i64) {
@@ -1530,7 +1531,7 @@ pub fn _choose_card(state: &Value, plan: Option<&mut Plan>) -> Option<Action> {
                 (key.0, key.1 as f64, key.2)
             }
         };
-        py::sort_by_key(&mut playable, |c| {
+        base::sort_by_key(&mut playable, |c| {
             if pays(c) {
                 let key = order_key(c);
                 (1, key.1 as f64, key.2)
@@ -1541,12 +1542,12 @@ pub fn _choose_card(state: &Value, plan: Option<&mut Plan>) -> Option<Action> {
     }
     // The free plays go to the dearest cards; a card that ends the turn (Void Form itself) goes last.
     let mut dear: Vec<&CardInfo> = playable.iter().copied().filter(|c| c.cost > 0).collect();
-    py::sort_by_key(&mut dear, |c| -c.cost);
+    base::sort_by_key(&mut dear, |c| -c.cost);
     dear.truncate(free.max(0) as usize);
     if ctx.doubled && !playable.is_empty() && !playable.iter().any(|c| c.r#type == "Power") {
-        dear.push(py::max_by_key(playable.iter().copied(), |c| c.total_damage() + c.block + 3 * c.draw).unwrap()); // the card worth playing twice leads
+        dear.push(base::max_by_key(playable.iter().copied(), |c| c.total_damage() + c.block + 3 * c.draw).unwrap()); // the card worth playing twice leads
     }
-    py::sort_by_key(&mut playable, |c| (c.ends_turn, !dear.contains(c))); // (stable: the rest keep their order)
+    base::sort_by_key(&mut playable, |c| (c.ends_turn, !dear.contains(c))); // (stable: the rest keep their order)
     // Bound cards: one per turn (once one is played the game marks the rest unplayable, so any still playable means it is unused).
     let bound_left: Option<i64> = if playable.iter().any(|c| c.bound) { Some(1) } else { None };
     let skill_left: Option<i64> = if _has_power(&state["player"], "SMOGGY") { Some(1) } else { None }; // Smoggy ("You can only play 1 Skill per turn") the same way
@@ -1657,7 +1658,7 @@ pub fn _choose_card(state: &Value, plan: Option<&mut Plan>) -> Option<Action> {
     if card.needs_target {
         params["target"] = match best_target.filter(|id| !id.is_empty()) {
             Some(id) => json!(&*id),
-            None => json!(&*py::min_by_key(enemies.iter(), |e| e.hp + e.block).unwrap().entity_id),
+            None => json!(&*base::min_by_key(enemies.iter(), |e| e.hp + e.block).unwrap().entity_id),
         };
     }
     Some(("play_card".to_string(), params))

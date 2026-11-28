@@ -2,8 +2,8 @@
 //! when it crashes, freezes or the bot gets stuck. What is particular to a game is its host (`Sts2Host` here, `games::sts1::host::Sts1Host`).
 //!
 //! Everything this module asks of the machine (programs run and started, the clocks, sleeping, the environment, a few paths)
-//! and the functions the Python tests replaced by name go through one set of seams, per thread: `patch(|s| ...)` puts
-//! stand-ins in place until its guard is dropped (the Python's `mock.patch.object(supervisor, ...)`).
+//! and the functions the original tests replaced by name go through one set of seams, per thread: `patch(|s| ...)` puts
+//! stand-ins in place until its guard is dropped (the original's `mock.patch.object(supervisor, ...)`).
 
 #![allow(non_snake_case, non_upper_case_globals)]
 
@@ -20,7 +20,7 @@ use crate::bot::{Bot, BotError, Progress, SharedGame};
 use crate::client::{os_error_text, Game};
 use crate::games::both::{self, Proc};
 use crate::logging::Logger;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 use crate::{log_debug, log_error, log_info, log_warning};
 
 pub use crate::games::both::KeyboardInterrupt;
@@ -80,7 +80,7 @@ macro_rules! seams {
 }
 
 seams! {
-    /// `subprocess.run(argv, capture_output=True, text=True, timeout=...)`. Err: what Python's exception said
+    /// `subprocess.run(argv, capture_output=True, text=True, timeout=...)`. Err: what the original's exception said
     /// (the program could not be started, or was still going after the timeout).
     run, set_run: (&[String], Option<f64>) -> Result<Completed, String>;
     /// `subprocess.Popen(argv, start_new_session=True, ...)`.
@@ -102,7 +102,7 @@ seams! {
     launch_game, set_launch_game: (&str);
     kill_game, set_kill_game: (f64);
     _spawn, set_spawn: (&[String], SpawnArgs) -> std::io::Result<()>;
-    /// `self.bot.run(max_runs)` in `Supervisor.run` (a bot that does as scripted: the Python tests' mock bot).
+    /// `self.bot.run(max_runs)` in `Supervisor.run` (a bot that does as scripted: the original tests' mock bot).
     bot_run, set_bot_run: (&mut Bot, Option<i64>) -> Result<(), BotError>;
 }
 
@@ -182,7 +182,7 @@ pub fn which(name: &str) -> Option<String> {
     std::env::split_paths(&path).map(|dir| dir.join(name)).find(|p| p.metadata().map(|m| m.is_file() && m.permissions().mode() & 0o111 != 0).unwrap_or(false)).map(|p| p.to_string_lossy().into_owned())
 }
 
-/// `time.sleep(seconds)`; Err when we are told to stop meanwhile (Python's KeyboardInterrupt came out of the sleep).
+/// `time.sleep(seconds)`; Err when we are told to stop meanwhile (the original's KeyboardInterrupt came out of the sleep).
 pub fn sleep(seconds: f64) -> Result<(), KeyboardInterrupt> {
     if let Some(f) = seam!(sleep) {
         return (f.borrow_mut())(seconds);
@@ -206,9 +206,9 @@ pub fn time() -> f64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs_f64()).unwrap_or(0.0)
 }
 
-/// `str(e)` of the OSError Python raised over `name`: "[Errno 2] No such file or directory: 'steam'".
+/// `str(e)` of the OSError the original raised over `name`: "[Errno 2] No such file or directory: 'steam'".
 pub fn os_error(e: &std::io::Error, name: &str) -> String {
-    format!("{}: {}", os_error_text(e), py::str_repr(name))
+    format!("{}: {}", os_error_text(e), base::str_repr(name))
 }
 
 /// `subprocess.run(argv, capture_output=True, text=True, timeout=timeout)`, through the seam.
@@ -239,8 +239,8 @@ pub fn run(argv: &[String], timeout: Option<f64>) -> Result<Completed, String> {
             Ok(None) => {
                 let _ = child.kill();
                 let _ = child.wait();
-                let words: Vec<String> = argv.iter().map(|a| py::str_repr(a)).collect();
-                return Err(format!("Command '[{}]' timed out after {} seconds", words.join(", "), py::float_g(timeout.unwrap_or(0.0))));
+                let words: Vec<String> = argv.iter().map(|a| base::str_repr(a)).collect();
+                return Err(format!("Command '[{}]' timed out after {} seconds", words.join(", "), base::float_g(timeout.unwrap_or(0.0))));
             }
             Err(e) => return Err(os_error_text(&e)),
         }
@@ -249,7 +249,7 @@ pub fn run(argv: &[String], timeout: Option<f64>) -> Result<Completed, String> {
     Ok(Completed { returncode, stdout: out.join().unwrap_or_default(), stderr: err.join().unwrap_or_default() })
 }
 
-/// (Where Python's `subprocess.run` raised and nothing caught it.)
+/// (Where the original's `subprocess.run` raised and nothing caught it.)
 fn ran(argv: &[&str]) -> Completed {
     let argv: Vec<String> = argv.iter().map(|a| a.to_string()).collect();
     run(&argv, None).unwrap_or_else(|e| panic!("{e}"))
@@ -431,7 +431,7 @@ pub fn game_dir() -> PathBuf {
 // The bridge mod is built against the game's code: rebuilt when a game update changed it, or the game's log says it failed to load.
 pub const MOD_NAME: &str = "STS2_MCP";
 
-/// (Python's: beside the package it was imported from; here: in the directory the program was built in.)
+/// (the original's: beside the package it was imported from; here: in the directory the program was built in.)
 pub fn INSTALL_SCRIPT() -> PathBuf {
     SEAMS.with(|s| s.borrow().INSTALL_SCRIPT.clone()).unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("scripts").join("install_mod.sh"))
 }
@@ -440,7 +440,7 @@ pub fn MOD_STAMP() -> PathBuf {
     SEAMS.with(|s| s.borrow().MOD_STAMP.clone()).unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".build").join("mod_built_for"))
 }
 
-/// (As the environment was when it was first asked for: the Python's was set at import.)
+/// (As the environment was when it was first asked for: the original's was set at import.)
 pub fn GAME_LOG() -> PathBuf {
     static REAL: LazyLock<PathBuf> = LazyLock::new(|| {
         let base = std::env::var("XDG_DATA_HOME").ok().filter(|v| !v.is_empty()).map(PathBuf::from).unwrap_or_else(|| {
@@ -505,7 +505,7 @@ pub fn _game_log(since: f64) -> String {
 }
 
 /// Why the game refused to load the mod, from its log (None if it did not). `since` (a `time()`) skips an older log.
-/// (Python's default: `since=0.0`.)
+/// (the original's default: `since=0.0`.)
 pub fn mod_load_error(since: f64) -> Option<String> {
     if let Some(f) = seam!(mod_load_error) {
         return (f.borrow_mut())(since);
@@ -589,7 +589,7 @@ pub fn default_launch() -> String {
     }
 }
 
-/// (Python's module constant, `default_launch()` at import: here as things were when it was first asked for.)
+/// (the original's module constant, `default_launch()` at import: here as things were when it was first asked for.)
 pub fn DEFAULT_LAUNCH() -> String {
     static REAL: LazyLock<String> = LazyLock::new(|| {
         let saved = SEAMS.with(|s| s.borrow_mut().environ.take());
@@ -631,7 +631,7 @@ pub fn _failed(result: &Value) -> bool {
     result["status"] == "error" || result.has("error")
 }
 
-/// (Python's default: `grace=10.0`.)
+/// (the original's default: `grace=10.0`.)
 pub fn kill_game(grace: f64) -> Result<(), KeyboardInterrupt> {
     if let Some(f) = seam!(kill_game) {
         (f.borrow_mut())(grace);
@@ -663,14 +663,14 @@ pub fn set_fast_mode(client: &mut dyn Game, mode: &str) -> Result<bool, BotError
         result = client.act("set_fast_mode", &json!({"mode": mode}))?;
     }
     if _failed(&result) {
-        log_warning!(log, "could not set fast mode {} ({}); re-run scripts/install_mod.sh to update the mod", py::str_repr(mode), py::str_of(&result["error"]));
+        log_warning!(log, "could not set fast mode {} ({}); re-run scripts/install_mod.sh to update the mod", base::str_repr(mode), base::str_of(&result["error"]));
         return Ok(false);
     }
     log_info!(log, "fast mode: {}", mode);
     Ok(true)
 }
 
-/// `set_light_graphics`'s keyword arguments, with the Python's defaults.
+/// `set_light_graphics`'s keyword arguments, with the original's defaults.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SetLightGraphicsArgs {
     pub width: i64,
@@ -690,7 +690,7 @@ pub fn set_light_graphics(client: &mut dyn Game, args: SetLightGraphicsArgs) -> 
     let SetLightGraphicsArgs { width, height, maximize, fullscreen } = args;
     let result = client.act("set_light_graphics", &json!({"width": width, "height": height, "maximize": maximize, "fullscreen": fullscreen}))?;
     if _failed(&result) {
-        log_warning!(log, "could not switch to light graphics ({}); re-run scripts/install_mod.sh", py::str_of(&result["error"]));
+        log_warning!(log, "could not switch to light graphics ({}); re-run scripts/install_mod.sh", base::str_of(&result["error"]));
         return Ok(false);
     }
     if fullscreen && !result["fullscreen"].truthy() {
@@ -713,10 +713,10 @@ pub fn set_light_graphics(client: &mut dyn Game, args: SetLightGraphicsArgs) -> 
 pub fn set_time_scale(client: &mut dyn Game, scale: f64) -> Result<bool, BotError> {
     let result = client.act("set_time_scale", &json!({"scale": scale}))?;
     if _failed(&result) {
-        log_warning!(log, "could not set the time scale ({}); re-run scripts/install_mod.sh to update the mod", py::str_of(&result["error"]));
+        log_warning!(log, "could not set the time scale ({}); re-run scripts/install_mod.sh to update the mod", base::str_of(&result["error"]));
         return Ok(false);
     }
-    log_info!(log, "time scale: x{}", py::float_g(scale));
+    log_info!(log, "time scale: x{}", base::float_g(scale));
     Ok(true)
 }
 
@@ -742,7 +742,7 @@ pub fn _spawn(argv: &[String], kw: SpawnArgs) -> std::io::Result<()> {
 }
 
 /// Start the Steam client if it is not running and wait until it is ready (without it the game never loads the mod).
-/// (Python's default: `timeout=180.0`.)
+/// (the original's default: `timeout=180.0`.)
 pub fn ensure_steam(timeout: f64) -> Result<bool, KeyboardInterrupt> {
     if _process_running("steam") {
         return Ok(true);
@@ -770,7 +770,7 @@ pub fn ensure_steam(timeout: f64) -> Result<bool, KeyboardInterrupt> {
     Ok(false)
 }
 
-/// (A launch command that cannot be read, or a program that cannot be started, ends the program here as the Python's
+/// (A launch command that cannot be read, or a program that cannot be started, ends the program here as the original's
 /// uncaught ValueError or OSError did.)
 pub fn launch_game(cmd: &str) -> Result<(), KeyboardInterrupt> {
     if let Some(f) = seam!(launch_game) {
@@ -793,7 +793,7 @@ pub fn launch_game(cmd: &str) -> Result<(), KeyboardInterrupt> {
     Ok(())
 }
 
-/// What the supervisor needs to know about a game (Python's hosts were two classes with the same methods).
+/// What the supervisor needs to know about a game (the original's hosts were two classes with the same methods).
 pub trait Host {
     fn name(&self) -> &'static str;
     /// the bridge mod can be rebuilt by the supervisor
@@ -803,9 +803,9 @@ pub trait Host {
     fn kill(&self) -> Result<(), BotError>;
     fn mod_is_stale(&self) -> bool;
     fn rebuild_mod(&self) -> bool;
-    /// (Python's default: `since=0.0`.)
+    /// (the original's default: `since=0.0`.)
     fn mod_load_error(&self, since: f64) -> Option<String>;
-    /// (Python's default: `since=0.0`.)
+    /// (the original's default: `since=0.0`.)
     fn missing_steam(&self, since: f64) -> bool;
     fn no_api_hint(&self) -> String;
     /// Session settings, sent each time the bot (re)connects.
@@ -874,7 +874,7 @@ impl Host for Sts2Host {
     }
 }
 
-/// The keyword arguments of `Supervisor(bot, client, ...)`, with the Python's defaults.
+/// The keyword arguments of `Supervisor(bot, client, ...)`, with the original's defaults.
 pub struct SupervisorArgs {
     /// (None: `Sts2Host`)
     pub host: Option<Rc<dyn Host>>,
@@ -925,6 +925,8 @@ pub struct Supervisor {
     pub heal_mod: bool,
     pub restarts: i64,
     pub _last_stuck_at: Option<Progress>,
+    /// outages during which the ping still answered: (when the first of them began, when the last one ended)
+    pub _deaf: Option<(f64, f64)>,
     pub _mod_retry_at: f64, // no rebuild attempts before this (after a failed build)
     pub _crash_at: Option<Progress>, // where the bot was when the game last crashed
     pub _crash_repeats: i64,
@@ -954,6 +956,7 @@ impl Supervisor {
             heal_mod,
             restarts: 0,
             _last_stuck_at: None,
+            _deaf: None,
             _mod_retry_at: 0.0,
             _crash_at: None,
             _crash_repeats: 0,
@@ -1091,7 +1094,7 @@ impl Supervisor {
         Ok(())
     }
 
-    /// Play until `max_runs` runs have finished (forever if None). Err: we were told to stop (Python's KeyboardInterrupt
+    /// Play until `max_runs` runs have finished (forever if None). Err: we were told to stop (the original's KeyboardInterrupt
     /// came out of here).
     pub fn run(&mut self, max_runs: Option<i64>) -> Result<(), KeyboardInterrupt> {
         let interrupted = |e: BotError| match e {
@@ -1120,6 +1123,21 @@ impl Supervisor {
                         continue;
                     }
                     if self._wait_for_api(self.outage_grace, None)? {
+                        // The mod's ping is answered off the game's main thread: a game spinning in a loop still answers it and
+                        // nothing else (2026-11-28: 25 minutes of this at one card of a Vantom fight). Outages that follow one
+                        // another for longer than the grace are a hang: restart as after a crash, and avoid what was asked last.
+                        let now = monotonic();
+                        let since = match self._deaf {
+                            Some((since, last)) if now - last < self.outage_grace + 30.0 => since,
+                            _ => now,
+                        };
+                        self._deaf = Some((since, now));
+                        if !self.manage_game || now - since < self.outage_grace {
+                            continue;
+                        }
+                        self._deaf = None;
+                        self._note_crash();
+                        self.restart_game("the game answers pings but nothing else (hung)").map_err(interrupted)?;
                         continue;
                     }
                     self.restart_game("game stopped answering").map_err(interrupted)?;
@@ -1201,7 +1219,7 @@ pub(crate) mod testing {
 
 #[cfg(test)]
 mod tests {
-    //! Against Python: tests/golden/supervisor/supervisor.json (each function over made-up inputs, the machine faked on
+    //! Against the original: tests/golden/supervisor/supervisor.json (each function over made-up inputs, the machine faked on
     //! both sides) and sequences.json (whole `Supervisor.run`s in a scripted world: every program run or started, every
     //! sleep, every request to the game and every line logged).
 
@@ -1223,7 +1241,7 @@ mod tests {
     }
 
     #[test]
-    fn shlex_as_python_has_it() {
+    fn shlex_as_the_record_has_it() {
         let cases = golden("shlex");
         assert!(cases.len() >= 60);
         for case in cases {
@@ -1238,7 +1256,7 @@ mod tests {
     }
 
     #[test]
-    fn the_game_log_is_read_as_python_read_it() {
+    fn the_game_log_is_read_as_the_record_read_it() {
         for case in golden("mod_load_error") {
             let d = tempfile::tempdir().unwrap();
             let _p = patch(|s| {
@@ -1277,7 +1295,7 @@ mod tests {
     }
 
     #[test]
-    fn a_stale_mod_is_told_as_in_python() {
+    fn a_stale_mod_is_told_as_recorded() {
         let cases = golden("mod_is_stale");
         assert!(cases.len() >= 42);
         for case in cases {
@@ -1299,7 +1317,7 @@ mod tests {
     }
 
     #[test]
-    fn the_mod_is_rebuilt_as_in_python() {
+    fn the_mod_is_rebuilt_as_recorded() {
         let cases = golden("rebuild_mod");
         assert!(cases.len() >= 40);
         for case in cases {
@@ -1368,7 +1386,7 @@ mod tests {
     }
 
     #[test]
-    fn the_session_settings_are_sent_as_in_python() {
+    fn the_session_settings_are_sent_as_recorded() {
         let cases = golden("settings");
         assert!(cases.len() >= 29);
         for case in cases {
@@ -1408,7 +1426,7 @@ mod tests {
     }
 
     #[test]
-    fn a_scope_of_its_own_under_systemd_as_in_python() {
+    fn a_scope_of_its_own_under_systemd_as_recorded() {
         let cases = golden("detached");
         assert!(cases.len() >= 27);
         for case in cases {
@@ -1422,7 +1440,7 @@ mod tests {
     }
 
     #[test]
-    fn the_game_is_found_as_in_python() {
+    fn the_game_is_found_as_recorded() {
         use std::os::unix::fs::PermissionsExt;
         let cases = golden("default_launch");
         assert!(cases.len() >= 14);
@@ -1453,7 +1471,7 @@ mod tests {
         }
     }
 
-    /// A small world of processes (the Python's `World` in the script that made the golden file).
+    /// A small world of processes (the original's `World` in the script that made the golden file).
     struct World {
         sc: Value,
         t: f64,
@@ -1544,7 +1562,7 @@ mod tests {
     }
 
     #[test]
-    fn the_game_is_launched_as_in_python() {
+    fn the_game_is_launched_as_recorded() {
         let cases = golden("launch_game");
         assert!(cases.len() >= 14);
         for case in cases {
@@ -1563,7 +1581,7 @@ mod tests {
     }
 
     #[test]
-    fn the_game_is_killed_as_in_python() {
+    fn the_game_is_killed_as_recorded() {
         let cases = golden("kill_game");
         assert!(cases.len() >= 9);
         for case in cases {
@@ -1575,7 +1593,7 @@ mod tests {
         }
     }
 
-    /// The scripted world of sequences.json (the Python's `World` and `Bot` in the script that made it): time that moves
+    /// The scripted world of sequences.json (the original's `World` and `Bot` in the script that made it): time that moves
     /// only in sleeps; Steam and the game as processes; the game's API as its boot says; the bot as its script says.
     struct Scripted {
         sc: Value,
@@ -1754,7 +1772,7 @@ mod tests {
                     }
                     match step["raise"].as_str() {
                         Some("unavailable") => Err(BotError::GameUnavailable(GameUnavailable::new("Connection refused"))),
-                        Some("stuck") => Err(BotError::Stuck(Stuck(format!("no progress for 300s at {}", py::repr_of(&step["where"]))))),
+                        Some("stuck") => Err(BotError::Stuck(Stuck(format!("no progress for 300s at {}", base::repr_of(&step["where"]))))),
                         _ => Ok(()),
                     }
                 });
@@ -1801,7 +1819,7 @@ mod tests {
     }
 
     #[test]
-    fn the_supervisor_does_as_python_did_in_a_scripted_world() {
+    fn the_supervisor_does_as_the_record_did_in_a_scripted_world() {
         let cases: Vec<Value> = serde_json::from_str(SEQUENCES).unwrap();
         assert!(cases.len() >= 26);
         for case in cases {

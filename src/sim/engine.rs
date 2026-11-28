@@ -5,7 +5,7 @@
 //! debuffs tick down and the enemies choose their next moves. Damage is worked out the game's way: base plus
 //! Strength, times Weak, stance and Vulnerable, rounded down, Block first.
 //!
-//! How this differs from the Python (see also sim/content/mod.rs): the fight owns its run while it lasts
+//! How this differs from the original (see also sim/content/mod.rs): the fight owns its run while it lasts
 //! (`Fight::new(run, foes, kind)`, `f.run`), the random generator is the run's (`f.run.rng`), enemies are named by
 //! their index in `f.foes`, cards by their `uid`, orbs are [`Orb`]s.
 
@@ -16,7 +16,7 @@ use indexmap::IndexMap;
 use serde_json::{json, Map, Value};
 
 use crate::fight::combat;
-use crate::py::{self, JsonExt, Random};
+use crate::base::{self, JsonExt, Random};
 use crate::run::strategy;
 use crate::sim::cards::{Card, ViewArgs};
 use crate::sim::content::Content;
@@ -53,7 +53,7 @@ pub const INTERNAL: &[&str] = &[
     "LIGHTNING_CHANNELED", "FROST_CHANNELED", "DARK_CHANNELED", "PLASMA_CHANNELED", "GLASS_CHANNELED",
 ];
 
-/// An orb: Python's `[kind, Dark's stored damage]` (the list object's identity is `uid`).
+/// An orb: the original's `[kind, Dark's stored damage]` (the list object's identity is `uid`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Orb {
     pub kind: String,
@@ -108,7 +108,7 @@ pub struct Fight {
     pub triggers: Vec<(String, String, String)>, // Slay the Spire 2's Powers, read from their text: (when, what, card key)
     pub fresh: HashSet<String>, // debuffs an enemy gave us this round: the round's end passes them by once
     pub bound: HashSet<u64>,    // Chains of Binding: the cards Bound this turn (one of them can be played)
-    pub nightmares: Vec<Card>,  // (Slay the Spire 2's Nightmare: Python's `f.__dict__["nightmares"]`)
+    pub nightmares: Vec<Card>,  // (Slay the Spire 2's Nightmare: the original's `f.__dict__["nightmares"]`)
     pub foregone: i64,          // (Foregone Conclusion: `f.__dict__["foregone"]`)
     orb_uid: u64,
 }
@@ -711,7 +711,7 @@ impl Fight {
             }
             "DARK" if evoke => {
                 let alive = self.alive();
-                if let Some(low) = py::min_by_key(alive, |i| self.foes[*i].hp) {
+                if let Some(low) = base::min_by_key(alive, |i| self.foes[*i].hp) {
                     self.hurt(low, amount, false);
                 }
             }
@@ -780,7 +780,7 @@ impl Fight {
         }
         let mut foe = self.foe_named(target);
         if seen.info().needs_target && foe.is_none() {
-            foe = py::min_by_key(self.alive(), |i| self.foes[*i].hp);
+            foe = base::min_by_key(self.alive(), |i| self.foes[*i].hp);
         }
         if let Some(foe) = foe {
             self.facing = Some(self.foes[foe].eid.clone());
@@ -912,7 +912,7 @@ impl Fight {
         effects::turn_end(self);
         let keep_all = self.pw.shift_remove("KEEP_HAND").unwrap_or(0) != 0 || self.run.has("RUNIC_PYRAMID");
         let mut planned: Vec<&Card> = self.hand.iter().filter(|c| !matches!(c.r#type(), "Status" | "Curse") && !c.has("Retain")).collect();
-        py::sort_by_key(&mut planned, |c| -c.cost());
+        base::sort_by_key(&mut planned, |c| -c.cost());
         let kept: HashSet<u64> = planned.iter().take(self.pw.val("WELL_LAID_PLANS").max(0) as usize).map(|c| c.uid).collect();
         let hexed = self.foes.iter().any(|x| x.alive() && x.powers.on("HEX")); // (the Spectral Knight: all our cards are Ethereal)
         let hand: Vec<u64> = self.hand.iter().map(|c| c.uid).collect();
@@ -1055,13 +1055,13 @@ impl Fight {
                     return;
                 }
                 if action == "play_card" && self.play(params["card_index"].int_or(-1), params["target"].as_str()) {
-                    self.digest.push(format!("P{}{}", py::str_of(&params["card_index"]), params["target"].s()));
+                    self.digest.push(format!("P{}{}", base::str_of(&params["card_index"]), params["target"].s()));
                     self.plays += 1;
                     acted = true;
                     break;
                 }
                 if action == "use_potion" && self.use_potion(params["slot"].int_or(-1), params["target"].as_str()) {
-                    self.digest.push(format!("Q{}", py::str_of(&params["slot"])));
+                    self.digest.push(format!("Q{}", base::str_of(&params["slot"])));
                     acted = true;
                     break;
                 }

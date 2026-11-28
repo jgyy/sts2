@@ -4,7 +4,7 @@
 //! play a card/an Attack/a Skill/a Power, X", "Whenever a card is Exhausted, X", "Whenever you gain Block, X", "Gain
 //! [E] at the start of each turn", and what they do at once; X is done as a card with that text would do it.
 //!
-//! (The Python module's tables are functions here, built once per thread: `DATA()`, `CARDS()`, `COMMON()` ...; see
+//! (the original module's tables are functions here, built once per thread: `DATA()`, `CARDS()`, `COMMON()` ...; see
 //! sim/content/mod.rs for how a game's content is held.)
 
 #![allow(non_snake_case)]
@@ -17,7 +17,7 @@ use indexmap::IndexMap;
 use serde_json::{json, Value};
 
 use crate::cards::CardInfo;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 use crate::sim::cards::{Card, CardDef};
 use crate::sim::content::sts1_cards::{_pick, replace};
 use crate::sim::content::{common, sts1, sts1_cards, sts2_foes, AfterRule, Character, Choice, Content, DamageRule, HandRule, Item, Nodes, Odds, PlayableRule, PowerRule, PreRule};
@@ -44,7 +44,7 @@ pub fn ROOM_WEIGHTS() -> IndexMap<String, f64> {
 
 pub const PLAYED: &[&str] = &["Main", "IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT"];
 
-/// The game's data as the file has it (the Python reads sts2_data.json next to the module; here it is built in).
+/// The game's data as the file has it (the original reads sts2_data.json next to the module; here it is built in).
 pub const DATA_TEXT: &str = include_str!("sts2_data.json");
 
 /// A7's card odds: half the rare chance, the other half to commons.
@@ -285,7 +285,7 @@ pub fn EXTRA(f: &mut Fight, c: &mut Card, foe: Option<usize>, i: &CardInfo, xs: 
             }
         };
         for v in targets {
-            let mut n = i.doom * xs + if c.key() == "NO_ESCAPE" { 5 * py::floordiv(f.foes[v].powers.val("DOOM"), 10) } else { 0 };
+            let mut n = i.doom * xs + if c.key() == "NO_ESCAPE" { 5 * base::floordiv(f.foes[v].powers.val("DOOM"), 10) } else { 0 };
             if c.key() == "BLIGHT_STRIKE" {
                 n = f.attack_value(i.damage + c.bonus, Some(v), false, false);
             }
@@ -713,7 +713,7 @@ fn _play_kinds() -> HashMap<String, String> {
     for (k, d) in CARDS().iter() {
         if d.r#type == "Power" {
             if let Some(m) = crate::re!(r"(?i)whenever you play an? (attack|skill|power|card)").captures(&d.text) {
-                out.insert(k.clone(), if m[1].to_lowercase() != "card" { py::title(&m[1]) } else { "card".to_string() });
+                out.insert(k.clone(), if m[1].to_lowercase() != "card" { base::title(&m[1]) } else { "card".to_string() });
             }
         }
     }
@@ -921,7 +921,7 @@ pub fn relic_text(rid: &str) -> String {
 pub fn relic_name(rid: &str) -> String {
     match relic_row(&DATA(), _data_key(rid)) {
         Some((name, _, _)) if !name.is_empty() => name,
-        _ => py::title(&rid.replace('_', " ")),
+        _ => base::title(&rid.replace('_', " ")),
     }
 }
 
@@ -1046,7 +1046,7 @@ pub fn act_start(run: &mut Run) {
     }
     .to_string();
     let heal = (run.max_hp - run.hp) as f64 * if run.asc < 2 { 1.0 } else { 0.8 };
-    run.hp = run.max_hp.min(run.hp + py::trunc(heal));
+    run.hp = run.max_hp.min(run.hp + base::trunc(heal));
     let left: Vec<String> = ANCIENT.iter().filter(|r| !run.has(r)).map(|r| r.to_string()).collect();
     let options = _relic_options(&run.rng.sample(&left, 3));
     sts1::_choose(run, options);
@@ -1157,7 +1157,7 @@ pub fn fight_gold(run: &mut Run, kind: &str) -> i64 {
     if run.has("ECTOPLASM") {
         return 0;
     }
-    // (the Python builds the dict whole: both are drawn)
+    // (the original builds the dict whole: both are drawn)
     let (monster, elite) = (run.rng.randint(10, 20), run.rng.randint(35, 45));
     let g = match kind {
         "monster" => monster,
@@ -1165,7 +1165,7 @@ pub fn fight_gold(run: &mut Run, kind: &str) -> i64 {
         "boss" => 100,
         other => panic!("KeyError: {other}"),
     };
-    py::trunc(g as f64 * if run.asc >= 3 { 0.75 } else { 1.0 })
+    base::trunc(g as f64 * if run.asc >= 3 { 0.75 } else { 1.0 })
 }
 
 pub fn card_choices(run: &mut Run, kind: &str) -> Vec<Card> {
@@ -1190,7 +1190,7 @@ pub fn shop_stock(run: &mut Run) -> Vec<Item> {
             it.v.insert("cost".to_string(), json!(100 + 50 * n));
         }
         if it.category() == "relic" {
-            let price = py::trunc(it.price() as f64 * 0.85);
+            let price = base::trunc(it.price() as f64 * 0.85);
             it.v.insert("price".to_string(), json!(price));
             it.v.insert("cost".to_string(), json!(price));
         }
@@ -1243,7 +1243,7 @@ pub fn wither(level: i64) -> Rc<CardDef> {
     made
 }
 
-/// The game as the engine and the run hold it (Python's module `sim.content.sts2`).
+/// The game as the engine and the run hold it (the original's module `sim.content.sts2`).
 pub fn content() -> Content {
     Content {
         KEY,
@@ -1302,11 +1302,11 @@ pub fn content() -> Content {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::py::Random;
+    use crate::base::Random;
     use crate::sim::monsters::Arg;
 
-    /// What the Python builds from the data (tests/golden/sim_sts2.json, written by a scratch script from sim/content/sts2.py
-    /// and sts2_foes.py): every monster's spec at Ascension 0, 8 and 9 and its opening state by slot, every Power's rules,
+    /// What the original builds from the data (tests/golden/sim_sts2.json, written by a scratch script from sim/content/sts2.rs
+    /// and sts2_foes.rs): every monster's spec at Ascension 0, 8 and 9 and its opening state by slot, every Power's rules,
     /// the card table, the pools, the relic tiers and the potions.
     #[test]
     fn golden() {
@@ -1353,7 +1353,7 @@ mod tests {
             }
             let got = json!({"key": key, "asc": asc, "name": spec.name, "hp": [spec.hp.0, spec.hp.1], "powers": spec.powers.iter().map(|(k, v)| json!([k, v])).collect::<Vec<_>>(),
                              "minion": spec.minion, "block": spec.block, "hooks": spec.hooks.keys().collect::<Vec<_>>(), "moves": moves, "initial": firsts});
-            assert_eq!(py::json_dumps(&got), py::json_dumps(case), "{key} at Ascension {asc}");
+            assert_eq!(base::json_dumps(&got), base::json_dumps(case), "{key} at Ascension {asc}");
             checked += 1;
         }
         for case in want["power_rules"].list() {
@@ -1376,7 +1376,7 @@ mod tests {
         let potions: Vec<Value> = _POTIONS().iter().map(|(k, (name, rarity, text))| json!([k, name, rarity, text])).collect();
         assert_eq!(json!(potions), want["potions"]);
         let pools: serde_json::Map<String, Value> = CHARACTERS().keys().map(|ch| (ch.clone(), json!(pool(ch).iter().map(|d| d.key.clone()).collect::<Vec<_>>()))).collect();
-        assert_eq!(py::json_dumps(&Value::Object(pools)), py::json_dumps(&want["pools"]));
+        assert_eq!(base::json_dumps(&Value::Object(pools)), base::json_dumps(&want["pools"]));
         assert_eq!(json!(colorless().iter().map(|d| d.key.clone()).collect::<Vec<_>>()), want["colorless"]);
         let rows: Vec<Value> = cards.values().map(|d| json!([d.key, d.name, d.r#type, d.cost, d.rarity, d.targeted, d.text, d.text_up, d.cost_up, d.color, d.star_cost, d.star_cost_up, d.keywords, d.keywords_up])).collect();
         assert_eq!(rows.len(), want["cards"].list().len());
@@ -1385,9 +1385,9 @@ mod tests {
             checked += 1;
         }
         let characters: serde_json::Map<String, Value> = CHARACTERS().iter().map(|(k, c)| (k.clone(), json!({"title": c.title, "hp": c.hp, "deck": c.deck, "relics": c.relics, "orbs": c.orbs}))).collect();
-        assert_eq!(py::json_dumps(&Value::Object(characters)), py::json_dumps(&want["characters"]));
+        assert_eq!(base::json_dumps(&Value::Object(characters)), base::json_dumps(&want["characters"]));
         let scarce: serde_json::Map<String, Value> = SCARCE_ODDS().iter().map(|(k, v)| (k.clone(), json!(v.iter().map(|(r, p)| json!([r, p])).collect::<Vec<_>>()))).collect();
-        assert_eq!(py::json_dumps(&Value::Object(scarce)), py::json_dumps(&want["scarce"]));
+        assert_eq!(base::json_dumps(&Value::Object(scarce)), base::json_dumps(&want["scarce"]));
         for row in want["wither"].list() {
             let d = wither(row[0].int());
             assert_eq!(json!([row[0], d.name, d.text]), *row);

@@ -11,7 +11,7 @@ use serde_json::json;
 use sts2bot::bot::BotArgs;
 use sts2bot::games::sts1::client::Sts1Client;
 use sts2bot::games::sts1::relay::{self as relay_mod, Relay};
-use sts2bot::py::{self, JsonExt};
+use sts2bot::base::{self, JsonExt};
 
 use super::fake_comm::FakeComm;
 use super::helpers::sts1_case;
@@ -28,7 +28,7 @@ impl Write for GamePipe {
     fn write(&mut self, s: &[u8]) -> std::io::Result<usize> {
         for line in String::from_utf8_lossy(s).lines() {
             if !line.trim().is_empty() && line.trim() != "ready" {
-                let answer = py::json_dumps(&self.game.lock().unwrap().command(line.trim()));
+                let answer = base::json_dumps(&self.game.lock().unwrap().command(line.trim()));
                 let relay = self.relay.get().expect("the relay this pipe belongs to").clone();
                 std::thread::spawn(move || relay.feed(&answer));
             }
@@ -55,7 +55,7 @@ fn test_a_command_is_answered_with_the_games_next_message() {
     let _case = sts1_case();
     let game = Arc::new(Mutex::new(FakeComm::default()));
     let relay = relay_to(&game, 2.0);
-    relay.feed(&py::json_dumps(&game.lock().unwrap().message()));
+    relay.feed(&base::json_dumps(&game.lock().unwrap().message()));
     assert_eq!(relay.snapshot()["message"]["in_game"], false);
     let answer = relay.send("start IRONCLAD 0", None);
     assert_eq!(answer["status"], "ok");
@@ -72,7 +72,7 @@ fn test_a_game_that_does_not_answer_leaves_the_command_pending() {
     let relay = Relay::new(Some(Box::new(Vec::new())), 0.05);
     assert!(relay.send("state", None)["pending"].truthy());
     relay.feed("not json"); // (ignored; its line on stderr is the test harness's to keep)
-    relay.feed(&py::json_dumps(&json!({"in_game": false, "available_commands": ["start"]})));
+    relay.feed(&base::json_dumps(&json!({"in_game": false, "available_commands": ["start"]})));
     assert_eq!(relay.snapshot()["seq"], 1);
 }
 
@@ -95,7 +95,7 @@ fn test_the_bot_plays_a_run_through_the_relay_over_http() {
     let _cleanup = Cleanup(server.clone());
     let client = Rc::new(RefCell::new(Sts1Client::on_port(server.server_address.port())));
     assert!(!client.borrow_mut().ping()); // up, but the game has not said anything yet
-    relay.feed(&py::json_dumps(&game.lock().unwrap().message()));
+    relay.feed(&base::json_dumps(&game.lock().unwrap().message()));
     assert!(client.borrow_mut().ping());
     let mut bot = make_bot_kw(client, BotArgs { character: "WATCHER".to_string(), ..Default::default() });
     bot.run(Some(1)).unwrap();
@@ -138,7 +138,7 @@ impl Write for PipeOut {
 #[test]
 fn test_the_relay_says_ready_and_leaves_with_the_game() {
     let _case = sts1_case();
-    // (The Python starts relay.py as a process; here the relay's life, `run`, with a pipe at each end: the process around it,
+    // (the original starts relay.rs as a process; here the relay's life, `run`, with a pipe at each end: the process around it,
     // `sts2bot relay`, is the command line's.)
     let (stdin, relay_stdin) = mpsc::channel::<Vec<u8>>();
     let (relay_stdout, stdout) = mpsc::channel::<Vec<u8>>();

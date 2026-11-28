@@ -65,7 +65,7 @@ fn test_surviving_five_fights_is_likelier_above_half_hp() {
 // KnowingSkull: every choice but the way out comes back dearer, and the way out costs 6 HP whenever it is taken.
 
 /// (HP lost, things bought) when the bot plays the event through: each thing costs 1 HP more every time it is taken.
-/// (The Python's defaults: max_hp 85, act 2.)
+/// (the original's defaults: max_hp 85, act 2.)
 fn walk(mut hp: i64, max_hp: i64, act: i64) -> (i64, i64) {
     let (mut mem, start, mut bought) = (strategy::Memory::new(), hp, 0);
     let mut costs: IndexMap<&str, i64> = IndexMap::from([("Riches?", 6), ("A Pick Me Up?", 6), ("Success?", 6)]);

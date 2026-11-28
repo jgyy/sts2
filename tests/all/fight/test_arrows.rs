@@ -14,12 +14,12 @@ use super::{combat_state, ctx, pick, power, read_foes};
 use crate::fake_game::{card, with};
 use crate::helpers::{enemy, DEFEND, STRIKE};
 
-/// (The Python's default: 15 damage.)
+/// (the original's default: 15 damage.)
 fn FOOLISH(i: i64) -> Value {
     card(i, "FOOLISH_SHOT", "Foolish Shot", "Attack", 1, "Shoot an Arrow to deal 15 damage.", "AnyEnemy")
 }
 
-/// (The Python's default: 10 damage.)
+/// (the original's default: 10 damage.)
 fn QUICK(i: i64, dmg: i64) -> Value {
     card(i, "QUICK_SHOT", "Quick Shot", "Attack", 0, &format!("Shoot an Arrow to deal {dmg} damage."), "AnyEnemy")
 }

@@ -18,7 +18,7 @@ use std::time::{Duration, Instant};
 use serde_json::{json, Value};
 
 use crate::client::os_error_text;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 pub const DEFAULT_PORT: u16 = 15527;
 pub const ANSWER_TIMEOUT: f64 = 20.0; // seconds to wait for the game to answer a command (an enemy turn can take a while)
@@ -44,7 +44,7 @@ fn locked<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-/// What the relay knows of the game (Python's attributes of the same names, under the condition's lock).
+/// What the relay knows of the game (the original's attributes of the same names, under the condition's lock).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct State {
     pub seq: i64,                         // messages received from the game
@@ -115,7 +115,7 @@ impl Relay {
         let mut state = locked(&self.state);
         state.seq += 1;
         if !msg["error"].is_null() {
-            state.last_error = Some((state.seq, py::str_of(&msg["error"])));
+            state.last_error = Some((state.seq, base::str_of(&msg["error"])));
         } else {
             state.latest = Some(msg);
         }
@@ -163,7 +163,7 @@ fn reason(code: u16) -> &'static str {
     }
 }
 
-/// `float(x)` of a request's "timeout": None for what Python's would not take (its handler then answers nothing).
+/// `float(x)` of a request's "timeout": None for what the original's would not take (its handler then answers nothing).
 fn as_float(v: &Value) -> Option<f64> {
     match v {
         Value::Number(n) => n.as_f64(),
@@ -195,12 +195,12 @@ pub fn handle(relay: &Relay, method: &str, path: &str, content_length: Option<&s
             let result = relay.send(&body["command"].text(), timeout);
             Some((if result["status"] == "ok" { 200 } else { 400 }, result))
         }
-        _ => Some((501, json!({"status": "error", "error": format!("Unsupported method ({})", py::str_repr(method))}))),
+        _ => Some((501, json!({"status": "error", "error": format!("Unsupported method ({})", base::str_repr(method))}))),
     }
 }
 
 fn answer(sock: &mut TcpStream, code: u16, body: &Value) {
-    let raw = py::json_dumps(body);
+    let raw = base::json_dumps(body);
     let head = format!("HTTP/1.0 {} {}\r\nServer: sts2bot relay\r\nDate: {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n", code, reason(code), localtime("GMT"), raw.len());
     let _ = sock.write_all(format!("{head}{raw}").as_bytes());
     let _ = sock.flush();
@@ -217,7 +217,7 @@ fn connection(relay: &Relay, sock: TcpStream) {
     let first: String = line.iter().map(|b| *b as char).collect();
     let words: Vec<&str> = first.trim_end_matches(['\r', '\n']).split_whitespace().collect();
     if !(2..=3).contains(&words.len()) || (words.len() == 3 && !words[2].starts_with("HTTP/")) {
-        answer(&mut out, 400, &json!({"status": "error", "error": format!("Bad request syntax ({})", py::str_repr(first.trim_end_matches(['\r', '\n'])))}));
+        answer(&mut out, 400, &json!({"status": "error", "error": format!("Bad request syntax ({})", base::str_repr(first.trim_end_matches(['\r', '\n'])))}));
         return;
     }
     let (method, path) = (words[0], words[1]);
@@ -245,7 +245,7 @@ fn connection(relay: &Relay, sock: TcpStream) {
                 let _ = reader.by_ref().take(n as u64).read_to_end(&mut body);
             }
             Ok(_) => {
-                let _ = reader.read_to_end(&mut body); // (a negative length: all there is, as Python's read(-1))
+                let _ = reader.read_to_end(&mut body); // (a negative length: all there is, as the original's read(-1))
             }
             Err(_) => {}
         }
@@ -256,7 +256,7 @@ fn connection(relay: &Relay, sock: TcpStream) {
     let _ = out.shutdown(std::net::Shutdown::Write);
 }
 
-/// The relay's HTTP side (Python's ThreadingHTTPServer): a thread for every connection.
+/// The relay's HTTP side (the original's ThreadingHTTPServer): a thread for every connection.
 pub struct Server {
     listener: Mutex<Option<TcpListener>>,
     pub server_address: SocketAddr,
@@ -407,7 +407,7 @@ pub fn main(args: Vec<String>) -> i32 {
             };
             match value.trim().replace('_', "").parse::<i64>() {
                 Ok(n) => port = n,
-                Err(_) => return error(format!("argument --port: invalid int value: {}", py::str_repr(&value))),
+                Err(_) => return error(format!("argument --port: invalid int value: {}", base::str_repr(&value))),
             }
         } else {
             extras.push(word.to_string());
@@ -450,7 +450,7 @@ mod tests {
                 }
                 self.sent.lock().unwrap().push(line.clone());
                 if let (Some(game), Some(relay)) = (self.game, self.relay.get().cloned()) {
-                    std::thread::spawn(move || relay.feed(&py::json_dumps(&game(&line))));
+                    std::thread::spawn(move || relay.feed(&base::json_dumps(&game(&line))));
                 }
             }
             Ok(buf.len())
@@ -481,12 +481,12 @@ mod tests {
     #[test]
     fn a_command_is_answered_with_the_games_next_message() {
         let (relay, pipe) = relay_to(Some(game), 2.0);
-        relay.feed(&py::json_dumps(&json!({"in_game": false, "available_commands": ["start"]})));
+        relay.feed(&base::json_dumps(&json!({"in_game": false, "available_commands": ["start"]})));
         assert_eq!(relay.snapshot()["message"]["in_game"], false);
         let answer = relay.send("start  IRONCLAD\n0 ", None);
-        assert_eq!(py::json_dumps(&answer), r#"{"status": "ok", "message": {"in_game": true, "available_commands": ["play", "end"], "game_state": {"class": "IRONCLAD"}}, "seq": 2}"#);
+        assert_eq!(base::json_dumps(&answer), r#"{"status": "ok", "message": {"in_game": true, "available_commands": ["play", "end"], "game_state": {"class": "IRONCLAD"}}, "seq": 2}"#);
         let bad = relay.send("end", None); // (not on the map)
-        assert_eq!(py::json_dumps(&bad), r#"{"status": "error", "error": "Invalid command: end", "seq": 3}"#);
+        assert_eq!(base::json_dumps(&bad), r#"{"status": "error", "error": "Invalid command: end", "seq": 3}"#);
         assert_eq!(relay.snapshot()["message"]["in_game"], true); // an error does not replace the state
         assert_eq!(relay.send(" \n ", None), json!({"status": "error", "error": "empty command"}));
         assert_eq!(*pipe.sent.lock().unwrap(), ["start IRONCLAD 0", "end"]);
@@ -495,23 +495,23 @@ mod tests {
     #[test]
     fn a_game_that_does_not_answer_leaves_the_command_pending() {
         let (relay, _pipe) = relay_to(None, 0.05);
-        assert_eq!(py::json_dumps(&relay.send("state", None)), r#"{"status": "ok", "message": null, "pending": true, "seq": 0}"#);
+        assert_eq!(base::json_dumps(&relay.send("state", None)), r#"{"status": "ok", "message": null, "pending": true, "seq": 0}"#);
         relay.feed("not json"); // (ignored)
         relay.feed("[1, 2]");
         relay.feed("  \n");
         assert!(locked(&relay.state).waiting);
-        relay.feed(&py::json_dumps(&json!({"in_game": false, "available_commands": ["start"]})));
+        relay.feed(&base::json_dumps(&json!({"in_game": false, "available_commands": ["start"]})));
         assert_eq!(relay.snapshot()["seq"], 1);
         assert!(!locked(&relay.state).waiting);
         relay.feed(r#"{"error": 5}"#);
         assert_eq!(locked(&relay.state).last_error, Some((2, "5".to_string())));
-        assert_eq!(py::json_dumps(&relay.snapshot()), r#"{"seq": 2, "message": {"in_game": false, "available_commands": ["start"]}}"#);
+        assert_eq!(base::json_dumps(&relay.snapshot()), r#"{"seq": 2, "message": {"in_game": false, "available_commands": ["start"]}}"#);
     }
 
     #[test]
-    fn requests_are_answered_as_the_python_relay_answered_them() {
+    fn requests_are_answered_as_the_the_record_relay_answered_them() {
         let (relay, _pipe) = relay_to(Some(game), 2.0);
-        let ask = |method: &str, path: &str, body: &str| handle(&relay, method, path, Some(&body.len().to_string()), body.as_bytes()).map(|(code, v)| (code, py::json_dumps(&v)));
+        let ask = |method: &str, path: &str, body: &str| handle(&relay, method, path, Some(&body.len().to_string()), body.as_bytes()).map(|(code, v)| (code, base::json_dumps(&v)));
         let said = |code: u16, text: &str| Some((code, text.to_string()));
         assert_eq!(ask("GET", "/", ""), said(200, r#"{"status": "ok", "game": "sts1", "connected": false}"#));
         assert_eq!(ask("GET", "/state", ""), said(200, r#"{"seq": 0, "message": null}"#));
@@ -528,9 +528,9 @@ mod tests {
         assert_eq!(ask("PUT", "/command", "{}").map(|a| a.0), Some(501));
     }
 
-    /// The requests of the golden file, sent over a socket one after another: the Python relay's status lines and bodies.
+    /// The requests of the golden file, sent over a socket one after another: the original relay's status lines and bodies.
     #[test]
-    fn requests_over_http_as_python() {
+    fn requests_over_http_as_recorded() {
         let golden: Value = serde_json::from_str(include_str!("../../../tests/golden/relay.json")).unwrap();
         let (relay, _pipe) = relay_to(Some(game), 2.0);
         let server = serve(0, relay, 30).unwrap();

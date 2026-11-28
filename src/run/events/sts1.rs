@@ -3,8 +3,8 @@
 //! or None to leave it to that scorer; `COVERED` names every event and what was checked of those left to it.
 //!
 //! The shape (the same for sts2.rs): a rule is a plain function `fn(opt: &Value, ctx: &Ctx) -> Option<f64>` ([`Rule`]), named
-//! as in Python; `RULES` maps an event's id to its rule (an `IndexMap` in Python's row order); `value(event_id, opt, ctx)`
-//! looks the rule up and calls it. (Python's `events.rule_value` catches any exception of a rule and gives None: these rules
+//! as in the original; `RULES` maps an event's id to its rule (an `IndexMap` in the original's row order); `value(event_id, opt, ctx)`
+//! looks the rule up and calls it. (the original's `events.rule_value` catches any exception of a rule and gives None: these rules
 //! raise nothing on options and decks made of JSON objects; only a number too long for an i64 in a text would panic, in
 //! `value::num`.)
 
@@ -18,7 +18,7 @@ use super::value::{
     card_worth, curse, gold, heal, hp_cost, is_curse, max_hp_gain, max_hp_loss, name_of, num, potions_gained, random_upgrades, removals, transforms, Ctx, CARD_REWARD,
     ETERNAL, POTION, RELIC, UPGRADE,
 };
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 use crate::run::relicworth::{id_of as relic_id, worth as relic_worth};
 
 pub const BASE: f64 = 0.5;
@@ -27,12 +27,12 @@ pub const RUN: f64 = 25.0; // what the rest of the run is worth, in these points
 /// An event's rule: the option's score, or None to leave it to the generic scorer.
 pub type Rule = fn(&Value, &Ctx) -> Option<f64>;
 
-/// `str.strip()`: Python's blanks (those of Unicode and the four separators 0x1c-0x1f).
+/// `str.strip()`: the original's blanks (those of Unicode and the four separators 0x1c-0x1f).
 fn strip(s: &str) -> &str {
     s.trim_matches(|c: char| c.is_whitespace() || ('\x1c'..='\x1f').contains(&c))
 }
 
-/// `max(a, b)` of two floats as Python has it (the first of equals).
+/// `max(a, b)` of two floats as the original has it (the first of equals).
 fn fmax(a: f64, b: f64) -> f64 {
     if b > a {
         b
@@ -41,7 +41,7 @@ fn fmax(a: f64, b: f64) -> f64 {
     }
 }
 
-/// `min(a, b)` of two floats as Python has it (the first of equals).
+/// `min(a, b)` of two floats as the original has it (the first of equals).
 fn fmin(a: f64, b: f64) -> f64 {
     if b < a {
         b
@@ -56,7 +56,7 @@ pub fn _text(opt: &Value) -> (String, String) {
 
 /// A fight an event starts: the HP it is expected to cost (a share of Max HP).
 pub fn _fight(share: f64, ctx: &Ctx) -> f64 {
-    hp_cost(py::round(share * ctx.max_hp as f64), ctx)
+    hp_cost(base::round(share * ctx.max_hp as f64), ctx)
 }
 
 /// What losing the card an option names costs (a Strike or a curse gone is a gain).
@@ -251,7 +251,7 @@ pub fn forgotten_altar(opt: &Value, ctx: &Ctx) -> Option<f64> {
 pub fn fountain_of_cleansing(opt: &Value, ctx: &Ctx) -> Option<f64> {
     let (title, _) = _text(opt);
     if title == "drink" {
-        return Some(BASE + py::fsum(ctx.deck.iter().filter(|c| is_curse(c) && !ETERNAL.contains(name_of(*c).as_str())).map(|c| curse(&name_of(c)) + 1.0)));
+        return Some(BASE + base::fsum(ctx.deck.iter().filter(|c| is_curse(c) && !ETERNAL.contains(name_of(*c).as_str())).map(|c| curse(&name_of(c)) + 1.0)));
     }
     None
 }
@@ -271,7 +271,7 @@ pub fn golden_wing(opt: &Value, ctx: &Ctx) -> Option<f64> {
     }
     if title == "destroy" {
         let (lo, hi) = (num(r"gain (\d+)", &text, 50), num(r"-\s*(\d+)", &text, 80));
-        return Some(BASE + gold(py::floordiv(lo + hi, 2), ctx));
+        return Some(BASE + gold(base::floordiv(lo + hi, 2), ctx));
     }
     None
 }
@@ -492,7 +492,7 @@ pub fn the_woman_in_blue(opt: &Value, ctx: &Ctx) -> Option<f64> {
     let (title, text) = _text(opt);
     if let Some(m) = crate::re!(r"^buy (\d+) potions?").captures(&title) {
         let digits = m.get(1).map_or("", |g| g.as_str());
-        let n: i64 = digits.parse().unwrap_or_else(|_| panic!("invalid literal for int() with base 10: {}", py::str_repr(digits)));
+        let n: i64 = digits.parse().unwrap_or_else(|_| panic!("invalid literal for int() with base 10: {}", base::str_repr(digits)));
         return Some(BASE + potions_gained(n, ctx, POTION) + gold(-num(r"(\d+) gold", &text, 0), ctx));
     }
     if title == "leave" {
@@ -618,7 +618,7 @@ pub static GENERIC_CHECKED: LazyLock<IndexMap<&'static str, &'static str>> = Laz
     ("SECRETPORTAL", "TO_BOSS (edit 237)"), ("SPIRE_HEART", "act 4's door"), ("VAMPIRES", "a third of our Max HP for Bites: refused"), ("WHEEL_OF_CHANGE", "one option"),
     ("PROCEED_SCREEN", "not an event"),
 ]));
-/// (A set in Python: only asked whether an event is in it.)
+/// (A set in the original: only asked whether an event is in it.)
 pub static COVERED: LazyLock<BTreeSet<&'static str>> = LazyLock::new(|| RULES.keys().chain(GENERIC_CHECKED.keys()).copied().collect());
 
 pub fn value(event_id: &str, opt: &Value, ctx: &Ctx) -> Option<f64> {
@@ -649,7 +649,7 @@ mod tests {
         }
     }
 
-    /// Every rule over the options of its own event, of the tests and of the model runs, in a grid of contexts: as Python.
+    /// Every rule over the options of its own event, of the tests and of the model runs, in a grid of contexts: as the original.
     #[test]
     fn golden() {
         let g: Value = serde_json::from_str(include_str!("../../../tests/golden/events_sts1.json")).unwrap();
@@ -707,11 +707,11 @@ mod tests {
     }
 
     #[test]
-    fn tables_as_python() {
+    fn tables_as_recorded() {
         let g: Value = serde_json::from_str(include_str!("../../../tests/golden/events_sts1.json")).unwrap();
         assert_eq!(json!(RULES.keys().collect::<Vec<_>>()), g["rules"]);
         let checked: serde_json::Map<String, Value> = GENERIC_CHECKED.iter().map(|(k, v)| (k.to_string(), json!(v))).collect();
-        assert_eq!(py::json_dumps(&Value::Object(checked)), py::json_dumps(&g["generic_checked"]));
+        assert_eq!(base::json_dumps(&Value::Object(checked)), base::json_dumps(&g["generic_checked"]));
         assert_eq!(json!(COVERED.iter().collect::<Vec<_>>()), g["covered"]);
         assert_eq!((BASE, RUN), (g["base"].as_f64().unwrap(), g["run"].as_f64().unwrap()));
     }

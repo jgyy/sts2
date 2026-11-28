@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 use sts2bot::cards::parse;
 use sts2bot::fight::{battle, combat, triggers};
 use sts2bot::games::sts1::screens::Screens;
-use sts2bot::py::JsonExt;
+use sts2bot::base::JsonExt;
 use sts2bot::run::potions;
 
 use super::helpers::sts1_case;
@@ -19,7 +19,7 @@ type Move = (&'static str, i64, i64);
 
 /// The Shield and Spear as CommunicationMod sends them with the mod's sides: the Shield on our left, the Spear on our right.
 /// Each intent is (kind, damage as shown, hits); the one behind us shows its 50% more.
-/// (The Python's defaults: shield ("ATTACK", 51, 1), spear ("BUFF", -1, 1), shield_behind True.)
+/// (the original's defaults: shield ("ATTACK", 51, 1), spear ("BUFF", -1, 1), shield_behind True.)
 fn surrounded_with(shield: Move, spear: Move, shield_behind: bool) -> Screens {
     let mut s = Screens::new();
     let monster = |mid: &str, hp: i64, left: bool, r#move: Move| {
@@ -74,7 +74,7 @@ fn test_the_act_4_powers_read_as_the_planner_knows_them() {
     assert_eq!(read.iter().map(|p| &p["id"]).collect::<Vec<_>>(), ["HARDENED_SHELL_POWER", "BEAT_OF_DEATH_POWER", "BACK_ATTACK_POWER"]);
 }
 
-/// (The Python's defaults: invincible 300, beat 1, attack None.)
+/// (the original's defaults: invincible 300, beat 1, attack None.)
 fn heart(invincible: i64, beat: i64) -> Value {
     let mut status = vec![json!({"id": "HARDENED_SHELL_POWER", "amount": invincible})];
     if beat != 0 {

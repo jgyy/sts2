@@ -11,7 +11,7 @@ use sts2bot::games::{self, Playing};
 use super::fake_comm::FakeComm;
 
 /// Sts1Client with the relay taken out: the fake game answers in the same words the relay passes on.
-/// (Python's subclass of Sts1Client: here the client's `Wire`, see `direct`.)
+/// (the original's subclass of Sts1Client: here the client's `Wire`, see `direct`.)
 pub struct Direct {
     pub fake: Rc<RefCell<FakeComm>>,
 }

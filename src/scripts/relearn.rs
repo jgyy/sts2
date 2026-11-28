@@ -13,7 +13,7 @@ use serde_json::Value;
 
 use super::fightlog::{io_error, log_path, read_jsonl, read_text};
 use super::modelfight::{exit_code, out};
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 use crate::{cards, learn};
 
 pub fn rebuilt() -> Result<learn::CardStats, String> {
@@ -25,7 +25,7 @@ pub fn rebuilt() -> Result<learn::CardStats, String> {
         }
         let mut picks: Vec<(i64, String)> = Vec::new();
         for p in r["picks"].list() {
-            picks.push((p[0].int(), py::str_of(&p[1])));
+            picks.push((p[0].int(), base::str_of(&p[1])));
         }
         stats.record(&r["character"].text(), floor.int(), r["result"] == "win", &picks);
     }
@@ -49,7 +49,7 @@ pub fn run(write: bool) -> Result<(), String> {
     for kind in ["free", "energy", "draw"] {
         let start = new.kind_shift(kind, "");
         let rows: Vec<[f64; 2]> = new._pool.as_ref().and_then(|p| p.get(kind)).map(|t| t.values().copied().collect()).unwrap_or_default();
-        let (picks, gained) = (py::fsum(rows.iter().map(|x| x[0])), py::fsum(rows.iter().map(|x| x[1])));
+        let (picks, gained) = (base::fsum(rows.iter().map(|x| x[0])), base::fsum(rows.iter().map(|x| x[1])));
         out!(
             "{:7} {:3} cards, {:5.0} picks, {:+5.2} floors a pick beyond par: its cards start at {:+5.2}",
             kind,
@@ -69,8 +69,8 @@ pub fn run(write: bool) -> Result<(), String> {
             let (was, now) = (old.shift(&who, &key, None), new.shift(&who, &key, None));
             moved.push((now - was, key.clone(), picks, was, now, new.kinds.get(&key).cloned().unwrap_or_default()));
         }
-        py::sort_by_key(&mut moved, |m| m.clone());
-        out!("{}: {:.0} picks, par {:+.2} floors a pick", who, py::fsum(new.cards[&who].values().map(|x| x[0])), new._par(&who));
+        base::sort_by_key(&mut moved, |m| m.clone());
+        out!("{}: {:.0} picks, par {:+.2} floors a pick", who, base::fsum(new.cards[&who].values().map(|x| x[0])), new._par(&who));
         let ends = moved.iter().take(6).chain(moved.iter().skip(moved.len().saturating_sub(6)));
         for (_diff, key, picks, was, now, kind) in ends {
             out!("   {:24} {:4.0} picks  {:+5.2} -> {:+5.2}  {}", key, picks, was, now, kind);
@@ -109,7 +109,7 @@ mod tests {
     }
 
     #[test]
-    fn as_python() {
+    fn as_recorded() {
         let dir = copy(&["runs.jsonl", "wiki.json", "card_stats.json"]);
         let _state = with_state(dir.path());
         golden(main, &[], include_str!("../../tests/golden/logs/relearn.txt"));
@@ -117,7 +117,7 @@ mod tests {
     }
 
     #[test]
-    fn write_as_python() {
+    fn write_as_recorded() {
         let dir = copy(&["runs.jsonl", "wiki.json", "card_stats.json"]);
         let _state = with_state(dir.path());
         let (code, text) = capture(|| main(vec!["--write".to_string()]));
@@ -128,12 +128,9 @@ mod tests {
     }
 
     #[test]
-    fn without_a_wiki_as_python() {
+    fn without_a_wiki() {
         let dir = copy(&["runs.jsonl", "card_stats.json"]);
         let _state = with_state(dir.path());
-        // (the one line that names the command to run, which is another here)
-        let python = include_str!("../../tests/golden/logs/relearn_nowiki.txt");
-        assert!(python.contains("(python3 scripts/fightlog.py wiki writes one)"));
-        golden(main, &[], &python.replace("python3 scripts/fightlog.py wiki", "scripts fightlog wiki"));
+        golden(main, &[], include_str!("../../tests/golden/logs/relearn_nowiki.txt"));
     }
 }

@@ -14,10 +14,10 @@ use serde_json::{json, Map, Value};
 
 use super::modelfight::{
     aimed, attack, counter, deal, exit_code, face, firsts, flips, float, game_state, hand_cards, hit, index, int, mean, mean_of, name_value, out, piles, played, quiet, setting, shuffled, status,
-    table, target, trace_args, turn, under, Face, GameStateArgs, Py,
+    table, target, trace_args, turn, under, Face, GameStateArgs, Datum,
 };
 use crate::fight::battle;
-use crate::py::{self, sort_by_key, trunc, JsonExt, Random};
+use crate::base::{self, sort_by_key, trunc, JsonExt, Random};
 
 /// kind: (id, name, type, cost, text, target) from the number on the card (damage or Block)
 pub fn CARDS(c: char, n: i64) -> Face {
@@ -27,7 +27,7 @@ pub fn CARDS(c: char, n: i64) -> Face {
         'S' => face("SWEEP", "Sweeping Blow", "Attack", 1, &format!("Deal {n} damage to ALL enemies."), "AllEnemies"),
         'B' => face("DEFEND_R", "Defend", "Skill", 1, &format!("Gain {n} Block."), "Self"),
         'F' => face("CLUMSY", "Clumsy", "Curse", -1, "Unplayable.", "None"),
-        _ => panic!("KeyError: {}", py::str_repr(&c.to_string())),
+        _ => panic!("KeyError: {}", base::str_repr(&c.to_string())),
     }
 }
 
@@ -36,7 +36,7 @@ pub fn dealt(c: char, da: i64) -> i64 {
         'A' => da,
         'H' => trunc(2.4 * da as f64),
         'S' => 1.max(trunc(0.75 * da as f64)),
-        _ => panic!("KeyError: {}", py::str_repr(&c.to_string())),
+        _ => panic!("KeyError: {}", base::str_repr(&c.to_string())),
     }
 }
 
@@ -62,8 +62,8 @@ pub fn intent(e: &Bug, r: i64) -> (i64, i64, i64, &'static str) {
     (8, 0, 8, "Attack") // the Egg: 8 and 8 Block
 }
 
-/// (Python's defaults: no egg, maxhp 75, start 60, no trace.)
-pub fn fight(spec: &[i64], rng: &mut Random, egg: bool, maxhp: i64, start: i64, trace: bool) -> Py {
+/// (the original's defaults: no egg, maxhp 75, start 60, no trace.)
+pub fn fight(spec: &[i64], rng: &mut Random, egg: bool, maxhp: i64, start: i64, trace: bool) -> Datum {
     let (da, db) = (spec[0], spec[1]);
     let (mut draw, mut disc, mut hp, mut order) = (shuffled(rng, "ABHSF", &spec[2..]), Vec::new(), start, String::new());
     let mut E = vec![
@@ -147,11 +147,11 @@ pub fn fight(spec: &[i64], rng: &mut Random, egg: bool, maxhp: i64, start: i64, 
             disc.push(hand.remove(i));
             if trace {
                 let aim = if act.1.has("target") { aimed(&act).expect("TypeError: 'NoneType' object is not subscriptable") } else { "" };
-                out!("   play {} {} {}", c, aim.get(8..).unwrap_or(""), Py::Dict(E.iter().map(|e| (Py::str(&e.id[8..12]), Py::Int(e.hp))).collect()).repr());
+                out!("   play {} {} {}", c, aim.get(8..).unwrap_or(""), Datum::Dict(E.iter().map(|e| (Datum::str(&e.id[8..12]), Datum::Int(e.hp))).collect()).repr());
             }
         }
         if E.iter().all(|e| e.hp <= 0) {
-            return Py::Tuple(vec![Py::Int(start - hp), Py::Int(r), Py::Str(order)]);
+            return Datum::Tuple(vec![Datum::Int(start - hp), Datum::Int(r), Datum::Str(order)]);
         }
         let mut lost = 0;
         for e in E.iter_mut() {
@@ -175,10 +175,10 @@ pub fn fight(spec: &[i64], rng: &mut Random, egg: bool, maxhp: i64, start: i64, 
             out!("r{r} took {lost} hp {hp} | {}", E.iter().map(|e| format!("{} {}", &e.id[8..12], e.hp)).collect::<Vec<_>>().join(" "));
         }
         if hp <= 0 {
-            return Py::Tuple(vec![Py::Int(start), Py::Int(r), Py::Str(order + "x")]);
+            return Datum::Tuple(vec![Datum::Int(start), Datum::Int(r), Datum::Str(order + "x")]);
         }
     }
-    Py::Tuple(vec![Py::Int(start - hp), Py::Int(20), Py::Str(order)])
+    Datum::Tuple(vec![Datum::Int(start - hp), Datum::Int(20), Datum::Str(order)])
 }
 
 /// The patches of an arm like "off", "on+egg" or "nectar=12+egg" (the Egg itself: `eggs`), on this thread from now on
@@ -203,12 +203,12 @@ pub fn eggs(arm: &str) -> bool {
     arm.split('+').any(|part| part == "egg")
 }
 
-pub fn run(arm: &str, spec: &[i64], n: i64, seed: i64) -> Result<Py, String> {
+pub fn run(arm: &str, spec: &[i64], n: i64, seed: i64) -> Result<Datum, String> {
     let egg = eggs(arm);
     let res = under(|| arm_patch(arm), || played(|spec: &[i64], rng| fight(spec, rng, egg, 75, 60, false), spec, n, seed))?;
-    let ends: Vec<Py> = res.iter().map(|o| Py::Bool(o.at(2).as_str().ends_with('x'))).collect();
-    let first = counter(res.iter().map(|o| Py::str(o.at(2).as_str().get(..1).unwrap_or("-"))));
-    Ok(Py::Tuple(vec![Py::str(arm), Py::ints(spec), Py::Float(mean(&res, 0)), Py::Float(mean(&res, 1)), Py::Float(mean_of(&ends, n as usize)), first]))
+    let ends: Vec<Datum> = res.iter().map(|o| Datum::Bool(o.at(2).as_str().ends_with('x'))).collect();
+    let first = counter(res.iter().map(|o| Datum::str(o.at(2).as_str().get(..1).unwrap_or("-"))));
+    Ok(Datum::Tuple(vec![Datum::str(arm), Datum::ints(spec), Datum::Float(mean(&res, 0)), Datum::Float(mean(&res, 1)), Datum::Float(mean_of(&ends, n as usize)), first]))
 }
 
 /// damage, Block, Strikes, Defends, two-cost attacks, ALL-enemy attacks, dead cards (an act 2 deck: 20 to 30 a round)
@@ -227,9 +227,9 @@ fn script(args: &[String]) -> Result<(), String> {
         let i = if args.len() > 1 { int(&args[1])? } else { 1 };
         let (a, b) = if args.len() > 3 { (args[2].clone(), args[3].clone()) } else { ("off".to_string(), "on".to_string()) };
         let deck = index(&decks, i)?;
-        let mut rows: Vec<(i64, i64, Py)> = flips(i, &[a.clone(), b.clone()], None, &|arm, rng| under(|| arm_patch(arm), || fight(deck, rng, eggs(arm), 75, 60, false)))?
+        let mut rows: Vec<(i64, i64, Datum)> = flips(i, &[a.clone(), b.clone()], None, &|arm, rng| under(|| arm_patch(arm), || fight(deck, rng, eggs(arm), 75, 60, false)))?
             .into_iter()
-            .map(|(seed, res)| (res.get(&Py::str(&a)).unwrap().at(0).int() - res.get(&Py::str(&b)).unwrap().at(0).int(), seed, res))
+            .map(|(seed, res)| (res.get(&Datum::str(&a)).unwrap().at(0).int() - res.get(&Datum::str(&b)).unwrap().at(0).int(), seed, res))
             .collect();
         sort_by_key(&mut rows, |x| -x.0.abs());
         for (d, seed, res) in rows.iter().take(12) {
@@ -241,7 +241,7 @@ fn script(args: &[String]) -> Result<(), String> {
             out!("{arm:20}: hp lost {:5.2}  rounds {:4.1}  died {:.3}  first to die {}", mean(rows, 2), mean(rows, 3), mean(rows, 4), firsts(rows, 5).repr());
         }
         for dk in &decks {
-            let dk = Py::ints(dk);
+            let dk = Datum::ints(dk);
             out!("{} {}", dk.repr(), out.iter().filter(|o| *o.at(1) == dk).map(|o| format!("{}: lost {:5.2}", o.at(0).as_str(), o.at(2).float())).collect::<Vec<_>>().join("  "));
         }
     }
@@ -260,7 +260,7 @@ mod tests {
     const GOLDEN: &str = include_str!("../../tests/golden/scripts/bosses_bowlfight.txt");
 
     #[test]
-    fn as_python() {
+    fn as_recorded() {
         for command in ["trace", "trace 4 3 off+egg", "trace 2 5 nectar=30+HP_BASE=1", "4", "2 off on+egg nectar=2+THREAT_FLOOR=1", "flips", "flips 4 on+egg nectar=40"] {
             golden(main, &command.split(' ').collect::<Vec<_>>(), section(GOLDEN, command));
         }

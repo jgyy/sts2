@@ -10,10 +10,10 @@ use serde_json::{json, Map, Value};
 
 use crate::cards::{parse, CardInfo};
 
-/// The keywords a card can also carry in its text ("Exhaust.", "Ethereal. ..."): `_KEYWORD[k]` of the Python.
+/// The keywords a card can also carry in its text ("Exhaust.", "Ethereal. ..."): `_KEYWORD[k]` of the original.
 #[allow(non_snake_case)]
 pub fn _KEYWORD(keyword: &str) -> Option<&'static Regex> {
-    // (Python's `$` also matches before a last newline: `\n?\z`)
+    // (the original's `$` also matches before a last newline: `\n?\z`)
     Some(match keyword {
         "Exhaust" => crate::re!(r"(?i)(?:^|[.!]\s*)Exhaust(?:\.|\n?\z)"),
         "Ethereal" => crate::re!(r"(?i)(?:^|[.!]\s*)Ethereal(?:\.|\n?\z)"),
@@ -125,7 +125,7 @@ thread_local! {
 
 /// A copy of a card. `cost_fight`/`cost_turn` override the printed cost (Madness, Infernal Blade, Swivel).
 ///
-/// Python tells cards apart by identity (`c in f.hand`, `f.hand.remove(c)`, `h is not c`, `id(c)`): here every card made
+/// the original tells cards apart by identity (`c in f.hand`, `f.hand.remove(c)`, `h is not c`, `id(c)`): here every card made
 /// (`Card::new`, `copy`) gets its own `uid`, and `clone()` is another handle on the SAME card (the same `uid`).
 #[derive(Clone, Debug)]
 pub struct Card {
@@ -261,7 +261,7 @@ impl Card {
 mod tests {
     use super::*;
     use crate::games;
-    use crate::py::{self, JsonExt};
+    use crate::base::{self, JsonExt};
 
     fn def_of(v: &Value) -> CardDef {
         let words = |x: &Value| x.list().iter().map(|k| k.s().to_string()).collect::<Vec<_>>();
@@ -293,16 +293,16 @@ mod tests {
         v.as_i64()
     }
 
-    /// A view against the golden file's: the whole dict as Python prints it, or the start of the SHA-1 of that text.
+    /// A view against the golden file's: the whole dict as the original prints it, or the start of the SHA-1 of that text.
     fn same(got: &Value, want: &Value, why: &str) {
         use sha1::{Digest, Sha1};
-        let text = py::json_dumps(got);
+        let text = base::json_dumps(got);
         match want.as_str() {
             Some(hash) => {
                 let digest: String = Sha1::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect();
                 assert_eq!(&digest[..10], hash, "{why}: {text}");
             }
-            None => assert_eq!(text, py::json_dumps(want), "{why}"),
+            None => assert_eq!(text, base::json_dumps(want), "{why}"),
         }
     }
 

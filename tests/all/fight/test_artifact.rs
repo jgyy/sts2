@@ -19,7 +19,7 @@ fn DOOM_DECK() -> Vec<Value> {
     [PILE("Scourge", "Apply 13 Doom.", 3), PILE("No Escape", "Apply 10 Doom.", 2), PILE("Strike", "Deal 6 damage.", 20)].concat()
 }
 
-/// (The Python's default: 3 charges; its other keywords: the energy.)
+/// (the original's default: 3 charges; its other keywords: the energy.)
 fn state(hand: Vec<Value>, pile: Vec<Value>, charges: i64, energy: i64) -> Value {
     combat_state!(hand, [enemy!("BOSS", 480, status = [power("ARTIFACT", charges)])], kind = "boss", draw_pile = pile, discard_pile = json!([]), energy = energy)
 }

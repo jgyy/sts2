@@ -47,7 +47,7 @@ fn FIRE(slot: i64) -> Value {
     potion(slot, "Fire Potion", "Deal 20 damage.", "AnyEnemy")
 }
 
-/// A 200-HP enemy as the planner sees it (`dummy(incoming, incoming_hits=hits)`; the Python's defaults: 0 and 0).
+/// A 200-HP enemy as the planner sees it (`dummy(incoming, incoming_hits=hits)`; the original's defaults: 0 and 0).
 fn dummy(incoming: i64, incoming_hits: i64) -> Vec<Enemy> {
     vec![Enemy { entity_id: "A".into(), hp: 200, incoming, incoming_hits, ..Default::default() }]
 }
@@ -603,7 +603,7 @@ fn test_no_potion_when_the_hand_already_ends_the_danger() {
 
 #[test]
 fn test_a_potion_waits_for_the_moment_it_does_something() {
-    // (The Python's defaults: line None, block 0, attack 30, discard 0.)
+    // (the original's defaults: line None, block 0, attack 30, discard 0.)
     fn used(drink: &Value, hand: Vec<Value>, line: Option<Vec<CardInfo>>, block: i64, attack: i64, discard: i64) -> bool {
         let state = combat_state!(hand, [enemy!("A", 300, attack = attack)], hp = 75, max_hp = 75, block = block, kind = "boss", potions = [drink.clone()], floor = 33, discard_pile_count = discard);
         !combat::potion_actions(&state, None, line.as_deref()).is_empty()
@@ -902,7 +902,7 @@ fn test_their_key_cards_are_rated() {
 
 // RageAndRespawn
 
-/// (The Python's defaults: the Crusher on 6, the Rocket on 120.)
+/// (the original's defaults: the Crusher on 6, the Rocket on 120.)
 fn crabs(crusher_hp: i64, rocket_hp: i64) -> Vec<Enemy> {
     let crab = |eid: &str, hp: i64| Enemy { entity_id: eid.into(), hp, incoming: 6, rage: true, ..Default::default() };
     vec![crab("CRUSHER_0", crusher_hp), crab("ROCKET_0", rocket_hp)]
@@ -925,7 +925,7 @@ fn test_hitting_the_second_crab_after_the_first_dies_is_worth_less() {
     assert!(with_rage < score(&line, &crabs(6, 120), &kw));
 }
 
-/// (The Python's defaults: 5 HP, Stock 2.)
+/// (the original's defaults: 5 HP, Stock 2.)
 fn axebot(hp: i64, respawns: i64) -> Enemy {
     Enemy { entity_id: "AXEBOT_0".into(), hp, incoming: 15, respawns, max_hp: 85, ..Default::default() }
 }

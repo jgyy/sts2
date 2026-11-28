@@ -17,7 +17,7 @@ use sts2bot::games::sts1::client::{Prefs, Sts1Client, Wire};
 use sts2bot::games::sts1::screens::Screens;
 use sts2bot::games::sts1::{keys, text, tiers};
 use sts2bot::logging::{self, Level};
-use sts2bot::py::JsonExt;
+use sts2bot::base::JsonExt;
 use sts2bot::run::events::{self, EventOptionValueArgs};
 use sts2bot::run::strategy::{self, Memory};
 use sts2bot::run::{crowd, decks};
@@ -50,7 +50,7 @@ fn game_state(s: &mut Screens) -> &mut Value {
 }
 
 /// A card in hand, with the numbers the game worked out for it (damage, block and their printed base).
-/// (The Python's defaults: cost 1, upgrades 0; `numbers`: its other keywords as a dict.)
+/// (the original's defaults: cost 1, upgrades 0; `numbers`: its other keywords as a dict.)
 fn live(i: i64, cid: &str, ctype: &str, cost: i64, upgrades: i64, numbers: Value) -> Value {
     Screens::new().card(&with(json!({"id": cid, "name": cid, "type": ctype, "cost": cost, "upgrades": upgrades}), numbers), Some(i), true)
 }
@@ -283,7 +283,7 @@ impl ScryTable {
     }
 }
 
-/// (Python's `class Fake(Sts1Client)`: `_message` and `send` are its own.)
+/// (the original's `class Fake(Sts1Client)`: `_message` and `send` are its own.)
 struct Fake(Rc<RefCell<ScryTable>>);
 
 impl Wire for Fake {

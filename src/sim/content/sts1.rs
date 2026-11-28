@@ -13,7 +13,7 @@ use serde_json::{json, Value};
 use crate::cards::CardInfo;
 use crate::games::sts1::text;
 use crate::games::sts1::text::potions as potion_tables;
-use crate::py;
+use crate::base;
 use crate::run::strategy;
 use crate::sim::cards::{Card, CardDef};
 use crate::sim::content::{common, sts1_cards, sts1_foes, Character, Choice, Content, Item, Nodes, Odds};
@@ -76,7 +76,7 @@ pub fn _defs() -> IndexMap<String, Rc<CardDef>> {
         let (base, up) = text::UPGRADE_COST().get(key).copied().unwrap_or((cost_n, cost_n));
         let name = match sts1_cards::NAMES(key) {
             Some(name) => name.to_string(),
-            None => py::title(&key.replace('_', " ")),
+            None => base::title(&key.replace('_', " ")),
         };
         let ctype = sts1_cards::TYPES(kind);
         let color = match colors.get(key) {
@@ -386,7 +386,7 @@ pub fn random_potion(run: &mut Run) -> Potion {
     names.extend(own);
     names.push("FAIRY_IN_A_BOTTLE");
     let key = *run.rng.choice(&names);
-    Potion::new(key, &py::title(&key.replace("_S_", "'s ").replace('_', " ")), &text::potion_text(key, key), "Common")
+    Potion::new(key, &base::title(&key.replace("_S_", "'s ").replace('_', " ")), &text::potion_text(key, key), "Common")
 }
 
 // ------------------------------------------------------------------ the run
@@ -563,7 +563,7 @@ pub fn boss_won(run: &mut Run) {
     }
     let left: Vec<&str> = BOSS.iter().chain(OWN_BOSS(&run.character)).filter(|b| !run.has(b)).copied().collect();
     let mut offered = run.rng.sample(&left, 3);
-    py::sort_by_key(&mut offered, |r| text::boss_relic_rank(&json!({"id": r, "name": r})));
+    base::sort_by_key(&mut offered, |r| text::boss_relic_rank(&json!({"id": r, "name": r})));
     let first = offered[0];
     run.gain_relic(first);
     run.digest.push(format!("b{first}"));
@@ -575,7 +575,7 @@ pub fn fight_gold(run: &mut Run, kind: &str) -> i64 {
     if run.has("ECTOPLASM") {
         return 0;
     }
-    // (the Python builds the dict whole: all three are drawn)
+    // (the original builds the dict whole: all three are drawn)
     let (monster, elite, boss) = (run.rng.randint(10, 20), run.rng.randint(25, 35), run.rng.randint(95, 105));
     match kind {
         "monster" => monster,
@@ -618,7 +618,7 @@ pub fn rest_options(run: &mut Run) -> Vec<Value> {
     if run.has("ETERNAL_FEATHER") {
         run.hp = run.max_hp.min(run.hp + 3 * (run.deck.len() as i64 / 5));
     }
-    opts.iter().enumerate().map(|(i, o)| json!({"index": i, "id": o, "name": py::title(o), "is_enabled": true})).collect()
+    opts.iter().enumerate().map(|(i, o)| json!({"index": i, "id": o, "name": base::title(o), "is_enabled": true})).collect()
 }
 
 pub fn shop_stock(run: &mut Run) -> Vec<Item> {
@@ -629,7 +629,7 @@ pub fn start_hp(run: &Run) -> i64 {
     if run.asc < 6 {
         run.max_hp
     } else {
-        py::trunc(run.max_hp as f64 * 0.9) // (A6: start each run damaged)
+        base::trunc(run.max_hp as f64 * 0.9) // (A6: start each run damaged)
     }
 }
 
@@ -663,7 +663,7 @@ pub fn setup_run(run: &mut Run) {
     }
 }
 
-/// The game as the engine and the run hold it (Python's module `sim.content.sts1`).
+/// The game as the engine and the run hold it (the original's module `sim.content.sts1`).
 pub fn content() -> Content {
     Content {
         KEY,

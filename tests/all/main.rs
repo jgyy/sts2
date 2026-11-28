@@ -15,7 +15,7 @@ mod test_bot;
 mod test_both;
 mod test_fightrecord;
 mod test_learn;
-mod test_py;
+mod test_base;
 mod test_service;
 mod test_sim;
 mod test_size;

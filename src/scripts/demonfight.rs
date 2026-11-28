@@ -24,8 +24,8 @@ use std::rc::Rc;
 use indexmap::IndexMap;
 use serde_json::{json, Value};
 
-use super::modelfight::{exit_code, face, float, game_state, hand_cards, index, int, on_all_cores, out, piles, quiet, set_closing_or_combat, status, turn, under, Face, GameStateArgs, Py};
-use crate::py::{self, floordiv, fsum, max_of, sort_by_key, trunc, Random};
+use super::modelfight::{exit_code, face, float, game_state, hand_cards, index, int, on_all_cores, out, piles, quiet, set_closing_or_combat, status, turn, under, Face, GameStateArgs, Datum};
+use crate::base::{self, floordiv, fsum, max_of, sort_by_key, trunc, Random};
 
 pub const BOSS: i64 = 379;
 pub const ROUNDS: i64 = 24;
@@ -94,7 +94,7 @@ impl Deck {
         }
     }
 
-    /// Energy a turn starts with, `s` Powers in play. (Python's default `drain`: 0.)
+    /// Energy a turn starts with, `s` Powers in play. (the original's default `drain`: 0.)
     pub fn turn_energy(&self, s: i64, drain: i64) -> i64 {
         self.energy - drain + self.pe * s
     }
@@ -119,7 +119,7 @@ impl Deck {
             'A' => self.da,
             'H' => self.dh,
             'Z' => self.dz,
-            _ => panic!("KeyError: {}", py::str_repr(&kind.to_string())),
+            _ => panic!("KeyError: {}", base::str_repr(&kind.to_string())),
         };
         0.max(base + self.ps * s)
     }
@@ -141,7 +141,7 @@ impl Deck {
 /// For each of the three offers, whether the burn was taken.
 pub type Burns = (bool, bool, bool);
 
-/// A round's rules (Python's dict).
+/// A round's rules (the original's dict).
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct Rules {
     pub kind: i64,
@@ -197,7 +197,7 @@ fn factorial(n: i64) -> i64 {
     (1..=n).product()
 }
 
-/// Every hand of `n` cards as counts by kind, with its chance (`s` Powers in play). (Python's default `s`: 0.)
+/// Every hand of `n` cards as counts by kind, with its chance (`s` Powers in play). (the original's default `s`: 0.)
 pub fn hands(deck: &Deck, n: i64, s: i64) -> Vec<([i64; 6], f64)> {
     fn each(at: usize, left: i64, combo: &mut [i64; 6], n: i64, weights: &[f64], out: &mut Vec<([i64; 6], f64)>) {
         // (`itertools.product(range(n + 1), repeat=6)` in its order, the combos that do not add up to n left out)
@@ -227,7 +227,7 @@ pub fn hands(deck: &Deck, n: i64, s: i64) -> Vec<([i64; 6], f64)> {
 /// What a hand can do: the (damage, Block, Powers played) no other play with as many Powers beats on both counts.
 /// (A Power played counts for the attacks of later turns, not of this one: the order within a turn is left out.)
 /// (demon/scaling.rs's `plays` is this one too: a Power costs the deck's `pc` and every Power in play deals its `pd`,
-/// 1 and 0 in any other deck. The plays come in no particular order, as out of Python's set: nothing depends on it.)
+/// 1 and 0 in any other deck. The plays come in no particular order, as out of the original's set: nothing depends on it.)
 pub fn plays(deck: &Deck, hand: &[i64; 6], energy: i64, limit: i64, s: i64) -> Vec<(i64, i64, i64)> {
     let [a, h, z, b, _f, pw] = *hand;
     let mut seen: HashSet<(i64, i64, i64)> = HashSet::new();
@@ -359,7 +359,7 @@ pub fn solve(deck: &Deck, burns: Burns) -> Solved {
     V
 }
 
-/// The chance of winning after this turn's play (`s`: Powers in play once it is over). (Python's default `s`: 0.)
+/// The chance of winning after this turn's play (`s`: Powers in play once it is over). (the original's default `s`: 0.)
 pub fn value(V: &Solved, r: i64, rl: &Rules, hp: i64, boss: i64, dmg: i64, blk: i64, s: i64) -> f64 {
     if boss - dmg <= 0 {
         return 1.0;
@@ -371,7 +371,7 @@ pub fn value(V: &Solved, r: i64, rl: &Rules, hp: i64, boss: i64, dmg: i64, blk: 
     V[r as usize + 1][s as usize].at(left, BOSS.min(boss - dmg + rl.heal))
 }
 
-/// (Python's default `s`: 0.)
+/// (the original's default `s`: 0.)
 pub fn state(deck: &Deck, r: i64, rl: &Rules, hp: i64, boss: i64, hand: &[char], energy: i64, block: i64, played: i64, s: i64) -> Value {
     let text = |c: char| -> Face {
         match c {
@@ -385,7 +385,7 @@ pub fn state(deck: &Deck, r: i64, rl: &Rules, hp: i64, boss: i64, hand: &[char],
                 face("FRIENDSHIP", "Friendship", "Power", 1, &(lose + "Gain [necrobinder_energy_icon.png] at the start of each turn."), "Self")
             }
             'F' => face("CLUMSY", "Clumsy", "Curse", -1, "Unplayable.", "None"),
-            _ => panic!("TypeError: no card of kind {}", py::str_repr(&c.to_string())),
+            _ => panic!("TypeError: no card of kind {}", base::str_repr(&c.to_string())),
         }
     };
     let mut intents = if rl.inc == 0 {
@@ -488,7 +488,7 @@ pub fn fight(deck: &Deck, burns: Burns, V: &Solved, rng: &mut Random, trace: boo
                 'A' | 'B' | 'P' => 1,
                 'H' => 2,
                 'Z' => 0,
-                _ => panic!("KeyError: {}", py::str_repr(&c.to_string())),
+                _ => panic!("KeyError: {}", base::str_repr(&c.to_string())),
             };
         }
         let ours = value(V, r, &rl, hp, boss, dealt, block, s);
@@ -535,7 +535,7 @@ pub fn DECKS() -> Vec<Deck> {
 /// the burn taken at each offer, or not
 pub const OFFERS: [Burns; 2] = [(false, false, false), (false, false, true)];
 
-/// name -> value set on combat.rs (or closing.rs) in every worker (to try a planner constant): Python's `PATCH`.
+/// name -> value set on combat.rs (or closing.rs) in every worker (to try a planner constant): the original's `PATCH`.
 pub type Patch = IndexMap<String, f64>;
 
 /// Move each NAME=VALUE of the command line into a [`Patch`]: (the patch, the command line without them).
@@ -568,7 +568,7 @@ pub fn job(args: &(usize, Burns, i64, i64, Patch)) -> Result<Done, String> {
     Ok((*d, *burns, V[1][0].at(deck.maxhp, BOSS), (0..*n).map(|_| fight(deck, *burns, &V, &mut rng, false)).collect()))
 }
 
-/// (Python's default `offers`: OFFERS; `patch`: the command line's.)
+/// (the original's default `offers`: OFFERS; `patch`: the command line's.)
 pub fn run(n: i64, offers: &[Burns], patch: &Patch) -> Result<Vec<Done>, String> {
     let jobs: Vec<(usize, Burns, i64, i64, Patch)> =
         (0..DECKS().len()).flat_map(|d| offers.iter().enumerate().map(move |(i, burns)| (d, *burns, n, 900 + 17 * d as i64 + i as i64, patch.clone()))).collect();
@@ -655,7 +655,7 @@ fn f3(x: f64) -> String {
 /// The same deck on 3 and on 4 energy a turn, and what the energy is worth at the Demon's door (relicworth.rs).
 pub fn energy_table(n: i64) {
     let offers = OFFERS[0];
-    out!("perfect play and the planner, the same deck on 3 and 4 energy a turn (relicworth.py's energy relics):"); // (the text as the Python printed it)
+    out!("perfect play and the planner, the same deck on 3 and 4 energy a turn (relicworth.rs's energy relics):");
     for (counts, kw) in [([6, 4, 2, 6, 2, 0], DeckArgs { da: 15, db: 11, ..Default::default() }), ([6, 3, 3, 6, 2, 2], DeckArgs { da: 17, db: 12, ..Default::default() })] {
         for energy in [3, 4] {
             let deck = Deck::new(counts, DeckArgs { energy, ..kw });
@@ -667,7 +667,7 @@ pub fn energy_table(n: i64) {
     }
     let deck = Deck::new([6, 4, 2, 6, 2, 0], DeckArgs { da: 15, db: 11, energy: 4, ..Default::default() });
     let V = solve(&deck, offers);
-    let door = Py::Dict([50, 60, 75].iter().map(|h| (Py::Int(*h), Py::Float(py::round_to(V[1][0].at(*h, BOSS), 3)))).collect());
+    let door = Datum::Dict([50, 60, 75].iter().map(|h| (Datum::Int(*h), Datum::Float(base::round_to(V[1][0].at(*h, BOSS), 3)))).collect());
     out!("  4 energy, perfect play by HP at the Demon's door: {}", door.repr());
 }
 
@@ -726,9 +726,9 @@ fn script(args: &[String]) -> Result<(), String> {
                     let decks = DECKS();
                     let (deck, burns) = (index(&decks, at)?, OFFERS[0]);
                     let V = solve(deck, burns);
-                    out!("{} perfect play wins {}", deck.repr(), py::float_repr(py::round_to(V[1][0].at(deck.maxhp, BOSS), 3)));
+                    out!("{} perfect play wins {}", deck.repr(), base::float_repr(base::round_to(V[1][0].at(deck.maxhp, BOSS), 3)));
                     let (won, rounds, _) = fight(deck, burns, &V, &mut Random::new(seed as i128), true);
-                    out!("{}", Py::Tuple(vec![Py::Bool(won), Py::Int(rounds)]).repr());
+                    out!("{}", Datum::Tuple(vec![Datum::Bool(won), Datum::Int(rounds)]).repr());
                     Ok(())
                 },
             )??;
@@ -756,7 +756,7 @@ mod tests {
     const GOLDEN: &str = include_str!("../../tests/golden/scripts/demonfight.txt");
 
     #[test]
-    fn as_python() {
+    fn as_recorded() {
         for command in ["trace", "trace 2 3", "trace 5 5 CLOSE_REACH=0 HP_BASE=2.5", "2", "regret 3 HP_SLOPE=6", "energy 3", "cards 1"] {
             golden(main, &command.split(' ').collect::<Vec<_>>(), section(GOLDEN, command));
         }

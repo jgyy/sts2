@@ -5,7 +5,7 @@ use std::borrow::Borrow;
 use serde_json::Value;
 
 use super::battle::Enemy;
-use crate::py::JsonExt;
+use crate::base::JsonExt;
 
 crate::tunables! {
     /// turns of our usual damage within which a boss counts as dying next turn (0: the rule is off)

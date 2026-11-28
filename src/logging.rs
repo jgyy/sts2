@@ -1,4 +1,4 @@
-//! Logging as the Python version did it: named loggers with levels, a line per record to the terminal and to a file
+//! Logging as the original version did it: named loggers with levels, a line per record to the terminal and to a file
 //! that is rotated by size, and a way for tests to read what was logged.
 //!
 //! ```ignore
@@ -112,7 +112,7 @@ pub enum Sink {
 }
 
 /// Where records go and how a line looks. `format` knows `%(asctime)s`, `%(levelname)s`, `%(name)s` and `%(message)s`,
-/// and `%(datetime)s`: the time without its milliseconds (Python's `%(asctime)s` under `datefmt="%Y-%m-%d %H:%M:%S"`).
+/// and `%(datetime)s`: the time without its milliseconds (the original's `%(asctime)s` under `datefmt="%Y-%m-%d %H:%M:%S"`).
 pub struct Handler {
     pub sink: Sink,
     pub level: Level,
@@ -158,7 +158,7 @@ pub fn enabled(level: Level) -> bool {
     l >= ROOT_LEVEL.load(Ordering::Relaxed) || CAPTURE.with(|c| !c.borrow().is_empty())
 }
 
-/// Seconds since the epoch as local "YYYY-MM-DD HH:MM:SS,mmm" (Python's `%(asctime)s`).
+/// Seconds since the epoch as local "YYYY-MM-DD HH:MM:SS,mmm" (the original's `%(asctime)s`).
 pub fn asctime() -> String {
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
     let secs = now.as_secs() as libc::time_t;
@@ -187,7 +187,7 @@ pub fn emit(logger: &'static str, level: Level, message: String) {
     let mut handlers = HANDLERS.lock().unwrap_or_else(|e| e.into_inner());
     if handlers.is_empty() {
         if level >= Level::Warning {
-            eprintln!("{message}"); // (Python's handler of last resort)
+            eprintln!("{message}"); // (the original's handler of last resort)
         }
         return;
     }

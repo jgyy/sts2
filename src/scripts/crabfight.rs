@@ -15,11 +15,11 @@ use serde_json::{json, Value};
 
 use super::modelfight::{
     aimed_text, attack, counter, deal, exit_code, face, float, game_state, hand_cards, hit, in_battle, in_combat, int, mean, name_value, no_setup, on_all_cores, out, quiet, set_battle, set_combat,
-    shuffled, status, target, turn, under, Face, GameStateArgs, Py,
+    shuffled, status, target, turn, under, Face, GameStateArgs, Datum,
 };
 use crate::fight::battle;
 use crate::learn;
-use crate::py::{self, floordiv, trunc, Random};
+use crate::base::{self, floordiv, trunc, Random};
 
 /// hit, hits, 15 Block, Weak+Frail
 pub const C_CYCLE: [(i64, i64, bool, bool); 5] = [(12, 1, false, false), (4, 1, false, false), (6, 2, false, true), (0, 0, false, false), (12, 1, true, false)];
@@ -36,11 +36,11 @@ pub fn FACES(c: char, n: i64) -> Face {
         'W' => face("CLOTHESLINE_R", "Clothesline", "Attack", 1, &format!("Deal {n} damage. Apply 2 Weak."), "AnyEnemy"),
         'B' => face("DEFEND_R", "Defend", "Skill", 1, &format!("Gain {n} Block."), "Self"),
         'F' => face("CLUMSY", "Clumsy", "Curse", -1, "Unplayable.", "None"),
-        _ => panic!("KeyError: {}", py::str_repr(&c.to_string())),
+        _ => panic!("KeyError: {}", base::str_repr(&c.to_string())),
     }
 }
 
-/// The damage (or Block) a card does, `w` and `fw` what Weak and Frail leave of it. (Python's defaults: 1 and 1.)
+/// The damage (or Block) a card does, `w` and `fw` what Weak and Frail leave of it. (the original's defaults: 1 and 1.)
 pub fn number(c: char, da: i64, db: i64, w: f64, fw: f64) -> i64 {
     match c {
         'A' => trunc(da as f64 * w),
@@ -73,14 +73,14 @@ fn left(on: i64) -> f64 {
     }
 }
 
-/// (Python's defaults: chp 206, rhp 196, no trace.)
-pub fn fight(deck_spec: &[i64], energy: i64, maxhp: i64, rng: &mut Random, chp: i64, rhp: i64, trace: bool) -> Py {
+/// (the original's defaults: chp 206, rhp 196, no trace.)
+pub fn fight(deck_spec: &[i64], energy: i64, maxhp: i64, rng: &mut Random, chp: i64, rhp: i64, trace: bool) -> Datum {
     let (da, db) = (deck_spec[0], deck_spec[1]);
     let (mut draw, mut disc, mut hp) = (shuffled(rng, "ABFHVW", &deck_spec[2..]), Vec::new(), maxhp);
     let mut E = [Crab { hp: chp, mx: chp, block: 0, st: 0, vul: 0, wk: 0 }, Crab { hp: rhp, mx: rhp, block: 0, st: 0, vul: 0, wk: 0 }];
     let mut raged = [false, false];
     let mut facing: Option<usize> = None;
-    let mut first_dead = Py::None;
+    let mut first_dead = Datum::None;
     let (mut weak, mut frail) = (0, 0);
     for r in 1..=30 {
         let (mut hand, mut en, mut block) = (deal(&mut draw, &mut disc, rng, 5), energy, 0);
@@ -162,7 +162,7 @@ pub fn fight(deck_spec: &[i64], energy: i64, maxhp: i64, rng: &mut Random, chp: 
                 let o = 1 - t;
                 if E[t].hp == 0 {
                     if !first_dead.truthy() {
-                        first_dead = Py::Tuple(vec![Py::str(IDS[t]), Py::Int(r), Py::Int(E[o].hp)]);
+                        first_dead = Datum::Tuple(vec![Datum::str(IDS[t]), Datum::Int(r), Datum::Int(E[o].hp)]);
                     }
                     if E[o].hp > 0 {
                         // Crab Rage
@@ -182,11 +182,11 @@ pub fn fight(deck_spec: &[i64], energy: i64, maxhp: i64, rng: &mut Random, chp: 
             }
             disc.push(hand.remove(i));
             if trace {
-                out!("   play {} {} {}", c, aimed_text(&act), Py::Dict(IDS.iter().zip(&E).map(|(id, e)| (Py::str(id), Py::Int(e.hp))).collect()).repr());
+                out!("   play {} {} {}", c, aimed_text(&act), Datum::Dict(IDS.iter().zip(&E).map(|(id, e)| (Datum::str(id), Datum::Int(e.hp))).collect()).repr());
             }
         }
         if E.iter().all(|e| e.hp <= 0) {
-            return Py::Tuple(vec![Py::Bool(true), Py::Int(hp), Py::Int(r), first_dead]);
+            return Datum::Tuple(vec![Datum::Bool(true), Datum::Int(hp), Datum::Int(r), first_dead]);
         }
         let lost = 0.max(labels(&E, facing).iter().flatten().map(|(x, h)| x * h).sum::<i64>() - block);
         hp -= lost;
@@ -195,7 +195,7 @@ pub fn fight(deck_spec: &[i64], energy: i64, maxhp: i64, rng: &mut Random, chp: 
         }
         disc.append(&mut hand);
         if hp <= 0 {
-            return Py::Tuple(vec![Py::Bool(false), Py::Int(0), Py::Int(r), first_dead]);
+            return Datum::Tuple(vec![Datum::Bool(false), Datum::Int(0), Datum::Int(r), first_dead]);
         }
         for e in E.iter_mut() {
             // the enemies' turn: Block goes, then what they did
@@ -211,7 +211,7 @@ pub fn fight(deck_spec: &[i64], energy: i64, maxhp: i64, rng: &mut Random, chp: 
         }
         (weak, frail) = if E[0].hp > 0 && cdeb { (2, 2) } else { (0.max(weak - 1), 0.max(frail - 1)) };
     }
-    Py::Tuple(vec![Py::Bool(false), Py::Int(0), Py::Int(30), first_dead])
+    Datum::Tuple(vec![Datum::Bool(false), Datum::Int(0), Datum::Int(30), first_dead])
 }
 
 /// A number (combat's RAGE_COST), threat=ROCKET/20/CRUSHER/12 (battle::KNOWN_THREAT), NAME=VALUE (a constant of battle.rs
@@ -250,14 +250,14 @@ pub fn arm_patch(arm: &str) -> Result<(), String> {
 }
 
 /// (arm, deck, energy, fights, seed) -> a row of the table.
-pub fn run(args: &(String, Vec<i64>, i64, i64, i64)) -> Result<Py, String> {
+pub fn run(args: &(String, Vec<i64>, i64, i64, i64)) -> Result<Datum, String> {
     let (arm, dk, energy, n, seed) = args;
-    let res: Vec<Py> = under(
+    let res: Vec<Datum> = under(
         || arm_patch(arm),
         || (0..*n).map(|j| fight(dk, *energy, 80, &mut Random::new((seed * 10007 + j) as i128), 206, 196, false)).collect(), // a seed per fight: every arm plays the same shuffles
     )?;
-    let first = counter(res.iter().map(|o| if o.at(3).truthy() { o.at(3).at(0).clone() } else { Py::None }));
-    Ok(Py::Tuple(vec![Py::str(arm), Py::ints(dk), Py::Int(*energy), Py::Float(mean(&res, 0)), Py::Float(mean(&res, 1)), Py::Float(mean(&res, 2)), first]))
+    let first = counter(res.iter().map(|o| if o.at(3).truthy() { o.at(3).at(0).clone() } else { Datum::None }));
+    Ok(Datum::Tuple(vec![Datum::str(arm), Datum::ints(dk), Datum::Int(*energy), Datum::Float(mean(&res, 0)), Datum::Float(mean(&res, 1)), Datum::Float(mean(&res, 2)), first]))
 }
 
 /// damage, Block, Strikes, Defends, dead, heavy
@@ -277,25 +277,25 @@ fn script(args: &[String]) -> Result<(), String> {
         out!("{}", fight(&DECKS()[3], 4, 80, &mut Random::new(seed as i128), 206, 196, true).repr());
     } else {
         let n = if !args.is_empty() { int(&args[0])? } else { 100 };
-        let arms: Vec<String> = if args.len() > 1 { args[1].split(',').map(str::to_string).collect() } else { vec![py::float_repr(battle::RAGE_COST.get())] };
+        let arms: Vec<String> = if args.len() > 1 { args[1].split(',').map(str::to_string).collect() } else { vec![base::float_repr(battle::RAGE_COST.get())] };
         let decks = if args.get(2).map(String::as_str) == Some("debuff") { DEBUFF_DECKS() } else { DECKS() };
         let jobs: Vec<(String, Vec<i64>, i64, i64, i64)> = arms.iter().flat_map(|a| decks.iter().enumerate().map(move |(i, dk)| (a.clone(), dk.clone(), 4, n, 500 + i as i64))).collect();
-        let out: Vec<Py> = on_all_cores(&no_setup, &run, &jobs, 8).into_iter().collect::<Result<_, _>>()?;
+        let out: Vec<Datum> = on_all_cores(&no_setup, &run, &jobs, 8).into_iter().collect::<Result<_, _>>()?;
         for a in &arms {
-            let rows: Vec<Py> = out.iter().filter(|o| o.at(0).as_str() == a).cloned().collect();
-            let f = |k: Py| -> i64 { rows.iter().map(|o| o.at(6).get(&k).map(Py::int).unwrap_or(0)).sum() };
+            let rows: Vec<Datum> = out.iter().filter(|o| o.at(0).as_str() == a).cloned().collect();
+            let f = |k: Datum| -> i64 { rows.iter().map(|o| o.at(6).get(&k).map(Datum::int).unwrap_or(0)).sum() };
             out!(
                 "{a}: won {:.3}  hp left {:5.1}  rounds {:4.1}  first to die: Crusher {}, Rocket {}, neither {}",
                 mean(&rows, 3),
                 mean(&rows, 4),
                 mean(&rows, 5),
-                f(Py::str("CRUSHER_0")),
-                f(Py::str("ROCKET_0")),
-                f(Py::None)
+                f(Datum::str("CRUSHER_0")),
+                f(Datum::str("ROCKET_0")),
+                f(Datum::None)
             );
         }
         for dk in &decks {
-            let dk = Py::ints(dk);
+            let dk = Datum::ints(dk);
             out!("{} {}", dk.repr(), out.iter().filter(|o| *o.at(1) == dk).map(|o| format!("{}: {:.2}", o.at(0).as_str(), o.at(3).float())).collect::<Vec<_>>().join(" "));
         }
     }
@@ -314,7 +314,7 @@ mod tests {
     const GOLDEN: &str = include_str!("../../tests/golden/scripts/crabfight.txt");
 
     #[test]
-    fn as_python() {
+    fn as_recorded() {
         for command in ["trace 3", "3 0.3,RAGE_COST=5+caution=1.5,0.9,threat=ROCKET/20/CRUSHER/12+HP_BASE=2", "2 0.3,THREAT_FLOOR=9 debuff"] {
             golden(main, &command.split(' ').collect::<Vec<_>>(), section(GOLDEN, command));
         }

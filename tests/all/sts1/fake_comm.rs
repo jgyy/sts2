@@ -5,18 +5,18 @@
 use std::cell::RefCell;
 
 use serde_json::{json, Value};
-use sts2bot::py::{self, JsonExt};
+use sts2bot::base::{self, JsonExt};
 
 use crate::fake_game::with;
 
 thread_local! {
-    /// Python's module-level `random` (not seeded): only the cards' "uuid" comes from it.
-    static RANDOM: RefCell<py::Random> = RefCell::new(py::Random::unseeded());
+    /// the original's module-level `random` (not seeded): only the cards' "uuid" comes from it.
+    static RANDOM: RefCell<base::Random> = RefCell::new(base::Random::unseeded());
 }
 
-/// (The Python's defaults: target False, rarity "BASIC", upgrades 0.)
+/// (the original's defaults: target False, rarity "BASIC", upgrades 0.)
 pub fn card(cid: &str, name: &str, ctype: &str, cost: i64, target: bool, rarity: &str, upgrades: i64) -> Value {
-    let uuid = format!("{cid}-{}", py::float_repr(RANDOM.with(|r| r.borrow_mut().random())));
+    let uuid = format!("{cid}-{}", base::float_repr(RANDOM.with(|r| r.borrow_mut().random())));
     json!({"id": cid, "name": format!("{name}{}", if upgrades != 0 { "+" } else { "" }), "type": ctype, "cost": cost, "has_target": target,
            "rarity": rarity, "upgrades": upgrades, "uuid": uuid, "exhausts": false})
 }
@@ -44,12 +44,12 @@ pub struct Monster {
     pub vuln: i64,
 }
 
-/// What `_do` raises and `command` answers as an error: Python's IndexError, ValueError and KeyError, as `f"{type(e).__name__}: {e}"`.
+/// What `_do` raises and `command` answers as an error: the original's IndexError, ValueError and KeyError, as `f"{type(e).__name__}: {e}"`.
 type Raised = String;
 
 /// `int(s)`.
 fn int(s: &str) -> Result<i64, Raised> {
-    s.trim().parse::<i64>().map_err(|_| format!("ValueError: invalid literal for int() with base 10: {}", py::str_repr(s)))
+    s.trim().parse::<i64>().map_err(|_| format!("ValueError: invalid literal for int() with base 10: {}", base::str_repr(s)))
 }
 
 /// `args[i]`.
@@ -57,7 +57,7 @@ fn arg<'a>(args: &[&'a str], i: usize) -> Result<&'a str, Raised> {
     args.get(i).copied().ok_or_else(|| "IndexError: list index out of range".to_string())
 }
 
-/// The place of `seq[i]` (a negative index counts from the end, as Python's does).
+/// The place of `seq[i]` (a negative index counts from the end, as the original's does).
 fn at(len: usize, i: i64) -> Result<usize, Raised> {
     let j = if i < 0 { i + len as i64 } else { i };
     if j < 0 || j >= len as i64 {
@@ -67,7 +67,7 @@ fn at(len: usize, i: i64) -> Result<usize, Raised> {
 }
 
 pub struct FakeComm {
-    pub rng: py::Random,
+    pub rng: base::Random,
     pub monster_hp: i64,
     pub attack: i64,
     pub in_game: bool,
@@ -113,7 +113,7 @@ impl FakeComm {
     /// `FakeComm(seed=0, monster_hp=20, attack=7)`.
     pub fn new(seed: i64, monster_hp: i64, attack: i64) -> Self {
         FakeComm {
-            rng: py::Random::new(seed as i128),
+            rng: base::Random::new(seed as i128),
             monster_hp,
             attack,
             in_game: false,
@@ -229,11 +229,11 @@ impl FakeComm {
             "GRID" => vec!["choose", "confirm", "state"],
             "CHEST" => vec!["choose", "proceed", "state"],
             "GAME_OVER" => vec!["proceed", "state"],
-            other => panic!("KeyError: {}", py::str_repr(other)),
+            other => panic!("KeyError: {}", base::str_repr(other)),
         }
     }
 
-    /// (The Python's default: upgrades 0.)
+    /// (the original's default: upgrades 0.)
     pub fn _card(&self, c: &Card, upgrades: i64) -> Value {
         card(c.0, c.1, c.2, c.3, c.4, "BASIC", upgrades)
     }
@@ -358,7 +358,7 @@ impl FakeComm {
             self.energy -= c.3;
             if c.2 == "ATTACK" {
                 let damage = DAMAGE.iter().find(|(k, _)| *k == c.0).map_or(6, |(_, d)| *d);
-                self.monster.hp -= if self.monster.vuln != 0 { py::trunc(damage as f64 * 1.5) } else { damage };
+                self.monster.hp -= if self.monster.vuln != 0 { base::trunc(damage as f64 * 1.5) } else { damage };
                 if c.0 == "Bash" {
                     self.monster.vuln += 2;
                 }
@@ -413,7 +413,7 @@ impl FakeComm {
                     "$" => ("ShopRoom", "SHOP_ROOM"),
                     "R" => ("RestRoom", "REST"),
                     "T" => ("TreasureRoom", "CHEST"),
-                    other => return Err(format!("KeyError: {}", py::str_repr(other))),
+                    other => return Err(format!("KeyError: {}", base::str_repr(other))),
                 };
                 (self.room, self.screen) = (room.to_string(), screen.to_string());
                 (self.rested, self.chest_open, self.picked) = (false, false, Vec::new());
@@ -486,7 +486,7 @@ impl FakeComm {
     }
 }
 
-/// Without the cards' uuids (Python's unseeded `random.random()`).
+/// Without the cards' uuids (the original's unseeded `random.random()`).
 fn scrub(x: &Value) -> Value {
     match x {
         Value::Object(d) => Value::Object(d.iter().filter(|(k, _)| *k != "uuid").map(|(k, v)| (k.clone(), scrub(v))).collect()),
@@ -495,10 +495,10 @@ fn scrub(x: &Value) -> Value {
     }
 }
 
-/// The fake against tests/sts1/fake_comm.py (tests/golden/sts1_fake_comm.json): its answers to a list of commands, errors too
-/// (as Python writes them, keys in order), and every command the bot sent it over whole runs, won and lost.
+/// The fake against tests/sts1/fake_comm.rs (tests/golden/sts1_fake_comm.json): its answers to a list of commands, errors too
+/// (as the original writes them, keys in order), and every command the bot sent it over whole runs, won and lost.
 #[test]
-fn the_fake_and_the_bot_over_it_are_the_pythons() {
+fn the_fake_and_the_bot_over_it_are_the_the_recorded() {
     use std::rc::Rc;
     use sts2bot::bot::BotArgs;
     use sts2bot::games::sts1::client::Prefs;
@@ -508,7 +508,7 @@ fn the_fake_and_the_bot_over_it_are_the_pythons() {
     let mut game = FakeComm::seeded(9);
     for (n, step) in golden["commands"].list().iter().enumerate() {
         let answer = scrub(&game.command(step[0].s()));
-        assert_eq!(py::json_dumps(&answer), py::json_dumps(&step[1]), "command {n}: {}", step[0]);
+        assert_eq!(base::json_dumps(&answer), base::json_dumps(&step[1]), "command {n}: {}", step[0]);
     }
     for run in golden["runs"].list() {
         let game = Rc::new(RefCell::new(FakeComm::new(run["seed"].int(), run["monster_hp"].int(), run["attack"].int())));

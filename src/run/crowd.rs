@@ -108,8 +108,8 @@ pub fn _ratings() -> IndexMap<String, f64> {
         let col = |r: &(String, f64, f64), c: usize| if c == 1 { r.1 } else { r.2 };
         let mut zs: Vec<Vec<f64>> = Vec::new();
         for c in [1usize, 2] {
-            let mean = crate::py::fsum(rows.iter().map(|r| col(r, c))) / rows.len() as f64;
-            let mut sd = (crate::py::fsum(rows.iter().map(|r| (col(r, c) - mean).powf(2.0))) / rows.len() as f64).powf(0.5);
+            let mean = crate::base::fsum(rows.iter().map(|r| col(r, c))) / rows.len() as f64;
+            let mut sd = (crate::base::fsum(rows.iter().map(|r| (col(r, c) - mean).powf(2.0))) / rows.len() as f64).powf(0.5);
             if sd == 0.0 {
                 sd = 1.0;
             }

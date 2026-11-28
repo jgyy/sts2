@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use crate::cards::{parse, CardInfo};
 use crate::learn::knob;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 pub const LATER: f64 = 0.7; // a debuff that lands later in the fight, against the same one landing now
 pub const FIGHT_ROUNDS: [(&str, i64); 2] = [("boss", 9), ("elite", 6)]; // how long such a fight usually runs (an ordinary one: 4)
@@ -29,7 +29,7 @@ pub fn landed(c: &CardInfo, fight: &str) -> (i64, f64) {
         _ => 2.0,
     };
     let parts = [c.vulnerable.min(3) as f64 * vuln, c.weak.min(3) as f64 * weak, 0.8 * c.doom as f64, venom * c.poison as f64, 1.0 * c.enemy_strength_loss as f64];
-    (parts.iter().filter(|p| **p > 0.0).count() as i64, py::fsum(parts))
+    (parts.iter().filter(|p| **p > 0.0).count() as i64, base::fsum(parts))
 }
 
 /// (what a debuff of this deck is worth once it lands, how many it will still apply before the fight ends).
@@ -63,7 +63,7 @@ pub fn gain(before: i64, after: i64, view: (f64, f64)) -> f64 {
             1.0
         }
     };
-    each * py::fsum((after + 1..before + 1).map(paid))
+    each * base::fsum((after + 1..before + 1).map(paid))
 }
 
 #[cfg(test)]
@@ -79,7 +79,7 @@ mod tests {
             let _env = env(row);
             let (state, r) = (&row["s"], &row["r"]);
             let player = &state["player"];
-            let fight = if state["state_type"].truthy() { py::str_of(&state["state_type"]) } else { "monster".to_string() };
+            let fight = if state["state_type"].truthy() { base::str_of(&state["state_type"]) } else { "monster".to_string() };
             let round_no = if state["battle"]["round"].truthy() { state["battle"]["round"].int() } else { 1 };
             let (here, boss) = (outlook(player, &fight, round_no), outlook(player, "boss", 2));
             assert_eq!(json!([[here.0, here.1], [boss.0, boss.1]]), r["art"], "state {n}");

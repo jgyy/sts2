@@ -23,18 +23,18 @@ pub const RELOAD_DELAY: f64 = 1.0; // a bot ended by SIGUSR1 (a deliberate reloa
 pub const STOP_GRACE: f64 = 10.0;
 pub const GAME_OPTIONS: [&str; 3] = ["--port", "--log-dir", "--launch-cmd"]; // each game needs its own value: not allowed with both
 
-/// Where the bots are started (the directory the program was built in, as Python's started where `sts2bot` was imported from);
+/// Where the bots are started (the directory the program was built in, as the original's started where `sts2bot` was imported from);
 /// None if it is not there: then where we are.
 pub fn ROOT() -> Option<PathBuf> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     root.is_dir().then_some(root)
 }
 
-/// Ctrl+C, or SIGTERM from systemd (Python's KeyboardInterrupt).
+/// Ctrl+C, or SIGTERM from systemd (the original's KeyboardInterrupt).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct KeyboardInterrupt;
 
-/// A bot process as `run` sees it (Python's `subprocess.Popen`; tests put their own in its place).
+/// A bot process as `run` sees it (the original's `subprocess.Popen`; tests put their own in its place).
 pub trait Proc {
     fn pid(&self) -> i64;
     /// None while it runs; then its exit code (minus the signal that ended it).
@@ -143,7 +143,7 @@ impl Drop for Handling {
     }
 }
 
-/// Ctrl+C notes that we are to stop (`stopped()`), until dropped: a bot by itself, where Python raised KeyboardInterrupt
+/// Ctrl+C notes that we are to stop (`stopped()`), until dropped: a bot by itself, where the original raised KeyboardInterrupt
 /// (SIGTERM ends such a bot at once, there as here: only `run` above catches it).
 #[must_use = "Ctrl+C is the system's again when this is dropped"]
 pub struct CtrlC(libc::sighandler_t);
@@ -202,7 +202,7 @@ pub fn without_game(argv: &[String]) -> Vec<String> {
     out
 }
 
-/// (Python's `[sys.executable, "-m", "sts2bot", "--game", game, *rest]`: here the program itself stands for the first three.)
+/// (the original's `[sys.executable, "-m", "sts2bot", "--game", game, *rest]`: here the program itself stands for the first three.)
 pub fn command(game: &str, rest: &[String]) -> Vec<String> {
     let exe = std::env::current_exe().map(|p| p.to_string_lossy().into_owned()).unwrap_or_else(|_| "sts2bot".to_string());
     let mut out = vec![exe, "--game".to_string(), game.to_string()];
@@ -229,7 +229,7 @@ impl Default for RunArgs<'_> {
 pub fn run(argv: &[String], args: RunArgs) -> i32 {
     let RunArgs { games, mut spawn, mut clock, mut sleep } = args;
     let rest = without_game(argv);
-    let mut procs: Vec<(String, Box<dyn Proc>)> = Vec::new(); // (in the order they were started, as Python's dict)
+    let mut procs: Vec<(String, Box<dyn Proc>)> = Vec::new(); // (in the order they were started, as the original's dict)
     let mut started: HashMap<String, f64> = HashMap::new();
     let mut due: HashMap<String, f64> = games.iter().map(|g| (g.clone(), 0.0)).collect(); // when each bot is to be (re)started
     let mut delay: HashMap<String, f64> = games.iter().map(|g| (g.clone(), RESTART_DELAY.get())).collect();
@@ -290,7 +290,7 @@ pub fn run(argv: &[String], args: RunArgs) -> i32 {
     let mut left: Vec<Box<dyn Proc>> = procs.into_iter().map(|(_, p)| p).collect();
     match _stop(&mut left, &mut *clock, &mut *sleep) {
         Ok(()) => 0,
-        Err(KeyboardInterrupt) => 130, // (stopped again while stopping: Python left with the interrupt, the bots as they were)
+        Err(KeyboardInterrupt) => 130, // (stopped again while stopping: the original left with the interrupt, the bots as they were)
     }
 }
 
@@ -451,7 +451,7 @@ mod tests {
             Ok(())
         });
         let starts = starts.borrow();
-        let gaps: Vec<i64> = starts.windows(2).map(|w| crate::py::round(w[1] - w[0])).collect();
+        let gaps: Vec<i64> = starts.windows(2).map(|w| crate::base::round(w[1] - w[0])).collect();
         assert_eq!(gaps[..4], [11, 21, 41, 41]); // (1 s of polling on top of each pause)
     }
 

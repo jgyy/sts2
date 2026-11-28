@@ -6,13 +6,13 @@ use serde_json::{json, Value};
 use sts2bot::games;
 use sts2bot::learn;
 use sts2bot::logging;
-use sts2bot::py::{self, JsonExt};
+use sts2bot::base::{self, JsonExt};
 use sts2bot::sim::cards::Card;
 use sts2bot::sim::content::{self, sts1, sts2, Content};
 use sts2bot::sim::engine::Fight;
 use sts2bot::sim::run::Run;
 
-/// Puts the game and the log back when dropped (the Python's setUp and tearDown).
+/// Puts the game and the log back when dropped (the original's setUp and tearDown).
 struct Scene(games::Playing);
 
 impl Drop for Scene {
@@ -70,10 +70,10 @@ fn test_every_first_game_card_plays() {
     }
 }
 
-/// Each card of the first game played once (plain and upgraded) by its own character, as the Python model plays it:
+/// Each card of the first game played once (plain and upgraded) by its own character, as the original model plays it:
 /// what the bot is shown, the fight after the play, and the fight as the next turn begins.
 #[test]
-fn test_every_first_game_card_does_what_the_pythons_does() {
+fn test_every_first_game_card_does_what_the_recorded_one_does() {
     let (_scene, sts1) = _content("sts1");
     let golden: Value = serde_json::from_str(include_str!("../golden/sim_sts1_cards.json")).unwrap();
     let mut checked = 0;
@@ -94,15 +94,15 @@ fn test_every_first_game_card_does_what_the_pythons_does() {
             state["player"]["hand"].list().iter().map(|c| format!("{}:{}:{}", c["id"].s(), c["cost"].s(), c["can_play"].truthy() as i64)).collect::<Vec<_>>().join(" "),
             state["battle"]["enemies"].list().iter().map(|e| format!("{}:{}", e["entity_id"].s(), e["intents"].list().iter().map(|i| format!("{}{}", i["type"].s(), i["label"].s())).collect::<Vec<_>>().join(","))).collect::<Vec<_>>().join(" "),
         ]);
-        assert_eq!(py::json_dumps(&seen), py::json_dumps(&case["seen"]), "{why}: what the bot sees");
-        assert_eq!(py::json_dumps(&snap(&mut f)), py::json_dumps(&case["first"]), "{why}: after the play");
+        assert_eq!(base::json_dumps(&seen), base::json_dumps(&case["seen"]), "{why}: what the bot sees");
+        assert_eq!(base::json_dumps(&snap(&mut f)), base::json_dumps(&case["first"]), "{why}: after the play");
         f.player_turn_end();
         f.enemies_turn();
-        snap(&mut f); // (the Python took a snapshot here too: one draw of the generator)
+        snap(&mut f); // (the original took a snapshot here too: one draw of the generator)
         if !(f.won || f.lost) {
             f.player_turn_start();
         }
-        assert_eq!(py::json_dumps(&snap(&mut f)), py::json_dumps(&case["next"]), "{why}: as the next turn begins");
+        assert_eq!(base::json_dumps(&snap(&mut f)), base::json_dumps(&case["next"]), "{why}: as the next turn begins");
         checked += 1;
     }
     assert!(checked > 700, "{checked} golden cases");
@@ -136,11 +136,11 @@ fn test_each_game_keeps_its_own_ascension_rules() {
         assert_eq!((g.boss_heal)(&run), 0.0); // (the next act's Ancient heals: act_start)
         let rare = |odds: &sts2bot::sim::content::Odds| odds["monster"].iter().find(|(r, _)| r == "Rare").unwrap().1;
         assert_almost_equal(rare(&sts2::SCARCE_ODDS()), rare(&sts2::CARD_ODDS()) / 2.0); // A7: half the rares ...
-        assert_almost_equal(py::fsum(sts2::SCARCE_ODDS()["elite"].iter().map(|(_r, p)| *p)), 1.0); // ... the rest commons
+        assert_almost_equal(base::fsum(sts2::SCARCE_ODDS()["elite"].iter().map(|(_r, p)| *p)), 1.0); // ... the rest commons
     }
     let (_scene, sts1) = _content("sts1");
     let run = Run::new(&sts1, "IRONCLAD", 1, None, 6);
-    assert_eq!(run.hp, py::trunc(run.max_hp as f64 * 0.9));
+    assert_eq!(run.hp, base::trunc(run.max_hp as f64 * 0.9));
     assert_eq!((sts1.boss_heal)(&run), 0.75);
 }
 
@@ -150,7 +150,7 @@ fn table_run(floor: i64, picks: Value, lean: f64) -> Value {
 }
 
 fn lines(runs: &[Value]) -> String {
-    runs.iter().map(|r| py::json_dumps(r) + "\n").collect()
+    runs.iter().map(|r| base::json_dumps(r) + "\n").collect()
 }
 
 fn sim_main(args: &[&str]) -> i32 {
@@ -170,8 +170,8 @@ fn test_the_card_table_learns_only_from_runs_that_did_not_use_it() {
     let table: Value = serde_json::from_str(&std::fs::read_to_string(&out).unwrap()).unwrap();
     let table = &table["sts2"]["SILENT"];
     // Par is 25: Footwork's five picks 5 floors over it, Deflect's 5 under, each shrunk to 5/15 of that.
-    assert_almost_equal(table["FOOTWORK"].as_f64().unwrap(), py::round_to(25.0 / 15.0, 2));
-    assert_almost_equal(table["DEFLECT"].as_f64().unwrap(), py::round_to(-25.0 / 15.0, 2));
+    assert_almost_equal(table["FOOTWORK"].as_f64().unwrap(), base::round_to(25.0 / 15.0, 2));
+    assert_almost_equal(table["DEFLECT"].as_f64().unwrap(), base::round_to(-25.0 / 15.0, 2));
 }
 
 #[test]
@@ -183,11 +183,11 @@ fn test_the_card_table_can_learn_on_top_of_itself() {
     let d = tempfile::tempdir().unwrap();
     let (src, base, out) = (d.path().join("runs.jsonl"), d.path().join("base.json"), d.path().join("cards.json"));
     std::fs::write(&src, lines(&runs)).unwrap();
-    std::fs::write(&base, py::json_dumps(&json!({"sts2": {"SILENT": {"FOOTWORK": 1.0, "DEFLECT": -2.5, "NOXIOUS_FUMES": 0.5}}, "sts1": {"IRONCLAD": {"BASH": 1.0}}}))).unwrap();
+    std::fs::write(&base, base::json_dumps(&json!({"sts2": {"SILENT": {"FOOTWORK": 1.0, "DEFLECT": -2.5, "NOXIOUS_FUMES": 0.5}}, "sts1": {"IRONCLAD": {"BASH": 1.0}}}))).unwrap();
     assert_eq!(sim_main(&["prior", src.to_str().unwrap(), "--out", out.to_str().unwrap(), "--prior", "10", "--onto", base.to_str().unwrap()]), 0);
     let table: Value = serde_json::from_str(&std::fs::read_to_string(&out).unwrap()).unwrap();
     // What the runs still say (as above, +-25/15) is added to the base, within --most; cards and games without runs keep theirs.
-    assert_eq!(table["sts2"]["SILENT"], json!({"FOOTWORK": py::round_to(1.0 + 25.0 / 15.0, 2), "DEFLECT": -3.0, "NOXIOUS_FUMES": 0.5}));
+    assert_eq!(table["sts2"]["SILENT"], json!({"FOOTWORK": base::round_to(1.0 + 25.0 / 15.0, 2), "DEFLECT": -3.0, "NOXIOUS_FUMES": 0.5}));
     assert_eq!(table["sts1"], json!({"IRONCLAD": {"BASH": 1.0}}));
 }
 
@@ -197,7 +197,7 @@ fn test_the_owl_magistrate_lands() {
     let mut run = Run::new(&g, "IRONCLAD", 1, None, 0);
     run.act_id = "GLORY".to_string();
     run.note_deck();
-    let owl = sts2::_new("OWL_MAGISTRATE", 0, &mut run, 1, false, None); // (the Python passes "monster" for the slot: not the first)
+    let owl = sts2::_new("OWL_MAGISTRATE", 0, &mut run, 1, false, None); // (the original passes "monster" for the slot: not the first)
     let mut f = Fight::new(run, vec![owl], "monster");
     f.start();
     let mut seen = Vec::new();

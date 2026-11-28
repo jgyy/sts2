@@ -6,7 +6,7 @@ use std::rc::Rc;
 use indexmap::IndexMap;
 use serde_json::{json, Map, Value};
 
-use crate::py::{self, JsonExt, Random};
+use crate::base::{self, JsonExt, Random};
 use crate::run::strategy;
 use crate::sim::cards::{Card, CardDef, ViewArgs};
 use crate::sim::content::{Choice, Item, Nodes, Odds};
@@ -94,7 +94,7 @@ pub fn make_map(rng: &mut Random, weights: &IndexMap<String, f64>, elite_from: i
 
 /// A key of `weights` drawn by weight.
 pub fn _draw<K: Clone>(rng: &mut Random, weights: &[(K, f64)]) -> K {
-    let mut r = rng.random() * py::fsum(weights.iter().map(|(_, w)| *w));
+    let mut r = rng.random() * base::fsum(weights.iter().map(|(_, w)| *w));
     for (k, w) in weights {
         r -= w;
         if r <= 0.0 {
@@ -302,8 +302,8 @@ pub fn shop_stock(run: &mut Run, prices: &[(&str, i64)], colorless_mult: f64) ->
         let mut v = Map::new();
         v.insert("index".to_string(), json!(items.len()));
         v.insert("category".to_string(), json!(cat));
-        v.insert("price".to_string(), json!(py::trunc(price)));
-        v.insert("cost".to_string(), json!(py::trunc(price)));
+        v.insert("price".to_string(), json!(base::trunc(price)));
+        v.insert("cost".to_string(), json!(base::trunc(price)));
         for (k, x) in fields {
             v.insert(k, x);
         }
@@ -348,7 +348,7 @@ pub fn shop_stock(run: &mut Run, prices: &[(&str, i64)], colorless_mult: f64) ->
             300
         };
         let price = tier as f64 * run.rng.uniform(0.95, 1.05);
-        let fields = vec![("relic_id".to_string(), json!(rid)), ("relic_name".to_string(), json!(py::title(&rid.replace('_', " ")))), ("description".to_string(), json!((g.relic_text)(&rid)))];
+        let fields = vec![("relic_id".to_string(), json!(rid)), ("relic_name".to_string(), json!(base::title(&rid.replace('_', " ")))), ("description".to_string(), json!((g.relic_text)(&rid)))];
         let at = add(&mut items, "relic", price, fields);
         items[at].relic = Some(rid);
     }

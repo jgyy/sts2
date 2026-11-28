@@ -1,5 +1,5 @@
-//! Python's `random.Random`, bit for bit: the Mersenne Twister and the methods the bot and the model runs use,
-//! so that a seeded run draws exactly what the Python version drew.
+//! the original's `random.Random`, bit for bit: the Mersenne Twister and the methods the bot and the model runs use,
+//! so that a seeded run draws exactly what the original version drew.
 
 const N: usize = 624;
 const M: usize = 397;
@@ -24,7 +24,7 @@ impl Default for Random {
 }
 
 impl Random {
-    /// `random.Random(seed)` for an integer seed (its absolute value, as Python takes it).
+    /// `random.Random(seed)` for an integer seed (its absolute value, as the original takes it).
     pub fn new(seed: i128) -> Self {
         let mut r = Random { mt: [0; N], idx: N + 1, gauss_next: None };
         r.seed(seed);

@@ -3,7 +3,7 @@
 use serde_json::{json, Value};
 use sts2bot::cards::parse;
 use sts2bot::fight::{combat, triggers};
-use sts2bot::py::JsonExt;
+use sts2bot::base::JsonExt;
 
 use crate::fake_game::{card, with};
 use crate::fight::{aimed, combat_state, power};
@@ -18,7 +18,7 @@ fn HEX() -> Value {
 }
 
 /// Round 1 of the elite as logged on Ascension 8 (the Spectral Knight's Debuff makes every card Ethereal).
-/// (The Python's defaults: flail 106, spectral 95, magi 87, hand a Strike.)
+/// (the original's defaults: flail 106, spectral 95, magi 87, hand a Strike.)
 fn knights(flail: i64, spectral: i64, magi: i64, hand: Option<Vec<Value>>) -> Value {
     let out = [
         enemy!("FLAIL_KNIGHT_0", flail, attack = 15),

@@ -8,6 +8,34 @@ It is heuristic, not an LLM, so it costs nothing to run nonstop. Status (2026-11
 five characters; 30 wins in about 770 runs, every character has won on Ascension 5; most runs end at the act 2 boss
 or the last one.
 
+## Quick start: the commands you actually need
+
+Run everything from this folder (`cd ~/Documents/repo/sts2`).
+
+| I want to... | Type this |
+|---|---|
+| **build the bot** (once, and again after any code change) | `cargo build --release` |
+| **play BOTH games at once** | `target/release/sts2bot --game both -v` |
+| play only Slay the Spire 2 | `target/release/sts2bot -v` |
+| play only the first Slay the Spire | `target/release/sts2bot --game sts1 -v` |
+| stop the bot | press `Ctrl+C` in its terminal |
+| run both games in the background instead (keeps going after you close the terminal) | `target/release/sts2bot service start` |
+| stop the background bot | `target/release/sts2bot service stop` |
+| see what the background bot is doing | `journalctl --user -u sts2bot -f` |
+| run the tests | `cargo test --release` |
+
+Things that trip people up:
+
+- **"Both games" does nothing for the first game?** Run `target/release/sts2bot sts1-setup` once. It tells
+  CommunicationMod to start this bot. Run it again if the bot's folder moves.
+- **`-v`** only makes the log more detailed (every action). Leave it on: the analysis scripts need it.
+- **Do not start it twice.** If the background service is running, do not also start the bot in a terminal
+  (check with `target/release/sts2bot service status`).
+- The bot starts Steam and the games by itself. You do not need to open them first.
+- Logs are in `~/.local/state/sts2bot/bot.log` (Slay the Spire 2) and `~/.local/state/sts2bot/sts1/bot.log`.
+
+First time on a new machine? Follow [Setup](#setup-slay-the-spire-2) and [Slay the Spire 1](#slay-the-spire-1) below first.
+
 ## How it works
 
 ```
@@ -128,7 +156,7 @@ service restarts it.
 | `scripts fightlog COMMAND` | read `bot.log` fight by fight: `bosses`, `costs`, `show 'YYYY-MM-DD HH:MM'`, `knobs`, `deaths`, `pace`, `rooms SETTING`, `bosspace`, `reads`, `unplayed`, `surprises`, `idle`, `powers`, `events`, `pit`, `crabs`, `artifact`, `ancients`, `wiki` |
 | `scripts decklog [bosses]` | what a fight costs against what the deck holds (`fights.jsonl`) |
 | `scripts relearn` | rebuild `card_stats.json` from `runs.jsonl` |
-| `scripts demonfight`, `crabfight`, `kinfight`, `knightfight`, `roomfight`, `bosses/NAME` | model fights: one boss or room played by the real planner thousands of times (most take `NAME=VALUE` to try a constant); `demonfight` also solves the Knowledge Demon exactly |
+| `scripts demonfight`, `crabfight`, `kinfight`, `knightfight`, `roomfight`, `bosses/NAME` (`aeonfight`, `bowlfight`, `matriarchfight`, `queenfight`, `sadfight`, `subjectfight`) | model fights: one boss or room played by the real planner thousands of times (most take `NAME=VALUE` to try a constant); `demonfight` also solves the Knowledge Demon exactly |
 | `scripts demon/*`, `scripts audit/*` | relic and affliction prices at the Demon; cards played for nothing and text the parser misreads; what the model runs do with each card's text (`audit/simcards`) |
 
 ## Model runs
@@ -162,9 +190,9 @@ sim trace                     # unchanged hashes = unchanged decisions
 
 `tests/all/test_size.rs` keeps source files under 2500 lines and directories under 25 files.
 
-The bot was first written in Python and rewritten in Rust module for module. `tests/golden/` holds what the Python
-version answered (card readings, planner choices, whole bot sessions, the decisions of seeded model runs): the tests
-replay them and compare exactly, so `sim trace` prints the hashes the Python version printed.
+`tests/golden/` holds recorded answers (card readings, planner choices, whole bot sessions, the decisions of seeded
+model runs): the tests replay them and compare exactly. After a change that is meant to alter decisions, write the
+recorded runs again with `cargo test --release -- --ignored rewrite_the_golden_runs` and read the diff.
 Strategy notes for both games are in [docs/strategy/](docs/strategy/).
 
 ## Uninstall

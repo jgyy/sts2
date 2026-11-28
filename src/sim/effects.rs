@@ -12,7 +12,7 @@ use std::rc::Rc;
 use indexmap::IndexMap;
 
 use crate::cards::CardInfo;
-use crate::py;
+use crate::base;
 use crate::sim::cards::Card;
 use crate::sim::engine::{Fight, Fx, Move, Orb, Pile};
 use crate::sim::monsters;
@@ -36,7 +36,7 @@ pub fn add(d: &mut IndexMap<String, i64>, key: &str, n: i64) -> i64 {
     }
 }
 
-/// How the Python reads a dict of powers or counters.
+/// How the original reads a dict of powers or counters.
 pub trait Powers {
     /// `d.get(key, 0)`.
     fn val(&self, key: &str) -> i64;
@@ -626,7 +626,7 @@ pub fn on_death(f: &mut Fight) {
     let fairy = run.potions.iter().position(|p| p.as_ref().is_some_and(|p| p.key == "FAIRY_IN_A_BOTTLE"));
     if let Some(fairy) = fairy {
         run.drop_potion(fairy as i64);
-        run.hp = py::trunc(run.max_hp as f64 * 0.3).max(1);
+        run.hp = base::trunc(run.max_hp as f64 * 0.3).max(1);
         return;
     }
     if run.has("LIZARD_TAIL") && !run.counters.on("LIZARD_TAIL_USED") {
@@ -702,7 +702,7 @@ pub fn RELIC_START(f: &mut Fight, rid: &str) {
         "PRESERVED_INSECT" => {
             if f.kind == "elite" {
                 for x in f.alive() {
-                    f.foes[x].hp = py::trunc(f.foes[x].hp as f64 * 0.75);
+                    f.foes[x].hp = base::trunc(f.foes[x].hp as f64 * 0.75);
                 }
             }
         }
@@ -984,7 +984,7 @@ pub fn foe_acts(f: &mut Fight, i: usize, m: &Move) {
     foe_hook(f, i, "acted", 0, false);
 }
 
-/// One effect of an enemy's move (Python's `do`).
+/// One effect of an enemy's move (the original's `do`).
 pub fn do_(f: &mut Fight, i: usize, fx: &Fx) {
     let word = fx.word.as_str();
     let n = fx.int(0);
@@ -1109,7 +1109,7 @@ pub fn drink(f: &mut Fight, pot: &Potion, foe: Option<usize>) {
     let t = pot.text.as_str();
     let low = t.to_lowercase();
     let sacred = if f.run.has("SACRED_BARK") { 2 } else { 1 };
-    let num = |pat: &str| -> i64 { py::re::cached_i(pat).captures(t).map_or(0, |m| m[1].parse::<i64>().expect("a number") * sacred) };
+    let num = |pat: &str| -> i64 { base::re::cached_i(pat).captures(t).map_or(0, |m| m[1].parse::<i64>().expect("a number") * sacred) };
     let n = num(r"deal (\d+) damage to all enemies");
     if n != 0 {
         f.hurt_all(n);
@@ -1155,7 +1155,7 @@ pub fn drink(f: &mut Fight, pot: &Potion, foe: Option<usize>) {
     }
     let n = num(r"heal (\d+)% of your max hp");
     if n != 0 {
-        f.heal(py::floordiv(f.run.max_hp * n, 100));
+        f.heal(base::floordiv(f.run.max_hp * n, 100));
     }
     let n = num(r"gain (\d+) max hp");
     if n != 0 {

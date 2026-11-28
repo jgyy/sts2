@@ -12,7 +12,7 @@ use crate::fight::battle::{end_of_turn_block, expected_loss, osty_hp, read_enemi
 use crate::games;
 use crate::games::sts1::stance::read as read_stance;
 use crate::learn::knob;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 use crate::Action;
 
 pub const BOSS_FLOORS: [i64; 3] = [17, 33, 48];
@@ -103,7 +103,7 @@ pub fn fortifier(player: &Value) -> bool {
 }
 
 /// A potion that does nothing, or next to nothing, drunk at this moment (most went on round 1 of a boss fight, whatever
-/// they said). `line` is what the planner means to play this turn (None: not known). (The Python's default: losing 0.)
+/// they said). `line` is what the planner means to play this turn (None: not known). (the original's default: losing 0.)
 pub fn _ill_timed(text: &str, player: &Value, line: Option<&[CardInfo]>, block: i64, incoming: i64, danger: bool, losing: i64) -> bool {
     let hand: Vec<CardInfo> = player["hand"].list().iter().map(parse).collect();
     let cards: &[CardInfo] = match line {
@@ -190,7 +190,7 @@ pub fn potion_actions(state: &Value, planned_loss: Option<i64>, line: Option<&[C
         return keeps;
     }
     if kind != Some("boss") {
-        py::sort_by_key(&mut potions, |p| boss_worth(p)); // what is drunk on the way to a boss is what would do the least there
+        base::sort_by_key(&mut potions, |p| boss_worth(p)); // what is drunk on the way to a boss is what would do the least there
     }
     if !(big_fight || spare != 0) {
         return vec![];
@@ -204,7 +204,7 @@ pub fn potion_actions(state: &Value, planned_loss: Option<i64>, line: Option<&[C
     }
     let block = player["block"].int();
     // Aim at something that stays dead and matters: the leader that hits hardest.
-    let focus = py::max_by_key(enemies.iter(), |e| (e.worth(), e.incoming, e.hp)).unwrap().entity_id.clone();
+    let focus = base::max_by_key(enemies.iter(), |e| (e.worth(), e.incoming, e.hp)).unwrap().entity_id.clone();
     let mut out: Vec<Action> = Vec::new();
     let slippery = enemies.iter().any(|e| e.slippery != 0 || e.hit_cap == 1); // (Intangible: the same, for a turn)
     // What is thrown at the Test Subject's first form is gone when it revives, and at a sleeper only wakes it: those potions wait.
@@ -219,7 +219,7 @@ pub fn potion_actions(state: &Value, planned_loss: Option<i64>, line: Option<&[C
             break;
         }
         let text = p["description"].text();
-        let target_type = py::str_of(&p["target_type"]);
+        let target_type = base::str_of(&p["target_type"]);
         // Every hit on a Slippery enemy takes 1 HP: keep damage, and what makes our hits bigger, for later.
         if slippery && crate::re!(r"(?i)deals? \d+ damage|\bstrength\b|\bvigor\b|\bvulnerable\b|\bpoison\b|\bdoom\b").is_match(&text) {
             continue;
@@ -261,11 +261,11 @@ pub fn potion_actions(state: &Value, planned_loss: Option<i64>, line: Option<&[C
 pub fn describe(state: &Value) -> String {
     let player = &state["player"];
     let battle = &state["battle"];
-    let shown = |v: &Value, key: &str| py::str_of(&v[key]); // f"{d.get(key)}"
+    let shown = |v: &Value, key: &str| base::str_of(&v[key]); // f"{d.get(key)}"
     let powers_of = |c: &Value| {
         let one = |s: &Value| {
             let id = match s.get("id") {
-                Some(id) => py::str_of(id),
+                Some(id) => base::str_of(id),
                 None => String::new(),
             };
             format!("{}:{}", id.replace("_POWER", ""), shown(s, "amount"))
@@ -275,7 +275,7 @@ pub fn describe(state: &Value) -> String {
     let mut foes = Vec::new();
     for e in battle["enemies"].list() {
         let powers = powers_of(e);
-        let intents = e["intents"].list().iter().map(|i| format!("{}{}", shown(i, "type"), if i["label"].truthy() { py::str_of(&i["label"]) } else { String::new() })).collect::<Vec<_>>().join("+");
+        let intents = e["intents"].list().iter().map(|i| format!("{}{}", shown(i, "type"), if i["label"].truthy() { base::str_of(&i["label"]) } else { String::new() })).collect::<Vec<_>>().join("+");
         foes.push(format!("{} {}hp/{}blk [{}] {}", shown(e, "entity_id"), shown(e, "hp"), shown(e, "block"), powers, intents));
     }
     /// What the planner makes of the card, e.g. " d6x2 b5" (so a misread shows in the log).
@@ -305,7 +305,7 @@ pub fn describe(state: &Value) -> String {
         extra += &format!(" stars {}", shown(player, "stars"));
     }
     if !player["orbs"].is_null() {
-        let orbs: String = player["orbs"].list().iter().map(|o| (if o["name"].truthy() { py::str_of(&o["name"]) } else { "?".to_string() }).chars().next().unwrap().to_string()).collect();
+        let orbs: String = player["orbs"].list().iter().map(|o| (if o["name"].truthy() { base::str_of(&o["name"]) } else { "?".to_string() }).chars().next().unwrap().to_string()).collect();
         extra += " orbs ";
         extra += if orbs.is_empty() { "-" } else { &orbs };
     }

@@ -15,7 +15,7 @@
 "sts2bot"
 ]
 ],
-"stdout": "The bot is stopped and will not start at login. Start it again with: python3 -m sts2bot service enable\nThe game keeps running; close it from the game or Steam if you want it gone too.\n",
+"stdout": "The bot is stopped and will not start at login. Start it again with: sts2bot service enable\nThe game keeps running; close it from the game or Steam if you want it gone too.\n",
 "stderr": ""
 },
 {
@@ -907,7 +907,7 @@
 "b"
 ]
 ],
-"stdout": "The bot is stopped and will not start at login. Start it again with: python3 -m sts2bot service enable\nThe game keeps running; close it from the game or Steam if you want it gone too.\n",
+"stdout": "The bot is stopped and will not start at login. Start it again with: sts2bot service enable\nThe game keeps running; close it from the game or Steam if you want it gone too.\n",
 "stderr": ""
 },
 {

@@ -6,13 +6,13 @@
 //! is a function of the fight and the monster's place in it that names the next move; the helpers below cover
 //! the usual ones.
 //!
-//! # How this differs from the Python (the engine and the games' monster tables build on it)
+//! # How this differs from the original (the engine and the games' monster tables build on it)
 //!
-//! **The fight is a type parameter.** In Python a monster's rules are functions of the fight (`hooks`:
+//! **The fight is a type parameter.** In the original a monster's rules are functions of the fight (`hooks`:
 //! `fn(fight, foe, ...)`; a move's `("call", fn)`: `fn(fight, foe)`) and its pattern a function `(foe, rng)` that reaches
 //! the fight through `foe.mem["fight"]`. Here `Move<F>`, `Spec<F>`, `Foe<F>` are generic over the fight `F`, and
 //! every rule takes the fight and the INDEX of the monster in the fight's list of foes (the list only grows, so
-//! the index is the monster's identity: Python's `x is not foe` is `n != i`):
+//! the index is the monster's identity: the original's `x is not foe` is `n != i`):
 //!
 //! ```ignore
 //! pub type Pattern<F> = Rc<dyn Fn(&mut F, usize) -> String>;           // (fight, foe index) -> move name
@@ -26,20 +26,20 @@
 //! and [`choose`] need a monster's memory, its history and the generator at once).
 //!
 //! - `Foe.choose(rng)` is the free function [`choose`]`(fight, i)` (a pattern may look at the whole fight).
-//!   A pattern written out in a monster table takes `(f, i)`; where the Python calls a helper inline,
+//!   A pattern written out in a monster table takes `(f, i)`; where the original calls a helper inline,
 //!   `weighted({...}, {...})(foe, rng)`, call [`weighted_pick`]`(foe, rng, &[...], &[...])` (the same draw), or build the
 //!   pattern and call it: `weighted(&[...], &[...])(f, i)`; `cycle(&[...], 0)(f, i)` built inline starts from a new
-//!   count every time, as it does in Python (the Slime Boss's `cycle("goop", "prep", "slam")(f, r)`).
+//!   count every time, as it does in the original (the Slime Boss's `cycle("goop", "prep", "slam")(f, r)`).
 //! - A hook is called with `(fight, i, amount, attack)`; the events that pass no amount ("start", "death", "end",
-//!   "acted", "wake", "grounded") get `0, false`. It returns Python's truth of what the function returned (only
-//!   "death" is asked: true, it is not gone); a Python hook returning None returns false.
+//!   "acted", "wake", "grounded") get `0, false`. It returns the original's truth of what the function returned (only
+//!   "death" is asked: true, it is not gone); a the original hook returning None returns false.
 //! - `foe.mem["fight"] = f` has nothing to keep; the monster tables that ask `if fight` (sts2_foes._holds) can set the
-//!   flag `foe.mem.set("fight", 1)` where Python stored the fight.
+//!   flag `foe.mem.set("fight", 1)` where the original stored the fight.
 //!
-//! **`Foe.mem`** is a dict of mixed keys and values in Python; here [`Mem`] keeps them by type: `ints` (counts, and
+//! **`Foe.mem`** is a dict of mixed keys and values in the original; here [`Mem`] keeps them by type: `ints` (counts, and
 //! flags as 0/1: `mem.get("shell", 0)`, `mem.truthy("awake")`, `mem.add("slept", 1)`), `strs` ("state", "force"),
 //! `dmg` and `hits` for the keys `("dmg", move)` and `("hits", move)`, `lists` (the slimes' "split_into").
-//! The patterns' own keys (Python's `key = object()`) are names no table uses, from [`_key`].
+//! The patterns' own keys (the original's `key = object()`) are names no table uses, from [`_key`].
 //!
 //! **A move's effects** are [`Fx`]: a word and its arguments ([`Arg`]: an int, a string or a function).
 //! `Spec.moves` holds `Rc<Move>` so that `foe.r#move()` hands out the move without borrowing the monster.
@@ -51,7 +51,7 @@ use std::rc::Rc;
 
 use indexmap::IndexMap;
 
-use crate::py::{self, Random};
+use crate::base::{self, Random};
 
 /// What this module asks of a fight: its `i`-th monster and its random generator, lent together.
 pub trait FightLike: Sized + 'static {
@@ -60,7 +60,7 @@ pub trait FightLike: Sized + 'static {
 
 /// (fight, the monster's index) -> the name of its next move.
 pub type Pattern<F> = Rc<dyn Fn(&mut F, usize) -> String>;
-/// A monster's own rule for an event: (fight, the monster's index, amount, attack) -> the truth of what Python returned.
+/// A monster's own rule for an event: (fight, the monster's index, amount, attack) -> the truth of what the original returned.
 pub type Hook<F> = Rc<dyn Fn(&mut F, usize, i64, bool) -> bool>;
 /// What a move's `("call", fn)` does: (fight, the monster's index).
 pub type Call<F> = Rc<dyn Fn(&mut F, usize)>;
@@ -92,7 +92,7 @@ impl<F> fmt::Debug for Arg<F> {
     }
 }
 
-/// (Functions are equal when they are the same one, as in Python.)
+/// (Functions are equal when they are the same one, as in the original.)
 impl<F> PartialEq for Arg<F> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -122,7 +122,7 @@ impl<F> From<String> for Arg<F> {
     }
 }
 
-/// One effect of a move: Python's tuple `(word, *args)`.
+/// One effect of a move: the original's tuple `(word, *args)`.
 pub struct Fx<F> {
     pub word: String,
     pub args: Vec<Arg<F>>,
@@ -311,7 +311,7 @@ impl<F> fmt::Debug for Spec<F> {
     }
 }
 
-/// (The pattern and the hooks are equal when they are the same functions, as in Python.)
+/// (The pattern and the hooks are equal when they are the same functions, as in the original.)
 impl<F> PartialEq for Spec<F> {
     fn eq(&self, other: &Self) -> bool {
         self.key == other.key
@@ -327,7 +327,7 @@ impl<F> PartialEq for Spec<F> {
     }
 }
 
-/// A monster's memory (Python's `Foe.mem`, a dict), by the type of what is kept.
+/// A monster's memory (the original's `Foe.mem`, a dict), by the type of what is kept.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Mem {
     /// Counts, and flags as 0 and 1.
@@ -429,7 +429,7 @@ pub struct Foe<F> {
 
 impl<F> Foe<F> {
     pub fn new(spec: &Rc<Spec<F>>, n: i64, hp: i64, hp_mult: f64) -> Foe<F> {
-        let hp = py::round(hp as f64 * hp_mult).max(1);
+        let hp = base::round(hp as f64 * hp_mult).max(1);
         Foe {
             spec: spec.clone(),
             key: spec.key.clone(),
@@ -528,7 +528,7 @@ thread_local! {
     static KEYS: Cell<u64> = const { Cell::new(0) };
 }
 
-/// A key for a pattern's own count in a monster's memory that nothing else uses (Python's `key = object()`).
+/// A key for a pattern's own count in a monster's memory that nothing else uses (the original's `key = object()`).
 pub fn _key() -> String {
     KEYS.with(|k| {
         k.set(k.get() + 1);
@@ -547,7 +547,7 @@ pub fn counter<F>(f: &mut Foe<F>, key: &str, start: i64) -> i64 {
 pub fn cycle<F: FightLike>(names: &[&str], start: i64) -> Pattern<F> {
     let key = _key();
     let names: Vec<String> = names.iter().map(|n| n.to_string()).collect();
-    Rc::new(move |f, i| f.with_foe(i, |foe, _| names[py::modulo(counter(foe, &key, start), names.len() as i64) as usize].clone()))
+    Rc::new(move |f, i| f.with_foe(i, |foe, _| names[base::modulo(counter(foe, &key, start), names.len() as i64) as usize].clone()))
 }
 
 /// These moves first, in order, then the pattern `then`.
@@ -577,12 +577,12 @@ pub fn weighted<F: FightLike>(weights: &[(&str, f64)], most: &[(&str, i64)]) -> 
     Rc::new(move |f, i| f.with_foe(i, |foe, rng| weighted_pick(foe, rng, &weights, &most)))
 }
 
-/// What the pattern `weighted(weights, most)` picks for this monster: Python's `weighted(weights, most)(foe, rng)`.
+/// What the pattern `weighted(weights, most)` picks for this monster: the original's `weighted(weights, most)(foe, rng)`.
 pub fn weighted_pick<F, S: AsRef<str>, T: AsRef<str>>(f: &Foe<F>, rng: &mut Random, weights: &[(S, f64)], most: &[(T, i64)]) -> String {
     let limit = |m: &str| most.iter().find(|(k, _)| k.as_ref() == m).map(|(_, n)| *n).unwrap_or(99);
     let ok: Vec<(&str, f64)> = weights.iter().map(|(m, w)| (m.as_ref(), *w)).filter(|(m, _)| limit(m) > _run_length(&f.history, m)).collect();
     let options: Vec<(&str, f64)> = if ok.is_empty() { weights.iter().map(|(m, w)| (m.as_ref(), *w)).collect() } else { ok };
-    let mut r = rng.random() * py::fsum(options.iter().map(|(_, w)| *w));
+    let mut r = rng.random() * base::fsum(options.iter().map(|(_, w)| *w));
     for (m, w) in &options {
         r -= w;
         if r <= 0.0 {
@@ -599,7 +599,7 @@ pub fn _run_length(history: &[String], r#move: &str) -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::py::JsonExt;
+    use crate::base::JsonExt;
     use serde_json::{json, Value};
 
     struct Scene {

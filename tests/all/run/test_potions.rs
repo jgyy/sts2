@@ -8,7 +8,7 @@ use sts2bot::run::strategy::{self, Memory};
 
 use crate::helpers::{combat_state, enemy, STRIKE};
 
-/// (The Python's default: target "AnyPlayer".)
+/// (the original's default: target "AnyPlayer".)
 fn potion(slot: i64, name: &str, text: &str) -> Value {
     json!({"slot": slot, "name": name, "description": text, "target_type": "AnyPlayer", "can_use_in_combat": true})
 }
@@ -23,7 +23,7 @@ fn bought(items: &[Value], floor: i64, gold: i64, held: i64) -> Vec<Value> {
 
 // KeptForTheBoss
 
-/// (The Python's default: hp 75.)
+/// (the original's default: hp 75.)
 fn drunk(floor: i64, hp: i64) -> usize {
     let belt = [potion(0, "Strength Potion", "Gain 2 Strength."), potion(1, "Swift Potion", "Draw 3 cards.")];
     let mut state = combat_state!([STRIKE(0)], [enemy!("A", 60, attack = 10)], hp = hp, max_hp = 75, potions = belt);
@@ -82,7 +82,7 @@ fn test_a_merchant_before_the_boss_sells_the_best_potion_first() {
 #[test]
 fn test_an_event_that_takes_a_potion_is_charged_for_it() {
     let belt = [potion(0, "Attack Potion", "Add 1 of 3 random Attack cards into your Hand."), potion(1, "Strength Potion", "Gain 2 Strength.")];
-    // (The Python's defaults: text "Obtain a random Relic.", act 3, held the belt.)
+    // (the original's defaults: text "Obtain a random Relic.", act 3, held the belt.)
     let value_ = |title: &str, text: &str, act: i64, held: &[Value]| {
         events::_event_option_value(&json!({"title": title, "description": text}), 60, 80, EventOptionValueArgs { act: Some(act), potions: Some(held), ..Default::default() })
     };

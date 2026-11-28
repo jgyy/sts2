@@ -10,7 +10,7 @@ use indexmap::IndexMap;
 use serde_json::{json, Value};
 
 use crate::cards::{_card_key, deck_value, is_basic, parse};
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 pub const RELIC: f64 = 6.0;
 pub const POTION: f64 = 1.5;
@@ -55,7 +55,7 @@ pub struct Ctx {
     pub keys: Option<Vec<Value>>, // the first game's keys, once act 4 is open
 }
 
-/// (`hp` and `max_hp` have no default in Python: every caller gives them.)
+/// (`hp` and `max_hp` have no default in the original: every caller gives them.)
 impl Default for Ctx {
     fn default() -> Self {
         Ctx {
@@ -86,7 +86,7 @@ impl Ctx {
     }
 }
 
-/// A card as the helpers take it: its dict, or only its name (Python's `card: dict | str`).
+/// A card as the helpers take it: its dict, or only its name (the original's `card: dict | str`).
 pub trait CardOrName {
     /// The name, when this is a name and not a card's dict.
     fn as_name(&self) -> Option<&str>;
@@ -134,10 +134,10 @@ impl<T: CardOrName + ?Sized> CardOrName for &T {
 }
 
 pub fn num(pattern: &str, text: &str, default: i64) -> i64 {
-    match py::re::cached_i(pattern).captures(text) {
+    match base::re::cached_i(pattern).captures(text) {
         Some(m) => {
             let digits = m.get(1).map(|g| g.as_str()).unwrap_or("");
-            digits.parse().unwrap_or_else(|_| panic!("invalid literal for int() with base 10: {}", py::str_repr(digits)))
+            digits.parse().unwrap_or_else(|_| panic!("invalid literal for int() with base 10: {}", base::str_repr(digits)))
         }
         None => default,
     }
@@ -155,7 +155,7 @@ pub fn name_of<C: CardOrName + ?Sized>(card: &C) -> String {
 }
 
 pub fn is_curse(card: &Value) -> bool {
-    matches!(py::str_of(&card["type"]).as_str(), "Curse" | "Status") || CURSE.contains_key(name_of(card).as_str())
+    matches!(base::str_of(&card["type"]).as_str(), "Curse" | "Status") || CURSE.contains_key(name_of(card).as_str())
 }
 
 /// HP given up: dear as a share of what is left, dearer in act 3, the end of the run if it is all of it.
@@ -219,7 +219,7 @@ pub fn _removal_value(card: &Value) -> f64 {
 /// `worths[:n]` of the deck's removal values, the dearest first.
 fn _dearest(ctx: &Ctx, n: i64) -> (Vec<f64>, usize) {
     let mut worths: Vec<f64> = ctx.deck.iter().map(_removal_value).collect();
-    py::sort_by_key_rev(&mut worths, |w| *w);
+    base::sort_by_key_rev(&mut worths, |w| *w);
     let len = worths.len();
     let end = if n < 0 { (len as i64 + n).max(0) as usize } else { (n as usize).min(len) };
     worths.truncate(end);
@@ -232,7 +232,7 @@ pub fn removals(ctx: &Ctx, n: i64) -> f64 {
     if len == 0 {
         return 3.5 * n as f64; // (nothing known of the deck: a Strike's worth)
     }
-    py::fsum(worths) + 0.5 * (n - len as i64).max(0) as f64
+    base::fsum(worths) + 0.5 * (n - len as i64).max(0) as f64
 }
 
 /// Transforming the n cards we choose: each goes (as a removal) and a random card of ours comes.
@@ -240,7 +240,7 @@ pub fn transforms(ctx: &Ctx, n: i64) -> f64 {
     if ctx.deck.is_empty() {
         return 2.5 * n as f64;
     }
-    py::fsum(_dearest(ctx, n).0.into_iter().map(|w| (w - 1.5).max(1.0)))
+    base::fsum(_dearest(ctx, n).0.into_iter().map(|w| (w - 1.5).max(1.0)))
 }
 
 pub fn upgrades_left(ctx: &Ctx) -> i64 {
@@ -266,7 +266,7 @@ pub fn counts(ctx: &Ctx) -> IndexMap<&'static str, i64> {
         out["basics"] += (basic && !is_curse(c)) as i64;
         out["strikes"] += (basic && n.contains("strike")) as i64;
         out["defends"] += (basic && n.contains("defend")) as i64;
-        out["powers"] += (py::str_of(&c["type"]) == "Power") as i64;
+        out["powers"] += (base::str_of(&c["type"]) == "Power") as i64;
         out["attacks"] += (info.damage != 0) as i64;
         out["blocks"] += (info.block != 0) as i64;
         out["big_attacks"] += (info.total_damage() >= 10 && info.cost >= 1) as i64;
@@ -301,7 +301,7 @@ mod tests {
         }
     }
 
-    /// (Python's numbers as floats: `sum()` of nothing is the int 0 there.)
+    /// (the original's numbers as floats: `sum()` of nothing is the int 0 there.)
     fn floats(xs: &Value) -> Vec<f64> {
         xs.list().iter().map(|x| x.as_f64().unwrap()).collect()
     }
@@ -345,7 +345,7 @@ mod tests {
             let game = if row["ctx"]["game"].s() == "sts1" { "sts1" } else { "sts2" };
             let ctx = ctx_of(&row["ctx"], g["cards"][game].list());
             let _game = games::playing(game);
-            let why = format!("ctx {}", py::json_dumps(&row["ctx"]));
+            let why = format!("ctx {}", base::json_dumps(&row["ctx"]));
             assert_eq!(ctx.free_slots(), row["free_slots"].as_i64().unwrap(), "{why}");
             assert_eq!(ctx.fights_left(), row["fights_left"].as_f64().unwrap(), "{why}");
             let ns: Vec<i64> = g["ns"].list().iter().map(|n| n.as_i64().unwrap()).collect();
@@ -361,7 +361,7 @@ mod tests {
             assert_eq!(few.iter().flat_map(|n| [potions_gained(*n, &ctx, POTION), potions_gained(*n, &ctx, 2.25)]).collect::<Vec<_>>(), floats(&row["potions_gained"]), "{why}");
             assert_eq!(upgrades_left(&ctx), row["upgrades_left"].as_i64().unwrap(), "{why}");
             let counted: serde_json::Map<String, Value> = counts(&ctx).into_iter().map(|(k, v)| (k.to_string(), json!(v))).collect();
-            assert_eq!(py::json_dumps(&Value::Object(counted)), py::json_dumps(&row["counts"]), "{why}");
+            assert_eq!(base::json_dumps(&Value::Object(counted)), base::json_dumps(&row["counts"]), "{why}");
             checked += 2 * ns.len() + ns.len() + golds.len() + 5 * few.len() + 4;
         }
         for row in g["max_hp_gain"].list() {

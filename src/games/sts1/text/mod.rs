@@ -14,9 +14,9 @@ use indexmap::IndexMap;
 use serde_json::Value;
 
 use crate::cards::key_of;
-use crate::py::JsonExt;
+use crate::base::JsonExt;
 
-/// An id or a name as the game sends it, read the way `key_of` reads it in Python: `str(x or "")`.
+/// An id or a name as the game sends it, read the way `key_of` reads it in the original: `str(x or "")`.
 /// (A `&str`, a `String`, a JSON value, or an `Option` of one; "" and `Value::Null` stand for None.)
 pub trait Raw {
     fn raw(&self) -> String;
@@ -140,7 +140,7 @@ pub fn _FOLDED_IN() -> &'static regex::Regex {
     crate::re!(r"(?i)\s*(?:strength\s+affects\s+this\s+card\s+\d+\s+times|deals?\s+\d+\s+additional\s+damage\s+for\s+all\s+your\s+cards\s+containing\s+strike)\.?")
 }
 
-/// `isinstance(x, int)` (a bool is one in Python), and the way an f-string prints `max(0, x)`.
+/// `isinstance(x, int)` (a bool is one in the original), and the way an f-string prints `max(0, x)`.
 fn _int(v: &Value) -> Option<(i64, String)> {
     match v {
         Value::Bool(b) => Some((*b as i64, if *b { "True".to_string() } else { "0".to_string() })),
@@ -187,7 +187,7 @@ pub fn card_key<A: Raw + ?Sized, B: Raw + ?Sized>(card_id: &A, name: &B) -> Opti
     None
 }
 
-/// What the card does ("" for one not in the tables). (`name`: "" for none; `upgraded` is false in Python when left out.)
+/// What the card does ("" for one not in the tables). (`name`: "" for none; `upgraded` is false in the original when left out.)
 pub fn card_text<A: Raw + ?Sized, B: Raw + ?Sized>(card_id: &A, name: &B, upgraded: bool) -> String {
     match card_key(card_id, name) {
         Some(key) => expand(CARDS()[key.as_str()], upgraded),
@@ -230,7 +230,7 @@ pub fn boss_relic_rank(relic: &Value) -> i64 {
 
 #[cfg(test)]
 mod tests {
-    //! Replays tests/golden/sts1_text.json (written by CPython 3.13 from the Python tables and functions).
+    //! Replays tests/golden/sts1_text.json (recorded from the original tables and functions).
     use super::*;
     use std::collections::HashMap;
 
@@ -243,7 +243,7 @@ mod tests {
     }
 
     #[test]
-    fn the_tables_hold_python_s_rows_in_python_s_order() {
+    fn the_tables_hold_the_recorded_rows_in_the_recorded_order() {
         let g = golden();
         let t = &g["tables"];
         assert_eq!(t.as_object().unwrap().len(), 13);
@@ -307,7 +307,7 @@ mod tests {
     }
 
     #[test]
-    fn live_numbers_as_python_writes_them() {
+    fn live_numbers_as_the_record_writes_them() {
         let g = golden();
         let numbers = g["live_numbers_cards"].list();
         let changed: HashMap<(String, bool, String, usize), &str> =
@@ -325,7 +325,7 @@ mod tests {
                                 seen += 1;
                                 assert_eq!(&got, want, "{key} {up} {ctype} {card}")
                             }
-                            None => assert_eq!(got, desc, "{key} {up} {ctype} {card} (unchanged in Python)"),
+                            None => assert_eq!(got, desc, "{key} {up} {ctype} {card} (unchanged in the original)"),
                         }
                     }
                 }
@@ -340,7 +340,7 @@ mod tests {
     }
 
     #[test]
-    fn boss_relics_rank_as_in_python() {
+    fn boss_relics_rank_as_recorded() {
         let g = golden();
         let cases = g["boss_relic_rank"].list();
         assert!(cases.len() > 60);

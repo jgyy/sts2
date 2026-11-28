@@ -1,4 +1,4 @@
-//! What the bot's first life in Python left in its numbers: the same random draws, float sums, rounding and text
+//! What the bot's first life in the original left in its numbers: the same random draws, float sums, rounding and text
 //! forms, so that a seeded model run decides exactly as it did there (`sim trace`).
 
 pub mod num;

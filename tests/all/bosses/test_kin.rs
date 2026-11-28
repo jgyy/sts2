@@ -2,7 +2,7 @@
 
 use serde_json::{json, Value};
 use sts2bot::fight::battle;
-use sts2bot::py::JsonExt;
+use sts2bot::base::JsonExt;
 
 use crate::fake_game::with;
 use crate::fight::{aimed, combat_state, power};
@@ -12,7 +12,7 @@ fn MINION() -> Value {
     json!([power("MINION", 1)])
 }
 
-/// Round 1 of the fight as logged on Ascension 8. (The Python's defaults: f0 63, f1 62, priest 199.)
+/// Round 1 of the fight as logged on Ascension 8. (the original's defaults: f0 63, f1 62, priest 199.)
 fn kin(f0: i64, f1: i64, priest: i64) -> Value {
     let out = [
         with(enemy!("KIN_FOLLOWER_0", f0), json!({"status": MINION()})),

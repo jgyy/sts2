@@ -1,6 +1,6 @@
 //! Command line entry point: `sts2bot`.
 //!
-//! The command line is read as Python's argparse read it (the same options, abbreviations, usage, help and error
+//! The command line is read as the original's argparse read it (the same options, abbreviations, usage, help and error
 //! texts, exit codes): `parse_args`, over the small `Parser` below.
 
 use std::cell::RefCell;
@@ -17,7 +17,7 @@ use crate::games::sts1::{host as sts1_host, relay};
 use crate::games::{self};
 use crate::logging::{self, Handler, Level, Logger, RotatingFile, Sink};
 use crate::supervisor::{self, Host, Supervisor, SupervisorArgs, DEFAULT_LAUNCH, FAST_MODES};
-use crate::{learn, log_error, log_info, log_warning, py, service};
+use crate::{learn, log_error, log_info, log_warning, base, service};
 
 #[allow(non_upper_case_globals)]
 pub static log: Logger = Logger::new("sts2bot");
@@ -33,7 +33,7 @@ pub const DATE_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
 pub const STS1_SETUP_HINT: &str = "would wait for a relay that never starts and restart the game for ever. Run `sts2bot sts1-setup` to point CommunicationMod at the bot's relay";
 
 // ---------------------------------------------------------------------------------------------------------------------
-// What tests put in the place of the parts of `main` that reach outside it (the Python's mock.patch of logging.basicConfig,
+// What tests put in the place of the parts of `main` that reach outside it (the original's mock.patch of logging.basicConfig,
 // both.run and Supervisor).
 
 pub type BasicConfig = dyn Fn(Level, Vec<Handler>);
@@ -84,7 +84,7 @@ fn basic_config(level: Level, handlers: Vec<Handler>) {
 // ---------------------------------------------------------------------------------------------------------------------
 // argparse.
 
-/// Where the parser left by itself (Python's SystemExit): after --help (0, the help on stdout) or a command line it
+/// Where the parser left by itself (the original's SystemExit): after --help (0, the help on stdout) or a command line it
 /// could not read (2, the usage and the error on stderr).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Exit {
@@ -217,7 +217,7 @@ fn split_chunks(text: &str) -> Vec<String> {
     const WP: &str = r#"[A-Za-z0-9_!"'&.,?]"#;
     const LT: &str = r"[A-Za-z_]";
     let pattern = format!(r"{WS}+|(?<={WP})-{{2,}}(?=\w)|{NWS}+?(?:-(?:(?<={LT}{LT}-)|(?<={LT}-{LT}-))(?={LT}-?{LT})|(?={WS}|\z)|(?<={WP})(?=-{{2,}}\w))");
-    let re = py::re::cached_fancy(&pattern);
+    let re = base::re::cached_fancy(&pattern);
     let mut chunks = Vec::new();
     let mut last = 0;
     for found in re.find_iter(text).flatten() {
@@ -491,16 +491,16 @@ impl Parser {
 
     /// `_get_values` for one option: its argument as its type, checked against its choices.
     fn value(&self, opt: &Opt, text: &str) -> Result<Val, String> {
-        let invalid = |kind: &str| format!("argument {}: invalid {} value: {}", opt.name(), kind, py::str_repr(text));
+        let invalid = |kind: &str| format!("argument {}: invalid {} value: {}", opt.name(), kind, base::str_repr(text));
         let value = match opt.kind {
-            Kind::Int => Val::Int(py_int(text).ok_or_else(|| invalid("int"))?),
-            Kind::Float => Val::Float(py_float(text).ok_or_else(|| invalid("float"))?),
-            Kind::Path => Val::Str(py_path(text)),
+            Kind::Int => Val::Int(base_int(text).ok_or_else(|| invalid("int"))?),
+            Kind::Float => Val::Float(base_float(text).ok_or_else(|| invalid("float"))?),
+            Kind::Path => Val::Str(base_path(text)),
             _ => Val::Str(text.to_string()),
         };
         if !opt.choices.is_empty() && !opt.choices.contains(&text) {
-            let choices: Vec<String> = opt.choices.iter().map(|c| py::str_repr(c)).collect();
-            return Err(format!("argument {}: invalid choice: {} (choose from {})", opt.name(), py::str_repr(text), choices.join(", ")));
+            let choices: Vec<String> = opt.choices.iter().map(|c| base::str_repr(c)).collect();
+            return Err(format!("argument {}: invalid choice: {} (choose from {})", opt.name(), base::str_repr(text), choices.join(", ")));
         }
         Ok(value)
     }
@@ -574,7 +574,7 @@ impl Parser {
                     if arg_count == 0 && single_dash && !explicit.is_empty() {
                         // a single-dash option that takes no arguments: more single-dash options out of the tail
                         if sep.as_deref().is_some_and(|s| !s.is_empty()) || explicit.starts_with('-') {
-                            return Err(Stop::Error(format!("argument {}: ignored explicit argument {}", opt.name(), py::str_repr(&explicit))));
+                            return Err(Stop::Error(format!("argument {}: ignored explicit argument {}", opt.name(), base::str_repr(&explicit))));
                         }
                         action_tuples.push((at, None));
                         let mut rest = explicit.chars();
@@ -603,7 +603,7 @@ impl Parser {
                         action_tuples.push((at, Some(explicit)));
                         break;
                     } else {
-                        return Err(Stop::Error(format!("argument {}: ignored explicit argument {}", opt.name(), py::str_repr(&explicit))));
+                        return Err(Stop::Error(format!("argument {}: ignored explicit argument {}", opt.name(), base::str_repr(&explicit))));
                     }
                 }
                 None => {
@@ -649,14 +649,14 @@ fn is_py_space(c: char) -> bool {
     c.is_whitespace() || ('\x1c'..='\x1f').contains(&c)
 }
 
-/// Digits, with single underscores between them (Python's numbers): the digits alone.
+/// Digits, with single underscores between them (the original's numbers): the digits alone.
 fn digits(s: &str) -> Option<String> {
     let ok = !s.is_empty() && s.split('_').all(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit()));
     ok.then(|| s.replace('_', ""))
 }
 
 /// `int(text)` (None: its ValueError; also a number past 64 bits).
-pub fn py_int(text: &str) -> Option<i64> {
+pub fn base_int(text: &str) -> Option<i64> {
     let s = text.trim_matches(is_py_space);
     let (negative, body) = match s.strip_prefix('-') {
         Some(rest) => (true, rest),
@@ -667,7 +667,7 @@ pub fn py_int(text: &str) -> Option<i64> {
 }
 
 /// `float(text)` (None: its ValueError).
-pub fn py_float(text: &str) -> Option<f64> {
+pub fn base_float(text: &str) -> Option<f64> {
     let s = text.trim_matches(is_py_space);
     let (negative, body) = match s.strip_prefix('-') {
         Some(rest) => (true, rest),
@@ -710,7 +710,7 @@ pub fn py_float(text: &str) -> Option<f64> {
 }
 
 /// `str(Path(text))`: doubled and trailing slashes and "." parts taken out.
-pub fn py_path(text: &str) -> String {
+pub fn base_path(text: &str) -> String {
     let parts: Vec<&str> = text.split('/').filter(|p| !p.is_empty() && *p != ".").collect();
     let root = if text.starts_with("//") && !text.starts_with("///") {
         "//"
@@ -730,7 +730,7 @@ pub fn py_path(text: &str) -> String {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /// Each game keeps its own history (what the bot learns of one game's cards says nothing of the other's).
-/// (Python's default: `game="sts2"`.)
+/// (the original's default: `game="sts2"`.)
 pub fn default_log_dir(game: &str) -> PathBuf {
     let base = supervisor::environ_or("XDG_STATE_HOME").map(PathBuf::from).unwrap_or_else(|| supervisor::home().join(".local").join("state"));
     if game == "sts2" {
@@ -758,7 +758,7 @@ pub fn sts1_setup(argv: &[String]) -> i32 {
     let path = match sts1_host::write_comm_config(port, None) {
         Ok(path) => path,
         Err(e) => {
-            // (Python left here with the OSError's traceback)
+            // (the original left here with the OSError's traceback)
             eprintln!("{}", supervisor::os_error(&e, &sts1_host::comm_config_path().to_string_lossy()));
             return 1;
         }
@@ -800,7 +800,7 @@ pub fn parser() -> Parser {
     let mut ap = Parser::new("sts2bot", "Plays Slay the Spire 2 nonstop through the STS2_MCP mod, the first Slay the Spire through CommunicationMod (--game sts1), or both at the same time (--game both).");
     let mut fast_modes: Vec<&'static str> = FAST_MODES.to_vec();
     fast_modes.push("keep");
-    let g = |x: f64| py::float_g(x);
+    let g = |x: f64| base::float_g(x);
     ap.add(Opt::new(&["--game"], Kind::Str, Val::Str("sts2".into())).choices(&[games::GAMES[0], games::GAMES[1], "both"]).help(
         "which game to play: sts2 (default), sts1 (the first Slay the Spire), or both at once (a bot process for each, with the other options passed on to both)",
     ));
@@ -815,7 +815,7 @@ pub fn parser() -> Parser {
     ap.add(Opt::new(&["--no-launch"], Kind::Flag, Val::Bool(false)).help("never start or kill the game; only play when it is up"));
     ap.add(Opt::new(&["--launch-cmd"], Kind::Str, Val::None).help(format!(
         "command that starts the game (default for sts2: {}; for sts1: ModTheSpire with BaseMod and CommunicationMod)",
-        py::str_repr(&DEFAULT_LAUNCH())
+        base::str_repr(&DEFAULT_LAUNCH())
     )));
     ap.add(Opt::new(&["--fast-mode"], Kind::Str, Val::Str("instant".into())).choices(&fast_modes).help(
         "game animation speed, set through the mod each time the bot connects; \"keep\" leaves the setting alone (default: instant, the fastest)",
@@ -878,7 +878,7 @@ pub fn parse_args(argv: &[String]) -> Result<Args, Exit> {
 }
 
 /// `--game both`: a bot process for each game (games/both.rs), started and kept going from here.
-/// (Err: Python's `ap.error`, which left with SystemExit.)
+/// (Err: the original's `ap.error`, which left with SystemExit.)
 pub fn play_both(ap: &Parser, args: &Args, raw: &[String]) -> Result<i32, Exit> {
     let given = |opt: &str| match opt {
         "--port" => args.port.is_some(),
@@ -903,7 +903,7 @@ pub fn play_both(ap: &Parser, args: &Args, raw: &[String]) -> Result<i32, Exit> 
     })
 }
 
-/// `args`: the command line after the program's name (Python's `sys.argv[1:]`). Returns the exit code.
+/// `args`: the command line after the program's name (the original's `sys.argv[1:]`). Returns the exit code.
 pub fn main(args: Vec<String>) -> i32 {
     match try_main(args) {
         Ok(code) => code,
@@ -911,7 +911,7 @@ pub fn main(args: Vec<String>) -> i32 {
     }
 }
 
-/// `main`, with what the parser had to say when it left by itself (Python's SystemExit) handed back instead of printed.
+/// `main`, with what the parser had to say when it left by itself (the original's SystemExit) handed back instead of printed.
 pub fn try_main(args: Vec<String>) -> Result<i32, Exit> {
     let raw = args;
     if raw.first().is_some_and(|w| w == "service") {
@@ -922,7 +922,7 @@ pub fn try_main(args: Vec<String>) -> Result<i32, Exit> {
         return Ok(sts1_setup(&raw[1..]));
     }
     if raw.first().is_some_and(|w| w == "relay") {
-        // what CommunicationMod starts with the game (Python's `python3 -m sts2bot.games.sts1.relay`)
+        // what CommunicationMod starts with the game
         return Ok(relay::main(raw[1..].to_vec()));
     }
     let ap = parser();
@@ -935,7 +935,7 @@ pub fn try_main(args: Vec<String>) -> Result<i32, Exit> {
     let port = args.port.filter(|p| *p != 0).unwrap_or(games::default_port(&args.game) as i64);
     args.port = Some(port);
     let Ok(port16) = u16::try_from(port) else {
-        // (Python took any number and then never reached the game)
+        // (the original took any number and then never reached the game)
         return Err(ap.error(&format!("argument --port: no such port: {port}")));
     };
     let log_dir = args.log_dir.clone().filter(|d| !d.as_os_str().is_empty()).unwrap_or_else(|| default_log_dir(&args.game));
@@ -1007,7 +1007,7 @@ pub fn try_main(args: Vec<String>) -> Result<i32, Exit> {
 
 #[cfg(test)]
 mod tests {
-    //! Against Python: tests/golden/supervisor/cli.json holds what `python3 -m sts2bot ...` made of some two hundred
+    //! Against the original: tests/golden/supervisor/cli.json holds what the first version made of some two hundred
     //! command lines (the settings parsed, or the exit code and what was printed), of `service` command lines, and of
     //! whole `main` calls with the games' side faked (what was logged, what `both.run` and the supervisor were given).
 
@@ -1025,7 +1025,7 @@ mod tests {
     }
 
     fn float(x: f64) -> Value {
-        json!({"f": py::float_repr(x)})
+        json!({"f": base::float_repr(x)})
     }
 
     /// The seams as the golden cases were made: no home, Steam's launch command, a terminal `columns` wide.
@@ -1048,7 +1048,7 @@ mod tests {
     }
 
     #[test]
-    fn the_command_line_is_read_as_python_read_it() {
+    fn the_command_line_is_read_as_the_record_read_it() {
         let golden = golden();
         let cases = golden["parse"].as_array().unwrap();
         assert!(cases.len() >= 170);
@@ -1097,7 +1097,7 @@ mod tests {
     }
 
     #[test]
-    fn main_starts_what_python_started() {
+    fn main_starts_what_the_record_started() {
         let golden = golden();
         let cases = golden["main"].as_array().unwrap();
         assert!(cases.len() >= 31);
@@ -1120,9 +1120,9 @@ mod tests {
                 h.play = Some(Rc::new(move |sup, max_runs| {
                     let b = &sup.bot;
                     seen_play.borrow_mut().push(json!({"runs": max_runs, "launch_cmd": sup.launch_cmd, "manage_game": sup.manage_game, "fast_mode": sup.fast_mode, "light_graphics": sup.light_graphics,
-                        "small_window": sup.small_window, "fullscreen": sup.fullscreen, "time_scale": py::float_repr(sup.time_scale), "boot_timeout": py::float_repr(sup.boot_timeout),
-                        "outage_grace": py::float_repr(sup.outage_grace), "heal_mod": sup.heal_mod, "host": sup.host.name(), "character": b.character, "poll": py::float_repr(b.poll),
-                        "stuck_timeout": py::float_repr(b.stuck_timeout), "tune": b.tune, "room_pause": py::float_repr(b.room_pause), "room_poll": py::float_repr(b.room_poll),
+                        "small_window": sup.small_window, "fullscreen": sup.fullscreen, "time_scale": base::float_repr(sup.time_scale), "boot_timeout": base::float_repr(sup.boot_timeout),
+                        "outage_grace": base::float_repr(sup.outage_grace), "heal_mod": sup.heal_mod, "host": sup.host.name(), "character": b.character, "poll": base::float_repr(b.poll),
+                        "stuck_timeout": base::float_repr(b.stuck_timeout), "tune": b.tune, "room_pause": base::float_repr(b.room_pause), "room_poll": base::float_repr(b.room_poll),
                         "log_dir": b.log_dir.as_ref().map(|d| d.to_string_lossy().into_owned()), "game": games::active()}));
                     Ok(())
                 }));
@@ -1166,14 +1166,14 @@ mod tests {
     }
 
     #[test]
-    fn numbers_and_paths_as_python_reads_them() {
-        assert_eq!(py_int(" +1_0 "), Some(10));
-        assert_eq!(py_int("1__0"), None);
-        assert_eq!(py_float("-.5e-3"), Some(-0.0005));
-        assert!(py_float("NaN").unwrap().is_nan());
-        assert_eq!(py_path("a//b/./c/"), "a/b/c");
-        assert_eq!(py_path(""), ".");
-        assert_eq!(py_path("//x"), "//x");
-        assert_eq!(py_path("///x"), "/x");
+    fn numbers_and_paths_as_the_record_reads_them() {
+        assert_eq!(base_int(" +1_0 "), Some(10));
+        assert_eq!(base_int("1__0"), None);
+        assert_eq!(base_float("-.5e-3"), Some(-0.0005));
+        assert!(base_float("NaN").unwrap().is_nan());
+        assert_eq!(base_path("a//b/./c/"), "a/b/c");
+        assert_eq!(base_path(""), ".");
+        assert_eq!(base_path("//x"), "//x");
+        assert_eq!(base_path("///x"), "/x");
     }
 }

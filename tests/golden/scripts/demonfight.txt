@@ -61,7 +61,7 @@ by both
   HP 70%+       8x3                      blocked less          turns a fight  0.06  given away a fight 0.004  a turn 0.077
   HP 40-70%     8x3                      blocked more          turns a fight  0.06  given away a fight 0.003  a turn 0.055
 $ energy 3
-perfect play and the planner, the same deck on 3 and 4 energy a turn (relicworth.py's energy relics):
+perfect play and the planner, the same deck on 3 and 4 energy a turn (relicworth.rs's energy relics):
   A6H4Z2B6F2P0 hit 15 block 11 hp 75 energy 3          perfect 0.002  planner 0.000
   A6H4Z2B6F2P0 hit 15 block 11 hp 75 energy 4          perfect 0.605  planner 1.000
   A6H3Z3B6F2P2 hit 17 block 12 hp 75 energy 3          perfect 0.508  planner 0.333

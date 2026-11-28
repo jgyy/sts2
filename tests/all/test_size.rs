@@ -1,6 +1,6 @@
 //! No source file grows past the cap: a file that long is several files. And no directory of sources holds more
 //! files than the cap: past that, the rest go in a new directory.
-//! (The Python version capped files at 1000 lines of up to 250 columns and directories at 10 files; Rust's lines are
+//! (the original version capped files at 1000 lines of up to 250 columns and directories at 10 files; Rust's lines are
 //! shorter and its module tree wider, so the caps are what the port came out at, with some room.)
 
 use std::fs;

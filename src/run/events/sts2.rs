@@ -4,8 +4,8 @@
 //! reads the text; `COVERED` lists every event and the ones whose generic score was checked and found right.
 //!
 //! The shape is sts1.rs's: a rule is a plain function `fn(opt: &Value, ctx: &Ctx) -> Option<f64>` ([`Rule`]), named as in
-//! Python; `RULES` maps an event's id to its rule (an `IndexMap` in Python's row order); `value(event_id, opt, ctx)` looks the
-//! rule up and calls it. (Python's `events.rule_value` catches any exception of a rule and gives None: these rules raise nothing
+//! the original; `RULES` maps an event's id to its rule (an `IndexMap` in the original's row order); `value(event_id, opt, ctx)` looks the
+//! rule up and calls it. (the original's `events.rule_value` catches any exception of a rule and gives None: these rules raise nothing
 //! on options, decks and potions made of JSON objects; only a number too long for an i64 in a text would panic, in `value::num`.)
 
 use std::collections::BTreeSet;
@@ -19,7 +19,7 @@ use super::value::{
     counts, curse, gold, heal, hp_cost, max_hp_gain, max_hp_loss, num, potions_gained, random_upgrades, removals, transforms, Ctx, CARD_REWARD, POTION, RANDOM_CURSE, RELIC,
     UPGRADE,
 };
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 use crate::run::relicworth::{id_of as relic_id, worth as relic_worth};
 
 pub const BASE: f64 = 0.5; // an option's worth before what it gives and costs (as the generic scorer)
@@ -27,12 +27,12 @@ pub const BASE: f64 = 0.5; // an option's worth before what it gives and costs (
 /// the key is still returned for its gold, as before. Raise it once a kept key is seen to bring the event.
 pub const MEET_WAR_HISTORIAN: f64 = 0.35;
 
-/// `str.strip()`: Python's blanks (those of Unicode and the four separators 0x1c-0x1f).
+/// `str.strip()`: the original's blanks (those of Unicode and the four separators 0x1c-0x1f).
 fn strip(s: &str) -> &str {
     s.trim_matches(|c: char| c.is_whitespace() || ('\x1c'..='\x1f').contains(&c))
 }
 
-/// `max(a, b)` of two floats as Python has it (the first of equals).
+/// `max(a, b)` of two floats as the original has it (the first of equals).
 fn fmax(a: f64, b: f64) -> f64 {
     if b > a {
         b
@@ -41,7 +41,7 @@ fn fmax(a: f64, b: f64) -> f64 {
     }
 }
 
-/// `min(a, b)` of two floats as Python has it (the first of equals).
+/// `min(a, b)` of two floats as the original has it (the first of equals).
 fn fmin(a: f64, b: f64) -> f64 {
     if b < a {
         b
@@ -71,7 +71,7 @@ pub fn _hallway_fight(ctx: &Ctx) -> f64 {
         2 => 0.12,
         _ => 0.14,
     };
-    CARD_REWARD + 0.4 - hp_cost(py::round(share * ctx.max_hp as f64), ctx)
+    CARD_REWARD + 0.4 - hp_cost(base::round(share * ctx.max_hp as f64), ctx)
 }
 
 // --------------------------------------------------------------------------------------------------- the rules
@@ -146,7 +146,7 @@ pub fn three_turns(ctx: &Ctx) -> f64 {
     if ctx.deck.is_empty() || !per_card.iter().any(|i| i.total_damage() != 0) {
         return 125.0; // (the deck's texts unknown: what the logged fights dealt)
     }
-    let dmg = py::fsum(per_card.iter().map(|i| (i.total_damage().max(0) + 3 * i.poison + 4 * i.shivs) as f64 + 0.8 * i.doom as f64));
+    let dmg = base::fsum(per_card.iter().map(|i| (i.total_damage().max(0) + 3 * i.poison + 4 * i.shivs) as f64 + 0.8 * i.doom as f64));
     let mut energy: i64 = per_card.iter().filter(|i| i.total_damage() > 0).map(|i| i.cost.max(1)).sum();
     if energy == 0 {
         energy = 1;
@@ -199,7 +199,7 @@ pub fn colossal_flower(opt: &Value, ctx: &Ctx) -> Option<f64> {
         let step = num(r"lose (\d+) hp", &text, 5);
         let later: &[i64] = if step <= 5 { &[6, 7] } else { &[7] }; // (the HP the steps below this one cost)
         let left = with_hp(ctx, ctx.hp - step);
-        let down = core - py::fsum(later.iter().enumerate().map(|(i, x)| hp_cost(*x, &with_hp(ctx, left.hp - later[..i].iter().sum::<i64>()))));
+        let down = core - base::fsum(later.iter().enumerate().map(|(i, x)| hp_cost(*x, &with_hp(ctx, left.hp - later[..i].iter().sum::<i64>()))));
         return Some(BASE + fmax(down, gold(if step > 5 { 135 } else { 75 }, &left)) - hp_cost(step, ctx));
     }
     if title == "extract nectar" {
@@ -573,7 +573,7 @@ pub fn tinker_time(opt: &Value, ctx: &Ctx) -> Option<f64> {
     }
     if title == "weapon" || title == "protector" || title == "gadget" {
         let c = counts(ctx);
-        let short_of_block = c["blocks"] < py::floordiv(c["attacks"], 2).max(3);
+        let short_of_block = c["blocks"] < base::floordiv(c["attacks"], 2).max(3);
         return Some(
             BASE + match title.as_str() {
                 "weapon" => {
@@ -789,7 +789,7 @@ pub static GENERIC_CHECKED: LazyLock<IndexMap<&'static str, &'static str>> = Laz
     ("TEA_MASTER", "three small teas"), ("THE_FUTURE_OF_POTIONS", "a potion for an upgraded card"), ("TRASH_HEAP", "HP for a relic against gold and a card"),
     ("WELCOME_TO_WONGOS", "relics for gold, the Mystery Box by _lives_through"), ("THERMAE_NONUPEIPE", "relics by name"), ("MOCK_EVENT_MODEL", "not in play"),
 ]));
-/// (A set in Python: only asked whether an event is in it.)
+/// (A set in the original: only asked whether an event is in it.)
 pub static COVERED: LazyLock<BTreeSet<&'static str>> = LazyLock::new(|| RULES.keys().chain(GENERIC_CHECKED.keys()).copied().collect());
 
 pub fn value(event_id: &str, opt: &Value, ctx: &Ctx) -> Option<f64> {
@@ -803,7 +803,7 @@ mod tests {
     use crate::run::events::tests::{ctx_of, resolve, world};
 
     /// Every rule over the options of its own event in a grid of contexts (hand-written, and the decks, belts and relics of the
-    /// model runs), and over every other option text on record in a few: as Python, under both games.
+    /// model runs), and over every other option text on record in a few: as the original, under both games.
     #[test]
     fn golden() {
         let g: Value = serde_json::from_str(include_str!("../../../tests/golden/events/sts2.json")).unwrap();
@@ -853,16 +853,16 @@ mod tests {
     }
 
     #[test]
-    fn tables_as_python() {
+    fn tables_as_recorded() {
         let g: Value = serde_json::from_str(include_str!("../../../tests/golden/events/sts2.json")).unwrap();
         assert_eq!(json!(RULES.keys().collect::<Vec<_>>()), g["rules"]);
         let checked: serde_json::Map<String, Value> = GENERIC_CHECKED.iter().map(|(k, v)| (k.to_string(), json!(v))).collect();
-        assert_eq!(py::json_dumps(&Value::Object(checked)), py::json_dumps(&g["generic_checked"]));
+        assert_eq!(base::json_dumps(&Value::Object(checked)), base::json_dumps(&g["generic_checked"]));
         assert_eq!(json!(COVERED.iter().collect::<Vec<_>>()), g["covered"]);
         let colour: serde_json::Map<String, Value> = _COLOUR.iter().map(|(k, v)| (k.to_string(), json!([v.0, v.1]))).collect();
-        assert_eq!(py::json_dumps(&Value::Object(colour)), py::json_dumps(&g["colour"]));
+        assert_eq!(base::json_dumps(&Value::Object(colour)), base::json_dumps(&g["colour"]));
         let rider: serde_json::Map<String, Value> = _RIDER.iter().map(|(k, v)| (k.to_string(), json!(v))).collect();
-        assert_eq!(py::json_dumps(&Value::Object(rider)), py::json_dumps(&g["rider"]));
+        assert_eq!(base::json_dumps(&Value::Object(rider)), base::json_dumps(&g["rider"]));
         assert_eq!(json!(_BELT.keys().collect::<Vec<_>>()), g["belt"]);
         assert_eq!((BASE, MEET_WAR_HISTORIAN), (g["base"].as_f64().unwrap(), g["meet"].as_f64().unwrap()));
     }

@@ -9,7 +9,7 @@ use serde_json::{json, Map, Value};
 
 use crate::cards as bot_cards;
 use crate::learn;
-use crate::py::{self, JsonExt, Random};
+use crate::base::{self, JsonExt, Random};
 use crate::run::strategy;
 use crate::sim::cards::{Card, ViewArgs};
 use crate::sim::content::{Content, Item, Nodes};
@@ -157,7 +157,7 @@ impl Run {
     }
 
     pub fn relic_views(&self) -> Vec<Value> {
-        self.relics.iter().map(|r| json!({"id": r, "name": py::title(&r.replace('_', " ")), "description": (self.game.relic_text)(r), "counter": self.counters.get(r.as_str()).copied().unwrap_or(-1)})).collect()
+        self.relics.iter().map(|r| json!({"id": r, "name": base::title(&r.replace('_', " ")), "description": (self.game.relic_text)(r), "counter": self.counters.get(r.as_str()).copied().unwrap_or(-1)})).collect()
     }
 
     pub fn potion_views(&self) -> Vec<Value> {
@@ -365,7 +365,7 @@ impl Run {
             if act == g.ACTS {
                 won = true;
             } else {
-                self.hp += py::trunc((self.max_hp - self.hp) as f64 * (g.boss_heal)(self));
+                self.hp += base::trunc((self.max_hp - self.hp) as f64 * (g.boss_heal)(self));
             }
         }
         let mut deck: Vec<String> = self.deck.iter().map(|c| c.name()).collect();
@@ -374,7 +374,7 @@ impl Run {
             "game": g.KEY, "character": self.character, "seed": self.seed, "ascension": self.asc, "knobs": self.knobs.iter().map(|(k, v)| (k.clone(), json!(v))).collect::<Map<String, Value>>(),
             "model_lean": learn::knob("model_lean"), // (sim prior learns only from runs that did not lean on its table)
             "won": won, "act": self.act, "floor": self.floor, "hp": self.hp, "max_hp": self.max_hp, "gold": self.gold,
-            "deck": deck, "relics": self.relics, "secs": py::round_to(t0.elapsed().as_secs_f64(), 2),
+            "deck": deck, "relics": self.relics, "secs": base::round_to(t0.elapsed().as_secs_f64(), 2),
         });
         for (k, v) in &self.log {
             out[k.as_str()] = v.clone();
@@ -492,7 +492,7 @@ impl Run {
             // how much of the enemy was left standing: a lost race reads differently from a deck that never got going
             let left: i64 = f.foes.iter().filter(|x| x.alive() && !x.minion).map(|x| x.hp).sum();
             let whole: i64 = f.foes.iter().filter(|x| !x.minion).map(|x| x.max_hp).sum();
-            entry["foe_left"] = json!(py::round_to(left as f64 / whole.max(1) as f64, 2));
+            entry["foe_left"] = json!(base::round_to(left as f64 / whole.max(1) as f64, 2));
         }
         self.log_push("fights", entry);
         self.log_add("elites", (kind == "elite") as i64);
@@ -507,7 +507,7 @@ impl Run {
 
     pub fn rewards(&mut self, kind: &str, _f: &Fight) {
         let g = self.game.clone();
-        // (each item: the dict the bot is shown, and Python's "_potion" / "_relic" beside it)
+        // (each item: the dict the bot is shown, and the original's "_potion" / "_relic" beside it)
         let mut items: Vec<(Map<String, Value>, Option<Potion>, Option<String>)> = Vec::new();
         let item = |v: Value| match v {
             Value::Object(m) => m,
@@ -597,7 +597,7 @@ impl Run {
             let what = o["id"].s();
             match what {
                 "rest" => {
-                    self.hp = self.max_hp.min(self.hp + py::trunc(self.max_hp as f64 * 0.3) + if self.has("REGAL_PILLOW") { 15 } else { 0 });
+                    self.hp = self.max_hp.min(self.hp + base::trunc(self.max_hp as f64 * 0.3) + if self.has("REGAL_PILLOW") { 15 } else { 0 });
                     self.log_add("rests", 1);
                     if self.has("DREAM_CATCHER") {
                         let offered = (g.card_choices)(self, "monster");
@@ -651,7 +651,7 @@ impl Run {
         let mut stock: Vec<Item> = (self.game.shop_stock)(self);
         if self.has("MEMBERSHIP_CARD") {
             for it in stock.iter_mut() {
-                let price = py::trunc(it.price() as f64 * 0.5);
+                let price = base::trunc(it.price() as f64 * 0.5);
                 it.v.insert("price".to_string(), json!(price));
             }
         }

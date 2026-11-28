@@ -8,7 +8,7 @@ use serde_json::{json, Value};
 use super::crowd;
 use crate::cards::{_card_key, deck_value, is_basic, parse as _parse};
 use crate::learn::knob;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 crate::tunables! {
     pub SKIP_THRESHOLD: f64 = 3.0; // card rewards scoring below this are skipped
@@ -18,7 +18,7 @@ pub const BIG_DECK: i64 = 24;
 pub const SHOT_SPARE: f64 = 0.5; // each Shot beyond the Arrows keeps this share of the one before it (a Shot needs our Arrow back: about one a turn)
 pub const STARS_AT_START: f64 = 1.0; // Stars a cycle of the deck from the Regent's starting relic (3 a fight, once; a boss fight cycles two or three times)
 
-/// `max(a, b)` of two floats as Python picks: the first unless the second is greater.
+/// `max(a, b)` of two floats as the original picks: the first unless the second is greater.
 fn fmax(a: f64, b: f64) -> f64 {
     if b > a {
         b
@@ -27,7 +27,7 @@ fn fmax(a: f64, b: f64) -> f64 {
     }
 }
 
-/// `min(a, b)` of two floats as Python picks: the first unless the second is smaller.
+/// `min(a, b)` of two floats as the original picks: the first unless the second is smaller.
 fn fmin(a: f64, b: f64) -> f64 {
     if b < a {
         b
@@ -246,7 +246,7 @@ pub fn _FEEDS(what: &str, text: &str) -> bool {
         "shiv" => crate::re!(r"(?i)add (?:\d+|x|an?) (?:inky )?shivs?\b").is_match(text),
         "soul" => crate::re!(r"(?i)add (?:\d+|x|an?) souls?\b|into soul\b").is_match(text),
         "exhaust" => crate::fre!(r"(?i)\bexhaust\b(?! pile)").is_match(text).unwrap_or(false),
-        _ => panic!("KeyError: {}", py::str_repr(what)),
+        _ => panic!("KeyError: {}", base::str_repr(what)),
     }
 }
 
@@ -257,7 +257,7 @@ pub fn _PAYS(what: &str, text: &str) -> bool {
         "shiv" => crate::re!(r"(?i)\bshivs?\b").is_match(text),
         "soul" => crate::re!(r"(?i)\bsouls?\b").is_match(text),
         "exhaust" => crate::re!(r"(?i)whenever a card is exhausted|if you (?:have )?exhausted a card").is_match(text),
-        _ => panic!("KeyError: {}", py::str_repr(what)),
+        _ => panic!("KeyError: {}", base::str_repr(what)),
     }
 }
 
@@ -299,7 +299,7 @@ pub fn _blocks(card: &Value) -> bool {
 
 /// How much better or worse a card is in *this* deck than on its own: the Regent's Stars (a 5-Star Comet is dead weight in
 /// a deck that makes two a cycle), copies, a deck that cannot kill, energy every turn, payoffs with nothing to feed them.
-/// (`act`: None in Python when left out; `energy`: 3.)
+/// (`act`: None in the original when left out; `energy`: 3.)
 pub fn deck_fit(card: &Value, deck: &[Value], act: Option<i64>, energy: i64) -> f64 {
     if deck.is_empty() {
         return 0.0;
@@ -324,7 +324,7 @@ pub fn deck_fit(card: &Value, deck: &[Value], act: Option<i64>, energy: i64) -> 
         if _punch(card) >= 8.0 && !dear {
             // Worth more for as long as the deck is short of damage (how hard: learn::CHOICES["punch"]) ...
             let lean = knob("punch");
-            let short = fmin(fmin(4.0, 2.0 * lean / 0.9), fmax(0.0, lean * (floor - py::fsum(deck.iter().map(_punch)) / n as f64)));
+            let short = fmin(fmin(4.0, 2.0 * lean / 0.9), fmax(0.0, lean * (floor - base::fsum(deck.iter().map(_punch)) / n as f64)));
             // ... up to a point: the decks that lost the act 2 boss held the most attacks (learn::CHOICES["attack_room"]) ...
             fit += short * fmin(1.0, fmax(0.0, 1.0 - (_hitters(deck) as f64 - knob("attack_room")) / ATTACK_TAPER));
             // ... and the first one of a run comes before whatever pays off later.
@@ -336,7 +336,7 @@ pub fn deck_fit(card: &Value, deck: &[Value], act: Option<i64>, energy: i64) -> 
     let rate = turn_energy(card);
     if rate != 0.0 {
         // Each energy a turn already there (such Powers, or a relic's that the last fight began with) halves the next.
-        let held = py::fsum(deck.iter().map(turn_energy)) + (energy - 3).max(0) as f64;
+        let held = base::fsum(deck.iter().map(turn_energy)) + (energy - 3).max(0) as f64;
         let mut gain = ENERGY_POWER * fmin(rate, 1.0) * 0.5f64.powf(held);
         if info.strength < 0 && info.strength_lasts {
             // Friendship's 2 Strength comes off every hit that takes Strength: not Osty's, not Doom, not Poison.
@@ -400,14 +400,14 @@ pub fn deck_fit(card: &Value, deck: &[Value], act: Option<i64>, energy: i64) -> 
         if made != 0.0 {
             // A feeding card for payoffs the deck already holds and cannot yet feed.
             let payoffs = deck.iter().filter(|c| pays_off(c) == Some(what)).count() as i64;
-            let fed = py::fsum(deck.iter().map(|c| feeds(c, what)));
+            let fed = base::fsum(deck.iter().map(|c| feeds(c, what)));
             if payoffs != 0 && fed < FEED_FULL {
                 fit += fmin(FEED_LEAN_MOST, FEED_LEAN * payoffs as f64) * (1.0 - fed / FEED_FULL);
             }
         }
     }
     if let Some(need) = pays_off(card) {
-        let fed = py::fsum(deck.iter().map(|c| feeds(c, need)));
+        let fed = base::fsum(deck.iter().map(|c| feeds(c, need)));
         let share = FEED_KEEP.get() + (1.0 - FEED_KEEP.get()) * fmin(1.0, fed / FEED_FULL);
         fit -= (1.0 - share) * fmax(0.0, deck_value(card) + fit);
     }
@@ -434,8 +434,8 @@ pub fn reward_bar(deck_size: i64, act: Option<i64>) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    //! Replays tests/golden/decks.json: calls recorded from the Python tests and model runs of both games, and every card
-    //! of tests/golden/cards.json through each function (written by CPython 3.13 from decks.py).
+    //! Replays tests/golden/decks.json: calls recorded from the original tests and model runs of both games, and every card
+    //! of tests/golden/cards.json through each function (recorded from decks.rs).
     use super::*;
     use crate::{games, learn};
 
@@ -450,7 +450,7 @@ mod tests {
         }
     }
 
-    /// Equal as Python's `==` would have it for results (an int and a float of one value are the same number), floats bit for bit.
+    /// Equal as the original's `==` would have it for results (an int and a float of one value are the same number), floats bit for bit.
     fn same(got: &Value, want: &Value) -> bool {
         match (got, want) {
             (Value::Number(a), Value::Number(b)) if a.is_f64() && b.is_f64() => a.as_f64().unwrap().to_bits() == b.as_f64().unwrap().to_bits(),
@@ -492,7 +492,7 @@ mod tests {
                     other => panic!("no replay for {other}"),
                 };
                 learn::set_knobs(&before);
-                assert!(same(&got, &row[3]), "{name} case {n}: {} gives {got}, Python {}", py::json_dumps(&a), row[3]);
+                assert!(same(&got, &row[3]), "{name} case {n}: {} gives {got}, the original {}", base::json_dumps(&a), row[3]);
                 checked += 1;
             }
         }
@@ -513,7 +513,7 @@ mod tests {
                 _blocks(c),
                 KINDS.iter().map(|w| feeds(c, w)).collect::<Vec<_>>()
             ]);
-            assert!(same(&got, want), "{}: {got}, Python {want}", py::json_dumps(c));
+            assert!(same(&got, want), "{}: {got}, the original {want}", base::json_dumps(c));
             checked += 13;
         }
         assert_eq!(

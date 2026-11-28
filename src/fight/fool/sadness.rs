@@ -13,7 +13,7 @@ use serde_json::Value;
 
 use crate::cards::{key_of, parse};
 use crate::fight::battle::_stacks;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 crate::tunables! {
     pub HAND_CAP: i64 = 10;
@@ -46,7 +46,7 @@ pub fn held(player: &Value) -> i64 {
 /// (Sadness a turn, extra cards drawn a turn) from the Powers up: Ennui's amount is its draw (2, 3 upgraded), a Sadness a copy.
 pub fn turn_rate(player: &Value) -> (i64, i64) {
     let (ennui, ecstasy) = (0.max(_stacks(player, "ENNUI")), 0.max(_stacks(player, "ECSTASY")));
-    ((if ennui != 0 { 1.max(py::round(ennui as f64 / 2.5)) } else { 0 }) - ecstasy, ennui)
+    ((if ennui != 0 { 1.max(base::round(ennui as f64 / 2.5)) } else { 0 }) - ecstasy, ennui)
 }
 
 /// Turns the fight still has, from the enemies' HP and the pace so far (or a usual pace before it has shown one).

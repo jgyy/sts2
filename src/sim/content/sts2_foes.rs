@@ -3,7 +3,7 @@
 //! The data (Spire Codex's numbers, spire-mentor's state machines) names powers the engine has to act out; the
 //! ones that change a fight are handled in `HOOKS` and `effects`, the rest are shown to the planner and do nothing.
 //!
-//! (Python's patterns reach the fight through `foe.mem["fight"]`; here every rule is given the fight and the
+//! (the original's patterns reach the fight through `foe.mem["fight"]`; here every rule is given the fight and the
 //! monster's index, and `mem["fight"]` is a flag: see sim/monsters.rs.)
 
 #![allow(non_snake_case)]
@@ -13,7 +13,7 @@ use std::rc::Rc;
 use indexmap::IndexMap;
 use serde_json::{json, Value};
 
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 use crate::sim::effects::Powers;
 use crate::sim::engine::{Fight, Foe, Fx, Move, Spec};
 use crate::sim::monsters::{self, Hook, Pattern};
@@ -46,7 +46,7 @@ fn get<'a>(d: &'a Value, key: &str, default: &'a Value) -> &'a Value {
 
 /// `str(x)` of a value of the data.
 fn text_of(v: &Value) -> String {
-    py::str_of(v)
+    base::str_of(v)
 }
 
 pub fn move_of(mv: &Value, asc: i64) -> Move {
@@ -123,7 +123,7 @@ pub fn move_of(mv: &Value, asc: i64) -> Move {
 struct Machine {
     m: Value,
     states: IndexMap<String, Value>,
-    moves: Vec<String>, // (a set in Python: its first member here is the table's first move)
+    moves: Vec<String>, // (a set in the original: its first member here is the table's first move)
 }
 
 impl Machine {
@@ -164,7 +164,7 @@ impl Machine {
             branches = st["branches"].list().iter().collect();
         }
         let weight = |b: &Value| get(b, "weight", &Value::Null).float_or(1.0);
-        let total = py::fsum(branches.iter().map(|b| weight(b)));
+        let total = base::fsum(branches.iter().map(|b| weight(b)));
         let mut r = f.run.rng.random() * total;
         for b in &branches {
             r -= weight(b);
@@ -496,7 +496,7 @@ pub fn _reattach_death(f: &mut Fight, i: usize) -> bool {
     true
 }
 
-/// A hook that returns nothing (Python's None).
+/// A hook that returns nothing (the original's None).
 fn hook(rule: impl Fn(&mut Fight, usize, i64, bool) + 'static) -> Hook<Fight> {
     Rc::new(move |f, i, amount, attack| {
         rule(f, i, amount, attack);

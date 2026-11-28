@@ -3,7 +3,7 @@ use serde_json::{json, Value};
 use sts2bot::cards::{parse, CardInfo};
 use sts2bot::fight::combat::{self, Plan, SimulateArgs};
 use sts2bot::fight::triggers;
-use sts2bot::py::JsonExt;
+use sts2bot::base::JsonExt;
 use sts2bot::run::strategy::{self, Memory};
 use sts2bot::Action;
 
@@ -11,12 +11,12 @@ use crate::fake_game::{card, with};
 use crate::fight::{aimed, combat_state, ctx, gain, outcome, pick, pick_plan, play_turn, potion, power, read_foes, worth};
 use crate::helpers::{enemy, DEFEND, STRIKE};
 
-/// (The Python's default: cost 1.)
+/// (the original's default: cost 1.)
 fn ESCAPE(i: i64, cost: i64) -> Value {
     card(i, "FRANTIC_ESCAPE", "Frantic Escape", "Status", cost, "Get farther away. Increase Sandpit by 1. Increase the cost of this card by 1.", "None")
 }
 
-/// (The Python's default: target "Self".)
+/// (the original's default: target "Self".)
 fn BECKON(i: i64, target: &str) -> Value {
     card(i, "BECKON", "Beckon", "Status", 1, "At the end of your turn, if this is in your Hand,  lose 6 HP.", target)
 }
@@ -36,7 +36,7 @@ fn sorted<T: Ord>(mut v: Vec<T>) -> Vec<T> {
 
 /// `assertAlmostEqual(a, b)` (seven places; `places` otherwise).
 fn almost(a: f64, b: f64, places: i32) -> bool {
-    sts2bot::py::round_to(a - b, places) == 0.0
+    sts2bot::base::round_to(a - b, places) == 0.0
 }
 
 /// `combat.simulate(line, foes, **kw).score`.
@@ -232,7 +232,7 @@ fn test_an_escape_is_never_the_card_given_up() {
 
 // CardPlayTriggers: Powers that act on every card played are part of the turn's arithmetic.
 
-/// (The Python's default: energy 3.)
+/// (the original's default: energy 3.)
 fn subject(hp: i64, hand: Vec<Value>, powers: Value, energy: i64) -> Value {
     let foe = json!({"entity_id": "TEST_SUBJECT_0", "hp": hp, "max_hp": 200, "block": 0, "status": [power("ADAPTABLE", 1), power("DOOM", 28)], "intents": [{"type": "Attack", "label": "10x5"}]});
     combat_state!(hand, [foe], energy = energy, hp = 10, max_hp = 60, kind = "boss", status = powers)
@@ -262,7 +262,7 @@ fn test_afterimage_and_strangle_count_for_every_card() {
 
 // PersonalHive: The Entomancer: every Attack that hits it puts Dazed into our draw pile.
 
-/// (The Python's defaults: junk 0, energy 1.)
+/// (the original's defaults: junk 0, energy 1.)
 fn first(hive: i64, hand: Vec<Value>, junk: usize) -> Option<i64> {
     let dazed = card(9, "DAZED", "Dazed", "Status", 0, "Unplayable. Ethereal.", "None");
     let draw_pile = [vec![STRIKE(9); 12 - junk], vec![dazed; junk]].concat();
@@ -855,7 +855,7 @@ fn test_its_free_plays_go_to_the_dearest_cards() {
 
 // StunsAndShells
 
-/// (The Python's default: attack 21.)
+/// (the original's default: attack 21.)
 fn hopper(flutter: i64) -> Value {
     enemy!("THIEVING_HOPPER_0", 40, attack = 21, status = [power("ESCAPE_ARTIST", 3), power("SWIPE", 1), power("FLUTTER", flutter)])
 }
@@ -978,7 +978,7 @@ fn SCOURGE(i: i64) -> Value {
 }
 
 /// (card name, target) of every card of the turn, the enemies taking what each card did (near enough for the next choice).
-/// (The Python's default: energy 3.)
+/// (the original's default: energy 3.)
 fn plays(hand: Vec<Value>, foes: Vec<Value>, energy: i64) -> Vec<(String, Option<String>)> {
     let mut out = Vec::new();
     let mut did = |state: &mut Value, c: &Value, params: &Value| -> bool {

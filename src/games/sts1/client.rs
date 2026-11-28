@@ -1,8 +1,8 @@
 //! The bot's client for the first game, over the relay: `state()` in the bot's words (screens.rs), and `act()` sends the
 //! CommunicationMod command for the bot's action ("play_card" -> "play 2 0" ...). The menu before a run is played here.
 //!
-//! In Python `Sts1Client` is a subclass of `Client`; here it holds one (`client`) and uses its `_request`. The tests' seam is
-//! the same as Python's: there a subclass overrides `ping`, `_message` and `send` (tests/sts1/helpers.py `Direct`); here a
+//! In the original `Sts1Client` is a subclass of `Client`; here it holds one (`client`) and uses its `_request`. The tests' seam is
+//! the same as the original's: there a subclass overrides `ping`, `_message` and `send` (tests/sts1/helpers.rs `Direct`); here a
 //! [`Wire`] given to [`Sts1Client::with_wire`] answers those three in the relay's place.
 
 use std::collections::BTreeSet;
@@ -13,7 +13,7 @@ use super::screens::{Screens, CHARACTERS};
 use super::text;
 use crate::client::{Client, Game, GameUnavailable};
 use crate::logging::Logger;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 static LOG: Logger = Logger::new("sts2bot.sts1");
 
@@ -30,29 +30,29 @@ fn answered(answer: &Value) -> bool {
     answer["status"].as_str() == Some("ok") && answer["message"].is_object()
 }
 
-/// `int(x)` of an argument of an action (None is Python's TypeError: the bot never sends one).
+/// `int(x)` of an argument of an action (None is the original's TypeError: the bot never sends one).
 fn int(v: &Value) -> i64 {
     match v {
         Value::Bool(b) => *b as i64,
-        Value::Number(n) => n.as_i64().unwrap_or_else(|| n.as_f64().map(py::trunc).unwrap_or(0)),
-        Value::String(s) => s.trim().parse().unwrap_or_else(|_| panic!("invalid literal for int() with base 10: {}", py::str_repr(s))),
-        other => panic!("int() argument must be a string, a bytes-like object or a real number, not {}", py::repr_of(other)),
+        Value::Number(n) => n.as_i64().unwrap_or_else(|| n.as_f64().map(base::trunc).unwrap_or(0)),
+        Value::String(s) => s.trim().parse().unwrap_or_else(|_| panic!("invalid literal for int() with base 10: {}", base::str_repr(s))),
+        other => panic!("int() argument must be a string, a bytes-like object or a real number, not {}", base::repr_of(other)),
     }
 }
 
 /// A fight's message whose monsters have no intent yet (CommunicationMod says "DEBUG" until the game sets them).
-/// (`msg`: null for Python's None.)
+/// (`msg`: null for the original's None.)
 pub fn _intents_pending(msg: &Value) -> bool {
     if !msg.is_object() || !msg["available_commands"].list().iter().any(|c| c.as_str() == Some("wait")) {
         return false;
     }
     let monsters = msg["game_state"]["combat_state"]["monsters"].list();
-    monsters.iter().filter(|m| !m["is_gone"].truthy() && !m["half_dead"].truthy() && m["current_hp"].float() > 0.0).any(|m| py::str_of(&m["intent"]) == "DEBUG")
+    monsters.iter().filter(|m| !m["is_gone"].truthy() && !m["half_dead"].truthy() && m["current_hp"].float() > 0.0).any(|m| base::str_of(&m["intent"]) == "DEBUG")
 }
 
-/// The relay's place, for tests: what Python's tests override in a subclass (`ping`, `_message`, `send`).
+/// The relay's place, for tests: what the original's tests override in a subclass (`ping`, `_message`, `send`).
 pub trait Wire {
-    /// (Python's `Direct.ping`: the fake game is always there.)
+    /// (the original's `Direct.ping`: the fake game is always there.)
     fn ping(&mut self) -> bool {
         true
     }
@@ -72,7 +72,7 @@ pub enum Prefs {
 }
 
 pub struct Sts1Client {
-    /// (The base class in Python: the address and `_request`.)
+    /// (The base class in the original: the address and `_request`.)
     pub client: Client,
     /// Answers in the relay's place when set (tests).
     pub wire: Option<Box<dyn Wire>>,
@@ -92,7 +92,7 @@ impl Default for Sts1Client {
 
 impl Sts1Client {
     /// `prefs`: host.read_prefs's dict, or a function each profile() calls again (to see a new ascension or character).
-    /// (Python's defaults: "127.0.0.1", DEFAULT_PORT, 30.0, None.)
+    /// (the original's defaults: "127.0.0.1", DEFAULT_PORT, 30.0, None.)
     pub fn new(host: &str, port: u16, timeout: f64, prefs: Prefs) -> Self {
         let mut this = Sts1Client { client: Client::new(host, port, timeout), wire: None, screens: Screens::new(), _shops_opened: Vec::new(), _read_prefs: None, _refused: BTreeSet::new() };
         let first = match prefs {
@@ -123,7 +123,7 @@ impl Sts1Client {
     pub fn _take_prefs(&mut self, prefs: &Value) {
         self.screens.max_ascension = prefs["max_ascension"].entries().map(|(k, v)| (k.clone(), int(v))).collect();
         self.screens.wins = self.screens.wins.max(prefs["wins"].int());
-        self.screens.locked = prefs["locked"].list().iter().map(py::str_of).chain(self._refused.iter().cloned()).collect();
+        self.screens.locked = prefs["locked"].list().iter().map(base::str_of).chain(self._refused.iter().cloned()).collect();
     }
 
     pub fn ping(&mut self) -> bool {
@@ -136,7 +136,7 @@ impl Sts1Client {
         }
     }
 
-    /// (Null for Python's None.)
+    /// (Null for the original's None.)
     pub fn _message(&mut self) -> Result<Value, GameUnavailable> {
         if let Some(wire) = self.wire.as_mut() {
             return wire._message();
@@ -185,16 +185,16 @@ impl Sts1Client {
     }
 
     /// The Watcher's Scry grid, done here: Status and Curse cards go, the rest stay, then confirm.
-    /// (`msg`: null for Python's None.)
+    /// (`msg`: null for the original's None.)
     pub fn _scry(&mut self, mut msg: Value) -> Result<Value, GameUnavailable> {
         for _ in 0..SCRY_STEPS {
             let g = &msg["game_state"];
-            if py::str_of(&g["screen_type"]) != "GRID" || py::str_of(&g["current_action"]) != "ScryAction" {
+            if base::str_of(&g["screen_type"]) != "GRID" || base::str_of(&g["current_action"]) != "ScryAction" {
                 return Ok(msg);
             }
             let ss = &g["screen_state"];
             let picked: Vec<&Value> = ss["selected_cards"].list().iter().map(|c| &c["uuid"]).collect();
-            let wrong = ss["cards"].list().iter().position(|c| SCRY_AWAY.contains(&py::str_of(&c["type"]).as_str()) != picked.contains(&&c["uuid"]));
+            let wrong = ss["cards"].list().iter().position(|c| SCRY_AWAY.contains(&base::str_of(&c["type"]).as_str()) != picked.contains(&&c["uuid"]));
             let command = match wrong {
                 Some(i) => format!("choose {i}"),
                 None => "confirm".to_string(),
@@ -247,18 +247,18 @@ impl Sts1Client {
             return Ok(local);
         }
         let Some(command) = self.command(action, params) else {
-            let shown = if params.is_object() { py::repr_of(params) } else { "{}".to_string() };
+            let shown = if params.is_object() { base::repr_of(params) } else { "{}".to_string() };
             return Ok(json!({"status": "error", "error": format!("{action} {shown} is not possible here (commands: {})", self.screens.commands().join(", "))}));
         };
         let answer = self.send(&command)?;
         if answer["status"].as_str() != Some("ok") {
             if command.starts_with("start ") {
                 let who = command.split_whitespace().nth(1).unwrap_or("").to_string();
-                crate::log_warning!(LOG, "the game would not start {} ({})", who, py::str_of(&answer["error"]));
+                crate::log_warning!(LOG, "the game would not start {} ({})", who, base::str_of(&answer["error"]));
                 self._refused.insert(who.clone());
                 self.screens.locked.insert(who);
             }
-            let error = if answer["error"].truthy() { py::str_of(&answer["error"]) } else { "the game refused the command".to_string() };
+            let error = if answer["error"].truthy() { base::str_of(&answer["error"]) } else { "the game refused the command".to_string() };
             return Ok(json!({"status": "error", "error": error}));
         }
         if answer["message"].is_object() {
@@ -300,7 +300,7 @@ impl Sts1Client {
         if sc.menu_screen == "character_select" && matches!(option.as_str(), "confirm" | "embark") && sc.character.as_deref().is_some_and(|c| !c.is_empty()) {
             return None; // the game starts the run: see command()
         }
-        Some(json!({"status": "error", "error": format!("no menu option {} here", py::str_repr(&option))}))
+        Some(json!({"status": "error", "error": format!("no menu option {} here", base::str_repr(&option))}))
     }
 
     /// The CommunicationMod command for one of the bot's actions (None: there is none on this screen).
@@ -332,7 +332,7 @@ impl Sts1Client {
                 panic!("KeyError: 'card_index'");
             }
             if !target.is_null() {
-                if let Some(index) = sc.targets.get(&py::str_of(target)) {
+                if let Some(index) = sc.targets.get(&base::str_of(target)) {
                     return Some(format!("play {} {}", int(&p["card_index"]) + 1, index));
                 }
             }
@@ -347,7 +347,7 @@ impl Sts1Client {
             }
             let verb = if action == "use_potion" { "use" } else { "discard" };
             let target = &p["target"];
-            let tail = match sc.targets.get(&py::str_of(target)) {
+            let tail = match sc.targets.get(&base::str_of(target)) {
                 Some(index) if verb == "use" && !target.is_null() => format!(" {index}"),
                 _ => String::new(),
             };
@@ -420,7 +420,7 @@ mod tests {
 
     type Queue = Rc<RefCell<VecDeque<Value>>>;
 
-    /// What Python's client was answered, in order: the wire of the replay.
+    /// What the original's client was answered, in order: the wire of the replay.
     struct Replay(Queue);
 
     fn answer(v: &Value) -> Result<Value, GameUnavailable> {
@@ -432,13 +432,13 @@ mod tests {
 
     impl Wire for Replay {
         fn _message(&mut self) -> Result<Value, GameUnavailable> {
-            let next = self.0.borrow_mut().pop_front().expect("a message Python did not ask for");
+            let next = self.0.borrow_mut().pop_front().expect("a message the original did not ask for");
             assert_eq!(next[0], "_message");
             answer(&next[1])
         }
 
         fn send(&mut self, command: &str) -> Result<Value, GameUnavailable> {
-            let next = self.0.borrow_mut().pop_front().unwrap_or_else(|| panic!("{command:?} sent, which Python did not send"));
+            let next = self.0.borrow_mut().pop_front().unwrap_or_else(|| panic!("{command:?} sent, which the original did not send"));
             assert_eq!((next[0].s(), next[1].s()), ("send", command));
             answer(&next[2])
         }
@@ -448,7 +448,7 @@ mod tests {
         let sc = &client.screens;
         let shop_names: Map<String, Value> = sc.shop_names.iter().map(|(k, v)| (k.to_string(), json!(v))).collect();
         let map = |m: &indexmap::IndexMap<String, i64>| -> Map<String, Value> { m.iter().map(|(k, v)| (k.clone(), json!(v))).collect() };
-        py::json_dumps(&json!({
+        base::json_dumps(&json!({
             "menu_screen": sc.menu_screen, "character": sc.character, "ascension": sc.ascension, "max_ascension": map(&sc.max_ascension), "locked": sc.locked, "wins": sc.wins,
             "targets": map(&sc.targets), "shop_names": shop_names, "max_energy": sc.max_energy, "refused": client._refused, "shops_opened": client._shops_opened.len(),
         }))
@@ -458,7 +458,7 @@ mod tests {
         Sha1::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect()
     }
 
-    /// Every call the Python tests (tests/sts1, and some more of the menu, refusals and errors) made of their clients, with
+    /// Every call the original tests (tests/sts1, and some more of the menu, refusals and errors) made of their clients, with
     /// what the game answered: the same commands go out, the same answers and states come back, the same things are kept.
     #[test]
     fn golden() {
@@ -474,7 +474,7 @@ mod tests {
             let prefs = if script["reads"].truthy() {
                 let queue = queue.clone();
                 Prefs::Read(Box::new(move || {
-                    let next = queue.borrow_mut().pop_front().expect("the save files read once more than Python read them");
+                    let next = queue.borrow_mut().pop_front().expect("the save files read once more than the original read them");
                     assert_eq!(next[0], "prefs");
                     next[1].clone()
                 }))
@@ -485,7 +485,7 @@ mod tests {
             };
             let mut client = Sts1Client::with_wire(Box::new(Replay(queue.clone())), prefs);
             assert!(queue.borrow().is_empty());
-            let mut kept = py::json_dumps(&script["after"]);
+            let mut kept = base::json_dumps(&script["after"]);
             assert_eq!(snapshot(&client), kept, "client {n} as made");
             for (i, row) in script["calls"].list().iter().enumerate() {
                 let why = format!("client {n} call {i}: {} {} {}", row["call"], row["args"], row["kw"]);
@@ -499,19 +499,19 @@ mod tests {
                     "command" => Ok(json!(client.command(row["args"][0].s(), &row["args"][1]))),
                     other => panic!("{other}"),
                 };
-                assert!(queue.borrow().is_empty(), "{why}: Python went on to {:?}", queue.borrow().front());
+                assert!(queue.borrow().is_empty(), "{why}: the original went on to {:?}", queue.borrow().front());
                 match (&row["unavailable"], got) {
                     (Value::String(want), got) => assert_eq!(got, Err(GameUnavailable::new(want.as_str())), "{why}"),
                     (_, got) => {
-                        let got = py::json_dumps(&got.unwrap_or_else(|e| panic!("{why}: {e}")));
+                        let got = base::json_dumps(&got.unwrap_or_else(|e| panic!("{why}: {e}")));
                         match row["result"]["sha1"].as_str() {
                             Some(want) => assert_eq!((sha1_hex(&got).as_str(), got.len() as i64), (want, row["result"]["len"].int()), "{why}: {got}"),
-                            None => assert_eq!(got, py::json_dumps(&row["result"]["value"]), "{why}"),
+                            None => assert_eq!(got, base::json_dumps(&row["result"]["value"]), "{why}"),
                         }
                     }
                 }
                 if !row["after"].is_null() {
-                    kept = py::json_dumps(&row["after"]);
+                    kept = base::json_dumps(&row["after"]);
                 }
                 assert_eq!(snapshot(&client), kept, "{why}: what the client keeps");
                 if let Some(list) = row["commands"].as_u64() {

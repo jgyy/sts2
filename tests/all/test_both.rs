@@ -1,5 +1,5 @@
 //! Both games at once (`--game both`): a bot process for each, kept going; and the first game's CommunicationMod check.
-//! (The `Both` class of test_both.py, which drives `both::run` with a fake clock and fake bots, is in src/games/both.rs.)
+//! (The `Both` class of test_both.rs, which drives `both::run` with a fake clock and fake bots, is in src/games/both.rs.)
 
 use std::cell::RefCell;
 use std::path::PathBuf;
@@ -51,7 +51,7 @@ impl CommandLine {
 fn test_options_that_belong_to_one_game_are_refused() {
     let _case = CommandLine::set_up();
     for opt in [["--port", "1"], ["--log-dir", "x"], ["--launch-cmd", "x"]] {
-        // (Python's SystemExit: the usage and the error on stderr, exit code 2)
+        // (the original's SystemExit: the usage and the error on stderr, exit code 2)
         assert_eq!(cli::main(words(&["--game", "both", opt[0], opt[1]])), 2);
     }
 }
@@ -81,7 +81,7 @@ fn test_both_starts_once_communicationmod_starts_the_relay() {
 fn test_the_first_game_is_not_launched_for_another_program() {
     let case = CommandLine::set_up();
     std::fs::create_dir_all(host::comm_config_path().parent().unwrap()).unwrap();
-    std::fs::write(host::comm_config_path(), "command=python3 /elsewhere/main.py --ascension 0\nrunAtGameStart=true\n").unwrap();
+    std::fs::write(host::comm_config_path(), "command=otherbot /elsewhere/main --ascension 0\nrunAtGameStart=true\n").unwrap();
     let played = Rc::new(std::cell::Cell::new(false));
     let seen = Rc::clone(&played);
     let _sup = cli::patch(|h| {
@@ -93,7 +93,7 @@ fn test_the_first_game_is_not_launched_for_another_program() {
     let (code, said) = assert_logs("sts2bot", Level::Error, || cli::main(words(&["--game", "sts1", "--log-dir", &case.tmp()])));
     assert_eq!(code, 2);
     assert!(!played.get());
-    assert!(said[0].contains("/elsewhere/main.py"));
+    assert!(said[0].contains("/elsewhere/main"));
 }
 
 // CommConfig
@@ -103,7 +103,7 @@ fn test_what_communicationmod_starts_is_checked() {
     let tmp = tempfile::tempdir().unwrap();
     let path: PathBuf = tmp.path().join("config.properties");
     assert!(host::comm_config_problem(15527, Some(&path)).unwrap().contains("no command"));
-    std::fs::write(&path, "verbose=true\ncommand=python3 /x/slaythespire/main.py --ascension 0\n").unwrap();
+    std::fs::write(&path, "verbose=true\ncommand=otherbot /x/slaythespire/main --ascension 0\n").unwrap();
     assert!(host::comm_config_problem(15527, Some(&path)).unwrap().contains("another program"));
     host::write_comm_config(15599, Some(&path)).unwrap();
     assert!(host::comm_config_problem(15527, Some(&path)).unwrap().contains("another port"));

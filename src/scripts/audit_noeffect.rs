@@ -123,7 +123,7 @@ mod tests {
     use super::main;
 
     #[test]
-    fn as_python() {
+    fn as_recorded() {
         let _state = state();
         golden(main, &[], include_str!("../../tests/golden/logs/audit_noeffect.txt"));
         golden(main, &["2026-11-22 12:00"], include_str!("../../tests/golden/logs/audit_noeffect_since.txt"));

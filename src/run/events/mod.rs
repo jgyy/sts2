@@ -15,7 +15,7 @@ pub use self::value::Ctx;
 use crate::cards::{deck_value, is_basic, is_known as _known_card};
 use crate::games::uses_sts2_tables;
 use crate::logging::{Level, Logger};
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 use crate::run::potions::boss_worth;
 use crate::run::relics;
 use crate::run::relicworth::{energy_lean, id_of as relic_id, worth as relic_worth};
@@ -115,12 +115,12 @@ fn int(digits: &str) -> i64 {
     digits.parse().unwrap_or(i64::MAX >> 16)
 }
 
-/// `str.strip()`: Python's blanks (those of Unicode and the four separators 0x1c-0x1f).
+/// `str.strip()`: the original's blanks (those of Unicode and the four separators 0x1c-0x1f).
 fn strip(s: &str) -> &str {
     s.trim_matches(|c: char| c.is_whitespace() || ('\x1c'..='\x1f').contains(&c))
 }
 
-/// `min(a, b)` of two floats as Python has it (the first of equals).
+/// `min(a, b)` of two floats as the original has it (the first of equals).
 fn fmin(a: f64, b: f64) -> f64 {
     if b < a {
         b
@@ -129,7 +129,7 @@ fn fmin(a: f64, b: f64) -> f64 {
     }
 }
 
-/// `max(a, b)` of two floats as Python has it (the first of equals).
+/// `max(a, b)` of two floats as the original has it (the first of equals).
 fn fmax(a: f64, b: f64) -> f64 {
     if b > a {
         b
@@ -138,7 +138,7 @@ fn fmax(a: f64, b: f64) -> f64 {
     }
 }
 
-/// The keyword arguments of [`_event_option_value`], with Python's defaults (`potions`, `held`, `deck`: None when not given).
+/// The keyword arguments of [`_event_option_value`], with the original's defaults (`potions`, `held`, `deck`: None when not given).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct EventOptionValueArgs<'a> {
     pub bled: i64,
@@ -189,7 +189,7 @@ pub fn _event_option_value(opt: &Value, hp: i64, max_hp: i64, args: EventOptionV
             None => max_hp,
             Some(n) => {
                 if m.get(2).is_some_and(|g| !g.as_str().is_empty()) {
-                    py::floordiv(int(n) * max_hp, 100)
+                    base::floordiv(int(n) * max_hp, 100)
                 } else {
                     int(n)
                 }
@@ -197,15 +197,15 @@ pub fn _event_option_value(opt: &Value, hp: i64, max_hp: i64, args: EventOptionV
         };
         score += 12.0 * amount.min((max_hp - hp).max(0)) as f64 / max_hp.max(1) as f64;
     }
-    // (A set in Python, summed in its order: the prices are halves, whose sum is the same in any order.)
+    // (A set in the original, summed in its order: the prices are halves, whose sum is the same in any order.)
     let cursed: IndexSet<&str> = _CURSE_GAIN().captures_iter(&text).map(|m| m.get(1).map_or("", |g| g.as_str())).collect();
     let copies = |name: &str| -> i64 {
         // ("Cursed - 2 Normality")
-        let counted = py::re::cached(&format!(r"\b(\d+)\s+{}\b", py::re::escape(name)));
+        let counted = base::re::cached(&format!(r"\b(\d+)\s+{}\b", base::re::escape(name)));
         counted.captures_iter(&text).map(|m| int(&m[1])).fold(1, i64::max)
     };
     if !cursed.is_empty() {
-        score -= py::fsum(cursed.iter().map(|name| _CURSES.get(name).copied().unwrap_or(6.0) * copies(name) as f64));
+        score -= base::fsum(cursed.iter().map(|name| _CURSES.get(name).copied().unwrap_or(6.0) * copies(name) as f64));
     }
     // "Obtain the Sword of Stone", "Receive the Spoils Map": a relic by name (each judged on its own: "Receive Bad Luck" is not one).
     if !opt["relic_name"].truthy() && !text.contains("relic") {
@@ -226,15 +226,15 @@ pub fn _event_option_value(opt: &Value, hp: i64, max_hp: i64, args: EventOptionV
     // A potion handed over is one fewer at the boss, where the second one on the belt goes with twice the wins.
     for p in potions.unwrap_or(&[]) {
         let name = strip(&p["name"].text()).to_lowercase();
-        if !name.is_empty() && py::re::cached(&format!(r"\b(?:lose|give|insert)\b[^.]*\b{}", py::re::escape(&name))).is_match(&text) {
+        if !name.is_empty() && base::re::cached(&format!(r"\b(?:lose|give|insert)\b[^.]*\b{}", base::re::escape(&name))).is_match(&text) {
             score -= (1.0 + boss_worth(p) / 12.0) * (if late { 1.5 } else { 1.0 });
             break;
         }
     }
     // A relic of ours handed over costs a relic and what it does (relicworth.rs); one traded in brings what it does.
-    let ours: Vec<String> = held.unwrap_or(&[]).iter().map(|r| py::str_of(&r["id"])).collect();
+    let ours: Vec<String> = held.unwrap_or(&[]).iter().map(|r| base::str_of(&r["id"])).collect();
     let deck_known = deck.unwrap_or(&[]);
-    // (Python's `$`: the end of the text, or just before a newline that ends it.)
+    // (the original's `$`: the end of the text, or just before a newline that ends it.)
     for gone in crate::fre!(r"\b(?:give|trade|lose) ([a-z][a-z' -]*?)(?= for |[.:]|\n?\z)").captures_iter(&text) {
         let gone = gone.expect("regex");
         let given = relic_id(gone.get(1).map_or("", |g| g.as_str()));
@@ -263,13 +263,13 @@ pub fn _event_option_value(opt: &Value, hp: i64, max_hp: i64, args: EventOptionV
     }
     if let Some(m) = crate::re!(r"\.\s*(.+?) is removed from your deck").captures(&text) {
         // A named card goes: good riddance to a Strike, Defend or curse, a loss otherwise.
-        let name = py::title(strip(&m[1]));
+        let name = base::title(strip(&m[1]));
         let gone = json!({"name": name});
         let junk = is_basic(&gone) || _JUNK_NAMES.contains(&crate::re!(r"\W").replace_all(&name, "").to_uppercase().as_str());
         score += if junk { 2.0 } else { -0.8 * fmax(0.0, deck_value(&gone) - 2.0) };
     }
     if let Some(m) = crate::re!(r"\badd (?:an? |1 )?([a-z' !-]+?) to your deck").captures(&text) {
-        let name = py::title(strip(&m[1]));
+        let name = base::title(strip(&m[1]));
         let gained = json!({"name": name});
         if _JUNK_NAMES.contains(&crate::re!(r"\W").replace_all(&name, "").to_uppercase().as_str()) {
             score -= if !cursed.is_empty() { 0.0 } else { 4.0 }; // (a curse has been charged for by name)
@@ -315,7 +315,7 @@ fn int_or(v: &Value, default: i64) -> i64 {
     }
 }
 
-/// `x if isinstance(x, int) else None` (a bool is an int in Python).
+/// `x if isinstance(x, int) else None` (a bool is an int in the original).
 fn as_int(v: &Value) -> Option<i64> {
     match v {
         Value::Bool(b) => Some(*b as i64),
@@ -324,7 +324,7 @@ fn as_int(v: &Value) -> Option<i64> {
     }
 }
 
-/// The run as the per-event rules see it. (`bled`: 0 in Python when left out.)
+/// The run as the per-event rules see it. (`bled`: 0 in the original when left out.)
 pub fn context(state: &Value, mem: &Memory, bled: i64) -> Ctx {
     let (player, run) = (&state["player"], &state["run"]);
     let (act, floor) = (&run["act"], &run["floor"]);
@@ -347,7 +347,7 @@ pub fn context(state: &Value, mem: &Memory, bled: i64) -> Ctx {
 
 /// The event's own rule for this option (sts2.rs, sts1.rs), or None for the generic scorer.
 ///
-/// (Python catches whatever a rule raises here, logs "event rule %s failed on %s: %s" at debug and gives None: a rule that
+/// (the original catches whatever a rule raises here, logs "event rule %s failed on %s: %s" at debug and gives None: a rule that
 /// cannot read an option must not stop the run. The Rust rules raise nothing: see the top of sts1.rs.)
 pub fn rule_value(event_id: &str, opt: &Value, ctx: &Ctx) -> Option<f64> {
     if ctx.game == "sts2" {
@@ -369,7 +369,7 @@ pub fn event(state: &Value, mem: &mut Memory) -> Vec<Action> {
     let player = &state["player"];
     let (hp, max_hp) = (int_or(&player["hp"], 1), int_or(&player["max_hp"], 1));
     // One event is one floor: the same event on a later floor starts again from its own HP.
-    let eid = format!("{}@{}", ev["event_id"].text(), py::str_of(&state["run"]["floor"]));
+    let eid = format!("{}@{}", ev["event_id"].text(), base::str_of(&state["run"]["floor"]));
     if eid != mem.event_id {
         (mem.event_id, mem.event_hp0) = (eid, hp);
     }
@@ -408,10 +408,10 @@ pub fn event(state: &Value, mem: &mut Memory) -> Vec<Action> {
     };
 
     let mut rest: Vec<(f64, &Value)> = opts.iter().filter(|o| !o["is_proceed"].truthy()).map(|o| (worth(o), *o)).collect();
-    py::sort_by_key_rev(&mut rest, |r| r.0);
+    base::sort_by_key_rev(&mut rest, |r| r.0);
     if LOG.enabled(Level::Debug) && !rest.is_empty() {
-        let shown: Vec<String> = rest.iter().map(|(_, o)| format!("[{:.1}] {}: {}", worth(o), py::str_of(&o["title"]), py::str_of(&o["description"]))).collect();
-        crate::log_debug!(LOG, "event {}: {}", py::str_of(&ev["event_id"]), shown.join(" | "));
+        let shown: Vec<String> = rest.iter().map(|(_, o)| format!("[{:.1}] {}: {}", worth(o), base::str_of(&o["title"]), base::str_of(&o["description"]))).collect();
+        crate::log_debug!(LOG, "event {}: {}", base::str_of(&ev["event_id"]), shown.join(" | "));
     }
     let ordered = opts.iter().filter(|o| o["is_proceed"].truthy()).copied().chain(rest.iter().map(|r| r.1));
     ordered.map(|o| ("choose_event_option".to_string(), json!({"index": o["index"].int_or(0)}))).collect()
@@ -491,7 +491,7 @@ pub(crate) mod tests {
         }
     }
 
-    /// `event`, `context`, `rule_value` and `_lives_through` as the Python tests and the model runs of both games called them.
+    /// `event`, `context`, `rule_value` and `_lives_through` as the original tests and the model runs of both games called them.
     #[test]
     fn golden_calls() {
         let g: Value = serde_json::from_str(include_str!("../../../tests/golden/events/calls.json")).unwrap();
@@ -532,7 +532,7 @@ pub(crate) mod tests {
         assert!(events_seen > 300 && g["context"].list().len() > 300 && g["rule"].list().len() > 600 && numbers > 80 && g["lives"].list().len() > 80, "{events_seen} events, {numbers} numbers");
     }
 
-    /// `_event_option_value` as the Python tests and the model runs of both games called it.
+    /// `_event_option_value` as the original tests and the model runs of both games called it.
     #[test]
     fn golden_options() {
         let g: Value = serde_json::from_str(include_str!("../../../tests/golden/events/options.json")).unwrap();
@@ -568,11 +568,11 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn tables_as_python() {
+    fn tables_as_recorded() {
         let g: Value = serde_json::from_str(include_str!("../../../tests/golden/events/tables.json")).unwrap();
-        let dict = |rows: &IndexMap<&'static str, f64>| py::json_dumps(&Value::Object(rows.iter().map(|(k, x)| (k.to_string(), json!(x))).collect()));
-        assert_eq!(dict(&_ANCIENT), py::json_dumps(&g["ancient"]));
-        assert_eq!(dict(&_CURSES), py::json_dumps(&g["curses"]));
+        let dict = |rows: &IndexMap<&'static str, f64>| base::json_dumps(&Value::Object(rows.iter().map(|(k, x)| (k.to_string(), json!(x))).collect()));
+        assert_eq!(dict(&_ANCIENT), base::json_dumps(&g["ancient"]));
+        assert_eq!(dict(&_CURSES), base::json_dumps(&g["curses"]));
         assert_eq!(json!(_GOOD), g["good"]);
         assert_eq!(json!(_BAD), g["bad"]);
         assert_eq!(json!(EVENT_FIGHT_HP), g["fight_hp"]);

@@ -1,13 +1,13 @@
 use serde_json::{json, Value};
 use sts2bot::fight::bossfight::BossWatch;
 
-/// (The Python's defaults: player_hp 70, max_hp 80, act 1, floor 17.)
+/// (the original's defaults: player_hp 70, max_hp 80, act 1, floor 17.)
 fn boss_state(foes: &[(&str, i64)], round_no: i64, player_hp: i64, floor: i64) -> Value {
     let enemies: Vec<Value> = foes.iter().enumerate().map(|(i, (name, hp))| json!({"entity_id": format!("{name}_{i}"), "hp": hp, "block": 0})).collect();
     json!({"state_type": "boss", "run": {"act": 1, "floor": floor}, "battle": {"round": round_no, "turn": "player", "enemies": enemies}, "player": {"hp": player_hp, "max_hp": 80}})
 }
 
-/// What the watch says when the game moves on to a screen of this kind. (The Python's default: floor 17.)
+/// What the watch says when the game moves on to a screen of this kind. (the original's default: floor 17.)
 fn shown(watch: &mut BossWatch, kind: &str, floor: i64) -> Option<String> {
     watch.update(&json!({"state_type": kind, "run": {"act": 1, "floor": floor}}), Some(kind))
 }

@@ -16,10 +16,10 @@ use serde_json::{json, Value};
 
 use super::modelfight::{
     attack, deal, differ, exit_code, face, flips, game_state, hand_cards, hit, index, int, knob_setting, mean, out, patched, piles, played, quiet, shuffled, status, table, through, trace_args, turn,
-    under, Face, GameStateArgs, Py,
+    under, Face, GameStateArgs, Datum,
 };
 use crate::fight::combat;
-use crate::py::{self, floordiv, trunc, Random};
+use crate::base::{self, floordiv, trunc, Random};
 
 pub const BOSS_HP: i64 = 512;
 pub const BOSS_BLOCK: i64 = 33;
@@ -40,7 +40,7 @@ pub fn CARDS(c: char, d: i64) -> Face {
         'W' => face("SUCKER_PUNCH", "Sucker Punch", "Attack", 1, &format!("Deal {} damage. Apply 2 Weak.", floordiv(d, 2)), "AnyEnemy"),
         'B' => face("DEFEND_R", "Defend", "Skill", 1, &format!("Gain {d} Block."), "Self"),
         'F' => face("CLUMSY", "Clumsy", "Curse", -1, "Unplayable.", "None"),
-        _ => panic!("KeyError: {}", py::str_repr(&c.to_string())),
+        _ => panic!("KeyError: {}", base::str_repr(&c.to_string())),
     }
 }
 
@@ -59,13 +59,13 @@ fn count(cards: &[char], kind: char) -> i64 {
     cards.iter().filter(|c| **c == kind).count() as i64
 }
 
-/// (Python's defaults: maxhp 75, no trace.)
-pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Py {
+/// (the original's defaults: maxhp 75, no trace.)
+pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Datum {
     let (da, db, energy, size) = (spec[0], spec[1], spec[8], spec[9]);
     let (mut draw, mut disc, mut hp) = (shuffled(rng, "ABHVWF", &spec[2..]), Vec::new(), maxhp);
     let (mut boss_hp, mut boss_block, mut boss_st, mut boss_vuln, mut boss_weak, mut boss_art) = (BOSS_HP, 0, 0, 0, 0, ARTIFACT);
     let (mut level, mut buffs) = (0, 0); // Wither level (the same for all of them); Strength gained so far goes by `buffs`
-    let mut left = EVERY; // cards left before the next Wither (Python's `count`)
+    let mut left = EVERY; // cards left before the next Wither (the original's `count`)
     for r in 1..=30 {
         let k = (r - 1) % 3;
         let (mut hand, mut en, mut block) = (deal(&mut draw, &mut disc, rng, size), energy, 0);
@@ -75,7 +75,7 @@ pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Py {
             out!(
                 "r{r} hand {} hp {hp} boss {boss_hp}/{boss_block}blk st {boss_st} intent {} withers {} level {level} count {left}",
                 hand.iter().collect::<String>(),
-                Py::ints(&[hits, d, blk]).repr(),
+                Datum::ints(&[hits, d, blk]).repr(),
                 count(&draw, 'X') + count(&disc, 'X') + count(&hand, 'X')
             );
         }
@@ -146,7 +146,7 @@ pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Py {
                 out!("   play {c}  boss {boss_hp}hp/{boss_block}blk en {en} blk {block} count {left}");
             }
             if boss_hp <= 0 {
-                return Py::Tuple(vec![Py::Bool(true), Py::Int(hp), Py::Int(r), Py::Int(buffs)]);
+                return Datum::Tuple(vec![Datum::Bool(true), Datum::Int(hp), Datum::Int(r), Datum::Int(buffs)]);
             }
         }
         // End of our turn: each Wither still in the hand burns (Block takes it first); then the boss moves.
@@ -178,10 +178,10 @@ pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Py {
             out!("r{r} burn {burn} took {} hp {hp} | boss {boss_hp} st {boss_st}", before - hp);
         }
         if hp <= 0 {
-            return Py::Tuple(vec![Py::Bool(false), Py::Int(boss_hp), Py::Int(r), Py::Int(buffs)]);
+            return Datum::Tuple(vec![Datum::Bool(false), Datum::Int(boss_hp), Datum::Int(r), Datum::Int(buffs)]);
         }
     }
-    Py::Tuple(vec![Py::Bool(false), Py::Int(boss_hp), Py::Int(30), Py::Int(buffs)])
+    Datum::Tuple(vec![Datum::Bool(false), Datum::Int(boss_hp), Datum::Int(30), Datum::Int(buffs)])
 }
 
 /// NAME=VALUE and K.name=VALUE as modelfight::knob_setting takes them, or the Wither bill times X (WB=X).
@@ -193,9 +193,9 @@ pub fn setting(name: &str, value: f64) -> Result<(), String> {
     Ok(())
 }
 
-pub fn run(arm: &str, spec: &[i64], n: i64, seed: i64) -> Result<Py, String> {
+pub fn run(arm: &str, spec: &[i64], n: i64, seed: i64) -> Result<Datum, String> {
     let res = under(|| patched(arm, &setting), || played(|spec: &[i64], rng| fight(spec, rng, 75, false), spec, n, seed))?;
-    Ok(Py::Tuple(vec![Py::str(arm), Py::ints(spec), Py::Float(mean(&res, 0)), Py::Float(mean(&res, 1)), Py::Float(mean(&res, 2))]))
+    Ok(Datum::Tuple(vec![Datum::str(arm), Datum::ints(spec), Datum::Float(mean(&res, 0)), Datum::Float(mean(&res, 1)), Datum::Float(mean(&res, 2))]))
 }
 
 /// damage, Block, Strikes, Defends, heavy, Bash, Weak, dead, energy, hand size (tuned until the planner wins 5-55%)
@@ -236,7 +236,7 @@ fn script(args: &[String]) -> Result<(), String> {
             out!("{arm:28}: won {:.3}  boss HP left {:6.1}  rounds {:4.1}", mean(rows, 2), mean(rows, 3), mean(rows, 4));
         }
         for dk in &decks {
-            let dk = Py::ints(dk);
+            let dk = Datum::ints(dk);
             out!("{} {}", dk.repr(), out.iter().filter(|o| *o.at(1) == dk).map(|o| format!("{}: won {:.2}", o.at(0).as_str(), o.at(2).float())).collect::<Vec<_>>().join("  "));
         }
     }
@@ -255,7 +255,7 @@ mod tests {
     const GOLDEN: &str = include_str!("../../tests/golden/scripts/bosses_aeonfight.txt");
 
     #[test]
-    fn as_python() {
+    fn as_recorded() {
         for command in ["trace", "trace 3 4 WB=3+K.caution=1.35", "trace 7 0 WITHER_FIGHT=5+HP_SLOPE=1", "2 on WB=0+NEXT_ENERGY=1 K.debuff_worth=3", "flips 1 on WB=4"] {
             golden(main, &command.split(' ').collect::<Vec<_>>(), section(GOLDEN, command));
         }

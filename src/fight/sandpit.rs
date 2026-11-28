@@ -4,7 +4,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use crate::py;
+use crate::base;
 
 pub const DEATH: f64 = 300.0; // what being eaten costs, in points
 pub const ESCAPE_COST: f64 = 7.0; // what an Escape still to be played costs (half an energy)
@@ -29,7 +29,7 @@ pub fn _eaten(left: i64, turns: i64, soon: f64, later: f64) -> f64 {
     }
     let (one, two) = ((1.0 - soon) * 0.64, (1.0 - soon) * 0.36); // six Escapes in thirty cards: one in the hand, or more
     let top = turns + 1; // more margin than the fight has turns left is worth nothing
-    let out = py::fsum([(soon, 0), (one, 1), (two, 2)].into_iter().map(|(p, k)| p * _eaten((left - 1 + k).min(top), turns - 1, later, later)));
+    let out = base::fsum([(soon, 0), (one, 1), (two, 2)].into_iter().map(|(p, k)| p * _eaten((left - 1 + k).min(top), turns - 1, later, later)));
     _EATEN.with(|m| {
         let mut m = m.borrow_mut();
         if m.len() >= 200_000 {
@@ -42,7 +42,7 @@ pub fn _eaten(left: i64, turns: i64, soon: f64, later: f64) -> f64 {
 
 /// Points lost by ending the turn with `left` on the Sandpit and the boss on `boss_hp`: the chance of being eaten first, plus
 /// the Escapes the rest of the fight will ask for. `dealt`: what the boss had lost before this turn; `odds`: as battle._escape_odds
-/// (the Python's default: (0.3, 0.3)).
+/// (the original default: (0.3, 0.3)).
 pub fn price(left: i64, boss_hp: i64, dealt: i64, round_no: i64, odds: (f64, f64)) -> f64 {
     if left <= 1 {
         return DEATH * 10.0;
@@ -53,20 +53,20 @@ pub fn price(left: i64, boss_hp: i64, dealt: i64, round_no: i64, odds: (f64, f64
     let turns = 1.0 + boss_hp as f64 / (if slow > 1.0 { slow } else { 1.0 }); // our turns after this one, the kill among them
     let clip = |p: f64| {
         let some = if p > 0.0 { p } else { 0.0 };
-        py::round_to(if some < 1.0 { some } else { 1.0 }, 2)
+        base::round_to(if some < 1.0 { some } else { 1.0 }, 2)
     };
     let (soon, later) = (clip(odds.0), clip(odds.1));
 
     let cost = |t: i64| -> f64 { DEATH * _eaten(left.min(t + 1), t, soon, later) + ESCAPE_COST * 0.max(t - (left - 1)) as f64 };
 
-    let low = py::trunc(turns);
+    let low = base::trunc(turns);
     cost(low) + (turns - low as f64) * (cost(low + 1) - cost(low))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::py::JsonExt;
+    use crate::base::JsonExt;
     use serde_json::{json, Value};
 
     #[test]

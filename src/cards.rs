@@ -10,7 +10,7 @@ use indexmap::IndexMap;
 use serde_json::{json, Value};
 
 use crate::games;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 use crate::run::crowd::rating as crowd_rating;
 
 pub const _WORD_NUM: [(&str, i64); 2] = [("twice", 2), ("thrice", 3)];
@@ -44,7 +44,7 @@ fn to_int(digits: &str) -> i64 {
     digits.parse().unwrap_or(0)
 }
 
-/// Python's `max(a, b)` of two floats: the first unless the second is larger.
+/// the original's `max(a, b)` of two floats: the first unless the second is larger.
 fn fmax(a: f64, b: f64) -> f64 {
     if b > a {
         b
@@ -53,7 +53,7 @@ fn fmax(a: f64, b: f64) -> f64 {
     }
 }
 
-/// Python's `min(a, b)` of two floats: the first unless the second is smaller.
+/// the original's `min(a, b)` of two floats: the first unless the second is smaller.
 fn fmin(a: f64, b: f64) -> f64 {
     if b < a {
         b
@@ -124,7 +124,7 @@ pub struct CardInfo {
     /// Dexterity gained
     pub dexterity: i64,
     pub dexterity_lasts: bool,
-    /// orbs channeled, e.g. ["LIGHTNING", "FROST"] (Python: a tuple of names; empty for none)
+    /// orbs channeled, e.g. ["LIGHTNING", "FROST"] (the original: a tuple of names; empty for none)
     pub channel: Vec<String>,
     /// times the rightmost orb is evoked
     pub evoke: i64,
@@ -134,7 +134,7 @@ pub struct CardInfo {
     pub next_draw: i64,
     /// Block gained next turn
     pub next_block: i64,
-    /// "Retain your Hand this turn": ["ANY"], or the Melodies it needs (Ki Rest: "If you have a Wah Melody or Cho Melody") (Python: a tuple of names; empty for none)
+    /// "Retain your Hand this turn": ["ANY"], or the Melodies it needs (Ki Rest: "If you have a Wah Melody or Cho Melody") (the original: a tuple of names; empty for none)
     pub keeps_hand: Vec<String>,
     /// "Enemy loses N HP." (ignores Block)
     pub enemy_hp_loss: i64,
@@ -176,7 +176,7 @@ pub struct CardInfo {
     pub stretch: i64,
     /// Nail: "If the enemy is Impaled, Deal 20 damage ...": nothing otherwise
     pub impaled_only: bool,
-    /// (energy, cards drawn) it adds when its target is Impaled (Bow Smack, Ki Hop) (Python: that pair, or the empty tuple: None here)
+    /// (energy, cards drawn) it adds when its target is Impaled (Bow Smack, Ki Hop) (the original: that pair, or the empty tuple: None here)
     pub on_impaled: Option<(i64, i64)>,
     /// Rain Shot: "Damage ALL other enemies equal to the damage dealt": the same again on each other enemy
     pub splash: bool,
@@ -188,13 +188,13 @@ pub struct CardInfo {
     pub impaled_double: bool,
     /// Cho Firm: "If you have an Arrow, gain Block an additional time"
     pub arrow_block: bool,
-    /// the Melodies playing it gives for the turn: the Wah, Cho and Ki in its name (Python: a tuple of names, in MELODIES' order)
+    /// the Melodies playing it gives for the turn: the Wah, Cho and Ki in its name (the original: a tuple of names, in MELODIES' order)
     pub melody: Vec<String>,
     /// "Hits an additional time for each Melody you have" (its text counts those there are)
     pub melody_hits: bool,
     /// "Gain 5 Block for each Melody you have" (Harmonic Shield): Block a Melody
     pub melody_block: i64,
-    /// Wah Blast: "If you have a Cho Melody or Ki Melody, hits twice" (Python: a tuple of names; empty for none)
+    /// Wah Blast: "If you have a Cho Melody or Ki Melody, hits twice" (the original: a tuple of names; empty for none)
     pub melody_twice: Vec<String>,
     /// Ki Verse: "The next (2) "Wah", "Cho", or "Ki" card(s) you play this turn ... played an additional time"
     pub verse: i64,
@@ -208,7 +208,7 @@ pub struct CardInfo {
     pub mantra: i64,
     /// the Fool's Sadness it puts in the hand when played (Sorrowful Strike 2, Mourning Blow itself), less those it turns into Joy
     pub sadness: i64,
-    /// a Power's (Sadness, cards drawn) added at the start of every turn: Ennui (1, 2); Ecstasy's Joy (-1, 0) (fight/fool/sadness.rs) (Python: that pair, or the empty tuple: None here)
+    /// a Power's (Sadness, cards drawn) added at the start of every turn: Ennui (1, 2); Ecstasy's Joy (-1, 0) (fight/fool/sadness.rs) (the original: that pair, or the empty tuple: None here)
     pub sad_turn: Option<(i64, i64)>,
 }
 
@@ -418,7 +418,7 @@ pub fn _JUNK_ADDED() -> &'static regex::Regex {
 
 /// `int(group 1)` of the first match of `pattern` (case ignored) in `text`, 0 for none.
 pub fn _int(pattern: &str, text: &str) -> i64 {
-    match py::re::cached_i(pattern).captures(text) {
+    match base::re::cached_i(pattern).captures(text) {
         Some(m) => to_int(&m[1]),
         None => 0,
     }
@@ -474,7 +474,7 @@ pub fn _replay(card: &Value, text: &str) -> i64 {
         return 0;
     }
     for k in card["keywords"].list() {
-        if k.is_object() && py::str_of(&k["name"]).to_lowercase() == "replay" {
+        if k.is_object() && base::str_of(&k["name"]).to_lowercase() == "replay" {
             let times = int!(r"additional\s+(\d+)\s+times", &k["description"].text());
             return if times != 0 { times } else { 1 };
         }
@@ -487,14 +487,14 @@ pub fn is_basic(card: &Value) -> bool {
 }
 
 pub fn is_junk(card: &Value) -> bool {
-    matches!(py::str_of(&card["type"]).as_str(), "Status" | "Curse")
+    matches!(base::str_of(&card["type"]).as_str(), "Status" | "Curse")
 }
 
 /// What sort of card this is to a deck whose turns run out of energy before they run out of cards (learn.rs keeps a
 /// record of each): "energy" gives some, now or next turn; "free" is an attack that costs none; "draw" costs some and
 /// brings cards and little else; "" for every other card (free Skills too).
 pub fn kind(card: &Value) -> &'static str {
-    let ctype = py::str_of(&card["type"]);
+    let ctype = base::str_of(&card["type"]);
     if !matches!(ctype.as_str(), "Attack" | "Skill") {
         return "";
     }
@@ -870,7 +870,7 @@ pub fn _parse(card: &Value) -> CardInfo {
     let name = card["name"].or(&card["id"]);
     CardInfo {
         index: card["index"].int(),
-        name: if name.truthy() { py::str_of(name) } else { "?".to_string() },
+        name: if name.truthy() { base::str_of(name) } else { "?".to_string() },
         r#type: ctype.clone(),
         cost: _cost(&card["cost"]),
         star_cost: if card["star_cost"].is_null() || card["star_cost"].as_str() == Some("") { 0 } else { _cost(&card["star_cost"]) },
@@ -915,7 +915,7 @@ pub fn _parse(card: &Value) -> CardInfo {
         block_lock: found!(r"(cannot|can't|can not)\s+gain\s+(any\s+)?block", full_text),
         osty_attack: found!(r"\bOsty\b[^.]*\bdeals\b|if\s+Osty\s+is\s+alive", full_text),
         // (Hex: "Hexed")
-        ethereal: crate::re!(r"\bEthereal\b").is_match(full_text) || keywords.iter().any(|k| k.is_object() && matches!(py::str_of(&k["name"]).to_lowercase().as_str(), "ethereal" | "hexed")),
+        ethereal: crate::re!(r"\bEthereal\b").is_match(full_text) || keywords.iter().any(|k| k.is_object() && matches!(base::str_of(&k["name"]).to_lowercase().as_str(), "ethereal" | "hexed")),
         ends_turn: found!(r"(?:^|\.\s*)(?:end\s+your\s+turn|exhaust\s+your\s+hand)\.", full_text),
         replay: _replay(card, full_text),
         play_limit: if found!(r"only\s+play\s+\d+\s+more\s+card", full_text) { int!(r"you\s+can\s+only\s+play\s+(\d+)\s+more\s+cards?\s+this\s+turn", full_text) } else { -1 },
@@ -958,10 +958,10 @@ pub fn _parse(card: &Value) -> CardInfo {
         },
         junk: if !matches!(ctype.as_str(), "Power" | "Status" | "Curse") { _JUNK_ADDED().captures_iter(full_text).map(|m| _count(&m[1])).sum() } else { 0 },
         enemy_strength_gain: int!(r"\bthe\s+enem(?:y|ies)\s+gains?\s+(\d+)\s+strength", full_text),
-        bound: keywords.iter().any(|k| k.is_object() && py::str_of(&k["name"]).to_lowercase() == "bound"),
+        bound: keywords.iter().any(|k| k.is_object() && base::str_of(&k["name"]).to_lowercase() == "bound"),
         short: !can_play
             && card["unplayable_reason"].truthy()
-            && py::str_of(&card["unplayable_reason"]).split(',').all(|r| matches!(r.trim(), "EnergyCostTooHigh" | "StarCostTooHigh")),
+            && base::str_of(&card["unplayable_reason"]).split(',').all(|r| matches!(r.trim(), "EnergyCostTooHigh" | "StarCostTooHigh")),
         mantra,
         sadness: _sadness(text),
         sad_turn: if ctype == "Power" { _sad_turn(full_text) } else { None },
@@ -1204,7 +1204,7 @@ pub fn upgrade_gain(base: &Value, upgraded: &Value) -> f64 {
     let mut gain = worth(&b) - worth(&a) + 6.0 * (cost(&a) - cost(&b)) as f64 + 2.5 * (a.star_cost.max(0) - b.star_cost.max(0)) as f64;
     if gain <= 0.0 {
         // Nothing we can read changed (a Power's numbers, an added keyword): still worth something.
-        gain = if py::str_of(&base["description"]) != py::str_of(&upgraded["description"]) { 3.0 } else { 0.5 };
+        gain = if base::str_of(&base["description"]) != base::str_of(&upgraded["description"]) { 3.0 } else { 0.5 };
     }
     gain
 }
@@ -1249,7 +1249,7 @@ mod tests {
         for (n, case) in cases.iter().enumerate() {
             let _game = games::playing(case["g"].as_str().unwrap());
             let card = &case["card"];
-            let why = format!("case {n} {}", py::json_dumps(card));
+            let why = format!("case {n} {}", base::json_dumps(card));
             let info = parse(card);
             assert_eq!(info, _parse(card), "{why}");
             assert_eq!(info, parse(card), "{why}");

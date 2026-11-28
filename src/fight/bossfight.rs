@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use serde_json::Value;
 
 use super::combat;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 /// Screens the game opens in the middle of a fight (a discard, a choice): they do not end it.
 pub const _IN_FIGHT_SCREENS: [&str; 4] = ["hand_select", "card_select", "bundle_select", "overlay"];
@@ -16,16 +16,16 @@ pub fn mid_fight(state: &Value, kind: Option<&str>) -> bool {
 }
 
 pub fn _base_name(entity_id: &str) -> String {
-    // (Python's `$` also stands before a last line break)
+    // (the original's `$` also stands before a last line break)
     crate::re!(r"_\d+(\n?)$").replace(entity_id, "${1}").into_owned()
 }
 
 /// `str(x.get(field) or x.get("name") or "?")` for each thing the player holds under `key`.
 fn _held(player: &Value, key: &str, field: &str) -> Vec<String> {
-    player[key].list().iter().map(|x| py::str_of(x[field].or(&x["name"]).or(&Value::String("?".into())))).collect()
+    player[key].list().iter().map(|x| base::str_of(x[field].or(&x["name"]).or(&Value::String("?".into())))).collect()
 }
 
-/// What `BossWatch` knows of the fight it is watching (the Python's `fight` dict).
+/// What `BossWatch` knows of the fight it is watching (the original's `fight` dict).
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct BossFight {
     /// (act, floor) as the run gives them
@@ -98,8 +98,8 @@ impl BossWatch {
             let who = fight.names.join("+");
             self.brought = Some(format!(
                 "boss fight begins: act {} floor {} {}; relics {}; potions {}; cards {}",
-                py::str_of(&run["act"]),
-                py::str_of(&run["floor"]),
+                base::str_of(&run["act"]),
+                base::str_of(&run["floor"]),
                 if who.is_empty() { "?" } else { &who },
                 _held(player, "relics", "id").join(" "),
                 _held(player, "potions", "name").join(", "),
@@ -123,8 +123,8 @@ impl BossWatch {
         let who = f.names.join("+");
         format!(
             "boss fight over: act {} floor {} {} {}; boss hp {} -> {}; player hp {} -> {}/{}; rounds {}; brought relics {}, potions {}, deck {}",
-            py::str_of(act),
-            py::str_of(floor),
+            base::str_of(act),
+            base::str_of(floor),
             if who.is_empty() { "?" } else { &who },
             if lost { "lost" } else { "won" },
             f.boss_hp0,
@@ -146,7 +146,7 @@ pub(crate) mod testing {
     use serde_json::Value;
 
     use crate::fight::combat::testing::{rows, Golden};
-    use crate::py::JsonExt;
+    use crate::base::JsonExt;
 
     /// `v` with every `{"@": n}` in it replaced by the n-th atom.
     pub fn unpack(v: &Value, atoms: &[Value]) -> Value {
@@ -158,7 +158,7 @@ pub(crate) mod testing {
         }
     }
 
-    /// The settings table and every sequence: its env, its calls `(state, kind)`, what the Python watches answered each, the lines written.
+    /// The settings table and every sequence: its env, its calls `(state, kind)`, what the original watches answered each, the lines written.
     pub fn sequences() -> (Golden, Vec<Value>) {
         let shared = include_str!("../../tests/golden/fight2/watch_atoms.json");
         let atoms = rows(&[shared], "atoms");

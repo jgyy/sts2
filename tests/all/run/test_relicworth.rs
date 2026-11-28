@@ -11,7 +11,7 @@ fn relic(i: i64, rid: &str, name: &str, price: i64) -> Value {
     json!({"index": i, "category": "relic", "relic_id": rid, "relic_name": name, "relic_description": "", "price": price, "is_stocked": true})
 }
 
-/// (The Python's defaults: act 2, deck (), hp 60, max_hp 75.)
+/// (the original's defaults: act 2, deck (), hp 60, max_hp 75.)
 fn bought_(items: &[Value], gold: i64, act: i64, deck: &[Value], hp: i64, max_hp: i64) -> Vec<i64> {
     let player = json!({"gold": gold, "hp": hp, "max_hp": max_hp, "max_potion_slots": 2, "potions": [], "relics": []});
     let floor = if act == 1 {
@@ -119,9 +119,9 @@ fn OSTY() -> Value {
     json!({"name": "Poke", "type": "Attack", "cost": 1, "description": "Osty deals 6 damage."})
 }
 
-/// (The Python's defaults: ids ("HEAL", "SMITH", "LIFT"), deck None.)
+/// (the original's defaults: ids ("HEAL", "SMITH", "LIFT"), deck None.)
 fn chosen(hp: i64, ids: &[&'static str], deck: &[Value]) -> &'static str {
-    let options: Vec<Value> = ids.iter().enumerate().map(|(i, oid)| json!({"index": i, "id": oid, "name": sts2bot::py::title(oid), "is_enabled": true})).collect();
+    let options: Vec<Value> = ids.iter().enumerate().map(|(i, oid)| json!({"index": i, "id": oid, "name": sts2bot::base::title(oid), "is_enabled": true})).collect();
     let state = json!({"state_type": "rest_site", "run": {"act": 2, "floor": 25}, "player": {"hp": hp, "max_hp": 80}, "rest_site": {"options": options}});
     let mut mem = Memory::new();
     mem.deck = deck.to_vec();
@@ -209,7 +209,7 @@ fn set_up() {
     relics::load(None, events::_ANCIENT.keys());
 }
 
-/// (The Python's default: held ().)
+/// (the original's default: held ().)
 fn value(opt: &Value, energy: i64, held: &[&str]) -> f64 {
     let held: Vec<Value> = held.iter().map(|r| json!({"id": r})).collect();
     events::_event_option_value(opt, 60, 75, EventOptionValueArgs { act: Some(2), potions: Some(&[]), held: Some(&held), energy: Some(energy), ..Default::default() })

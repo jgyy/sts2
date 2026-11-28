@@ -1,9 +1,9 @@
-//! The decision trace: every seeded model run of tests/golden/trace.jsonl (played by the Python) must come out the
+//! The decision trace: every seeded model run of tests/golden/trace.jsonl (played by the original) must come out the
 //! same here, decision for decision, and end the same way.
 
 use indexmap::IndexMap;
 use serde_json::Value;
-use sts2bot::py::{self, JsonExt};
+use sts2bot::base::{self, JsonExt};
 use sts2bot::sim::cli::trace_run;
 
 const GOLDEN: &str = include_str!("../golden/trace.jsonl");
@@ -31,8 +31,8 @@ fn compare(want: &Value) -> Option<String> {
         if key == "secs" {
             continue;
         }
-        if py::json_dumps(&result[key.as_str()]) != py::json_dumps(value) {
-            return Some(format!("{who}: result[{key}] differs\n   got: {}\n  want: {}", py::json_dumps(&result[key.as_str()]), py::json_dumps(value)));
+        if base::json_dumps(&result[key.as_str()]) != base::json_dumps(value) {
+            return Some(format!("{who}: result[{key}] differs\n   got: {}\n  want: {}", base::json_dumps(&result[key.as_str()]), base::json_dumps(value)));
         }
     }
     let keys = |v: &Value| v.entries().map(|(k, _)| k.clone()).collect::<Vec<_>>();
@@ -56,7 +56,7 @@ fn check(game: &str) {
 }
 
 #[test]
-fn test_the_first_games_runs_are_the_pythons() {
+fn test_the_first_games_runs_are_the_the_recorded() {
     check("sts1");
 }
 
@@ -75,7 +75,7 @@ fn more(golden: &str, every: usize) {
         let knobs: IndexMap<String, f64> = want["knobs"].entries().map(|(k, v)| (k.clone(), v.float())).collect();
         let (digest, mut result) = trace_run(want["game"].s(), want["character"].s(), want["seed"].int(), want["ascension"].int(), &knobs);
         result.as_object_mut().unwrap().shift_remove("secs");
-        let got = (digest.len() as i64, hash(&digest.join("|")), hash(&py::json_dumps(&result)));
+        let got = (digest.len() as i64, hash(&digest.join("|")), hash(&base::json_dumps(&result)));
         let wanted = (want["n"].int(), want["digest"].s().to_string(), want["result"].s().to_string());
         (got != wanted).then(|| format!("{} {} seed {} ascension {} {}: got {:?}, want {:?}", want["game"].s(), want["character"].s(), want["seed"], want["ascension"], want["knobs"], got, wanted))
     };
@@ -91,29 +91,72 @@ const MORE_STS2: &str = include_str!("../golden/trace_sts2_more.jsonl");
 
 /// (One run in four, so that the tests stay quick: the next test plays them all.)
 #[test]
-fn test_more_of_the_first_games_runs_are_the_pythons() {
+fn test_more_of_the_first_games_runs_are_the_the_recorded() {
     more(MORE_STS1, 4);
 }
 
 #[test]
 #[ignore = "all 320 runs: half a minute or more (cargo test -- --ignored test_all_the_more_runs)"]
-fn test_all_the_more_runs_of_the_first_game_are_the_pythons() {
+fn test_all_the_more_runs_of_the_first_game_are_the_the_recorded() {
     more(MORE_STS1, 1);
 }
 
 /// (One run in seven: both ascensions, every character, default settings and drawn ones.)
 #[test]
-fn test_more_of_slay_the_spire_2s_runs_are_the_pythons() {
+fn test_more_of_slay_the_spire_2s_runs_are_the_the_recorded() {
     more(MORE_STS2, 7);
 }
 
 #[test]
 #[ignore = "all 640 runs: a minute or more (cargo test -- --ignored test_all_the_more_runs)"]
-fn test_all_the_more_runs_of_slay_the_spire_2_are_the_pythons() {
+fn test_all_the_more_runs_of_slay_the_spire_2_are_the_the_recorded() {
     more(MORE_STS2, 1);
 }
 
 #[test]
-fn test_slay_the_spire_2s_runs_are_the_pythons() {
+fn test_slay_the_spire_2s_runs_are_the_the_recorded() {
     check("sts2");
+}
+
+/// Writes the three golden files again from what the code plays now: for a change that is meant to alter decisions
+/// (`cargo test --release -- --ignored rewrite_the_golden_runs`, then read `git diff --stat tests/golden`).
+#[test]
+#[ignore = "rewrites tests/golden/trace*.jsonl from the runs as they are played now"]
+fn rewrite_the_golden_runs() {
+    use sha2::{Digest, Sha256};
+    let hash = |text: &str| Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect::<String>()[..16].to_string();
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden");
+    for (name, hashed) in [("trace.jsonl", false), ("trace_sts1_more.jsonl", true), ("trace_sts2_more.jsonl", true)] {
+        let path = dir.join(name);
+        let text = std::fs::read_to_string(&path).unwrap();
+        let lines: Vec<Value> = text.lines().filter(|l| !l.trim().is_empty()).map(|l| serde_json::from_str::<Value>(l).unwrap()).collect();
+        let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(2).min(16);
+        let per = lines.len().div_ceil(threads);
+        let one = |want: &Value| -> String {
+            let knobs: IndexMap<String, f64> = want["knobs"].entries().map(|(k, v)| (k.clone(), v.float())).collect();
+            let (digest, mut result) = trace_run(want["game"].s(), want["character"].s(), want["seed"].int(), want["ascension"].int(), &knobs);
+            let mut line = want.clone();
+            if hashed {
+                result.as_object_mut().unwrap().shift_remove("secs");
+                line["n"] = serde_json::json!(digest.len());
+                line["digest"] = serde_json::json!(hash(&digest.join("|")));
+                line["result"] = serde_json::json!(hash(&base::json_dumps(&result)));
+            } else {
+                // (the time a run took is not compared: the golden one's stays)
+                result["secs"] = want["result"]["secs"].clone();
+                line["digest"] = serde_json::json!(digest);
+                line["result"] = result;
+            }
+            base::json_dumps(&line)
+        };
+        let out: Vec<String> = std::thread::scope(|s| {
+            let handles: Vec<_> = lines.chunks(per).map(|chunk| s.spawn(move || chunk.iter().map(one).collect::<Vec<String>>())).collect();
+            handles.into_iter().flat_map(|h| h.join().expect("a run panicked")).collect()
+        });
+        let changed = out.iter().zip(text.lines().filter(|l| !l.trim().is_empty())).filter(|(new, old)| new.as_str() != *old).count();
+        println!("{name}: {changed} of {} runs changed", out.len());
+        if changed != 0 {
+            std::fs::write(&path, out.join("\n") + "\n").unwrap();
+        }
+    }
 }

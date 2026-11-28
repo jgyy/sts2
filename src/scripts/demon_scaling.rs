@@ -12,7 +12,7 @@
 
 use super::demonfight::{self as D, Deck, DeckArgs};
 use super::modelfight::{exit_code, on_all_cores, out, quiet};
-use crate::py::trunc;
+use crate::base::trunc;
 
 /// The keyword arguments of `Deck2` beyond `Deck`'s.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -52,7 +52,7 @@ pub fn BASES() -> Vec<([i64; 6], DeckArgs)> {
 }
 pub const P1: [i64; 6] = [0, 0, 0, 0, 0, 1];
 
-/// What a card of EXTRA changes in the deck's keyword arguments (Python's dict; `Lethality`: its None, worked out in `cell`).
+/// What a card of EXTRA changes in the deck's keyword arguments (the original's dict; `Lethality`: its None, worked out in `cell`).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Power {
     /// `{}`, or `pe`, `ps`, `pd`, `pm`, `pc` where given
@@ -114,7 +114,7 @@ mod tests {
     use super::main;
 
     #[test]
-    fn as_python() {
+    fn as_recorded() {
         golden(main, &[], include_str!("../../tests/golden/scripts/demon_scaling.txt"));
     }
 }

@@ -1,14 +1,14 @@
-//! `py`: the same draws, sums and text as Python (tests/golden/py.json was written by CPython 3.13).
+//! `base`: the same draws, sums and text as the original (tests/golden/base.json was written by the first version).
 
 use serde_json::Value;
-use sts2bot::py::{self, JsonExt, Random};
+use sts2bot::base::{self, JsonExt, Random};
 
 fn golden() -> Value {
-    serde_json::from_str(include_str!("../golden/py.json")).unwrap()
+    serde_json::from_str(include_str!("../golden/base.json")).unwrap()
 }
 
 #[test]
-fn random_draws_what_python_drew() {
+fn random_draws_what_the_record_drew() {
     let g = golden();
     for (seed, want) in g["random"].entries() {
         let mut r = Random::new(seed.parse::<i128>().unwrap());
@@ -36,51 +36,51 @@ fn random_draws_what_python_drew() {
 }
 
 #[test]
-fn sums_round_and_divide_as_python() {
+fn sums_round_and_divide_as_recorded() {
     let g = golden();
     for row in g["sum"].list() {
         let xs: Vec<f64> = row[0].list().iter().map(|x| x.float()).collect();
-        assert_eq!(py::fsum(xs.iter().copied()), row[1].float(), "{xs:?}");
-        assert_eq!(py::fsum_from(0.5, xs.iter().copied()), row[2].float(), "{xs:?}");
+        assert_eq!(base::fsum(xs.iter().copied()), row[1].float(), "{xs:?}");
+        assert_eq!(base::fsum_from(0.5, xs.iter().copied()), row[2].float(), "{xs:?}");
     }
     for row in g["divmod"].list() {
-        assert_eq!(py::floordiv(row[0].int(), row[1].int()), row[2].int());
-        assert_eq!(py::modulo(row[0].int(), row[1].int()), row[3].int());
+        assert_eq!(base::floordiv(row[0].int(), row[1].int()), row[2].int());
+        assert_eq!(base::modulo(row[0].int(), row[1].int()), row[3].int());
     }
     for row in g["fdivmod"].list() {
-        assert_eq!(py::ffloordiv(row[0].float(), row[1].float()), row[2].float(), "{row}");
-        assert_eq!(py::fmodulo(row[0].float(), row[1].float()), row[3].float(), "{row}");
+        assert_eq!(base::ffloordiv(row[0].float(), row[1].float()), row[2].float(), "{row}");
+        assert_eq!(base::fmodulo(row[0].float(), row[1].float()), row[3].float(), "{row}");
     }
     for row in g["comb"].list() {
-        assert_eq!(py::comb(row[0].int(), row[1].int()), row[2].int());
+        assert_eq!(base::comb(row[0].int(), row[1].int()), row[2].int());
     }
-    assert_eq!(py::max_by_key([(1, 'a'), (3, 'b'), (3, 'c')], |x| x.0), Some((3, 'b')));
-    assert_eq!(py::min_by_key([(1, 'a'), (1, 'b'), (3, 'c')], |x| x.0), Some((1, 'a')));
+    assert_eq!(base::max_by_key([(1, 'a'), (3, 'b'), (3, 'c')], |x| x.0), Some((3, 'b')));
+    assert_eq!(base::min_by_key([(1, 'a'), (1, 'b'), (3, 'c')], |x| x.0), Some((1, 'a')));
 }
 
 #[test]
-fn text_reads_as_python_wrote_it() {
+fn text_reads_as_the_record_wrote_it() {
     let g = golden();
     for row in g["repr"].list() {
         let x = row[0].float();
-        assert_eq!(py::float_repr(x), row[1].s());
-        assert_eq!(py::float_g(x), row[2].s(), "{x:e}");
+        assert_eq!(base::float_repr(x), row[1].s());
+        assert_eq!(base::float_g(x), row[2].s(), "{x:e}");
         if x.abs() < 1e15 {
-            assert_eq!(py::round(x), row[3].int(), "{x}");
+            assert_eq!(base::round(x), row[3].int(), "{x}");
         }
-        assert_eq!(py::round_to(x, 2), row[4].float(), "{x}");
-        assert_eq!(py::round_to(x, 1), row[5].float(), "{x}");
+        assert_eq!(base::round_to(x, 2), row[4].float(), "{x}");
+        assert_eq!(base::round_to(x, 1), row[5].float(), "{x}");
     }
     let obj: Value = serde_json::from_str(g["json"][0].s()).unwrap();
-    assert_eq!(py::json_dumps(&obj), g["json"][0].s());
-    assert_eq!(py::json_dumps_pretty(&obj, 1, true), g["json"][1].s());
-    assert_eq!(py::Dumps { separators: Some((",", ":")), ..Default::default() }.dumps(&obj), g["json"][2].s());
-    assert_eq!(py::Dumps { ensure_ascii: false, ..Default::default() }.dumps(&obj), g["json"][3].s());
-    assert_eq!(py::repr_of(&serde_json::json!({"a": [1, 2.0, null, true, "it's", "q\""]})), g["json"][4].s());
+    assert_eq!(base::json_dumps(&obj), g["json"][0].s());
+    assert_eq!(base::json_dumps_pretty(&obj, 1, true), g["json"][1].s());
+    assert_eq!(base::Dumps { separators: Some((",", ":")), ..Default::default() }.dumps(&obj), g["json"][2].s());
+    assert_eq!(base::Dumps { ensure_ascii: false, ..Default::default() }.dumps(&obj), g["json"][3].s());
+    assert_eq!(base::repr_of(&serde_json::json!({"a": [1, 2.0, null, true, "it's", "q\""]})), g["json"][4].s());
     for row in g["str"].list() {
-        assert_eq!(py::title(row[0].s()), row[1].s());
-        assert_eq!(py::capitalize(row[0].s()), row[2].s());
-        assert_eq!(py::str_repr(row[0].s()), row[3].s());
+        assert_eq!(base::title(row[0].s()), row[1].s());
+        assert_eq!(base::capitalize(row[0].s()), row[2].s());
+        assert_eq!(base::str_repr(row[0].s()), row[3].s());
     }
 }
 

@@ -11,7 +11,7 @@ use super::battle::power_amount;
 use super::{combat, triggers};
 use crate::cards::{_card_key, parse};
 use crate::logging::Logger;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 static LOG: Logger = Logger::new("sts2bot.afflictions");
 
@@ -75,7 +75,7 @@ pub fn order(ordered: &[Value], state: &Value) -> Vec<Value> {
         crate::log_debug!(
             LOG,
             "affliction: cards a turn {}, Sloth would stop {:.2} a turn: {}",
-            py::repr_of(&Value::Array(turns.iter().map(|t| t[0].clone()).collect())),
+            base::repr_of(&Value::Array(turns.iter().map(|t| t[0].clone()).collect())),
             lost,
             if take_burn { "the burn" } else { "Sloth" }
         );
@@ -88,7 +88,7 @@ pub fn order(ordered: &[Value], state: &Value) -> Vec<Value> {
     crate::log_debug!(
         LOG,
         "affliction: energy left at the end of each turn {}: {}",
-        py::repr_of(&Value::Array(turns.iter().map(|t| t[1].clone()).collect())),
+        base::repr_of(&Value::Array(turns.iter().map(|t| t[1].clone()).collect())),
         if take_burn { "the burn" } else { "Waste Away" }
     );
     first(ordered, if take_burn { burn } else { drain.expect("Waste Away is on offer") })
@@ -104,7 +104,7 @@ pub fn _aimed(card: &Value) -> &'static str {
     if crate::re!(r"(?i)random\s+enemy").is_match(&text) {
         return "RandomEnemy";
     }
-    if py::str_of(&card["type"]) == "Attack" || crate::re!(r"(?i)\bapply\b|\benemy\b").is_match(&text) {
+    if base::str_of(&card["type"]) == "Attack" || crate::re!(r"(?i)\bapply\b|\benemy\b").is_match(&text) {
         "AnyEnemy"
     } else {
         "Self"
@@ -168,14 +168,14 @@ pub fn offered(ordered: &[Value], fight: &Value) -> Vec<Value> {
 
 /// `offered` itself, whatever stands in for it.
 pub fn _offered(ordered: &[Value], fight: &Value) -> Vec<Value> {
-    if !fight.truthy() || ordered.len() < 2 || ordered.iter().any(|c| !["Attack", "Skill", "Power"].contains(&py::str_of(&c["type"]).as_str())) {
+    if !fight.truthy() || ordered.len() < 2 || ordered.iter().any(|c| !["Attack", "Skill", "Power"].contains(&base::str_of(&c["type"]).as_str())) {
         return ordered.to_vec();
     }
     let player = &fight["player"];
     let hand = player["hand"].list();
     let seen: Seen = (
-        ordered.iter().map(|c| py::str_of(&c["name"])).collect(),
-        hand.iter().map(|c| py::str_of(&c["name"])).collect(),
+        ordered.iter().map(|c| base::str_of(&c["name"])).collect(),
+        hand.iter().map(|c| base::str_of(&c["name"])).collect(),
         player["energy"].clone(),
         fight["battle"]["round"].clone(),
     );
@@ -215,10 +215,10 @@ pub fn _offered(ordered: &[Value], fight: &Value) -> Vec<Value> {
     } else {
         f64::INFINITY
     };
-    let best = py::max_by_key(fit, |&n| (scores[n], -(n as i64))).unwrap_or(0);
+    let best = base::max_by_key(fit, |&n| (scores[n], -(n as i64))).unwrap_or(0);
     let best = if scores[best] >= top + OFFER_MARGIN { best } else { 0 };
     _OFFER.with(|o| *o.borrow_mut() = (Some(seen), best));
-    crate::log_debug!(LOG, "offer: {}", ordered.iter().zip(&scores).map(|(c, s)| format!("{} {:.1}", py::str_of(&c["name"]), s)).collect::<Vec<_>>().join(", "));
+    crate::log_debug!(LOG, "offer: {}", ordered.iter().zip(&scores).map(|(c, s)| format!("{} {:.1}", base::str_of(&c["name"]), s)).collect::<Vec<_>>().join(", "));
     first(ordered, best)
 }
 

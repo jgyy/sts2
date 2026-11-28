@@ -18,9 +18,9 @@ use serde_json::{json, Value};
 use super::bosses_aeonfight::flip_arms;
 use super::modelfight::{
     attack, card_of, differ, exit_code, face, flips, game_state, index, int, knob_setting, mean, out, patched, piles, played, quiet, set_sadness, shuffled, status, table, through, trace_args, turn,
-    under, Face, GameStateArgs, Py, UNPLAYABLE,
+    under, Face, GameStateArgs, Datum, UNPLAYABLE,
 };
-use crate::py::{self, Random};
+use crate::base::{self, Random};
 
 pub const HAND_CAP: usize = 10;
 
@@ -35,7 +35,7 @@ pub fn CARDS(c: char) -> Face {
         'E' => face("ENNUI", "Ennui", "Power", 1, "At the start of your turn, add 1 Sadness to your Hand and draw 2 additional cards.", "Self"),
         'X' => face("SADNESS", "Sadness", "Status", 0, "Unplayable. Retain.", "None"),
         'F' => face("ASCENDERS_BANE", "Ascender's Bane", "Curse", -1, "Unplayable. Ethereal.", "None"),
-        _ => panic!("KeyError: {}", py::str_repr(&c.to_string())),
+        _ => panic!("KeyError: {}", base::str_repr(&c.to_string())),
     }
 }
 
@@ -59,8 +59,8 @@ fn count(cards: &[char], kind: char) -> i64 {
     cards.iter().filter(|c| **c == kind).count() as i64
 }
 
-/// (Python's defaults: maxhp 77, no trace.)
-pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Py {
+/// (the original's defaults: maxhp 77, no trace.)
+pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Datum {
     let (boss_hp, db, energy) = (spec[0], spec[1], spec[spec.len() - 1]);
     let (mut draw, mut disc, mut hp) = (shuffled(rng, KINDS, &spec[2..spec.len() - 1]), Vec::new(), maxhp);
     let (mut e_hp, mut e_st) = (boss_hp, 0);
@@ -142,7 +142,7 @@ pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Py {
                 out!("   play {c}  boss {e_hp} en {en} blk {block} sadness {}", count(&hand, 'X'));
             }
             if e_hp <= 0 {
-                return Py::Tuple(vec![Py::Bool(true), Py::Int(hp), Py::Int(r), Py::Int(peak)]);
+                return Datum::Tuple(vec![Datum::Bool(true), Datum::Int(hp), Datum::Int(r), Datum::Int(peak)]);
             }
         }
         disc.extend(hand.iter().filter(|c| !"XF".contains(**c)));
@@ -160,10 +160,10 @@ pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Py {
             out!("r{r} took {} hp {hp}", before - hp);
         }
         if hp <= 0 {
-            return Py::Tuple(vec![Py::Bool(false), Py::Int(0), Py::Int(r), Py::Int(peak)]);
+            return Datum::Tuple(vec![Datum::Bool(false), Datum::Int(0), Datum::Int(r), Datum::Int(peak)]);
         }
     }
-    Py::Tuple(vec![Py::Bool(false), Py::Int(0), Py::Int(30), Py::Int(peak)])
+    Datum::Tuple(vec![Datum::Bool(false), Datum::Int(0), Datum::Int(30), Datum::Int(peak)])
 }
 
 /// S.NAME=VALUE: a constant of fight/fool/sadness.rs; anything else as modelfight::knob_setting takes it.
@@ -174,9 +174,9 @@ pub fn setting(name: &str, value: f64) -> Result<(), String> {
     }
 }
 
-pub fn run(arm: &str, spec: &[i64], n: i64, seed: i64) -> Result<Py, String> {
+pub fn run(arm: &str, spec: &[i64], n: i64, seed: i64) -> Result<Datum, String> {
     let res = under(|| patched(arm, &setting), || played(|spec: &[i64], rng| fight(spec, rng, 77, false), spec, n, seed))?;
-    Ok(Py::Tuple(vec![Py::str(arm), Py::ints(spec), Py::Float(mean(&res, 0)), Py::Float(mean(&res, 1)), Py::Float(mean(&res, 2)), Py::Float(mean(&res, 3))]))
+    Ok(Datum::Tuple(vec![Datum::str(arm), Datum::ints(spec), Datum::Float(mean(&res, 0)), Datum::Float(mean(&res, 1)), Datum::Float(mean(&res, 2)), Datum::Float(mean(&res, 3))]))
 }
 
 /// boss HP, Block, Strikes, Heavy, Defends, Sorrowful, Mourning, Ennui, Bane, energy (tuned until the planner wins 15-75%)
@@ -212,7 +212,7 @@ fn script(args: &[String]) -> Result<(), String> {
             out!("{arm:28}: won {:.3}  hp left {:5.1}  rounds {:4.1}  peak Sadness {:4.1}", mean(rows, 2), mean(rows, 3), mean(rows, 4), mean(rows, 5));
         }
         for dk in &decks {
-            let dk = Py::ints(dk);
+            let dk = Datum::ints(dk);
             out!("{} {}", dk.repr(), out.iter().filter(|o| *o.at(1) == dk).map(|o| format!("{}: won {:.2} sad {:3.1}", o.at(0).as_str(), o.at(2).float(), o.at(5).float())).collect::<Vec<_>>().join("  "));
         }
     }
@@ -231,7 +231,7 @@ mod tests {
     const GOLDEN: &str = include_str!("../../tests/golden/scripts/bosses_sadfight.txt");
 
     #[test]
-    fn as_python() {
+    fn as_recorded() {
         for command in ["trace", "trace 3 4 S.LONG=1+S.LATER=0.2", "trace 6 0 K.caution=1.35+S.SPARE=0.9", "3 on S.LONG=1 S.PLAYED=2+HP_BASE=2.5", "flips 2 on S.LONG=1"] {
             golden(main, &command.split(' ').collect::<Vec<_>>(), section(GOLDEN, command));
         }

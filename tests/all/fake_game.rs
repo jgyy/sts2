@@ -6,9 +6,9 @@ use std::rc::Rc;
 
 use serde_json::{json, Value};
 use sts2bot::client::{Game, GameUnavailable};
-use sts2bot::py::{self, JsonExt};
+use sts2bot::base::{self, JsonExt};
 
-/// A card as the game sends it. (The Python's defaults: target "None", rarity "Common"; its `**extra` and another rarity: `with`.)
+/// A card as the game sends it. (the original's defaults: target "None", rarity "Common"; its `**extra` and another rarity: `with`.)
 pub fn card(index: i64, cid: &str, name: &str, ctype: &str, cost: impl ToString, desc: &str, target: &str) -> Value {
     json!({"index": index, "id": cid, "name": name, "type": ctype, "cost": cost.to_string(), "star_cost": null, "description": desc,
            "target_type": target, "can_play": true, "is_upgraded": false, "rarity": "Common"})
@@ -49,7 +49,7 @@ pub struct FakeEnemy {
 
 /// The fake game. A test shares it with its bot (`Rc<RefCell<FakeGame>>`: `shared`) and reads afterwards what it was asked.
 pub struct FakeGame {
-    pub rng: py::Random,
+    pub rng: base::Random,
     pub floors: i64,
     pub enemy_hp: i64,
     pub enemy_attack: i64,
@@ -89,7 +89,7 @@ impl FakeGame {
     /// `FakeGame(seed=0, floors=4, enemy_hp=30, enemy_attack=9)`.
     pub fn new(seed: i64, floors: i64, enemy_hp: i64, enemy_attack: i64) -> Self {
         FakeGame {
-            rng: py::Random::new(seed as i128),
+            rng: base::Random::new(seed as i128),
             floors,
             enemy_hp,
             enemy_attack,
@@ -234,7 +234,7 @@ impl FakeGame {
         let p = if p.is_null() { json!({}) } else { p.clone() };
         self.actions.push((action.to_string(), p.clone()));
         match self._act(action, &p) {
-            // (a KeyError, IndexError or ValueError of the Python's)
+            // (a KeyError, IndexError or ValueError of the original's)
             Err(e) => json!({"status": "error", "error": e}),
             Ok(None) => json!({"status": "error", "error": format!("{} not valid on {}", action, self.screen)}),
             Ok(Some(msg)) => json!({"status": "ok", "message": msg}),
@@ -243,7 +243,7 @@ impl FakeGame {
 
     pub fn _act(&mut self, action: &str, p: &Value) -> Result<Option<String>, String> {
         // `p[key]`, and the place in a list of `len` it names
-        let arg = |key: &str| -> Result<&Value, String> { p.get(key).ok_or_else(|| format!("KeyError: {}", py::str_repr(key))) };
+        let arg = |key: &str| -> Result<&Value, String> { p.get(key).ok_or_else(|| format!("KeyError: {}", base::str_repr(key))) };
         let at = |key: &str, len: usize| -> Result<usize, String> {
             let i = arg(key)?.int();
             let i = if i < 0 { i + len as i64 } else { i };
@@ -256,7 +256,7 @@ impl FakeGame {
         let s = self.screen.clone();
         let s = s.as_str();
         if action == "menu_select" {
-            let opt = py::str_of(arg("option")?);
+            let opt = base::str_of(arg("option")?);
             match (s, opt.as_str()) {
                 ("main", "singleplayer") => self.screen = "singleplayer".to_string(),
                 ("main", "continue") if self.has_save => self.screen = self.saved_screen.clone(),
@@ -272,7 +272,7 @@ impl FakeGame {
         }
         if s == "map" && action == "choose_map_node" {
             let options = self.state()["map"]["next_options"].clone();
-            let kind = py::str_of(&options[at("index", options.list().len())?]["type"]);
+            let kind = base::str_of(&options[at("index", options.list().len())?]["type"]);
             self.floor += 1;
             if kind == "RestSite" {
                 (self.screen, self.rested) = ("rest".to_string(), false);
@@ -295,7 +295,7 @@ impl FakeGame {
             self.energy -= c.3;
             if c.2 == "Attack" {
                 let dmg: i64 = if c.0 == "UPPERCUT" { 13 } else { c.4.split_whitespace().nth(1).and_then(|n| n.parse().ok()).expect("a damage number") };
-                self.enemy.hp -= if self.enemy.vuln != 0 { py::trunc(dmg as f64 * 1.5) } else { dmg };
+                self.enemy.hp -= if self.enemy.vuln != 0 { base::trunc(dmg as f64 * 1.5) } else { dmg };
                 if c.0 == "BASH" || c.0 == "UPPERCUT" {
                     self.enemy.vuln += 2;
                 }
@@ -330,7 +330,7 @@ impl FakeGame {
             } else {
                 self.screen = "card_reward".to_string();
             }
-            return Ok(Some(py::str_of(&item["type"])));
+            return Ok(Some(base::str_of(&item["type"])));
         }
         if action == "proceed" && (s == "rewards" || s == "rest" && self.rested) {
             self.screen = "map".to_string();
@@ -339,7 +339,7 @@ impl FakeGame {
         if s == "card_reward" && action == "select_card_reward" {
             let cards = self.state()["card_reward"]["cards"].clone();
             let picked = &cards[at("card_index", cards.list().len())?];
-            let t = |k: &str| py::str_of(&picked[k]);
+            let t = |k: &str| base::str_of(&picked[k]);
             self.deck.push((t("id"), t("name"), t("type"), picked["cost"].int(), t("description"), t("target_type")));
             self.reward_items.retain(|i| i["type"] != "card");
             self.screen = "rewards".to_string();
@@ -375,7 +375,7 @@ impl FakeGame {
 }
 
 /// `impl Game` for a test's game that has `state(&mut self) -> Value` and `act(&mut self, action: &str, params: &Value) -> Value`
-/// of its own and, like the Python's fakes, no `profile` or `card` (asked for the profile, it fails as the missing attribute did;
+/// of its own and, like the original's fakes, no `profile` or `card` (asked for the profile, it fails as the missing attribute did;
 /// it knows no card; `ping` is true).
 macro_rules! game_impl {
     ($ty:ty) => {

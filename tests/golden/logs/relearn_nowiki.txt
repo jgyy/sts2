@@ -1,4 +1,4 @@
-no wiki.json: the kinds will fill in as the bot is offered each card (python3 scripts/fightlog.py wiki writes one)
+no wiki.json: the kinds will fill in as the bot is offered each card (scripts fightlog wiki writes one)
 free      0 cards,     0 picks, +0.00 floors a pick beyond par: its cards start at +0.00
 energy    0 cards,     0 picks, +0.00 floors a pick beyond par: its cards start at +0.00
 draw      0 cards,     0 picks, +0.00 floors a pick beyond par: its cards start at +0.00

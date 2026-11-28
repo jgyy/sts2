@@ -1,4 +1,4 @@
-//! The game's state is JSON read as `serde_json::Value`; these are the ways the Python code read its dicts.
+//! The game's state is JSON read as `serde_json::Value`; these are the ways the original code read its dicts.
 //! `v["key"]` on a `Value` already gives `Value::Null` for a missing key or a non-object, like `(d or {}).get("key")`.
 
 use serde_json::{Map, Value};
@@ -6,7 +6,7 @@ use serde_json::{Map, Value};
 static EMPTY: Vec<Value> = Vec::new();
 
 pub trait JsonExt {
-    /// Python truthiness: None, False, 0, 0.0, "", [] and {} are false.
+    /// the original truthiness: None, False, 0, 0.0, "", [] and {} are false.
     fn truthy(&self) -> bool;
     /// `int(x or 0)`: a number (a float towards zero), a bool, or a string of digits; anything else 0.
     fn int(&self) -> i64;
@@ -17,7 +17,7 @@ pub trait JsonExt {
     fn float_or(&self, default: f64) -> f64;
     /// The string, or "" for anything that is not one (`x or ""` where x is a str or None).
     fn s(&self) -> &str;
-    /// `str(x or "")`: a string as it is, a number or bool as Python prints it, "" for None and other falsy values.
+    /// `str(x or "")`: a string as it is, a number or bool as the original prints it, "" for None and other falsy values.
     fn text(&self) -> String;
     /// `x or []`: the items of a list, none for anything else.
     fn list(&self) -> &[Value];

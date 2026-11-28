@@ -11,7 +11,7 @@ use sts2bot::cards::parse;
 use sts2bot::client::{Client, Game, GameUnavailable, _dechunk};
 use sts2bot::fight::combat::{self, SimulateArgs};
 use sts2bot::logging::{self, Level, Record};
-use sts2bot::py::JsonExt;
+use sts2bot::base::JsonExt;
 use sts2bot::run::events::EventOptionValueArgs;
 use sts2bot::run::strategy::{self, Memory};
 use sts2bot::run::decks;
@@ -25,7 +25,7 @@ use crate::helpers::{combat_state, enemy, make_bot, make_bot_kw, FakeClock, DEFE
 
 const ICON: &str = "[ironclad_energy_icon.png]";
 
-/// (The Python's defaults: hp 60, max_hp 80.)
+/// (the original's defaults: hp 60, max_hp 80.)
 fn event_value_at(title: &str, text: &str, hp: i64, max_hp: i64) -> f64 {
     strategy::_event_option_value(&json!({"title": title, "description": text}), hp, max_hp, EventOptionValueArgs::default())
 }
@@ -42,7 +42,7 @@ fn shared<G: Game + 'static>(game: G) -> Rc<RefCell<G>> {
     Rc::new(RefCell::new(game))
 }
 
-/// A bot whose waits take no time and leave its clock where it is. (`sleep`: the Python's default does nothing.)
+/// A bot whose waits take no time and leave its clock where it is. (`sleep`: the original's default does nothing.)
 fn quiet_bot(game: SharedGame, sleep: Option<Box<dyn Fn(f64)>>) -> Bot {
     Bot::new(game, BotArgs { clock: FakeClock::new().clock_fn(), sleep: Some(sleep.unwrap_or_else(|| Box::new(|_| {}))), ..Default::default() })
 }
@@ -864,7 +864,7 @@ fn test_round_trip_and_errors() {
                 let result = game.act(action.as_str().unwrap(), &body);
                 (if result["status"] == "ok" { 200 } else { 400 }, result)
             };
-            let raw = sts2bot::py::json_dumps(&answer).into_bytes();
+            let raw = sts2bot::base::json_dumps(&answer).into_bytes();
             let _ = sock.write_all(format!("HTTP/1.0 {} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n", code, raw.len()).as_bytes());
             let _ = sock.write_all(&raw);
         }
@@ -895,10 +895,10 @@ fn test_chunked_answers_are_read_whole() {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// The supervisor's tests (in test_bot.py among the classes above).
+// The supervisor's tests (in test_bot.rs among the classes above).
 
 /// A supervisor over a bot that stands at `at` (its progress(): runs finished, act, floor), its clock at 100.
-/// (The Python's was a mock bot; its `note_crash.return_value = True` is `another_way(&mut sup, n)` before each crash here.)
+/// (the original's was a mock bot; its `note_crash.return_value = True` is `another_way(&mut sup, n)` before each crash here.)
 fn crashing(at: (i64, i64, i64)) -> Supervisor {
     let mut bot = Bot::new(Rc::new(RefCell::new(crate::fake_game::NoGame)), BotArgs { clock: Some(Box::new(|| 100.0)), sleep: Some(Box::new(|_| {})), ..Default::default() });
     stand_at(&mut bot, at);

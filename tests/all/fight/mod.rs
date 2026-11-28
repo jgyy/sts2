@@ -3,7 +3,7 @@
 use serde_json::{json, Value};
 use sts2bot::cards::{parse, CardInfo};
 use sts2bot::fight::combat::{self, Enemy, Outcome, Plan, SimulateArgs};
-use sts2bot::py::JsonExt;
+use sts2bot::base::JsonExt;
 use sts2bot::Action;
 
 use crate::helpers;
@@ -56,12 +56,12 @@ macro_rules! combat_state {
 }
 pub(crate) use combat_state;
 
-/// A status entry as the game writes it. (The Python's default: amount 1.)
+/// A status entry as the game writes it. (the original's default: amount 1.)
 pub fn power(name: &str, amount: i64) -> Value {
     json!({"id": format!("{name}_POWER"), "amount": amount})
 }
 
-/// (The Python's default: target "Self".)
+/// (the original's default: target "Self".)
 pub fn potion(slot: i64, name: &str, text: &str, target: &str) -> Value {
     json!({"slot": slot, "id": name.to_uppercase().replace(' ', "_"), "name": name, "description": text, "target_type": target, "can_use_in_combat": true})
 }
@@ -124,7 +124,7 @@ pub fn aimed(state: &Value) -> Option<String> {
 }
 
 /// Play the planner's cards as the game would, at most `limit`: each leaves the hand and costs its energy, block=true adds its "Gain N Block",
-/// after(card, params) does the rest (true: stop); returns the cards played. (The Python's defaults: limit 3, block false, no after, combat.choose_card.)
+/// after(card, params) does the rest (true: stop); returns the cards played. (the original's defaults: limit 3, block false, no after, combat.choose_card.)
 pub fn play_turn(state: &mut Value, limit: usize, block: bool, mut after: Option<&mut dyn FnMut(&mut Value, &Value, &Value) -> bool>, choose: Option<&dyn Fn(&Value) -> Option<Action>>) -> Vec<Value> {
     let mut played = Vec::new();
     while played.len() < limit {

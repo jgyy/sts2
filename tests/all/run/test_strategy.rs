@@ -8,7 +8,7 @@ use sts2bot::cards::{deck_value, upgrade_gain};
 use sts2bot::fight::{combat, handpick};
 use sts2bot::learn;
 use sts2bot::logging;
-use sts2bot::py::Random;
+use sts2bot::base::Random;
 use sts2bot::run::events::{self, EventOptionValueArgs};
 use sts2bot::run::strategy::{self, Memory};
 use sts2bot::run::{crowd, decks};
@@ -17,7 +17,7 @@ use sts2bot::Action;
 use crate::fake_game::{card, with};
 use crate::helpers::{combat_state, enemy, DEFEND, STRIKE};
 
-/// A card as the deck lists it. (The Python's `**kw`: `with`.)
+/// A card as the deck lists it. (the original's `**kw`: `with`.)
 fn c(cid: &str, name: &str, ctype: &str, cost: i64, text: &str) -> Value {
     json!({"id": cid, "name": name, "type": ctype, "cost": cost, "description": text})
 }
@@ -38,7 +38,7 @@ fn opt(index: i64, col: i64, row: i64, kind: &str) -> Value {
     json!({"index": index, "col": col, "row": row, "type": kind})
 }
 
-/// (The Python's default: stocked True; its `**kw`: `with`.)
+/// (the original's default: stocked True; its `**kw`: `with`.)
 fn item(index: i64, category: &str, price: i64) -> Value {
     json!({"index": index, "category": category, "price": price, "is_stocked": true, "can_afford": true})
 }
@@ -56,7 +56,7 @@ fn picks(state: &Value) -> Vec<i64> {
     strategy::hand_select(state, &mut Memory::new()).iter().filter(|a| a.0 == "combat_select_card").map(|a| a.1["card_index"].as_i64().unwrap()).collect()
 }
 
-/// The character select screen ({id: locked}), with the confirm button lit. (The Python's defaults: ascension 0, max_ascension 3.)
+/// The character select screen ({id: locked}), with the confirm button lit. (the original's defaults: ascension 0, max_ascension 3.)
 fn character_select(locked: &[(&str, bool)]) -> Value {
     let mut options: Vec<Value> = locked.iter().filter(|(_, v)| !v).map(|(k, _)| json!({"name": k, "enabled": true})).collect();
     options.push(json!({"name": "confirm", "enabled": true}));
@@ -863,7 +863,7 @@ fn test_character_choice() {
 
 // Afflictions
 
-/// as the game sends it: no enemies on this screen (The Python's defaults: turns None, status ().)
+/// as the game sends it: no enemies on this screen (the original's defaults: turns None, status ().)
 fn offer(hp: i64, turns: Value, status: Value) -> i64 {
     let waste = card(0, "WASTE_AWAY", "Waste Away", "Status", 0, "Gain 1 less [energy_icon.png] per turn.", "None");
     let burn = card(1, "DISINTEGRATION", "Disintegration", "Status", 0, "At the end of your turn, take 8 damage.", "None");
@@ -986,7 +986,7 @@ fn test_an_escape_is_exhausted_when_every_other_card_is_the_kill() {
 }
 
 /// An "any number" or "up to" selection, Confirm lit from the start: the actions the bot sends, in order.
-/// (The Python's defaults: fight "monster", energy 1, selected 0, relics ().)
+/// (the original's defaults: fight "monster", energy 1, selected 0, relics ().)
 fn optional(prompt: &str, hand: Vec<Value>, fight: &str, energy: i64, selected: i64, relics: &[&str]) -> Vec<Action> {
     let mut state = combat_state!(hand.clone(), [enemy!("A_0", 60, attack = 12)], energy = energy, hp = 60, max_hp = 80, kind = "hand_select");
     state["_fight"] = json!(fight);

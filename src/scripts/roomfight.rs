@@ -17,9 +17,9 @@ use std::rc::Rc;
 use serde_json::{json, Value};
 
 use super::demonfight::{self as demon, better, choices, count, hands, plays, take_patches, Deck, DeckArgs, Grid, Patch, Rules};
-use super::modelfight::{exit_code, float, index, int, on_all_cores, out, quiet, set_closing_or_combat, turn, under, Py};
+use super::modelfight::{exit_code, float, index, int, on_all_cores, out, quiet, set_closing_or_combat, turn, under, Datum};
 use crate::learn;
-use crate::py::{self, floordiv, max_of, Random};
+use crate::base::{self, floordiv, max_of, Random};
 
 pub const ROUNDS: i64 = 16;
 /// what a death counts for, in HP below ending on none: the rest of the run
@@ -37,7 +37,7 @@ pub const FOES: [(&str, Foe); 3] = [
 
 /// `FOES[foe]`.
 pub fn foe_of(foe: &str) -> Foe {
-    FOES.iter().find(|(name, _)| *name == foe).unwrap_or_else(|| panic!("KeyError: {}", py::str_repr(foe))).1
+    FOES.iter().find(|(name, _)| *name == foe).unwrap_or_else(|| panic!("KeyError: {}", base::str_repr(foe))).1
 }
 
 pub fn rules(foe: &str, r: i64) -> Rules {
@@ -153,7 +153,7 @@ pub fn fight(deck: &Deck, foe: &str, hp: i64, V: &[Rc<Grid>], rng: &mut Random, 
                 'A' | 'B' => 1,
                 'H' => 2,
                 'Z' => 0,
-                _ => panic!("KeyError: {}", py::str_repr(&c.to_string())),
+                _ => panic!("KeyError: {}", base::str_repr(&c.to_string())),
             };
         }
         let ours = value(V, r, &rl, hp, foe_hp, dealt, block);
@@ -208,7 +208,7 @@ pub fn job(args: &(usize, &'static str, i64, i64, Patch)) -> Result<(usize, &'st
     let V = solve(deck, foe);
     let mut out = Cells::new();
     for share in STARTS {
-        let hp = 1.max(py::round(share * deck.maxhp as f64));
+        let hp = 1.max(base::round(share * deck.maxhp as f64));
         let mut rng = Random::new(*seed as i128);
         out.push((share, (V[1].at(hp, foe_of(foe).0), hp, (0..*n).map(|_| fight(deck, foe, hp, &V, &mut rng, false)).collect())));
     }
@@ -235,7 +235,7 @@ pub fn table(out: &[(usize, &'static str, Cells)]) {
             let mut cells = Vec::new();
             for (_d, foe, res) in out.iter().filter(|o| o.0 == d) {
                 let (best, hp, fights) = &res.iter().find(|(s, _)| s == share).unwrap().1;
-                let mut lost = py::Sum::new(0.0);
+                let mut lost = base::Sum::new(0.0);
                 for f in fights {
                     match f.0 {
                         Some(left) => lost.add_i(hp - left),
@@ -271,17 +271,17 @@ fn script(args: &[String]) -> Result<(), String> {
         let foe = if given.len() > 1 { given[1].as_str() } else { "toad" };
         let d = if given.len() > 2 { int(&given[2])? } else { 0 };
         let share = if given.len() > 3 { float(&given[3])? } else { 1.0 };
-        let foe = FOES.iter().find(|(name, _)| *name == foe).ok_or_else(|| format!("KeyError: {}", py::str_repr(foe)))?.0;
+        let foe = FOES.iter().find(|(name, _)| *name == foe).ok_or_else(|| format!("KeyError: {}", base::str_repr(foe)))?.0;
         under(
             || patch(&values),
             || -> Result<(), String> {
                 let decks = DECKS();
                 let deck = index(&decks, d)?;
-                let hp = 1.max(py::round(share * deck.maxhp as f64));
+                let hp = 1.max(base::round(share * deck.maxhp as f64));
                 let V = solve(deck, foe);
-                out!("{} {foe} the best play ends on {} of {hp}", deck.repr(), py::float_repr(py::round_to(V[1].at(hp, foe_of(foe).0), 2)));
+                out!("{} {foe} the best play ends on {} of {hp}", deck.repr(), base::float_repr(base::round_to(V[1].at(hp, foe_of(foe).0), 2)));
                 let (left, rounds, _) = fight(deck, foe, hp, &V, &mut Random::new(seed as i128), true);
-                out!("{}", Py::Tuple(vec![left.map(Py::Int).unwrap_or(Py::None), Py::Int(rounds)]).repr());
+                out!("{}", Datum::Tuple(vec![left.map(Datum::Int).unwrap_or(Datum::None), Datum::Int(rounds)]).repr());
                 Ok(())
             },
         )??;
@@ -303,7 +303,7 @@ mod tests {
     const GOLDEN: &str = include_str!("../../tests/golden/scripts/roomfight.txt");
 
     #[test]
-    fn as_python() {
+    fn as_recorded() {
         for command in ["trace", "trace 3 louse 2 0.35", "trace 7 hunter 3 0.6 caution=1.35 HP_BASE=2.0", "2", "3 CLOSE_REACH=0 caution=0.75 HP_BITE=1"] {
             golden(main, &command.split(' ').collect::<Vec<_>>(), section(GOLDEN, command));
         }

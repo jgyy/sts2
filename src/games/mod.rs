@@ -39,7 +39,7 @@ pub fn select(game: &str) -> Result<&'static str, String> {
             ACTIVE.with(|a| a.set(g));
             Ok(g)
         }
-        None => Err(format!("unknown game {} (expected one of {})", crate::py::str_repr(game), GAMES.join(", "))),
+        None => Err(format!("unknown game {} (expected one of {})", crate::base::str_repr(game), GAMES.join(", "))),
     }
 }
 

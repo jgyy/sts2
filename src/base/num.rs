@@ -1,9 +1,9 @@
-//! Python's arithmetic where Rust's differs: `sum` of floats (compensated since Python 3.12), `round` (half to even),
+//! the original's arithmetic where Rust's differs: `sum` of floats (compensated since the original 3.12), `round` (half to even),
 //! `//` and `%` (towards minus infinity), `max`/`min` (the first of equals).
 
 use std::cmp::Ordering;
 
-/// A running `sum(...)` the way CPython 3.12+ adds: floats with Neumaier compensation, ints added plainly.
+/// A running `sum(...)` the way the first version+ adds: floats with Neumaier compensation, ints added plainly.
 /// `Sum::new(start).f(x).i(n).get()`; for a sum of floats alone use [`fsum`].
 #[derive(Clone, Copy, Debug)]
 pub struct Sum {
@@ -27,7 +27,7 @@ impl Sum {
         self.total = t;
     }
 
-    /// Add an int item met in a float sum (CPython adds it without compensation).
+    /// Add an int item met in a float sum (the first version adds it without compensation).
     pub fn add_i(&mut self, n: i64) {
         self.total += n as f64;
     }
@@ -60,7 +60,7 @@ pub fn round(x: f64) -> i64 {
     x.round_ties_even() as i64
 }
 
-/// `round(x, ndigits)`: correctly rounded on the decimal value, as Python does it.
+/// `round(x, ndigits)`: correctly rounded on the decimal value, as the original does it.
 pub fn round_to(x: f64, ndigits: i32) -> f64 {
     if !x.is_finite() {
         return x;
@@ -155,7 +155,7 @@ pub fn min_by_key<T, K: PartialOrd, I: IntoIterator<Item = T>, F: FnMut(&T) -> K
     best.map(|(t, _)| t)
 }
 
-/// `max(items)` of anything ordered the way Python orders it (floats, tuples of them): the first of the largest.
+/// `max(items)` of anything ordered the way the original orders it (floats, tuples of them): the first of the largest.
 pub fn max_of<T: PartialOrd, I: IntoIterator<Item = T>>(items: I) -> Option<T> {
     let mut best: Option<T> = None;
     for item in items {
@@ -184,7 +184,7 @@ pub fn sort_by_key<T, K: PartialOrd, F: FnMut(&T) -> K>(items: &mut [T], mut key
     items.sort_by(|a, b| cmp(&key(a), &key(b)));
 }
 
-/// `sorted(items, key=key, reverse=True)`: stable, equal items keep their order (as Python's reverse sort does).
+/// `sorted(items, key=key, reverse=True)`: stable, equal items keep their order (as the original's reverse sort does).
 pub fn sort_by_key_rev<T, K: PartialOrd, F: FnMut(&T) -> K>(items: &mut [T], mut key: F) {
     items.sort_by(|a, b| cmp(&key(b), &key(a)));
 }

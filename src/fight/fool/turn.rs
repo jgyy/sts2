@@ -112,7 +112,7 @@ impl Default for FoolTurn {
 }
 
 impl FoolTurn {
-    /// (The Python's defaults: arrows -1, aim 0, stretch 0, no tune, chord 0, boom 0, no powers, no foes.)
+    /// (the original's defaults: arrows -1, aim 0, stretch 0, no tune, chord 0, boom 0, no powers, no foes.)
     pub fn new<E: Borrow<Enemy>>(arrows: i64, aim: i64, stretch: i64, tune: &BTreeSet<String>, chord: i64, boom: i64, powers: Option<Powers>, foes: &[E]) -> FoolTurn {
         let (song, motif, lullaby, verse, yah) = powers.unwrap_or((0, 0, 0, 0, 0));
         FoolTurn {
@@ -203,7 +203,7 @@ impl FoolTurn {
     }
 
     /// Book what the card did (`dealt`: what its hits did to the target); return the damage to ALL it sets off, leave the rest in `got`.
-    /// `target`: its place in `foes` (the Python's defaults: xs 1, dealt 0, no foes).
+    /// `target`: its place in `foes` (the original defaults: xs 1, dealt 0, no foes).
     pub fn after(&mut self, c: &CardInfo, foes: &mut [Enemy], target: Option<usize>, xs: i64, dealt: i64) -> i64 {
         let (mut boom, mut energy) = (0, 0);
         // (Yah!: the third hit on the Impaled enemy and its death are counted by now; a Dislodge is about to be.)
@@ -264,7 +264,7 @@ mod tests {
     use crate::cards::parse;
     use crate::fight::battle::testing::*;
     use crate::fight::battle::{read_enemies, _hit};
-    use crate::py::JsonExt;
+    use crate::base::JsonExt;
     use serde_json::json;
 
     fn fool(v: &Value) -> FoolTurn {

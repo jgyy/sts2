@@ -9,7 +9,7 @@ use sts2bot::run::strategy::{self, Memory};
 
 use crate::fake_game::with;
 
-/// (The Python's default: rarity "Common".)
+/// (the original's default: rarity "Common".)
 fn c(cid: &str, name: &str, ctype: &str, cost: i64, text: &str, rarity: &str) -> Value {
     json!({"id": cid, "name": name, "type": ctype, "cost": cost.to_string(), "rarity": rarity, "description": text})
 }
@@ -128,7 +128,7 @@ fn approx(a: f64, b: f64) {
     assert!((a - b).abs() < 5e-8, "{a} != {b}"); // (assertAlmostEqual: 7 places)
 }
 
-/// The card a reward is answered with (None: skipped). (The Python's default: act 1.)
+/// The card a reward is answered with (None: skipped). (the original's default: act 1.)
 fn chosen(offer: &[Value], deck: &[Value], act: i64) -> Option<String> {
     let mut mem = Memory::new();
     (mem.deck, mem.deck_size) = (deck.to_vec(), deck.len() as i64);

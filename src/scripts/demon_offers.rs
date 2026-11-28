@@ -13,7 +13,7 @@ use std::collections::HashMap;
 
 use super::demonfight::{self as d, Burns, Deck, DeckArgs, Rules};
 use super::modelfight::{exit_code, int, on_all_cores, out, quiet};
-use crate::py::{sort_by_key, trunc};
+use crate::base::{sort_by_key, trunc};
 
 thread_local! {
     /// cards drawn beyond the model's five, set in each worker
@@ -128,9 +128,9 @@ mod tests {
     const OFFER2: &str = include_str!("../../tests/golden/scripts/demon_offers.txt");
     const OFFER3: &str = include_str!("../../tests/golden/scripts/demon_offers_3.txt");
 
-    /// The rows of the Python's table for every 19th deck of the grid: the same decks priced here.
+    /// The rows of the original's table for every 19th deck of the grid: the same decks priced here.
     #[test]
-    fn as_python_in_part() {
+    fn as_the_record_in_part() {
         for (offer, expected) in [(2, OFFER2), (3, OFFER3)] {
             let meta: Vec<Meta> = metas().into_iter().step_by(19).collect();
             let ((), text) = capture(|| report(offer, &meta));
@@ -141,7 +141,7 @@ mod tests {
             // (the same order as in the whole table: the rows are sorted)
             let mut at = 0;
             for row in rows {
-                at += all[at..].iter().position(|line| *line == row).unwrap_or_else(|| panic!("offer {offer}: not in the Python's table: {row}")) + 1;
+                at += all[at..].iter().position(|line| *line == row).unwrap_or_else(|| panic!("offer {offer}: not in the original's table: {row}")) + 1;
             }
         }
     }
@@ -149,7 +149,7 @@ mod tests {
     /// The whole tables (minutes): `cargo test --release -- --ignored demon_offers`.
     #[test]
     #[ignore]
-    fn as_python() {
+    fn as_recorded() {
         golden(main, &[], OFFER2);
         golden(main, &["3"], OFFER3);
     }

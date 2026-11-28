@@ -2,7 +2,7 @@
 
 use std::cell::RefCell;
 
-use crate::py;
+use crate::base;
 
 pub const UNIT: &str = "sts2bot"; // systemd/sts2bot.service, installed as the user unit of the same name
 
@@ -80,7 +80,7 @@ pub fn subprocess_run(args: &[String]) -> std::io::Result<i32> {
 }
 
 pub fn systemctl_args(action: &str, unit: &str) -> Vec<String> {
-    let words = ACTIONS.iter().find(|(a, _)| *a == action).unwrap_or_else(|| panic!("KeyError: {}", py::str_repr(action))).1;
+    let words = ACTIONS.iter().find(|(a, _)| *a == action).unwrap_or_else(|| panic!("KeyError: {}", base::str_repr(action))).1;
     let mut out = vec!["systemctl".to_string(), "--user".to_string()];
     out.extend(words.iter().map(|w| w.to_string()));
     out.push(unit.to_string());
@@ -103,7 +103,7 @@ enum Parsed {
     Exit(i32),
 }
 
-/// The command line as Python's argparse read it: one action, `--unit UNIT` (or `--unit=UNIT`, or a prefix of it), `-h`.
+/// The command line as the original's argparse read it: one action, `--unit UNIT` (or `--unit=UNIT`, or a prefix of it), `-h`.
 fn parse_args(argv: &[String]) -> Parsed {
     const LONG: [&str; 2] = ["--help", "--unit"];
     let error = |message: String| {
@@ -156,14 +156,14 @@ fn parse_args(argv: &[String]) -> Parsed {
                 } else if choices().contains(&word) {
                     action = Some(word.to_string());
                 } else {
-                    let all: Vec<String> = choices().iter().map(|c| py::str_repr(c)).collect();
-                    return error(format!("argument action: invalid choice: {} (choose from {})", py::str_repr(word), all.join(", ")));
+                    let all: Vec<String> = choices().iter().map(|c| base::str_repr(c)).collect();
+                    return error(format!("argument action: invalid choice: {} (choose from {})", base::str_repr(word), all.join(", ")));
                 }
             }
             Some((None, _)) => extras.push(word.to_string()),
             Some((Some("--help"), explicit)) => {
                 if let Some(explicit) = explicit {
-                    return error(format!("argument -h/--help: ignored explicit argument {}", py::str_repr(&explicit)));
+                    return error(format!("argument -h/--help: ignored explicit argument {}", base::str_repr(&explicit)));
                 }
                 print(&format!("{}\n\nStart, stop, enable or disable the bot's systemd user service.\n\npositional arguments:\n  {{{}}}\n\noptions:\n  -h, --help            show this help message and exit\n  --unit UNIT           unit name (default: {})", usage(), choices().join(","), UNIT), false);
                 return Parsed::Exit(0);
@@ -186,7 +186,7 @@ fn parse_args(argv: &[String]) -> Parsed {
 }
 
 /// `runner`: what runs the command instead of the thread's own way (`patch_run`, or else `subprocess_run`).
-/// Where Python's argparse left with SystemExit (a command line it could not read: 2; --help: 0), this returns that code.
+/// Where the original's argparse left with SystemExit (a command line it could not read: 2; --help: 0), this returns that code.
 pub fn main(argv: &[String], runner: Option<&mut (dyn FnMut(&[String]) -> std::io::Result<i32> + '_)>) -> i32 {
     let (action, unit) = match parse_args(argv) {
         Parsed::Args { action, unit } => (action, unit),
@@ -233,12 +233,12 @@ pub fn main(argv: &[String], runner: Option<&mut (dyn FnMut(&[String]) -> std::i
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::py::JsonExt;
+    use crate::base::JsonExt;
     use serde_json::Value;
 
-    /// Every command line of the golden file: the exit code, what systemctl was asked and what was printed, as Python's.
+    /// Every command line of the golden file: the exit code, what systemctl was asked and what was printed, as the original's.
     #[test]
-    fn command_lines_as_python() {
+    fn command_lines_as_recorded() {
         let golden: Value = serde_json::from_str(include_str!("../tests/golden/service.json")).unwrap();
         let _never = patch_run(|args| panic!("tests must not run systemctl ({args:?})"));
         assert!(golden.list().len() > 100);
@@ -255,7 +255,7 @@ mod tests {
             let (code, printed) = capture_print(|| main(&argv, Some(&mut runner)));
             assert_eq!(code as i64, case["code"].int(), "{case}");
             assert_eq!(serde_json::json!(calls), case["calls"], "{case}");
-            assert_eq!(printed.stdout, case["stdout"].s().replace("python3 -m sts2bot", "sts2bot"), "{case}");
+            assert_eq!(printed.stdout, case["stdout"].s(), "{case}");
             assert_eq!(printed.stderr, case["stderr"].s(), "{case}");
         }
     }

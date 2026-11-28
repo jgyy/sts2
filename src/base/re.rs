@@ -1,8 +1,8 @@
-//! Regular expressions the way the Python code used them: compiled once and kept.
+//! Regular expressions the way the original code used them: compiled once and kept.
 //!
 //! `re!(r"(?i)gain\s+(\d+)")` is a `&'static regex::Regex` compiled on first use; `fre!` the same from `fancy_regex`
 //! (for look-around and back-references, which `regex` lacks). [`cached`] keeps patterns built at run time.
-//! Python's `re.I` is `(?i)` at the front; `re.match` needs `^`, `re.fullmatch` `^(?:...)$`; in a replacement
+//! the original's `re.I` is `(?i)` at the front; `re.match` needs `^`, `re.fullmatch` `^(?:...)$`; in a replacement
 //! `\1` is `${1}`.
 
 use std::cell::RefCell;

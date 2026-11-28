@@ -14,10 +14,10 @@ use serde_json::{json, Value};
 
 use super::modelfight::{
     aimed_text, attack, counter, deal, exit_code, face, firsts, flips, float, game_state, hand_cards, hit, index, int, mean, name_value, out, piles, played, quiet, setting, shuffled, status, table,
-    target, turn, under, Face, GameStateArgs, Py,
+    target, turn, under, Face, GameStateArgs, Datum,
 };
 use crate::fight::battle;
-use crate::py::{self, trunc, Random};
+use crate::base::{self, trunc, Random};
 
 /// (in the order the game lists them)
 pub const HP: [(&str, i64); 3] = [("FLAIL_KNIGHT_0", 106), ("SPECTRAL_KNIGHT_0", 95), ("MAGI_KNIGHT_0", 87)];
@@ -47,7 +47,7 @@ pub fn CARDS(c: char, d: i64) -> Face {
         'V' => face("BASH", "Bash", "Attack", 2, "Deal 8 damage. Apply 2 Vulnerable.", "AnyEnemy"),
         'B' => face("DEFEND_R", "Defend", "Skill", 1, &format!("Gain {d} Block."), "Self"),
         'F' => face("CLUMSY", "Clumsy", "Curse", -1, "Unplayable.", "None"),
-        _ => panic!("KeyError: {}", py::str_repr(&c.to_string())),
+        _ => panic!("KeyError: {}", base::str_repr(&c.to_string())),
     }
 }
 
@@ -60,8 +60,8 @@ pub struct Knight {
     pub vuln: i64,
 }
 
-/// (Python's defaults: maxhp 75, no trace.)
-pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Py {
+/// (the original's defaults: maxhp 75, no trace.)
+pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Datum {
     let (da, db) = (spec[0], spec[1]);
     let (mut draw, mut disc, mut hp, mut order) = (shuffled(rng, "ABHVF", &spec[2..]), Vec::new(), maxhp, String::new());
     let mut E: Vec<Knight> = HP.iter().map(|(k, v)| Knight { id: k, hp: *v, block: 0, st: 0, vuln: 0 }).collect();
@@ -122,11 +122,11 @@ pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Py {
             en -= CARDS(c, da).3;
             disc.push(hand.remove(i));
             if trace {
-                out!("   play {} {} {}", c, aimed_text(&act), Py::Dict(E.iter().map(|e| (Py::str(&e.id[..1]), Py::Int(e.hp))).collect()).repr());
+                out!("   play {} {} {}", c, aimed_text(&act), Datum::Dict(E.iter().map(|e| (Datum::str(&e.id[..1]), Datum::Int(e.hp))).collect()).repr());
             }
         }
         if E.iter().all(|e| e.hp <= 0) {
-            return Py::Tuple(vec![Py::Bool(true), Py::Int(hp), Py::Int(r), Py::Str(order)]);
+            return Datum::Tuple(vec![Datum::Bool(true), Datum::Int(hp), Datum::Int(r), Datum::Str(order)]);
         }
         let lost = 0.max(E.iter().filter(|e| e.hp > 0).map(|e| intent(e.id, r, e.st)).map(|(d, h, ..)| d * h).sum::<i64>() - block);
         hp -= lost;
@@ -137,7 +137,7 @@ pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Py {
             disc.append(&mut hand); // Ethereal: what is left in the hand is Exhausted
         }
         if hp <= 0 {
-            return Py::Tuple(vec![Py::Bool(false), Py::Int(0), Py::Int(r), Py::Str(order)]);
+            return Datum::Tuple(vec![Datum::Bool(false), Datum::Int(0), Datum::Int(r), Datum::Str(order)]);
         }
         for e in E.iter_mut() {
             e.block = 0;
@@ -150,7 +150,7 @@ pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Py {
         }
         hexed = E[1].hp > 0;
     }
-    Py::Tuple(vec![Py::Bool(false), Py::Int(0), Py::Int(24), Py::Str(order)])
+    Datum::Tuple(vec![Datum::Bool(false), Datum::Int(0), Datum::Int(24), Datum::Str(order)])
 }
 
 /// The arm's settings on this thread from now on (see `modelfight::under`).
@@ -165,10 +165,10 @@ pub fn arm_patch(arm: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn run(arm: &str, spec: &[i64], n: i64, seed: i64) -> Result<Py, String> {
+pub fn run(arm: &str, spec: &[i64], n: i64, seed: i64) -> Result<Datum, String> {
     let res = under(|| arm_patch(arm), || played(|spec: &[i64], rng| fight(spec, rng, 75, false), spec, n, seed))?;
-    let first = counter(res.iter().map(|o| Py::str(o.at(3).as_str().get(..1).unwrap_or("-"))));
-    Ok(Py::Tuple(vec![Py::str(arm), Py::ints(spec), Py::Float(mean(&res, 0)), Py::Float(mean(&res, 1)), Py::Float(mean(&res, 2)), first]))
+    let first = counter(res.iter().map(|o| Datum::str(o.at(3).as_str().get(..1).unwrap_or("-"))));
+    Ok(Datum::Tuple(vec![Datum::str(arm), Datum::ints(spec), Datum::Float(mean(&res, 0)), Datum::Float(mean(&res, 1)), Datum::Float(mean(&res, 2)), first]))
 }
 
 /// damage, Block, Strikes, Defends, heavy, Bash, dead (an act 3 deck: 35 to 55 a round against these three)
@@ -189,7 +189,7 @@ fn script(args: &[String]) -> Result<(), String> {
         let i = if args.len() > 1 { int(&args[1])? } else { 5 };
         let deck = index(&decks, i)?;
         for (seed, res) in flips(i, &["off".to_string(), "on".to_string()], None, &|arm, rng| under(|| arm_patch(arm), || fight(deck, rng, 75, false)))? {
-            if res.get(&Py::str("off")).unwrap().at(0) != res.get(&Py::str("on")).unwrap().at(0) {
+            if res.get(&Datum::str("off")).unwrap().at(0) != res.get(&Datum::str("on")).unwrap().at(0) {
                 out!("{seed} {}", res.repr());
             }
         }
@@ -199,7 +199,7 @@ fn script(args: &[String]) -> Result<(), String> {
             out!("{arm:20}: won {:.3}  hp left {:5.1}  rounds {:4.1}  first to die {}", mean(rows, 2), mean(rows, 3), mean(rows, 4), firsts(rows, 5).repr());
         }
         for dk in &decks {
-            let dk = Py::ints(dk);
+            let dk = Datum::ints(dk);
             out!("{} {}", dk.repr(), out.iter().filter(|o| *o.at(1) == dk).map(|o| format!("{}: won {:.2} hp {:4.1}", o.at(0).as_str(), o.at(2).float(), o.at(3).float())).collect::<Vec<_>>().join("  "));
         }
     }
@@ -218,7 +218,7 @@ mod tests {
     const GOLDEN: &str = include_str!("../../tests/golden/scripts/knightfight.txt");
 
     #[test]
-    fn as_python() {
+    fn as_recorded() {
         for command in ["trace 2 3", "trace 4 0 off", "trace", "3", "2 off on ETHEREAL_KEEP=0.9 DEBUFF_CAP=1", "flips"] {
             golden(main, &command.split(' ').collect::<Vec<_>>(), section(GOLDEN, command));
         }

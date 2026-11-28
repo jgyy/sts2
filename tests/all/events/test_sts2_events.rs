@@ -34,7 +34,7 @@ fn STARTER() -> Vec<Value> {
     deck
 }
 
-/// The keyword arguments of the Python's `pick`, with its defaults.
+/// The keyword arguments of the original's `pick`, with its defaults.
 struct Pick {
     hp: i64,
     max_hp: i64,

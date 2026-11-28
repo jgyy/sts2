@@ -7,7 +7,7 @@ use indexmap::IndexMap;
 use serde_json::{json, Value};
 
 use super::combat;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 pub const FIGHTS: [&str; 3] = ["monster", "elite", "boss"];
 /// a plan this much worse has lost a kill or our life, not a few points of damage
@@ -28,7 +28,7 @@ pub fn _answers_clear() {
 
 /// `json.dumps(v, sort_keys=True, default=str)`: what tells one question from another.
 fn _dumps(v: &Value) -> String {
-    py::Dumps { sort_keys: true, ..Default::default() }.dumps(v)
+    base::Dumps { sort_keys: true, ..Default::default() }.dumps(v)
 }
 
 /// `{**d}`: the dict itself, or an empty one for anything else.
@@ -42,7 +42,7 @@ fn _dict(d: &Value) -> Value {
 
 /// For each card on offer (by its index): how much worse this turn's best plan is without it (None: no fight). Cards are planned
 /// for in the order given, until a plain one costs no more than `tolerance`: the rest come back as `UNPLANNED`.
-/// (The Python's default: `tolerance` 1e-9.)
+/// (the original's default: `tolerance` 1e-9.)
 pub fn turn_costs(state: &Value, cards: &[Value], tolerance: f64) -> Option<IndexMap<i64, f64>> {
     let (battle, player) = (&state["battle"], &state["player"]);
     if cards.len() < 2 || !battle["enemies"].list().iter().any(|e| e["hp"].int() > 0) {
@@ -55,7 +55,7 @@ pub fn turn_costs(state: &Value, cards: &[Value], tolerance: f64) -> Option<Inde
         let twin = hand.iter().find(|h| h["name"] == c["name"] && h["description"] == c["description"]);
         let target = match twin.map(|t| &t["target_type"]).filter(|t| t.truthy()) {
             Some(t) => t.clone(),
-            None => json!(if py::str_of(&c["type"]) == "Attack" { "AnyEnemy" } else { "Self" }),
+            None => json!(if base::str_of(&c["type"]) == "Attack" { "AnyEnemy" } else { "Self" }),
         };
         // (Not the game's "can play": during a selection nothing can be played.)
         let mut out = _dict(c);
@@ -126,7 +126,7 @@ pub fn turn_costs(state: &Value, cards: &[Value], tolerance: f64) -> Option<Inde
             break;
         }
     }
-    let best = py::max_of(scores.values().copied()).expect("a card was planned for");
+    let best = base::max_of(scores.values().copied()).expect("a card was planned for");
     let mut costs: IndexMap<i64, f64> = IndexMap::new();
     for (i, c) in cards.iter().enumerate() {
         let index = if c.has("index") { c["index"].int() } else { i as i64 };
@@ -157,12 +157,12 @@ pub fn _INERT() -> &'static regex::Regex {
 /// or a Curse or Status that does nothing but sit there (Ascender's Bane: "Unplayable. Ethereal.").
 pub fn _plain(c: &Value) -> bool {
     let text = c["description"].text();
-    let ctype = py::str_of(&c["type"]);
+    let ctype = base::str_of(&c["type"]);
     if ["Curse", "Status"].contains(&ctype.as_str()) && _INERT().replace_all(&text, "").is_empty() {
         return true;
     }
     let mut words = vec![text];
-    words.extend(c["keywords"].list().iter().filter(|k| k.is_object()).map(|k| py::str_of(&k["name"])));
+    words.extend(c["keywords"].list().iter().filter(|k| k.is_object()).map(|k| base::str_of(&k["name"])));
     ["Attack", "Skill", "Power"].contains(&ctype.as_str()) && !_HAND_BOUND().is_match(&words.join(" "))
 }
 

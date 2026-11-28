@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use serde_json::{json, Value};
 use sts2bot::bot::{Bot, BotArgs, SharedGame};
-use sts2bot::py::JsonExt;
+use sts2bot::base::JsonExt;
 
 pub use crate::fake_game::{card, with};
 
@@ -86,7 +86,7 @@ pub fn enemy_kw(eid: &str, hp: i64, kw: Value) -> Value {
         assert!(["attack", "block", "status"].contains(&k.as_str()), "enemy() got an unexpected keyword argument '{k}'");
     }
     let attack = &kw["attack"];
-    let intents = if attack.truthy() { json!([{"type": "Attack", "label": sts2bot::py::str_of(attack)}]) } else { json!([{"type": "Buff", "label": ""}]) };
+    let intents = if attack.truthy() { json!([{"type": "Attack", "label": sts2bot::base::str_of(attack)}]) } else { json!([{"type": "Buff", "label": ""}]) };
     json!({"entity_id": eid, "hp": hp, "max_hp": hp, "block": kw.get("block").cloned().unwrap_or(json!(0)), "status": kw.get("status").cloned().unwrap_or(json!([])), "intents": intents})
 }
 

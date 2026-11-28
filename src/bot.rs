@@ -20,7 +20,7 @@ use crate::games::both::{self, KeyboardInterrupt};
 use crate::games::sts1::stance;
 use crate::learn;
 use crate::logging::{Level, Logger};
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 use crate::run::strategy::{self, Memory, Where};
 use crate::run::{events, relics};
 use crate::Action;
@@ -54,14 +54,14 @@ impl std::fmt::Display for Stuck {
 
 impl std::error::Error for Stuck {}
 
-/// What ends a `step` or a `run` early: the Python's exceptions out of the loop (the supervisor tells them apart).
+/// What ends a `step` or a `run` early: the original's exceptions out of the loop (the supervisor tells them apart).
 #[derive(Clone, Debug, PartialEq)]
 pub enum BotError {
     /// Nothing the bot tries changes the game any more.
     Stuck(Stuck),
     /// The game (or the bridge mod inside it) is not answering.
     GameUnavailable(GameUnavailable),
-    /// Ctrl+C, or SIGTERM from systemd (Python's KeyboardInterrupt: `games::both::stopped()`).
+    /// Ctrl+C, or SIGTERM from systemd (the original's KeyboardInterrupt: `games::both::stopped()`).
     Interrupted(KeyboardInterrupt),
 }
 
@@ -106,7 +106,7 @@ pub fn _scrub(obj: &Value) -> Value {
 
 /// `json.dumps(x, sort_keys=True)`.
 fn dumps_sorted(v: &Value) -> String {
-    py::Dumps { sort_keys: true, ..Default::default() }.dumps(v)
+    base::Dumps { sort_keys: true, ..Default::default() }.dumps(v)
 }
 
 pub fn fingerprint(state: &Value) -> String {
@@ -114,7 +114,7 @@ pub fn fingerprint(state: &Value) -> String {
     Sha1::digest(raw.as_bytes()).iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// Python's `a == b` for two values out of the game's JSON: numbers (and bools) by what they count, the rest as they are.
+/// the original's `a == b` for two values out of the game's JSON: numbers (and bools) by what they count, the rest as they are.
 fn _eq(a: &Value, b: &Value) -> bool {
     let num = |v: &Value| match v {
         Value::Number(n) => n.as_f64(),
@@ -147,13 +147,13 @@ pub fn _now() -> String {
 /// pings and configures the same game, and a test reads what its fake game was asked (`Rc::new(RefCell::new(FakeGame::new()))`).
 pub type SharedGame = Rc<RefCell<dyn Game>>;
 
-/// (act, floor, round): a turn of a fight. (Python's `()` before the first one: None.)
+/// (act, floor, round): a turn of a fight. (the original's `()` before the first one: None.)
 pub type TurnKey = (Where, Value);
 
 /// (act, floor, action, its parameters as JSON): a request, where it was made.
 pub type Sent = (Value, Value, String, String);
 
-/// `Bot.progress()`: (runs finished, act, floor) — without the act and floor before the first room is seen. Prints as the Python's tuple.
+/// `Bot.progress()`: (runs finished, act, floor) — without the act and floor before the first room is seen. Prints as the original's tuple.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Progress(pub i64, pub Option<Where>);
 
@@ -167,7 +167,7 @@ impl std::fmt::Display for Progress {
     }
 }
 
-/// The keyword arguments of `Bot(client, ...)`, with the Python's defaults.
+/// The keyword arguments of `Bot(client, ...)`, with the original's defaults.
 pub struct BotArgs {
     pub character: String,
     pub log_dir: Option<PathBuf>,
@@ -389,7 +389,7 @@ impl Bot {
         if self.crashed_on(&sent.0, &sent.1, &sent.2, &sent.3) {
             return false;
         }
-        crate::log_warning!(LOG, "the game died after {} {} at act {} floor {}: that will not be tried there again", sent.2, sent.3, py::str_of(&sent.0), py::str_of(&sent.1));
+        crate::log_warning!(LOG, "the game died after {} {} at act {} floor {}: that will not be tried there again", sent.2, sent.3, base::str_of(&sent.0), base::str_of(&sent.1));
         self._crashed.push(sent);
         true
     }
@@ -478,7 +478,7 @@ impl Bot {
     }
 
     pub fn _epochs(profile: &Value) -> IndexMap<String, String> {
-        profile["epochs"].list().iter().filter(|e| e["id"].truthy()).map(|e| (py::str_of(&e["id"]), py::str_of(&e["state"]))).collect()
+        profile["epochs"].list().iter().filter(|e| e["id"].truthy()).map(|e| (base::str_of(&e["id"]), base::str_of(&e["state"]))).collect()
     }
 
     /// Ask the game how far each character has climbed (used to pick who plays next).
@@ -489,30 +489,30 @@ impl Bot {
         if profile["total_wins"].is_number() || profile["total_wins"].is_boolean() {
             self._wins_seen = Some(profile["total_wins"].int());
         }
-        // (What Python raised on a profile of another shape, an AttributeError, TypeError or ValueError, is the `Err` here.)
+        // (What the original raised on a profile of another shape, an AttributeError, TypeError or ValueError, is the `Err` here.)
         let read = || -> Result<(IndexMap<String, i64>, IndexMap<String, String>), String> {
             let listed = |v: &Value, what: &str| if v.truthy() && !v.is_array() { Err(format!("{what} is not a list")) } else { Ok(()) };
             listed(&profile["characters"], "characters")?;
             let mut climbed = IndexMap::new();
             for c in profile["characters"].list() {
                 if !c.is_object() {
-                    return Err(format!("{} object has no attribute 'get'", py::repr_of(c)));
+                    return Err(format!("{} object has no attribute 'get'", base::repr_of(c)));
                 }
                 if !c["id"].truthy() {
                     continue;
                 }
                 let top = &c["max_ascension"];
                 let n = match top {
-                    Value::String(s) if !s.is_empty() => s.trim().parse::<i64>().map_err(|_| format!("invalid literal for int() with base 10: {}", py::str_repr(s)))?,
+                    Value::String(s) if !s.is_empty() => s.trim().parse::<i64>().map_err(|_| format!("invalid literal for int() with base 10: {}", base::str_repr(s)))?,
                     Value::Array(a) if !a.is_empty() => return Err("int() argument must be a string, a bytes-like object or a real number, not 'list'".to_string()),
                     Value::Object(m) if !m.is_empty() => return Err("int() argument must be a string, a bytes-like object or a real number, not 'dict'".to_string()),
                     other => other.int(),
                 };
-                climbed.insert(py::str_of(&c["id"]), n);
+                climbed.insert(base::str_of(&c["id"]), n);
             }
             listed(&profile["epochs"], "epochs")?;
             if let Some(e) = profile["epochs"].list().iter().find(|e| !e.is_object()) {
-                return Err(format!("{} object has no attribute 'get'", py::repr_of(e)));
+                return Err(format!("{} object has no attribute 'get'", base::repr_of(e)));
             }
             Ok((climbed, Bot::_epochs(&profile)))
         };
@@ -533,11 +533,11 @@ impl Bot {
         if battle["turn"] != "player" || !battle["is_play_phase"].truthy() {
             return vec![];
         }
-        self._fight_kind = py::str_of(&state["state_type"]);
+        self._fight_kind = base::str_of(&state["state_type"]);
         self._note_deck(state);
         let at = strategy::_where(state);
         let key: TurnKey = (at, battle["round"].clone());
-        let stuck: BTreeSet<String> = battle["enemies"].list().iter().filter(|e| e["hp"].int() > 0 && combat::power_amount(e, "IMPALED") > 0).map(|e| py::str_of(&e["entity_id"])).collect();
+        let stuck: BTreeSet<String> = battle["enemies"].list().iter().filter(|e| e["hp"].int() > 0 && combat::power_amount(e, "IMPALED") > 0).map(|e| base::str_of(&e["entity_id"])).collect();
         self._dislodged = Some(&key) == self._turn_key.as_ref() && (self._dislodged || self._stuck.difference(&stuck).next().is_some());
         self._stuck = stuck;
         if Some(&key) != self._turn_key.as_ref() {
@@ -554,7 +554,7 @@ impl Bot {
             }
             let calm = stance::TAKEN.get(stance::read(&player["stance"])).copied().unwrap_or(1.0); // (the first game's intents show Wrath's doubling)
             for e in battle["enemies"].list() {
-                let seen = self._threat.entry(py::str_of(&e["entity_id"])).or_insert((0, 0, 0.0, 0));
+                let seen = self._threat.entry(base::str_of(&e["entity_id"])).or_insert((0, 0, 0.0, 0));
                 let hit: i64 = e["intents"].list().iter().map(combat::intent_damage).sum();
                 seen.0 += hit;
                 seen.1 += 1;
@@ -587,7 +587,7 @@ impl Bot {
             self._threat.iter().filter(|(_, t)| t.3 != 0).map(|(k, (_t, rounds, blows, attacks))| (k.clone(), json!([*blows / *attacks as f64, *attacks as f64 / *rounds as f64]))).collect();
         let mut costs = Map::new(); // (as the fight began: Void Form hides them)
         for c in &self.mem.deck {
-            costs.insert(py::str_of(&c["name"]), json!(cards::_cost(&c["cost"])));
+            costs.insert(base::str_of(&c["name"]), json!(cards::_cost(&c["cost"])));
         }
         let mut fight_state = state.clone();
         fight_state["_plays_this_turn"] = json!(self._turn_cards);
@@ -603,7 +603,7 @@ impl Bot {
         // Drawn cards (or Reboot's new hand) show up a moment late: look once more before ending a turn with energy left.
         let ending = wanted.first().is_some_and(|w| w.0 == "end_turn");
         if ending && self._turn_plays != 0 && player["energy"].int() > 0 {
-            let check = (key, self._turn_plays, player["hand"].list().iter().map(|c| py::str_of(&c["name"])).collect::<Vec<String>>());
+            let check = (key, self._turn_plays, player["hand"].list().iter().map(|c| base::str_of(&c["name"])).collect::<Vec<String>>());
             if Some(&check) != self._end_check.as_ref() {
                 self._end_check = Some(check);
                 return vec![];
@@ -611,7 +611,7 @@ impl Bot {
         }
         if ending && LOG.enabled(Level::Debug) {
             if let Some(expect) = combat::expected_end_loss(state) {
-                crate::log_debug!(LOG, "ending r{} on {} HP, expecting to lose {}", py::str_of(&battle["round"]), py::str_of(&player["hp"]), expect);
+                crate::log_debug!(LOG, "ending r{} on {} HP, expecting to lose {}", base::str_of(&battle["round"]), base::str_of(&player["hp"]), expect);
             }
         }
         wanted
@@ -647,7 +647,7 @@ impl Bot {
             .map(|c| Value::Object(keep.iter().filter(|k| !c[**k].is_null()).map(|k| (k.to_string(), c[*k].clone())).collect()))
             .collect();
         if whole {
-            self.mem.deck = cards.into_iter().filter(|c| py::str_of(&c["type"]) != "Status" && !NOT_OURS.contains(&py::str_of(&c["name"]).as_str())).collect();
+            self.mem.deck = cards.into_iter().filter(|c| base::str_of(&c["type"]) != "Status" && !NOT_OURS.contains(&base::str_of(&c["name"]).as_str())).collect();
             self.mem.deck_size = self.mem.deck.len() as i64;
         } else {
             // a mod that does not show the piles: the count has to do
@@ -667,7 +667,7 @@ impl Bot {
                 if _eq(&c["index"], &params["card_index"]) {
                     self.mem.deck.push(Value::Object(c.entries().filter(|(k, _)| !["index", "keywords"].contains(&k.as_str())).map(|(k, v)| (k.clone(), v.clone())).collect()));
                     self.mem.deck_size += 1;
-                    self.mem.picks.push((state["run"]["floor"].int(), py::str_of(&c["name"])));
+                    self.mem.picks.push((state["run"]["floor"].int(), base::str_of(&c["name"])));
                 }
             }
         } else if action == "skip_card_reward" || action == "discard_potion" {
@@ -679,13 +679,13 @@ impl Bot {
                 self._turn_cards += 1; // (apart from potions: under Sloth a potion and two cards are not three cards)
                 (self._played_from, self._played_at) = (Bot::_hand_sig(state), self.clock());
                 let hand = state["player"]["hand"].list();
-                self._turn_names.extend(hand.iter().filter(|c| _eq(&c["index"], &params["card_index"])).map(|c| py::str_of(&c["name"])));
+                self._turn_names.extend(hand.iter().filter(|c| _eq(&c["index"], &params["card_index"])).map(|c| base::str_of(&c["name"])));
             }
             if params["target"].truthy() {
                 self._facing = params["target"].clone(); // we turn towards whatever we aim at
             }
         } else if action == "menu_select" && kind == "menu" {
-            let option = py::str_of(&params["option"]);
+            let option = base::str_of(&params["option"]);
             if state["menu_screen"] == "character_select" && !["confirm", "embark"].contains(&option.as_str()) {
                 self.mem.character_selected = true;
             } else if option == "abandon_run" {
@@ -705,7 +705,7 @@ impl Bot {
         if message.starts_with("Revealing epoch") || message.starts_with("Confirmed") {
             crate::log_info!(LOG, "timeline: {}", message);
         }
-        if py::str_of(&params["option"]) == "advance" {
+        if base::str_of(&params["option"]) == "advance" {
             let progressed = ["Revealing", "Confirmed", "Closed", "Clicked", "Opening"].iter().any(|p| message.starts_with(p));
             // "Done" must hold for a few clicks (between animations the Timeline looks finished), or nothing happen for long.
             let done = result["done"].truthy();
@@ -713,7 +713,7 @@ impl Bot {
             if self._timeline_idle >= if done { 9 } else { 45 } {
                 self._timeline_idle = 0;
                 self.mem.timeline_done = true;
-                self.mem.timeline_stuck = result["pending_epoch_ids"].list().iter().map(py::str_of).collect(); // cannot be revealed yet: do not come back for it
+                self.mem.timeline_stuck = result["pending_epoch_ids"].list().iter().map(base::str_of).collect(); // cannot be revealed yet: do not come back for it
             }
         }
         self.sleep(0.6); // let the reveal animation run before the next click
@@ -728,7 +728,7 @@ impl Bot {
                 crate::log_info!(LOG, "{}", message());
             }
         };
-        let s = py::str_of;
+        let s = base::str_of;
         let player = &state["player"];
         for c in std::iter::once(player).chain(state["battle"]["enemies"].list()) {
             for p in c["status"].list() {
@@ -776,13 +776,13 @@ impl Bot {
             if Some(at) != self._last_where {
                 self._last_where = Some(at);
                 let (p, run) = (&state["player"], &state["run"]);
-                let s = py::str_of;
+                let s = base::str_of;
                 crate::log_info!(LOG, "act {} floor {}  {}  hp {}/{}  gold {}", s(&run["act"]), s(&run["floor"]), s(kind), s(&p["hp"]), s(&p["max_hp"]), s(&p["gold"]));
             }
             let held = &state["run"]["keys"];
             if !held.is_null() && Some(held) != self._keys_seen.as_ref() {
                 if self._keys_seen.is_some() || held.truthy() {
-                    let names = held.list().iter().map(py::str_of).collect::<Vec<_>>().join(", ");
+                    let names = held.list().iter().map(base::str_of).collect::<Vec<_>>().join(", ");
                     crate::log_info!(LOG, "keys: {}", if names.is_empty() { "none" } else { &names });
                 }
                 self._keys_seen = Some(held.clone());
@@ -801,7 +801,7 @@ impl Bot {
             self._crashed.clear();
             if self.tune {
                 let drawn = self.knobs.draw();
-                crate::log_info!(LOG, "settings for the next run: {{{}}}", drawn.iter().map(|(k, v)| format!("{}: {}", py::str_repr(k), py::float_repr(*v))).collect::<Vec<_>>().join(", "));
+                crate::log_info!(LOG, "settings for the next run: {{{}}}", drawn.iter().map(|(k, v)| format!("{}: {}", base::str_repr(k), base::float_repr(*v))).collect::<Vec<_>>().join(", "));
                 self._knobs_whole_run = true;
             }
             self.mem.runs_finished = self.runs_finished;
@@ -831,7 +831,7 @@ impl Bot {
         self.mem.epochs = epochs;
     }
 
-    /// (The Python's default: `died` false.)
+    /// (the original's default: `died` false.)
     pub fn _record_run(&mut self, state: &Value, died: bool) {
         let (p, run) = (&state["player"], &state["run"]);
         // The end screen looks the same for a win and a loss, and its HP is unreliable; the game's win counter goes up on a win.
@@ -861,7 +861,7 @@ impl Bot {
         if self.mem.recent.len() > RECENT_RUNS {
             self.mem.recent.drain(..self.mem.recent.len() - RECENT_RUNS);
         }
-        let mut deck: Vec<String> = self.mem.deck.iter().map(|c| py::str_of(&c["name"])).collect();
+        let mut deck: Vec<String> = self.mem.deck.iter().map(|c| base::str_of(&c["name"])).collect();
         deck.sort();
         let mut entry = json!({
             "time": _now(), "character": p["character"], "result": if won { "win" } else { "loss" },
@@ -881,11 +881,11 @@ impl Bot {
         entry["knobs"] = if self._knobs_whole_run { Value::Object(learn::knobs().into_iter().map(|(k, v)| (k, json!(v))).collect()) } else { Value::Null };
         self.card_stats.borrow_mut().record(&who, entry["floor"].int(), won, &self.mem.picks);
         relics::note(&entry, true);
-        crate::log_info!(LOG, "run {} over: {} on act {} floor {} ({} wins so far)", self.runs_finished, py::str_of(&entry["result"]), py::str_of(&entry["act"]), py::str_of(&entry["floor"]), self.wins);
+        crate::log_info!(LOG, "run {} over: {} on act {} floor {} ({} wins so far)", self.runs_finished, base::str_of(&entry["result"]), base::str_of(&entry["act"]), base::str_of(&entry["floor"]), self.wins);
         if let Some(dir) = &self.log_dir {
-            let written = std::fs::create_dir_all(dir).and_then(|_| std::fs::OpenOptions::new().create(true).append(true).open(dir.join("runs.jsonl"))).and_then(|mut f| f.write_all(format!("{}\n", py::json_dumps(&entry)).as_bytes()));
+            let written = std::fs::create_dir_all(dir).and_then(|_| std::fs::OpenOptions::new().create(true).append(true).open(dir.join("runs.jsonl"))).and_then(|mut f| f.write_all(format!("{}\n", base::json_dumps(&entry)).as_bytes()));
             if let Err(e) = written {
-                panic!("could not write {}: {}", dir.join("runs.jsonl").display(), e); // (Python's OSError out of the loop)
+                panic!("could not write {}: {}", dir.join("runs.jsonl").display(), e); // (the original's OSError out of the loop)
             }
         }
     }
@@ -896,7 +896,7 @@ impl Bot {
             return state["card_select"]["screen_type"] != "choose";
         }
         if action == "menu_select" && state["menu_screen"] == "character_select" {
-            return !["confirm", "embark"].contains(&py::str_of(&params["option"]).as_str());
+            return !["confirm", "embark"].contains(&base::str_of(&params["option"]).as_str());
         }
         if action == "menu_select" && state["menu_screen"] == "timeline" {
             return true; // the Timeline animates between clicks; the state says nothing about it
@@ -910,7 +910,7 @@ impl Bot {
     }
 
     /// Wait for the action to show; true if the state changed. With `leave`, until that screen is gone (the map answers during travel).
-    /// (The Python's defaults: `leave` None, `quiet` false, `settle` None, `slow` false.)
+    /// (the original's defaults: `leave` None, `quiet` false, `settle` None, `slow` false.)
     pub fn _wait_for_change(&mut self, fp: &str, leave: Option<&str>, quiet: bool, settle: Option<f64>, slow: bool) -> Result<bool, BotError> {
         let deadline = self.clock()
             + match settle {
@@ -970,7 +970,7 @@ impl Bot {
             (self._last_fp, self._last_change, self._last_retry) = (fp.clone(), now, now);
             self._strikes.clear();
         } else if now - self._last_change > self.stuck_timeout {
-            return Err(Stuck(format!("no change for {:.0}s in state {}", self.stuck_timeout, py::repr_of(&state["state_type"]))).into());
+            return Err(Stuck(format!("no change for {:.0}s in state {}", self.stuck_timeout, base::repr_of(&state["state_type"]))).into());
         } else if now - self._last_retry > 8.0 {
             // clicks sent mid-animation are ignored; try again soon
             self._last_retry = now;
@@ -997,7 +997,7 @@ impl Bot {
             if self._strikes.get(&key).copied().unwrap_or(0) >= MAX_STRIKES {
                 continue;
             }
-            let buy = (action == "shop_purchase").then(|| (py::json_dumps(act), py::json_dumps(floor), key.1.clone()));
+            let buy = (action == "shop_purchase").then(|| (base::json_dumps(act), base::json_dumps(floor), key.1.clone()));
             if buy.as_ref().is_some_and(|buy| self._dead_buys.get(buy).copied().unwrap_or(0) >= MAX_STRIKES) {
                 continue;
             }
@@ -1010,11 +1010,11 @@ impl Bot {
             let result = result?;
             if result["status"] == "error" || result.has("error") {
                 *self._strikes.entry(key).or_insert(0) += 1;
-                crate::log_debug!(LOG, "{} {} rejected: {}", action, py::repr_of(&params), py::str_of(&result["error"]));
+                crate::log_debug!(LOG, "{} {} rejected: {}", action, base::repr_of(&params), base::str_of(&result["error"]));
                 self.sleep(self.poll.min(0.15));
                 return Ok(true);
             }
-            crate::log_debug!(LOG, "{} {} -> {}", action, py::repr_of(&params), py::str_of(&result["message"]));
+            crate::log_debug!(LOG, "{} {} -> {}", action, base::repr_of(&params), base::str_of(&result["message"]));
             self._after_success(&state, &action, &params);
             if action == "menu_select" && state["menu_screen"] == "timeline" {
                 self._after_timeline_click(&params, &result);
@@ -1022,7 +1022,7 @@ impl Bot {
             let (quiet, choose) = (Bot::_is_quiet(&state, &action, &params), Bot::_is_choose(&state, &action));
             // Leaving a room, buying and embarking rebuild the scene (rapid polling or clicks then crashed the game): pause, then poll less.
             let fragile = action == "proceed" || action == "shop_purchase";
-            let embarking = action == "menu_select" && state["menu_screen"] == "character_select" && ["confirm", "embark"].contains(&py::str_of(&params["option"]).as_str());
+            let embarking = action == "menu_select" && state["menu_screen"] == "character_select" && ["confirm", "embark"].contains(&base::str_of(&params["option"]).as_str());
             if (fragile || embarking) && self.room_pause != 0.0 {
                 self.sleep(self.room_pause);
             }
@@ -1063,7 +1063,7 @@ impl Bot {
     pub fn _pace_line(&mut self, steps: i64, since: Instant) {
         let wall = since.elapsed().as_secs_f64().max(1e-9);
         let mut kinds: Vec<(&'static str, f64)> = self._pace.iter().map(|(k, v)| (*k, *v)).collect();
-        py::sort_by_key(&mut kinds, |kv| -kv.1);
+        base::sort_by_key(&mut kinds, |kv| -kv.1);
         let parts = kinds.iter().map(|(k, v)| format!("{} {:.0}%", k, 100.0 * v / wall)).collect::<Vec<_>>().join(", ");
         crate::log_info!(LOG, "pace: {} steps in {:.0} s ({:.0} ms a step): {}", steps, wall, 1000.0 * wall / steps.max(1) as f64, parts);
         self._pace.clear();
@@ -1080,7 +1080,7 @@ impl Bot {
     }
 
     /// Play until `max_runs` runs have finished (forever if None). Told to stop (Ctrl+C, SIGTERM: `games::both::stopped()`),
-    /// it leaves between two steps with `BotError::Interrupted`, where Python's KeyboardInterrupt came out of the loop.
+    /// it leaves between two steps with `BotError::Interrupted`, where the original's KeyboardInterrupt came out of the loop.
     pub fn run(&mut self, max_runs: Option<i64>) -> Result<(), BotError> {
         self.max_runs = max_runs;
         self._last_change = self.clock();
@@ -1126,11 +1126,11 @@ pub fn _upgrade_gain(client: &SharedGame, upgrades: &Rc<RefCell<HashMap<String, 
 
 #[cfg(test)]
 mod tests {
-    //! Whole sessions of the Python `Bot`, replayed: everything it asked of its game and every wait, in order, with what the
+    //! Whole sessions of the original `Bot`, replayed: everything it asked of its game and every wait, in order, with what the
     //! game answered; what it logged (INFO and above) and wrote to its log directory; and where it stood at the end.
     //! (tests/golden/bot/*.json: fake games of the tests, a few dozen screens by hand, and the states of model runs.)
     use super::*;
-    use crate::py::Random;
+    use crate::base::Random;
     use std::cell::Cell;
 
     /// The recorded states and answers, as they were before the recorder folded what repeats into `atoms` (`{"@": n}`).
@@ -1151,18 +1151,18 @@ mod tests {
     }
 
     impl Tape {
-        /// The next thing the Python bot did, which must be a `what`.
+        /// The next thing the original bot did, which must be a `what`.
         fn next(&self, what: &str, said: &dyn Fn() -> String) -> &Value {
             let i = self.at.get();
-            let ev = self.trace.get(i).unwrap_or_else(|| panic!("event {i}: the bot went on with {} where the Python had finished", said()));
-            assert!(ev[0] == what, "event {i}: the bot did {} where the Python did {}", said(), py::json_dumps(&unpack(ev, &self.atoms)));
+            let ev = self.trace.get(i).unwrap_or_else(|| panic!("event {i}: the bot went on with {} where the original had finished", said()));
+            assert!(ev[0] == what, "event {i}: the bot did {} where the original did {}", said(), base::json_dumps(&unpack(ev, &self.atoms)));
             self.at.set(i + 1);
             ev
         }
 
         fn sleep(&self, seconds: f64) {
             let ev = self.next("sleep", &|| format!("sleep({seconds})"));
-            assert!(ev[1].as_f64() == Some(seconds), "event {}: slept {} where the Python slept {}", self.at.get() - 1, seconds, ev[1]);
+            assert!(ev[1].as_f64() == Some(seconds), "event {}: slept {} where the original slept {}", self.at.get() - 1, seconds, ev[1]);
             self.clock.set(self.clock.get() + seconds);
         }
     }
@@ -1175,9 +1175,9 @@ mod tests {
         }
 
         fn act(&mut self, action: &str, params: &Value) -> Result<Value, GameUnavailable> {
-            let said = || format!("act({}, {})", action, py::json_dumps(params));
+            let said = || format!("act({}, {})", action, base::json_dumps(params));
             let ev = self.0.next("act", &said);
-            assert!(ev[1] == action && &ev[2] == params, "event {}: the bot did {} where the Python did act({}, {})", self.0.at.get() - 1, said(), ev[1], py::json_dumps(&ev[2]));
+            assert!(ev[1] == action && &ev[2] == params, "event {}: the bot did {} where the original did act({}, {})", self.0.at.get() - 1, said(), ev[1], base::json_dumps(&ev[2]));
             Ok(ev[3].clone())
         }
 
@@ -1194,7 +1194,7 @@ mod tests {
             // (a game without `card` was never asked)
             match self.0.trace.get(self.0.at.get()) {
                 Some(ev) if ev[0] == "card" => {
-                    assert!(ev[1] == card_id, "event {}: the bot looked up {} where the Python looked up {}", self.0.at.get(), card_id, ev[1]);
+                    assert!(ev[1] == card_id, "event {}: the bot looked up {} where the original looked up {}", self.0.at.get(), card_id, ev[1]);
                     self.0.at.set(self.0.at.get() + 1);
                     let entry = unpack(&ev[2], &self.0.atoms);
                     Ok((!entry.is_null()).then_some(entry))
@@ -1305,11 +1305,11 @@ mod tests {
                     }
                     other => panic!("{other}"),
                 });
-                assert!(results[n] == g["results"][n], "op {} {}: {} where the Python had {}", n, op, py::json_dumps(&results[n]), py::json_dumps(&g["results"][n]));
+                assert!(results[n] == g["results"][n], "op {} {}: {} where the original had {}", n, op, base::json_dumps(&results[n]), base::json_dumps(&g["results"][n]));
             }
             bot
         });
-        assert_eq!(tape.at.get(), tape.trace.len(), "the Python bot went on");
+        assert_eq!(tape.at.get(), tape.trace.len(), "the original bot went on");
         let pace = crate::re!(r"\d+ s \(\d+ ms a step\): .*");
         let logs: Vec<Value> = records
             .iter()
@@ -1337,7 +1337,7 @@ mod tests {
         let summary = json!({
             "runs_finished": bot.runs_finished, "wins": bot.wins, "progress": bot.progress().to_string(), "deck_size": bot.mem.deck_size,
             "picks": bot.mem.picks.iter().map(|(floor, name)| json!([floor, name])).collect::<Vec<_>>(),
-            "deck": bot.mem.deck.iter().map(|c| py::str_of(&c["name"])).collect::<Vec<_>>(), "clock": tape.clock.get(), "recent": bot.mem.recent,
+            "deck": bot.mem.deck.iter().map(|c| base::str_of(&c["name"])).collect::<Vec<_>>(), "clock": tape.clock.get(), "recent": bot.mem.recent,
             "max_ascension": map(bot.mem.max_ascension.iter().map(|(k, v)| (k, json!(v)))), "epochs": map(bot.mem.epochs.iter().map(|(k, v)| (k, json!(v)))), "knobs": map(learn::knobs().iter().map(|(k, v)| (k, json!(v)))), "abandon_next": bot.abandon_next,
             "selected": bot.mem.selected.iter().collect::<Vec<_>>(), "timeline_done": bot.mem.timeline_done,
             "turns": bot._turns.iter().map(|t| json!([t.0, t.1])).collect::<Vec<_>>(),

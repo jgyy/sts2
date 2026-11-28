@@ -24,10 +24,10 @@
 //!
 //! `load()` returns one record per fight joined to its run in runs.jsonl, for one-off questions.
 //!
-//! Where the Rust differs in shape from scripts/fightlog.py:
-//! - A fight is a [`Fight`]: Python's `"died" in f` is `f.died.is_some()`; a regex match of a `combat r` line is a [`Combat`]
+//! Where the Rust differs in shape from scripts/fightlog.rs:
+//! - A fight is a [`Fight`]: the original's `"died" in f` is `f.died.is_some()`; a regex match of a `combat r` line is a [`Combat`]
 //!   (`group(n)`); the generators `_turns` and `_endings` return lists.
-//! - `powers` looked for `"NAME"` in the bot's Python sources beside the script; here in the Rust sources of the checkout the
+//! - `powers` looked for `"NAME"` in the bot's the original sources beside the script; here in the Rust sources of the checkout the
 //!   binary was built from (src/, without the model runs, the scripts and each file's tests).
 //! - The log directory is `STS2BOT_STATE` or ~/.local/state/sts2bot/ as before; tests set it per thread with [`with_state`].
 
@@ -39,8 +39,8 @@ use std::rc::Rc;
 use indexmap::IndexMap;
 use serde_json::{Map, Value};
 
-use super::modelfight::{exit_code, out, Py};
-use crate::py::{self, JsonExt};
+use super::modelfight::{exit_code, out, Datum};
+use crate::base::{self, JsonExt};
 use crate::re;
 
 pub const DOC: &str = "Read the bot's logs fight by fight (needs the bot to have run with -v).
@@ -114,7 +114,7 @@ pub fn state_home() -> PathBuf {
     }
 }
 
-/// Python's `LOGS`: `STS2BOT_STATE`, or ~/.local/state/sts2bot/.
+/// the original's `LOGS`: `STS2BOT_STATE`, or ~/.local/state/sts2bot/.
 #[allow(non_snake_case)]
 pub fn LOGS() -> String {
     match STATE_DIR.with(|s| s.borrow().clone()) {
@@ -139,17 +139,17 @@ pub fn log_path(name: &str) -> String {
     join(&LOGS(), name)
 }
 
-/// What Python's exception said, for a file that could not be read.
+/// What the original's exception said, for a file that could not be read.
 pub fn io_error(e: &std::io::Error, path: &str) -> String {
     let kind = match e.kind() {
         std::io::ErrorKind::NotFound => "FileNotFoundError",
         std::io::ErrorKind::PermissionDenied => "PermissionError",
         _ => "OSError",
     };
-    format!("{kind}: {}: {}", crate::client::os_error_text(e), py::str_repr(path))
+    format!("{kind}: {}: {}", crate::client::os_error_text(e), base::str_repr(path))
 }
 
-/// A text file as Python reads it with `errors="replace"`: bytes that are no UTF-8 replaced, every line end a "\n".
+/// A text file as the original reads it with `errors="replace"`: bytes that are no UTF-8 replaced, every line end a "\n".
 pub fn read_text(path: &str) -> Result<String, String> {
     let raw = std::fs::read(path).map_err(|e| io_error(&e, path))?;
     let text = String::from_utf8_lossy(&raw);
@@ -172,7 +172,7 @@ pub fn read_jsonl(path: &str) -> Result<Vec<Value>, String> {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Python's strings, counters and dates
+// the original's strings, counters and dates
 
 /// `s[:n]`, by code points.
 pub fn upto(s: &str, n: usize) -> &str {
@@ -222,7 +222,7 @@ impl Counter {
 /// Days from 1970-01-01 to a date of the (proleptic Gregorian) calendar.
 fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
     let y = if m <= 2 { y - 1 } else { y };
-    let era = py::floordiv(y, 400);
+    let era = base::floordiv(y, 400);
     let yoe = y - era * 400;
     let doy = (153 * (if m > 2 { m - 3 } else { m + 9 }) + 2) / 5 + d - 1;
     let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
@@ -231,7 +231,7 @@ fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
 
 fn civil_from_days(z: i64) -> (i64, i64, i64) {
     let z = z + 719468;
-    let era = py::floordiv(z, 146097);
+    let era = base::floordiv(z, 146097);
     let doe = z - era * 146097;
     let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
     let y = yoe + era * 400;
@@ -244,7 +244,7 @@ fn civil_from_days(z: i64) -> (i64, i64, i64) {
 
 /// `datetime.datetime.strptime(text, "%Y-%m-%d %H:%M:%S")`, as seconds on a clock with no zone.
 pub fn strptime(text: &str) -> Result<i64, String> {
-    let bad = || format!("ValueError: time data {} does not match format '%Y-%m-%d %H:%M:%S'", py::str_repr(text));
+    let bad = || format!("ValueError: time data {} does not match format '%Y-%m-%d %H:%M:%S'", base::str_repr(text));
     let m = re!(r"^(\d{4})-(\d{1,2})-(\d{1,2}) (\d{1,2}):(\d{1,2}):(\d{1,2})$").captures(text).ok_or_else(bad)?;
     let n = |i: usize| m[i].parse::<i64>().map_err(|_| bad());
     let (y, mo, d, h, mi, s) = (n(1)?, n(2)?, n(3)?, n(4)?, n(5)?, n(6)?);
@@ -258,7 +258,7 @@ pub fn strptime(text: &str) -> Result<i64, String> {
 
 /// `.strftime("%Y-%m-%d %H:%M:%S")` of such a time.
 pub fn strftime(seconds: i64) -> String {
-    let (days, rest) = (py::floordiv(seconds, 86400), py::modulo(seconds, 86400));
+    let (days, rest) = (base::floordiv(seconds, 86400), base::modulo(seconds, 86400));
     let (y, m, d) = civil_from_days(days);
     format!("{:04}-{:02}-{:02} {:02}:{:02}:{:02}", y, m, d, rest / 3600, rest % 3600 / 60, rest % 60)
 }
@@ -284,7 +284,7 @@ fn number(v: &Value) -> Option<f64> {
 fn value_cmp(a: &Value, b: &Value) -> Ordering {
     match (number(a), number(b)) {
         (Some(x), Some(y)) => x.partial_cmp(&y).unwrap_or(Ordering::Equal),
-        _ => py::str_of(a).cmp(&py::str_of(b)),
+        _ => base::str_of(a).cmp(&base::str_of(b)),
     }
 }
 
@@ -293,7 +293,7 @@ pub fn fmt_value(v: &Value, width: usize) -> String {
     match v {
         Value::String(s) => format!("{s:width$}"),
         Value::Bool(b) => format!("{:>width$}", *b as i64),
-        other => format!("{:>width$}", py::str_of(other)),
+        other => format!("{:>width$}", base::str_of(other)),
     }
 }
 
@@ -306,7 +306,7 @@ fn push_by_value<T>(table: &mut Vec<(Value, Vec<T>)>, key: &Value, item: T) {
 }
 
 fn int(text: &str) -> i64 {
-    text.parse().unwrap_or_else(|_| panic!("ValueError: invalid literal for int() with base 10: {}", py::str_repr(text)))
+    text.parse().unwrap_or_else(|_| panic!("ValueError: invalid literal for int() with base 10: {}", base::str_repr(text)))
 }
 
 fn mean_i(items: impl Iterator<Item = i64>, n: usize) -> f64 {
@@ -314,7 +314,7 @@ fn mean_i(items: impl Iterator<Item = i64>, n: usize) -> f64 {
 }
 
 fn mean_f(items: impl Iterator<Item = f64>, n: usize) -> f64 {
-    py::fsum(items) / n as f64
+    base::fsum(items) / n as f64
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -422,7 +422,7 @@ pub fn _by_round<T>(f: &Fight, read: impl Fn(&str) -> T) -> Vec<T> {
     first.into_values().collect()
 }
 
-/// A look at the fight: Python's `(round, hp, block, energy, powers, enemies, hand, time)`.
+/// A look at the fight: the original's `(round, hp, block, energy, powers, enemies, hand, time)`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Turn {
     pub rnd: i64,
@@ -435,7 +435,7 @@ pub struct Turn {
     pub t: String,
 }
 
-/// One fight of the log. `died` is None while Python's record had no "died" key (a fight still going when the log ends, or
+/// One fight of the log. `died` is None while the original's record had no "died" key (a fight still going when the log ends, or
 /// when its run did); `run`, `char`, `asc`, `result` are those of the run it was in (None: the run is not over, or not on record).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Fight {
@@ -545,7 +545,7 @@ pub fn bosses(min_ascension: i64) -> Result<(), String> {
         }
     }
     let mut rows: Vec<(&(i64, String, Option<String>), &[i64; 2])> = table.iter().collect();
-    py::sort_by_key(&mut rows, |(k, _)| (k.0, k.1.clone(), k.2.as_deref() != Some("all"), k.2.clone().unwrap_or_else(|| "None".to_string())));
+    base::sort_by_key(&mut rows, |(k, _)| (k.0, k.1.clone(), k.2.as_deref() != Some("all"), k.2.clone().unwrap_or_else(|| "None".to_string())));
     for ((act, boss, who), [won, n]) in rows {
         let who = who.as_deref().filter(|w| !w.is_empty()).unwrap_or("?");
         out!("act {} {:28} {:12} {}/{}", act, upto(boss, 28), who, won, n);
@@ -571,8 +571,8 @@ pub fn costs() -> Result<(), String> {
         }
     }
     let mut rows: Vec<(&(i64, String, String), &(i64, i64, Vec<f64>, Vec<i64>), f64)> =
-        table.iter().filter(|(_, v)| v.0 >= 4).map(|(k, v)| (k, v, py::fsum(v.2.iter().copied()) / v.2.len().max(1) as f64)).collect();
-    py::sort_by_key(&mut rows, |r| (r.0 .0, -r.2));
+        table.iter().filter(|(_, v)| v.0 >= 4).map(|(k, v)| (k, v, base::fsum(v.2.iter().copied()) / v.2.len().max(1) as f64)).collect();
+    base::sort_by_key(&mut rows, |r| (r.0 .0, -r.2));
     for ((act, kind, name), v, cost) in rows {
         out!("act {} {:7} {:56} fights {:3}  deaths {}  cost {:3.0}% of Max HP  rounds {:.1}", act, kind, name, v.0, v.1, 100.0 * cost, mean_i(v.3.iter().copied(), v.3.len()));
     }
@@ -634,14 +634,14 @@ pub fn show(start: &str, kinds: &[String]) -> Result<(), String> {
 pub fn deaths(since: &str) -> Result<(), String> {
     for f in load()?.0 {
         if f.died == Some(true) && f.t.as_str() >= since {
-            let settings = _knobs(&f).iter().map(|(k, v)| format!("{}={}", k, py::str_of(v))).collect::<Vec<_>>().join(" ");
+            let settings = _knobs(&f).iter().map(|(k, v)| format!("{}={}", k, base::str_of(v))).collect::<Vec<_>>().join(" ");
             let who = f.char.clone().unwrap_or_else(|| "None".to_string());
             let enemies = f.enemies.clone().unwrap_or_else(|| "None".to_string());
             out!(
                 "{} {:11} a{} act {} floor {:2} {:7} {:34} rounds {:2}  entered on {}/{}  {}",
                 slice(&f.t, 5, 16),
                 upto(&who, 11),
-                py::str_of(&f.asc),
+                base::str_of(&f.asc),
                 f.act,
                 f.floor,
                 f.kind,
@@ -780,7 +780,7 @@ pub fn reads() -> Result<(), String> {
     }
     let mut rows: Vec<(&String, usize, [f64; 4])> =
         table.iter().filter(|(_, v)| v.len() >= 5).map(|(n, v)| (n, v.len(), [0, 1, 2, 3].map(|i| mean_i(v.iter().map(|x| x[i]), v.len())))).collect();
-    py::sort_by_key(&mut rows, |r| -((r.2[0] - r.2[1]).abs() + (r.2[2] - r.2[3]).abs()));
+    base::sort_by_key(&mut rows, |r| -((r.2[0] - r.2[1]).abs() + (r.2[2] - r.2[3]).abs()));
     for (n, k, [rd, dd, rb, gb]) in rows.into_iter().take(50) {
         out!("{:24} n {:4}  damage read {:5.1} did {:5.1}   Block read {:5.1} got {:5.1}", n, k, rd, dd, rb, gb);
     }
@@ -849,7 +849,7 @@ pub fn rooms(name: &str, since: &str) -> Result<(), String> {
                 v.len(),
                 mean_i(v.iter().map(|x| x.0), v.len()),
                 mean_f(v.iter().map(|x| x.1), v.len()),
-                100.0 * py::fsum(v.iter().map(|x| x.2)) / v.len() as f64,
+                100.0 * base::fsum(v.iter().map(|x| x.2)) / v.len() as f64,
                 v.iter().filter(|x| x.3).count()
             );
         }
@@ -951,7 +951,7 @@ pub fn idle(since: &str) -> Result<(), String> {
     for r in &rows {
         tally.add(upto(&r.2, 40));
     }
-    out!("{}", Py::List(tally.most_common(Some(15)).into_iter().map(|(k, n)| Py::Tuple(vec![Py::Str(k), Py::Int(n)])).collect()).repr());
+    out!("{}", Datum::List(tally.most_common(Some(15)).into_iter().map(|(k, n)| Datum::Tuple(vec![Datum::Str(k), Datum::Int(n)])).collect()).repr());
     for (t, kind, _names, last, expected) in rows.iter().skip(rows.len().saturating_sub(25)) {
         out!(
             "{} {} energy {} expects to lose {} | hp {}{} | {} | {}",
@@ -1016,7 +1016,7 @@ pub fn pit(since: &str) -> Result<(), String> {
             fight = Vec::new();
         }
     }
-    out!("{}", Py::Dict(tally.0.iter().map(|(k, n)| (Py::str(k), Py::Int(*n))).collect()).repr());
+    out!("{}", Datum::Dict(tally.0.iter().map(|(k, n)| (Datum::str(k), Datum::Int(*n))).collect()).repr());
     Ok(())
 }
 
@@ -1090,11 +1090,11 @@ pub fn crabs(since: &str) -> Result<(), String> {
             path.iter().map(|[c, r]| format!("{c}/{r}")).collect::<Vec<_>>().join(" ")
         );
     }
-    out!("{}", Py::Dict(tally.into_iter().map(|((a, b), n)| (Py::Str(format!("{a} {b}")), Py::Int(n))).collect()).repr());
+    out!("{}", Datum::Dict(tally.into_iter().map(|((a, b), n)| (Datum::Str(format!("{a} {b}")), Datum::Int(n))).collect()).repr());
     Ok(())
 }
 
-/// The bot's own sources, each file's tests left out: what Python read from the sts2bot/ directory beside the script.
+/// The bot's own sources, each file's tests left out: what the original read from the sts2bot/ directory beside the script.
 pub fn bot_sources() -> Result<String, String> {
     fn walk(dir: &Path, top: bool, code: &mut String) -> Result<(), String> {
         let shown = dir.to_string_lossy().into_owned();
@@ -1152,9 +1152,9 @@ pub fn events() -> Result<(), String> {
         }
     }
     let mut rows: Vec<(String, (Counter, String))> = met.into_iter().collect();
-    py::sort_by_key(&mut rows, |(_, (taken, _))| -taken.0.values().sum::<i64>());
+    base::sort_by_key(&mut rows, |(_, (taken, _))| -taken.0.values().sum::<i64>());
     for (name, (taken, text)) in rows {
-        out!("{:28} {}\n      {}", name, Py::Dict(taken.0.iter().map(|(k, n)| (Py::str(k), Py::Int(*n))).collect()).repr(), upto(&text, 400));
+        out!("{:28} {}\n      {}", name, Datum::Dict(taken.0.iter().map(|(k, n)| (Datum::str(k), Datum::Int(*n))).collect()).repr(), upto(&text, 400));
     }
     Ok(())
 }
@@ -1174,10 +1174,10 @@ pub fn wiki_at(port: u16) -> Result<(), String> {
     for kind in ["card", "relic"] {
         for item in profile[format!("discovered_{kind}s")].list() {
             let key = if item.is_string() { item.clone() } else { item["id"].clone() };
-            let found = get(&format!("/wiki?q={}&type={}", py::url_quote(&py::str_of(&key)), kind))?;
+            let found = get(&format!("/wiki?q={}&type={}", base::url_quote(&base::str_of(&key)), kind))?;
             for hit in found["results"].list() {
                 if hit["id"] == key {
-                    found_all[format!("{kind}s").as_str()].insert(py::str_of(&key), hit.clone());
+                    found_all[format!("{kind}s").as_str()].insert(base::str_of(&key), hit.clone());
                 }
             }
             std::thread::sleep(std::time::Duration::from_millis(50)); // one request at a time: a pool of them stalls the game while the bot plays
@@ -1186,7 +1186,7 @@ pub fn wiki_at(port: u16) -> Result<(), String> {
     let path = log_path("wiki.json");
     let (cards, relics) = (found_all["cards"].len(), found_all["relics"].len());
     let data = Value::Object(found_all.into_iter().map(|(k, v)| (k.to_string(), Value::Object(v))).collect());
-    std::fs::write(&path, py::json_dumps(&data)).map_err(|e| io_error(&e, &path))?;
+    std::fs::write(&path, base::json_dumps(&data)).map_err(|e| io_error(&e, &path))?;
     out!("{} cards and {} relics in {}", cards, relics, path);
     Ok(())
 }
@@ -1203,7 +1203,7 @@ pub fn ancients() -> Result<(), String> {
     for (title, pool) in pools {
         out!("{title}");
         let mut names: Vec<&str> = ev::_ANCIENT.keys().copied().filter(|k| pool.map_or_else(|| !later(k), |p| p.contains(k))).collect();
-        py::sort_by_key(&mut names, |k| -(ev::_ANCIENT[*k] + relics::shift(k)));
+        base::sort_by_key(&mut names, |k| -(ev::_ANCIENT[*k] + relics::shift(k)));
         for k in names {
             let (n, gain) = rec.get(k).copied().unwrap_or((0, 0.0));
             let rated = ev::_ANCIENT[k];
@@ -1251,7 +1251,7 @@ pub fn bosspace(since: &str) -> Result<(), String> {
         for (f, p) in &sub {
             lists.entry(key(f)).or_default().push(*p);
         }
-        let usual: IndexMap<(String, Option<String>), f64> = lists.into_iter().map(|(k, v)| (k, py::fsum(v.iter().copied()) / v.len() as f64)).collect();
+        let usual: IndexMap<(String, Option<String>), f64> = lists.into_iter().map(|(k, v)| (k, base::fsum(v.iter().copied()) / v.len() as f64)).collect();
         let names: std::collections::BTreeSet<String> = sub.iter().flat_map(|(f, _)| _knobs(f).keys().cloned().collect::<Vec<_>>()).collect();
         for name in names {
             let mut arms: Vec<(Value, Vec<(f64, bool)>)> = Vec::new();
@@ -1267,8 +1267,8 @@ pub fn bosspace(since: &str) -> Result<(), String> {
             let mut cells: Vec<String> = Vec::new();
             for (value, v) in arms {
                 let mean = mean_f(v.iter().map(|(d, _)| *d), v.len());
-                let se = (py::fsum(v.iter().map(|(d, _)| (d - mean).powf(2.0))) / (v.len() as i64 - 1).max(1) as f64 / v.len() as f64).powf(0.5);
-                cells.push(format!("{}: {:+5.1} a round (se {:.1}), won {}/{}", py::str_of(&value), mean, se, v.iter().filter(|(_, w)| *w).count(), v.len()));
+                let se = (base::fsum(v.iter().map(|(d, _)| (d - mean).powf(2.0))) / (v.len() as i64 - 1).max(1) as f64 / v.len() as f64).powf(0.5);
+                cells.push(format!("{}: {:+5.1} a round (se {:.1}), won {}/{}", base::str_of(&value), mean, se, v.iter().filter(|(_, w)| *w).count(), v.len()));
             }
             out!("    {:14} {}", name, cells.join("   "));
         }
@@ -1330,7 +1330,7 @@ pub(crate) mod tests {
         with_state(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/golden/logs/state"))
     }
 
-    macro_rules! as_python {
+    macro_rules! as_recorded {
         ($($test:ident: $file:literal, $args:expr;)*) => {$(
             #[test]
             fn $test() {
@@ -1340,38 +1340,38 @@ pub(crate) mod tests {
         )*};
     }
 
-    as_python! {
-        bosses_as_python: "bosses", ["bosses"];
+    as_recorded! {
+        bosses_as_recorded: "bosses", ["bosses"];
         bosses_from_an_ascension: "bosses_2", ["bosses", "2"];
-        costs_as_python: "costs", ["costs"];
-        show_as_python: "show", ["show", "2026-11-21 13:4"];
+        costs_as_recorded: "costs", ["costs"];
+        show_as_recorded: "show", ["show", "2026-11-21 13:4"];
         show_other_kinds: "show_elite", ["show", "2026-11-22 12:0", "elite,monster"];
-        deaths_as_python: "deaths", ["deaths"];
+        deaths_as_recorded: "deaths", ["deaths"];
         deaths_since: "deaths_since", ["deaths", "2026-11-22"];
-        knobs_as_python: "knobs", ["knobs"];
+        knobs_as_recorded: "knobs", ["knobs"];
         knobs_since: "knobs_since", ["knobs", "2026-11-21T00:00"];
-        pace_as_python: "pace", ["pace"];
+        pace_as_recorded: "pace", ["pace"];
         pace_since: "pace_since", ["pace", "2026-11-22 12:00"];
-        reads_as_python: "reads", ["reads"];
-        unplayed_as_python: "unplayed", ["unplayed"];
+        reads_as_recorded: "reads", ["reads"];
+        unplayed_as_recorded: "unplayed", ["unplayed"];
         unplayed_in_ordinary_fights: "unplayed_monster", ["unplayed", "monster"];
-        rooms_as_python: "rooms", ["rooms", "caution"];
+        rooms_as_recorded: "rooms", ["rooms", "caution"];
         rooms_since: "rooms_since", ["rooms", "punch", "2026-11-21 13:55"];
-        surprises_as_python: "surprises", ["surprises"];
+        surprises_as_recorded: "surprises", ["surprises"];
         surprises_since: "surprises_since", ["surprises", "2026-11-22"];
-        idle_as_python: "idle", ["idle"];
+        idle_as_recorded: "idle", ["idle"];
         idle_since: "idle_since", ["idle", "2026-11-22"];
-        pit_as_python: "pit", ["pit"];
+        pit_as_recorded: "pit", ["pit"];
         pit_since: "pit_since", ["pit", "2026-11-21 13:55"];
-        artifact_as_python: "artifact", ["artifact"];
+        artifact_as_recorded: "artifact", ["artifact"];
         artifact_of_every_kind: "artifact_all", ["artifact", "2026-11-21 13:50", "boss,elite,monster"];
-        crabs_as_python: "crabs", ["crabs"];
+        crabs_as_recorded: "crabs", ["crabs"];
         crabs_since: "crabs_since", ["crabs", "2026-11-21 13:53"];
-        bosspace_as_python: "bosspace", ["bosspace"];
+        bosspace_as_recorded: "bosspace", ["bosspace"];
         bosspace_since: "bosspace_since", ["bosspace", "2026-11-22"];
-        powers_as_python: "powers", ["powers"];
-        events_as_python: "events", ["events"];
-        ancients_as_python: "ancients", ["ancients"];
+        powers_as_recorded: "powers", ["powers"];
+        events_as_recorded: "events", ["events"];
+        ancients_as_recorded: "ancients", ["ancients"];
     }
 
     #[test]
@@ -1382,7 +1382,7 @@ pub(crate) mod tests {
         }
     }
 
-    /// The made-up game the Python `wiki` golden was made against (mkgold.py's Handler): the profile, and a search that
+    /// The made-up game the original `wiki` golden was made against (a small stand-in server): the profile, and a search that
     /// answers with near misses beside the hit.
     fn serve(listener: std::net::TcpListener, profile: Value, cards: Value) {
         use std::io::{Read, Write};
@@ -1426,7 +1426,7 @@ pub(crate) mod tests {
                 } else if key == "LOST" {
                     Vec::new()
                 } else {
-                    vec![serde_json::json!({"id": format!("{key}_X"), "name": "near"}), serde_json::json!({"id": key, "name": py::title(&key), "description": "A relic \u{2014} \u{e9}."})]
+                    vec![serde_json::json!({"id": format!("{key}_X"), "name": "near"}), serde_json::json!({"id": key, "name": base::title(&key), "description": "A relic \u{2014} \u{e9}."})]
                 };
                 serde_json::json!({ "results": hits })
             };
@@ -1437,7 +1437,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn wiki_as_python() {
+    fn wiki_as_recorded() {
         let dir = tempfile::tempdir().unwrap();
         let _state = with_state(dir.path());
         let profile: Value = serde_json::from_str(include_str!("../../tests/golden/logs/wiki_profile.json")).unwrap();

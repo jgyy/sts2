@@ -10,7 +10,7 @@ use serde_json::{json, Map, Value};
 
 use super::{keys, text};
 use crate::cards::key_of;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 pub const CHARACTERS: [&str; 4] = ["IRONCLAD", "THE_SILENT", "DEFECT", "WATCHER"];
 pub const CHARACTER_NAMES: &[(&str, &str)] = &[("IRONCLAD", "The Ironclad"), ("THE_SILENT", "The Silent"), ("DEFECT", "The Defect"), ("WATCHER", "The Watcher")];
@@ -77,8 +77,8 @@ fn get<'a>(d: &'a Value, key: &str, default: &'a Value) -> &'a Value {
     }
 }
 
-/// `a == b` as Python compares what JSON holds (1 == 1.0 == True).
-fn py_eq(a: &Value, b: &Value) -> bool {
+/// `a == b` as the original compares what JSON holds (1 == 1.0 == True).
+fn base_eq(a: &Value, b: &Value) -> bool {
     let number = |v: &Value| match v {
         Value::Bool(x) => Some(*x as i64 as f64),
         Value::Number(n) => n.as_f64(),
@@ -93,7 +93,7 @@ fn py_eq(a: &Value, b: &Value) -> bool {
 
 /// `v == n` for a number n.
 fn is_number(v: &Value, n: i64) -> bool {
-    py_eq(v, &json!(n))
+    base_eq(v, &json!(n))
 }
 
 /// `int(v or default)`.
@@ -108,9 +108,9 @@ fn int_or(v: &Value, default: i64) -> i64 {
 /// A map square's place as a dict key: `(x, y)`.
 fn place(x: &Value, y: &Value) -> String {
     let one = |v: &Value| match v {
-        Value::Bool(b) => py::float_repr(*b as i64 as f64),
-        Value::Number(n) => py::float_repr(n.as_f64().unwrap_or(0.0)),
-        other => py::repr_of(other),
+        Value::Bool(b) => base::float_repr(*b as i64 as f64),
+        Value::Number(n) => base::float_repr(n.as_f64().unwrap_or(0.0)),
+        other => base::repr_of(other),
     };
     format!("{}, {}", one(x), one(y))
 }
@@ -163,17 +163,17 @@ impl Screens {
         }
     }
 
-    /// (A property in Python.)
+    /// (A property in the original.)
     pub fn commands(&self) -> Vec<String> {
-        self.raw["available_commands"].list().iter().map(py::str_of).collect()
+        self.raw["available_commands"].list().iter().map(base::str_of).collect()
     }
 
     /// `name in self.commands`.
     fn can(&self, name: &str) -> bool {
-        self.raw["available_commands"].list().iter().any(|c| py::str_of(c) == name)
+        self.raw["available_commands"].list().iter().any(|c| base::str_of(c) == name)
     }
 
-    /// (A property in Python: `raw.get("game_state") or {}`, null here when there is none.)
+    /// (A property in the original: `raw.get("game_state") or {}`, null here when there is none.)
     pub fn game(&self) -> &Value {
         &self.raw["game_state"]
     }
@@ -196,12 +196,12 @@ impl Screens {
     }
 
     /// `live`: a card in the hand, whose numbers the game has worked out for this moment of the fight.
-    /// (`index`: None in Python when left out; `live`: false.)
+    /// (`index`: None in the original when left out; `live`: false.)
     pub fn card(&self, c: &Value, index: Option<i64>, live: bool) -> Value {
         let upgraded = c["upgrades"].int() > 0;
         let cost = &c["cost"];
         let mut desc = text::card_text(&c["id"], &c["name"], upgraded);
-        let ctype = lookup(CARD_TYPE, &py::str_of(&c["type"])).map(str::to_string).unwrap_or_else(|| py::title(&c["type"].text()));
+        let ctype = lookup(CARD_TYPE, &base::str_of(&c["type"])).map(str::to_string).unwrap_or_else(|| base::title(&c["type"].text()));
         if live && !desc.is_empty() {
             desc = text::live_numbers(&desc, &ctype, c);
         }
@@ -221,14 +221,14 @@ impl Screens {
         } else if cost.is_number() || cost.is_boolean() {
             cost.int().max(0).to_string()
         } else if cost.truthy() {
-            py::str_of(cost)
+            base::str_of(cost)
         } else {
             "0".to_string()
         };
         let mut out = json!({"id": key_of(&c["id"].text()), "name": c["name"].text(), "type": ctype,
                "cost": cost_text, "star_cost": null, "description": desc,
                "target_type": target, "can_play": get(c, "is_playable", &Value::Bool(true)).truthy(), "is_upgraded": upgraded,
-               "rarity": lookup(RARITY, &py::str_of(&c["rarity"])).map(str::to_string).unwrap_or_else(|| py::title(&c["rarity"].text()))});
+               "rarity": lookup(RARITY, &base::str_of(&c["rarity"])).map(str::to_string).unwrap_or_else(|| base::title(&c["rarity"].text()))});
         if is_number(cost, -2) {
             out["unplayable_reason"] = json!("Unplayable");
         }
@@ -243,7 +243,7 @@ impl Screens {
         for p in creature["powers"].list() {
             let pid = crate::re!(r"_POWER$").replace(&key_of(&p["id"].or(&p["name"]).text()), "").to_string(); // ("Generic Strength Up Power")
             let amount = if pid == "LIFE_LINK" {
-                json!(py::floordiv(creature["max_hp"].int(), 2))
+                json!(base::floordiv(creature["max_hp"].int(), 2))
             } else {
                 lookup(AMOUNT, &pid).map(|n| json!(n)).unwrap_or_else(|| p["amount"].clone())
             };
@@ -255,7 +255,7 @@ impl Screens {
     pub fn potions(&self) -> Vec<Value> {
         let mut out = vec![];
         for (slot, p) in self.game()["potions"].list().iter().enumerate() {
-            if py::str_of(&p["id"]) == "Potion Slot" {
+            if base::str_of(&p["id"]) == "Potion Slot" {
                 continue;
             }
             let key = text::potion_key(&p["id"], &p["name"]);
@@ -270,7 +270,7 @@ impl Screens {
         let g = &raw["game_state"];
         let cls = g["class"].text();
         let mut p = json!({
-            "character": lookup(CHARACTER_NAMES, &cls).map(str::to_string).unwrap_or_else(|| py::title(&cls.replace('_', " "))),
+            "character": lookup(CHARACTER_NAMES, &cls).map(str::to_string).unwrap_or_else(|| base::title(&cls.replace('_', " "))),
             "hp": g["current_hp"], "max_hp": g["max_hp"], "gold": g["gold"], "block": 0, "status": [],
             "relics": g["relics"].list().iter().map(|r| json!({"id": key_of(&r["id"].text()), "name": r["name"], "counter": r["counter"],
                         "description": text::relic_text(&r["id"], &r["name"])})).collect::<Vec<_>>(),
@@ -283,9 +283,9 @@ impl Screens {
         let me = &cs["player"];
         let hand: Vec<Value> = cs["hand"].list().iter().enumerate().map(|(i, c)| self.card(c, Some(i as i64), true)).collect();
         let draw: Vec<Value> = cs["draw_pile"].list().iter().map(|c| self.card(c, None, false)).collect();
-        let orbs: Vec<&Value> = me["orbs"].list().iter().filter(|o| !matches!(py::str_of(&o["id"]).as_str(), "Empty" | "None")).collect();
+        let orbs: Vec<&Value> = me["orbs"].list().iter().filter(|o| !matches!(base::str_of(&o["id"]).as_str(), "Empty" | "None")).collect();
         let turn = (g["floor"].clone(), cs["turn"].clone());
-        if !matches!(&self._turn_seen, Some((floor, n)) if py_eq(floor, &turn.0) && py_eq(n, &turn.1)) {
+        if !matches!(&self._turn_seen, Some((floor, n)) if base_eq(floor, &turn.0) && base_eq(n, &turn.1)) {
             // the energy a turn starts with is the most it has
             self._turn_seen = Some(turn);
             if cs["turn"].int() == 1 {
@@ -316,7 +316,7 @@ impl Screens {
         p
     }
 
-    /// (`body`: the keyword arguments of Python's `_wrap`, in their order.)
+    /// (`body`: the keyword arguments of the original's `_wrap`, in their order.)
     pub fn _wrap(&mut self, kind: &str, body: Vec<(&str, Value)>) -> Value {
         let mut out = Map::new();
         out.insert("state_type".to_string(), json!(kind));
@@ -328,7 +328,7 @@ impl Screens {
         Value::Object(out)
     }
 
-    /// (`msg`: null for Python's None.)
+    /// (`msg`: null for the original's None.)
     pub fn translate(&mut self, msg: &Value) -> Value {
         self.raw = Rc::new(if msg.truthy() { msg.clone() } else { json!({}) });
         if !msg.truthy() {
@@ -341,7 +341,7 @@ impl Screens {
         self.character = None;
         let screen = self.game()["screen_type"].text();
         let screen = if screen.is_empty() { "NONE".to_string() } else { screen };
-        // (Python looks the handler up by name: `getattr(self, "_" + screen.lower(), None)`, which also finds `_run`.)
+        // (the original looks the handler up by name: `getattr(self, "_" + screen.lower(), None)`, which also finds `_run`.)
         match screen.to_lowercase().as_str() {
             "map" => self._map(),
             "combat_reward" => self._combat_reward(),
@@ -405,14 +405,14 @@ impl Screens {
         }
         let playing = self.can("play") || self.can("end");
         let battle = json!({"round": cs["turn"], "turn": if playing { "player" } else { "enemy" }, "is_play_phase": playing, "enemies": enemies});
-        self._wrap(lookup(ROOM_KIND, &py::str_of(&g["room_type"])).unwrap_or("monster"), vec![("battle", battle)])
+        self._wrap(lookup(ROOM_KIND, &base::str_of(&g["room_type"])).unwrap_or("monster"), vec![("battle", battle)])
     }
 
     pub fn intents(m: &Value) -> Vec<Value> {
         let intent = m["intent"].text();
         let intent = if intent.is_empty() { "UNKNOWN".to_string() } else { intent };
         let mut out = vec![];
-        let kind = |part: &str| lookup(INTENT_TYPE, part).map(str::to_string).unwrap_or_else(|| py::title(part));
+        let kind = |part: &str| lookup(INTENT_TYPE, part).map(str::to_string).unwrap_or_else(|| base::title(part));
         if intent.starts_with("ATTACK") {
             let (dmg, hits) = (&m["move_adjusted_damage"], int_or(&m["move_hits"], 1));
             if (dmg.is_number() || dmg.is_boolean()) && dmg.float() >= 0.0 {
@@ -447,7 +447,7 @@ impl Screens {
         let mut nodes: IndexMap<String, Value> = IndexMap::new();
         let mut top = 0;
         let emerald = keys::wants_emerald(g);
-        let symbol = |n: &Value| lookup(MAP_SYMBOL, &py::str_of(&n["symbol"])).unwrap_or("Unknown");
+        let symbol = |n: &Value| lookup(MAP_SYMBOL, &base::str_of(&n["symbol"])).unwrap_or("Unknown");
         for n in g["map"].list() {
             let (x, y) = (&n["x"], &n["y"]);
             top = top.max(y.int());
@@ -458,7 +458,7 @@ impl Screens {
             nodes.insert(place(x, y), json!({"col": x, "row": y.int() + 1, "type": kind, "children": n["children"].list().iter().map(|c| json!([c["x"], c["y"].int() + 1])).collect::<Vec<_>>()}));
         }
         let boss = json!([3, top + 2]);
-        let is_boss = |c: &Value| py_eq(&c[0], &boss[0]) && py_eq(&c[1], &boss[1]);
+        let is_boss = |c: &Value| base_eq(&c[0], &boss[0]) && base_eq(&c[1], &boss[1]);
         let places: HashSet<String> = nodes.keys().cloned().collect();
         for node in nodes.values_mut() {
             // the boss is not on the map: every road ends there
@@ -477,7 +477,7 @@ impl Screens {
             for (i, n) in ss["next_nodes"].list().iter().enumerate() {
                 let node = nodes.get(&place(&n["x"], &n["y"])).cloned().unwrap_or_else(|| json!({"type": symbol(n), "children": []}));
                 let unknown = json!({"type": "Unknown"});
-                let kids: Vec<&Value> = node["children"].list().iter().map(|c| listed.iter().find(|k| py_eq(&k["col"], &c[0]) && py_eq(&k["row"], &c[1])).unwrap_or(&unknown)).collect();
+                let kids: Vec<&Value> = node["children"].list().iter().map(|c| listed.iter().find(|k| base_eq(&k["col"], &c[0]) && base_eq(&k["row"], &c[1])).unwrap_or(&unknown)).collect();
                 options.push(json!({"index": i, "col": n["x"], "row": n["y"].int() + 1, "type": node["type"],
                                 "leads_to": kids.iter().map(|k| json!({"type": k["type"], "row": k["row"]})).collect::<Vec<_>>()}));
             }
@@ -577,7 +577,7 @@ impl Screens {
         let g = &raw["game_state"];
         let ss = &g["screen_state"];
         let mut opts: Vec<Value> =
-            ss["rest_options"].list().iter().enumerate().map(|(i, o)| json!({"index": i, "id": py::str_of(o).to_lowercase(), "name": py::title(&py::str_of(o)), "is_enabled": true})).collect();
+            ss["rest_options"].list().iter().enumerate().map(|(i, o)| json!({"index": i, "id": base::str_of(o).to_lowercase(), "name": base::title(&base::str_of(o)), "is_enabled": true})).collect();
         // Recall (the Ruby Key): alone when it has to be taken here, beside the rest while the key is missing (strategy::rest_site
         // takes it over an upgrade), and never by accident once the key is held or act 4 is shut.
         let recall: Vec<Value> = opts.iter().filter(|o| o["id"] == "recall").cloned().collect();
@@ -617,11 +617,11 @@ impl Screens {
         for c in ss["cards"].list() {
             let card = self.card(c, None, false);
             let fields = card.entries().map(|(k, v)| (format!("card_{k}"), v.clone())).collect();
-            add(&mut self.shop_names, "card", py::str_of(&c["name"]), &c["price"], fields);
+            add(&mut self.shop_names, "card", base::str_of(&c["name"]), &c["price"], fields);
         }
         for r in ss["relics"].list() {
             let fields = vec![("relic_id".to_string(), json!(key_of(&r["id"].text()))), ("relic_name".to_string(), r["name"].clone()), ("description".to_string(), json!(text::relic_text(&r["id"], &r["name"])))];
-            add(&mut self.shop_names, "relic", py::str_of(&r["name"]), &r["price"], fields);
+            add(&mut self.shop_names, "relic", base::str_of(&r["name"]), &r["price"], fields);
         }
         for p in ss["potions"].list() {
             let fields = vec![
@@ -629,7 +629,7 @@ impl Screens {
                 ("potion_name".to_string(), p["name"].clone()),
                 ("description".to_string(), json!(text::potion_text(&p["id"], &p["name"]))),
             ];
-            add(&mut self.shop_names, "potion", py::str_of(&p["name"]), &p["price"], fields);
+            add(&mut self.shop_names, "potion", base::str_of(&p["name"]), &p["price"], fields);
         }
         if ss["purge_available"].truthy() {
             add(&mut self.shop_names, "card_removal", "purge".to_string(), &ss["purge_cost"], vec![]);
@@ -648,7 +648,7 @@ impl Screens {
         let raw = self.held();
         let ss = &raw["game_state"]["screen_state"];
         let mut relics: Vec<Value> = ss["relics"].list().iter().enumerate().map(|(i, r)| json!({"index": i, "id": key_of(&r["id"].text()), "name": r["name"]})).collect();
-        py::sort_by_key(&mut relics, text::boss_relic_rank);
+        base::sort_by_key(&mut relics, text::boss_relic_rank);
         let can_skip = self.can("skip");
         self._wrap("relic_select", vec![("relic_select", json!({"relics": relics, "can_skip": can_skip}))])
     }
@@ -659,7 +659,7 @@ impl Screens {
         let ss = &g["screen_state"];
         let n = int_or(&ss["num_cards"], 1);
         let mut kind = [("for_upgrade", "upgrade"), ("for_transform", "transform"), ("for_purge", "remove")].iter().find(|(flag, _)| ss[*flag].truthy()).map(|(_, k)| *k).unwrap_or("");
-        let verb = py::title(kind);
+        let verb = base::title(kind);
         if kind.is_empty() && g["room_phase"].as_str() == Some("COMBAT") && n == 1 && !ss["any_number"].truthy() {
             kind = "choose"; // (Seek, Headbutt, Exhume: one click picks and closes)
         }
@@ -703,7 +703,7 @@ impl Screens {
         let ss = &g["screen_state"];
         if ss["victory"].truthy() {
             let seen = (g["seed"].clone(), g["floor"].clone());
-            if !matches!(&self._won_seen, Some((seed, floor)) if py_eq(seed, &seen.0) && py_eq(floor, &seen.1)) {
+            if !matches!(&self._won_seen, Some((seed, floor)) if base_eq(seed, &seen.0) && base_eq(floor, &seen.1)) {
                 self._won_seen = Some(seen);
                 self.wins += 1;
             }
@@ -719,9 +719,9 @@ impl Screens {
 
 #[cfg(test)]
 mod tests {
-    //! Replays tests/golden/screens.json: every call the Python tests made on each Screens object, in order, on a fresh
+    //! Replays tests/golden/screens.json: every call the original tests made on each Screens object, in order, on a fresh
     //! one (the client's menu clicks set as they were before each call), two made-up runs through the screens the tests
-    //! never show, and every first-game card as the game names it (written by CPython 3.13 from screens.py).
+    //! never show, and every first-game card as the game names it (recorded from screens.rs).
     use super::*;
 
     fn golden() -> Value {
@@ -820,7 +820,7 @@ mod tests {
     }
 
     #[test]
-    fn the_tables_are_python_s() {
+    fn the_tables_are_the_recorded() {
         let g = golden();
         let t = &g["tables"];
         let pairs = |table: &[(&str, &str)]| json!(table.iter().map(|(k, v)| json!([k, v])).collect::<Vec<_>>());

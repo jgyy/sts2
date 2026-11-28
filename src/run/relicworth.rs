@@ -10,7 +10,7 @@ use indexmap::IndexMap;
 use serde_json::Value;
 
 use crate::cards::parse as _parse;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 /// relic id -> worth next to an ordinary shop relic (0). Anything not listed is taken as ordinary.
 pub static WORTH: LazyLock<IndexMap<&'static str, f64>> = LazyLock::new(|| {
@@ -56,7 +56,7 @@ pub static LONG_RUN: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
 });
 pub const LATER: [(i64, f64); 3] = [(1, 0.0), (2, 0.3), (3, 0.8)]; // act -> taken off those
 
-/// (Python skips a card its test cannot read, one that is no dict: such a card passes no test here either.)
+/// (the original skips a card its test cannot read, one that is no dict: such a card passes no test here either.)
 pub fn _count(deck: &[Value], test: fn(&Value) -> bool) -> i64 {
     let mut n = 0;
     for c in deck {
@@ -109,11 +109,11 @@ pub static TURN_ENERGY: LazyLock<IndexMap<&'static str, f64>> = LazyLock::new(||
 
 /// Energy a turn beyond the 3 every character starts with: as the last fight began (`energy`), or from relics held
 /// whose energy comes later in a fight (Pael's Flesh), and half of each energy-a-turn Power in the deck.
-/// (`held`, `deck`: empty for Python's None.)
+/// (`held`, `deck`: empty for the original's None.)
 pub fn spare_energy(energy: i64, held: &[Value], deck: &[Value]) -> f64 {
     use super::decks::turn_energy; // (decks reads cards and crowd only, but keep the import where it is needed)
-    let relics_held = py::fsum(held.iter().filter(|r| r.is_object()).map(|r| TURN_ENERGY.get(r["id"].text().as_str()).copied().unwrap_or(0.0)));
-    let powers = 0.5 * py::fsum(deck.iter().filter(|c| c.is_object()).map(turn_energy));
+    let relics_held = base::fsum(held.iter().filter(|r| r.is_object()).map(|r| TURN_ENERGY.get(r["id"].text().as_str()).copied().unwrap_or(0.0)));
+    let powers = 0.5 * base::fsum(deck.iter().filter(|c| c.is_object()).map(turn_energy));
     let spare = energy as f64 - 3.0;
     (if relics_held > spare { relics_held } else { spare }) + powers
 }
@@ -131,7 +131,7 @@ pub fn energy_lean(relic_id: &str, energy: Option<i64>, held: &[Value], deck: &[
 }
 
 /// What this relic is worth next to an ordinary shop relic, for this deck, act and HP.
-/// (`deck`: empty for Python's None; `act`: None for anything that is not an int; `hp`, `max_hp`: 0 when left out.)
+/// (`deck`: empty for the original's None; `act`: None for anything that is not an int; `hp`, `max_hp`: 0 when left out.)
 pub fn worth(relic_id: &str, deck: &[Value], act: Option<i64>, hp: i64, max_hp: i64) -> f64 {
     let rid = relic_id;
     let mut w = if let Some((base, each, top, test)) = _DECK.get(rid) {
@@ -162,8 +162,8 @@ pub fn worth(relic_id: &str, deck: &[Value], act: Option<i64>, hp: i64, max_hp: 
 
 #[cfg(test)]
 mod tests {
-    //! Replays tests/golden/relicworth.json: calls recorded from the Python tests and model runs, every relic of the tables
-    //! in each act, and the tables themselves (written by CPython 3.13 from relicworth.py).
+    //! Replays tests/golden/relicworth.json: calls recorded from the original tests and model runs, every relic of the tables
+    //! in each act, and the tables themselves (recorded from relicworth.rs).
     use super::*;
     use crate::games;
     use serde_json::json;
@@ -203,7 +203,7 @@ mod tests {
                     "worth" => json!(worth(a[0].as_str().unwrap(), a[1].list(), a[2].as_i64(), a[3].as_i64().unwrap(), a[4].as_i64().unwrap())),
                     other => panic!("no replay for {other}"),
                 };
-                assert!(same(&got, &row[3]), "{name} case {n}: {} gives {got}, Python {}", py::json_dumps(&a), row[3]);
+                assert!(same(&got, &row[3]), "{name} case {n}: {} gives {got}, the original {}", base::json_dumps(&a), row[3]);
                 checked += 1;
             }
         }

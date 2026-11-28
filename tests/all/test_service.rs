@@ -55,7 +55,7 @@ fn test_unknown_action_is_refused() {
         ran = true;
         Ok(0)
     };
-    // (Python's argparse left with SystemExit(2); here that is the code returned, and nothing was run)
+    // (the original's argparse left with SystemExit(2); here that is the code returned, and nothing was run)
     let (code, printed) = service::capture_print(|| service::main(&args(&["restart"]), Some(&mut runner)));
     assert_eq!(code, 2);
     assert!(!ran);

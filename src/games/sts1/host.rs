@@ -11,7 +11,7 @@ use super::screens::CHARACTERS;
 use super::{relay, speedmod};
 use crate::bot::BotError;
 use crate::logging::Logger;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 use crate::supervisor::{self, os_error, Host, KeyboardInterrupt, SpawnArgs, Supervisor};
 use crate::{log_info, log_warning};
 
@@ -23,13 +23,13 @@ pub const MTS_WORKSHOP_ID: i64 = 1605060445; // ModTheSpire on the Steam Worksho
 pub const MODS: &str = "basemod,CommunicationMod";
 pub const PROCESS_MARKS: [&str; 2] = ["ModTheSpire", "desktop-1.0.jar"]; // what the game's java process has on its command line
 
-/// This program, which is the relay too (Python's `sys.executable`, there followed by the path of relay.py).
+/// This program, which is the relay too (the original's `sys.executable`, there followed by the path of relay.rs).
 pub fn executable() -> String {
     std::env::current_exe().map(|p| p.to_string_lossy().into_owned()).unwrap_or_else(|_| "sts2bot".to_string())
 }
 
 /// What a command line that starts the relay has in it: this program's name and its `relay` subcommand
-/// (Python's `RELAY.name`, "relay.py": `RELAY` was the path of that file).
+/// (the original's `RELAY.name`, "relay.rs": `RELAY` was the path of that file).
 pub fn RELAY() -> String {
     let exe = executable();
     format!("{} relay", Path::new(&exe).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or(exe.clone()))
@@ -96,7 +96,7 @@ pub fn _json(path: &Path) -> Option<Map<String, Value>> {
     }
 }
 
-/// `int(x)` of what a save file holds (Err: Python's TypeError or ValueError).
+/// `int(x)` of what a save file holds (Err: the original's TypeError or ValueError).
 fn int(x: &Value) -> Result<i64, ()> {
     match x {
         Value::Bool(b) => Ok(*b as i64),
@@ -149,7 +149,7 @@ pub fn read_prefs(folder: Option<&Path>) -> Value {
         };
         total += wins;
         max_ascension.insert(who.to_string(), json!(if wins > 0 || level > 1 { level.min(20) } else { 0 }));
-        let won = flags.get(&format!("{who}_WIN")).map(py::str_of).unwrap_or_default();
+        let won = flags.get(&format!("{who}_WIN")).map(base::str_of).unwrap_or_default();
         if ACT4.contains(&who) && won.to_lowercase() != "true" {
             // Act 4 opens on the three CLASS_WIN flags, which only a win the bot's mod saw sets: until then the character
             // counts as unclimbed, so the rotation plays it (2026-11-25: the Defect's one win predates the mod; DEFECT_WIN
@@ -186,11 +186,11 @@ fn write_text(path: &Path, text: String) -> Result<(), Failed> {
 }
 
 fn dumps(data: &Map<String, Value>) -> String {
-    py::json_dumps_pretty(&Value::Object(data.clone()), 2, false)
+    base::json_dumps_pretty(&Value::Object(data.clone()), 2, false)
 }
 
 /// Set the display, Fast Mode, the sound, and on a new profile the first-run tips as seen. Returns what was changed.
-/// (Python's defaults: `fullscreen=True, folder=None, game=None`: the game's own folders.)
+/// (the original's defaults: `fullscreen=True, folder=None, game=None`: the game's own folders.)
 pub fn prepare_game(fullscreen: bool, folder: Option<&Path>, game: Option<&Path>) -> Vec<String> {
     let game = game.filter(|p| !p.as_os_str().is_empty()).map(|p| p.to_path_buf()).unwrap_or_else(game_dir);
     let folder = folder.filter(|p| !p.as_os_str().is_empty()).map(|p| p.to_path_buf()).unwrap_or_else(prefs_dir);
@@ -243,7 +243,7 @@ pub fn prepare_game(fullscreen: bool, folder: Option<&Path>, game: Option<&Path>
         }
         let slots_file = folder.join("STSSaveSlots");
         let slots = _json(&slots_file).unwrap_or_default();
-        let slot = slots.get("DEFAULT_SLOT").map(py::str_of).unwrap_or("-1".to_string());
+        let slot = slots.get("DEFAULT_SLOT").map(base::str_of).unwrap_or("-1".to_string());
         let name = slots.get("PROFILE_NAME").cloned().unwrap_or(Value::Null);
         if (slot == "-1" || slot == "0") && !name.truthy() {
             let mut made = slots.clone();
@@ -252,7 +252,7 @@ pub fn prepare_game(fullscreen: bool, folder: Option<&Path>, game: Option<&Path>
             made.insert("COMPLETION".to_string(), slots.get("COMPLETION").cloned().unwrap_or(text("0.0")));
             made.insert("PLAYTIME".to_string(), slots.get("PLAYTIME").cloned().unwrap_or(text("0")));
             write_text(&slots_file, dumps(&made))?;
-            changed.push(format!("profile {} in the first save slot", py::str_repr(PROFILE_NAME)));
+            changed.push(format!("profile {} in the first save slot", base::str_repr(PROFILE_NAME)));
         } else if name.as_str().is_some_and(|n| OLD_PROFILE_NAMES.contains(&n)) {
             for f in [slots_file.clone(), folder.join("STSSaveSlots.backUp")] {
                 // (the game falls back on its backup copy)
@@ -261,7 +261,7 @@ pub fn prepare_game(fullscreen: bool, folder: Option<&Path>, game: Option<&Path>
                     write_text(&f, dumps(&kept))?;
                 }
             }
-            changed.push(format!("profile renamed {} -> {}", py::repr_of(&name), py::str_repr(PROFILE_NAME)));
+            changed.push(format!("profile renamed {} -> {}", base::repr_of(&name), base::str_repr(PROFILE_NAME)));
         }
         Ok(())
     };
@@ -277,7 +277,7 @@ pub fn comm_config_path() -> PathBuf {
 }
 
 /// Have CommunicationMod start the relay with the game (it reads this file at start-up).
-/// (`path`: None is `comm_config_path()`. Err: Python's OSError.)
+/// (`path`: None is `comm_config_path()`. Err: the original's OSError.)
 pub fn write_comm_config(port: i64, path: Option<&Path>) -> std::io::Result<PathBuf> {
     let path = path.filter(|p| !p.as_os_str().is_empty()).map(|p| p.to_path_buf()).unwrap_or_else(comm_config_path);
     if let Some(parent) = path.parent() {
@@ -322,15 +322,15 @@ pub fn _game_processes() -> Vec<String> {
     let mut pids = Vec::new();
     for line in supervisor::splitlines(&out) {
         // (line.split(None, 2): the pid, the state, and the command line as it is)
-        let line = line.trim_start_matches(py_space);
-        let Some((pid, rest)) = line.split_once(py_space) else {
+        let line = line.trim_start_matches(base_space);
+        let Some((pid, rest)) = line.split_once(base_space) else {
             continue;
         };
-        let rest = rest.trim_start_matches(py_space);
-        let Some((stat, args)) = rest.split_once(py_space) else {
+        let rest = rest.trim_start_matches(base_space);
+        let Some((stat, args)) = rest.split_once(base_space) else {
             continue;
         };
-        let args = args.trim_start_matches(py_space);
+        let args = args.trim_start_matches(base_space);
         if args.is_empty() {
             continue;
         }
@@ -341,7 +341,7 @@ pub fn _game_processes() -> Vec<String> {
     pids
 }
 
-fn py_space(c: char) -> bool {
+fn base_space(c: char) -> bool {
     c.is_whitespace() || ('\x1c'..='\x1f').contains(&c)
 }
 
@@ -372,7 +372,7 @@ impl Sts1Host {
         !_game_processes().is_empty()
     }
 
-    /// (A launch command that cannot be read, or a program that cannot be started, ends the program here as the Python's
+    /// (A launch command that cannot be read, or a program that cannot be started, ends the program here as the original's
     /// uncaught ValueError or OSError did.)
     pub fn launch(&self, cmd: &str) {
         let changed = prepare_game(self.fullscreen, None, None);
@@ -386,9 +386,9 @@ impl Sts1Host {
             // Our own mod: the faster game clock (Fast Mode alone left a run at 12-15 minutes), the unlocks and more state.
             cmd = cmd.replace(&format!("--mods {MODS}"), &format!("--mods {MODS},{}", speedmod::MOD_ID));
             let mut with = supervisor::environ();
-            with.insert(speedmod::ENV.to_string(), py::float_g(scale));
+            with.insert(speedmod::ENV.to_string(), base::float_g(scale));
             env = Some(with);
-            log_info!(log, "game clock: x{}", py::float_g(scale));
+            log_info!(log, "game clock: x{}", base::float_g(scale));
         }
         log_info!(log, "launching game: {}", cmd);
         let cwd = Some(game_dir()).filter(|d| d.is_dir());
@@ -412,7 +412,7 @@ impl Sts1Host {
         supervisor::_spawn(&argv, SpawnArgs { cwd, env, out }).unwrap_or_else(|e| panic!("{}", os_error(&e, argv.first().map(|a| a.as_str()).unwrap_or(""))));
     }
 
-    /// (Python's default: `grace=10.0`.)
+    /// (the original's default: `grace=10.0`.)
     pub fn kill(&self, grace: f64) -> Result<(), KeyboardInterrupt> {
         for sig in ["-TERM", "-KILL"] {
             for pid in _game_processes() {
@@ -503,7 +503,7 @@ impl Host for Sts1Host {
 
 #[cfg(test)]
 mod tests {
-    //! Against Python: tests/golden/supervisor/host.json holds what games/sts1/host.py made of made-up save folders,
+    //! Against the original: tests/golden/supervisor/host.json holds what games/sts1/host.rs made of made-up save folders,
     //! game folders, CommunicationMod configs and process lists, the machine faked on both sides.
 
     use super::*;
@@ -551,7 +551,7 @@ mod tests {
     }
 
     #[test]
-    fn the_save_files_are_read_as_python_read_them() {
+    fn the_save_files_are_read_as_the_record_read_them() {
         let cases = golden("read_prefs");
         assert!(cases.len() >= 26);
         for case in cases {
@@ -568,7 +568,7 @@ mod tests {
     }
 
     #[test]
-    fn the_game_is_prepared_as_python_prepared_it() {
+    fn the_game_is_prepared_as_the_record_prepared_it() {
         let cases = golden("prepare_game");
         assert!(cases.len() >= 150);
         for case in cases {
@@ -591,7 +591,7 @@ mod tests {
     }
 
     #[test]
-    fn communicationmods_config_is_read_and_written_as_in_python() {
+    fn communicationmods_config_is_read_and_written_as_recorded() {
         let cases = golden("comm_config");
         assert!(cases.len() >= 21);
         for case in cases {
@@ -630,7 +630,7 @@ mod tests {
     }
 
     #[test]
-    fn the_first_game_is_found_as_in_python() {
+    fn the_first_game_is_found_as_recorded() {
         use std::os::unix::fs::PermissionsExt;
         let cases = golden("where");
         assert!(cases.len() >= 11);
@@ -665,7 +665,7 @@ mod tests {
     }
 
     #[test]
-    fn the_games_processes_are_found_as_in_python() {
+    fn the_games_processes_are_found_as_recorded() {
         let cases = golden("game_processes");
         assert!(cases.len() >= 7);
         for case in cases {
@@ -676,7 +676,7 @@ mod tests {
     }
 
     #[test]
-    fn the_first_game_is_launched_as_in_python() {
+    fn the_first_game_is_launched_as_recorded() {
         use std::io::Write;
         let cases = golden("launch");
         assert!(cases.len() >= 8);
@@ -740,7 +740,7 @@ mod tests {
     }
 
     #[test]
-    fn the_first_game_is_killed_as_in_python() {
+    fn the_first_game_is_killed_as_recorded() {
         /// The first game's processes: gone `dies` seconds after the signal `on` ("-TERM", "-KILL"; none: never).
         #[derive(Default)]
         struct Game {

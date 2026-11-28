@@ -4391,13 +4391,13 @@
 ]
 },
 {
-"text": "command=python3 /x/slaythespire/main.py --ascension 0\n",
-"command": "python3 /x/slaythespire/main.py --ascension 0",
+"text": "command=otherbot /x/slaythespire/main --ascension 0\n",
+"command": "otherbot /x/slaythespire/main --ascension 0",
 "problems": [
-"CommunicationMod starts another program with the game: python3 /x/slaythespire/main.py --ascension 0",
-"CommunicationMod starts another program with the game: python3 /x/slaythespire/main.py --ascension 0",
-"CommunicationMod starts another program with the game: python3 /x/slaythespire/main.py --ascension 0",
-"CommunicationMod starts another program with the game: python3 /x/slaythespire/main.py --ascension 0"
+"CommunicationMod starts another program with the game: otherbot /x/slaythespire/main --ascension 0",
+"CommunicationMod starts another program with the game: otherbot /x/slaythespire/main --ascension 0",
+"CommunicationMod starts another program with the game: otherbot /x/slaythespire/main --ascension 0",
+"CommunicationMod starts another program with the game: otherbot /x/slaythespire/main --ascension 0"
 ]
 },
 {
@@ -4774,7 +4774,7 @@ null,
 "running": true
 },
 {
-"stdout": "7 Sl {RELAY} --port 15527 ModTheSpire\n8 Sl python3 x ModTheSpire\n",
+"stdout": "7 Sl {RELAY} --port 15527 ModTheSpire\n8 Sl otherbot x ModTheSpire\n",
 "want": [
 "8"
 ],

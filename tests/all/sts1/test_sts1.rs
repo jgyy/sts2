@@ -12,7 +12,7 @@ use sts2bot::games;
 use sts2bot::games::sts1::client::{Prefs, Sts1Client};
 use sts2bot::games::sts1::screens::Screens;
 use sts2bot::games::sts1::{host, speedmod, text, tiers};
-use sts2bot::py::JsonExt;
+use sts2bot::base::JsonExt;
 use sts2bot::run::{crowd, potions, strategy};
 use sts2bot::supervisor;
 

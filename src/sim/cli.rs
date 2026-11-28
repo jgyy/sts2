@@ -11,9 +11,9 @@
 //!     sim run --game sts1 --vary --only caution,belt_spare --grid caution=1,1.35       # ... caution from these two values only
 //! ```
 //!
-//! How this differs from the Python: the worker processes of `sim run` (`multiprocessing.Pool`) are threads, each
+//! How this differs from the original: the worker processes of `sim run` (`multiprocessing.Pool`) are threads, each
 //! with its own game, settings and card table; a setting's value is kept as the JSON number it was given as
-//! (`--settings` and `model_table` may be whole numbers, and a run's line prints them as Python does).
+//! (`--settings` and `model_table` may be whole numbers, and a run's line prints them as the original does).
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -31,7 +31,7 @@ use crate::cards::key_of;
 use crate::games;
 use crate::learn;
 use crate::logging;
-use crate::py::{self, JsonExt, Random};
+use crate::base::{self, JsonExt, Random};
 use crate::sim::content::{self, Content};
 use crate::sim::report;
 use crate::sim::run::Run;
@@ -61,7 +61,7 @@ pub fn GRID_DEFAULT() -> IndexMap<String, Vec<Value>> {
 pub type Tables = IndexMap<i64, Arc<Value>>;
 
 thread_local! {
-    // (Python's module-level GRID and TABLES, which `sim run` changes: per thread here)
+    // (the original's module-level GRID and TABLES, which `sim run` changes: per thread here)
     static GRID_NOW: RefCell<IndexMap<String, Vec<Value>>> = RefCell::new(GRID_DEFAULT());
     static TABLES_NOW: RefCell<Tables> = RefCell::new(IndexMap::new());
     static PANIC: RefCell<Option<(String, String)>> = const { RefCell::new(None) };
@@ -101,12 +101,12 @@ pub fn floats(knobs: &Map<String, Value>) -> IndexMap<String, f64> {
     knobs.iter().map(|(k, v)| (k.clone(), v.float())).collect()
 }
 
-/// `_job(args)`: the run's result, or what went wrong in it (`tables`: Python's TABLES, which its workers inherit).
+/// `_job(args)`: the run's result, or what went wrong in it (`tables`: the original's TABLES, which its workers inherit).
 pub fn _job(args: &Job, tables: &Tables) -> Value {
     let (game, character, seed, knobs, asc) = args;
     logging::disable(Some(logging::Level::Critical));
     if !tables.is_empty() {
-        let n = knobs.get("model_table").map_or(0, |v| py::trunc(v.float()));
+        let n = knobs.get("model_table").map_or(0, |v| base::trunc(v.float()));
         learn::set_model_shared(Some(tables.get(&n).unwrap_or_else(|| panic!("KeyError: {n}")).clone()));
     }
     let played = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Run::new(&content(game), character, *seed, Some(&floats(knobs)), *asc).play()));
@@ -162,9 +162,9 @@ pub fn fixed(a: &Args, character: &str) -> Result<Map<String, Value>, String> {
 fn float(text: &str) -> Result<f64, String> {
     let t = text.trim();
     if t.is_empty() || t.contains('_') {
-        return Err(format!("ValueError: could not convert string to float: {}", py::str_repr(text)));
+        return Err(format!("ValueError: could not convert string to float: {}", base::str_repr(text)));
     }
-    t.parse().map_err(|_| format!("ValueError: could not convert string to float: {}", py::str_repr(text)))
+    t.parse().map_err(|_| format!("ValueError: could not convert string to float: {}", base::str_repr(text)))
 }
 
 fn read_json(path: &str) -> Result<Value, String> {
@@ -245,7 +245,7 @@ pub fn cmd_run(a: &Args) -> Result<i32, String> {
         for r in receive {
             done += 1;
             errors += r.has("error") as i64;
-            if let Err(e) = out.write_all((py::json_dumps(&r) + "\n").as_bytes()).and_then(|_| out.flush()) {
+            if let Err(e) = out.write_all((base::json_dumps(&r) + "\n").as_bytes()).and_then(|_| out.flush()) {
                 next.store(jobs.len(), Ordering::SeqCst);
                 return Some(format!("{e}"));
             }
@@ -272,7 +272,7 @@ pub fn cmd_trace(a: &Args) -> Result<i32, String> {
             for n in 0..a.runs {
                 let mut r = Run::new(&g, ch, a.seed + n, Some(&IndexMap::new()), a.ascension);
                 let result = r.play();
-                h.update((r.digest.join("|") + &py::json_dumps(&result["deck"])).as_bytes());
+                h.update((r.digest.join("|") + &base::json_dumps(&result["deck"])).as_bytes());
             }
             let hex: String = h.finalize().iter().map(|b| format!("{b:02x}")).collect();
             println!("{game} {ch:12} {}", &hex[..16]);
@@ -322,7 +322,7 @@ pub fn cmd_prior(a: &Args) -> Result<i32, String> {
         let mut gained: IndexMap<String, Vec<f64>> = IndexMap::new();
         for r in runs {
             for pick in r["picks"].list() {
-                let (floor, key) = (pick[0].float(), py::str_of(&pick[1]));
+                let (floor, key) = (pick[0].float(), base::str_of(&pick[1]));
                 let at = (floor + 0.0).to_bits();
                 let par = *usual.entry(at).or_insert_with(|| {
                     let alive: Vec<i64> = runs.iter().filter(|x| x["floor"].float() > floor || x["won"].truthy()).map(report::score).collect();
@@ -332,7 +332,7 @@ pub fn cmd_prior(a: &Args) -> Result<i32, String> {
             }
         }
         let picks: usize = gained.values().map(|g| g.len()).sum();
-        let par = py::fsum(gained.values().map(|g| py::fsum(g.iter().copied()))) / picks.max(1) as f64;
+        let par = base::fsum(gained.values().map(|g| base::fsum(g.iter().copied()))) / picks.max(1) as f64;
         let who = learn::who_key(&g.CHARACTERS.get(ch).unwrap_or_else(|| panic!("KeyError: {ch}")).title);
         // On top of a base table (--onto), what the runs that leaned on it still say: a card whose picks still gained moves up.
         let mut table: IndexMap<String, Value> = match base.as_ref().map(|b| &b[game.as_str()][who.as_str()]) {
@@ -341,11 +341,11 @@ pub fn cmd_prior(a: &Args) -> Result<i32, String> {
         };
         for (key, gains) in &gained {
             let name = key_of(g.CARDS.get(key).map_or(key.as_str(), |d| d.name.as_str()));
-            let said = table.get(&name).map_or(0.0, |v| v.float()) + (py::fsum(gains.iter().copied()) - par * gains.len() as f64) / (gains.len() as f64 + a.prior);
+            let said = table.get(&name).map_or(0.0, |v| v.float()) + (base::fsum(gains.iter().copied()) - par * gains.len() as f64) / (gains.len() as f64 + a.prior);
             // (`max(-most, min(most, said))`)
             let capped = if said < a.most { said } else { a.most };
             let shift = if capped > -a.most { capped } else { -a.most };
-            table.insert(name, json!(py::round_to(shift, 2)));
+            table.insert(name, json!(base::round_to(shift, 2)));
         }
         let mut kept: Vec<(&String, &Value)> = table.iter().filter(|(_, v)| v.float().abs() >= 0.05).collect();
         kept.sort_by(|x, y| x.0.cmp(y.0));
@@ -359,7 +359,7 @@ pub fn cmd_prior(a: &Args) -> Result<i32, String> {
         }
         eprintln!("{game} {ch}: {} runs, {picks} picks, {} cards", runs.len(), table.len());
     }
-    let text = py::json_dumps_pretty(&Value::Object(out), 1, true) + "\n";
+    let text = base::json_dumps_pretty(&Value::Object(out), 1, true) + "\n";
     match &a.out {
         Some(path) => std::fs::write(path, text).map_err(|e| format!("{path}: {e}"))?,
         None => {
@@ -381,7 +381,7 @@ pub fn cmd_report(a: &Args) -> Result<i32, String> {
 
 // ---------------------------------------------------------------- the arguments
 
-/// What the command line says (Python's argparse namespace: every command's arguments, each at its default).
+/// What the command line says (the original's argparse namespace: every command's arguments, each at its default).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Args {
     pub cmd: String,
@@ -565,7 +565,7 @@ pub fn parse_args(argv: &[String]) -> Result<Args, i32> {
         return wrong(USAGE, "sim", "the following arguments are required: cmd".to_string());
     };
     if !COMMANDS.contains(&cmd.as_str()) {
-        return wrong(USAGE, "sim", format!("argument cmd: invalid choice: {} (choose from 'run', 'trace', 'report', 'prior')", py::str_repr(cmd)));
+        return wrong(USAGE, "sim", format!("argument cmd: invalid choice: {} (choose from 'run', 'trace', 'report', 'prior')", base::str_repr(cmd)));
     }
     let prog = format!("sim {cmd}");
     let (usage, rest) = help_of(cmd);
@@ -573,7 +573,7 @@ pub fn parse_args(argv: &[String]) -> Result<Args, i32> {
     let takes_files = matches!(cmd.as_str(), "report" | "prior");
     let mut a = Args::new(cmd);
     let negative = |s: &str| s.len() > 1 && s.starts_with('-') && s[1..].chars().all(|c| c.is_ascii_digit() || c == '.');
-    let int = |name: &str, text: &str| -> Result<i64, String> { text.trim().parse::<i64>().map_err(|_| format!("argument {name}: invalid int value: {}", py::str_repr(text))) };
+    let int = |name: &str, text: &str| -> Result<i64, String> { text.trim().parse::<i64>().map_err(|_| format!("argument {name}: invalid int value: {}", base::str_repr(text))) };
     let mut i = at + 1;
     let mut only_files = false;
     while i < argv.len() {
@@ -619,7 +619,7 @@ pub fn parse_args(argv: &[String]) -> Result<Args, i32> {
         }
         if !takes_value {
             if inline.is_some() {
-                return wrong(usage, &prog, format!("argument {name}: ignored explicit argument {}", py::str_repr(&inline.take().unwrap_or_default())));
+                return wrong(usage, &prog, format!("argument {name}: ignored explicit argument {}", base::str_repr(&inline.take().unwrap_or_default())));
             }
             a.vary = true;
             continue;
@@ -638,7 +638,7 @@ pub fn parse_args(argv: &[String]) -> Result<Args, i32> {
             match name {
                 "--game" if cmd == "run" => {
                     if !games::GAMES.contains(&value.as_str()) {
-                        return Err(format!("argument --game: invalid choice: {} (choose from {})", py::str_repr(&value), games::GAMES.iter().map(|g| py::str_repr(g)).collect::<Vec<_>>().join(", ")));
+                        return Err(format!("argument --game: invalid choice: {} (choose from {})", base::str_repr(&value), games::GAMES.iter().map(|g| base::str_repr(g)).collect::<Vec<_>>().join(", ")));
                     }
                     a.game = value;
                 }
@@ -657,7 +657,7 @@ pub fn parse_args(argv: &[String]) -> Result<Args, i32> {
                 "--md" => a.md = Some(value),
                 "--min-runs" => a.min_runs = int(name, &value)?,
                 "--prior" | "--most" => {
-                    let x = float(&value).map_err(|_| format!("argument {name}: invalid float value: {}", py::str_repr(&value)))?;
+                    let x = float(&value).map_err(|_| format!("argument {name}: invalid float value: {}", base::str_repr(&value)))?;
                     if name == "--prior" {
                         a.prior = x;
                     } else {
@@ -698,7 +698,7 @@ pub fn main(args: Vec<String>) -> i32 {
     match done {
         Ok(code) => code,
         Err(error) => {
-            // (Python ends with the exception's traceback and 1)
+            // (the original ends with the exception's traceback and 1)
             eprintln!("{error}");
             1
         }

@@ -20,7 +20,7 @@ fn CHO(i: i64) -> Value {
     card(i, "CHO_GUARD", "Cho Guard", "Skill", 1, "Gain 6 Block.", "Self")
 }
 
-/// (The Python's default: 6 damage.)
+/// (the original's default: 6 damage.)
 fn WAH(i: i64, dmg: i64) -> Value {
     card(i, "WAH_JAB", "Wah Jab", "Attack", 1, &format!("Deal {dmg} damage."), "AnyEnemy")
 }
@@ -32,7 +32,7 @@ fn KI(i: i64) -> Value {
 const VERSE_TEXT: &str = "The next “Wah”, “Cho”, or “Ki” card you play this turn is played an additional time.";
 const VERSE_PLUS: &str = "The next 2 “Wah”, “Cho”, or “Ki” cards you play this turn are played an additional time.";
 
-/// (The Python's default: not the upgraded one.)
+/// (the original's default: not the upgraded one.)
 fn VERSE(i: i64, plus: bool) -> Value {
     card(i, "KI_VERSE", if plus { "Ki Verse+" } else { "Ki Verse" }, "Skill", 1, if plus { VERSE_PLUS } else { VERSE_TEXT }, "None")
 }

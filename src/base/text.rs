@@ -1,4 +1,4 @@
-//! Python's text forms: `repr` and `str` of floats, `json.dumps`, and a few `str` methods.
+//! the original's text forms: `repr` and `str` of floats, `json.dumps`, and a few `str` methods.
 
 use serde_json::Value;
 
@@ -15,7 +15,7 @@ pub fn float_repr(x: f64) -> String {
     }
     let mut sci = format!("{:e}", x.abs());
     if sci.split_once('e').unwrap().0.len() >= 18 {
-        sci = format!("{:.16e}", x.abs()); // 17 digits: the nearest ones (a tie to even), as Python picks them
+        sci = format!("{:.16e}", x.abs()); // 17 digits: the nearest ones (a tie to even), as the original picks them
     }
     let (mant, exp) = sci.split_once('e').unwrap();
     let exp: i32 = exp.parse().unwrap();
@@ -86,13 +86,13 @@ fn json_str(s: &str, ensure_ascii: bool, out: &mut String) {
     out.push('"');
 }
 
-/// How `json.dumps` is to write: Python's defaults unless changed.
+/// How `json.dumps` is to write: the original's defaults unless changed.
 #[derive(Clone, Copy, Debug)]
 pub struct Dumps {
     pub indent: Option<usize>,
     pub sort_keys: bool,
     pub ensure_ascii: bool,
-    /// (item separator, key separator); None: Python's default for the indent
+    /// (item separator, key separator); None: the original's default for the indent
     pub separators: Option<(&'static str, &'static str)>,
 }
 
@@ -178,7 +178,7 @@ impl Dumps {
     }
 }
 
-/// `json.dumps(v)` with Python's defaults (", " and ": " between items, non-ASCII escaped, floats as `repr`).
+/// `json.dumps(v)` with the original's defaults (", " and ": " between items, non-ASCII escaped, floats as `repr`).
 pub fn json_dumps(v: &Value) -> String {
     Dumps::default().dumps(v)
 }
@@ -188,7 +188,7 @@ pub fn json_dumps_pretty(v: &Value, indent: usize, sort_keys: bool) -> String {
     Dumps { indent: Some(indent), sort_keys, ..Default::default() }.dumps(v)
 }
 
-/// `str(v)` of a JSON value as Python prints the object it stands for (a string bare, None, True, 1.0; containers as `repr`).
+/// `str(v)` of a JSON value as the original prints the object it stands for (a string bare, None, True, 1.0; containers as `repr`).
 pub fn str_of(v: &Value) -> String {
     match v {
         Value::String(s) => s.clone(),
@@ -196,7 +196,7 @@ pub fn str_of(v: &Value) -> String {
     }
 }
 
-/// `repr(v)` of a JSON value as Python prints the object it stands for.
+/// `repr(v)` of a JSON value as the original prints the object it stands for.
 pub fn repr_of(v: &Value) -> String {
     match v {
         Value::Null => "None".into(),

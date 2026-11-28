@@ -19,7 +19,7 @@ fn BLADE() -> Value {
     json!({"index": 2, "id": "BLADE_RUSH", "name": "Blade Rush", "type": "Attack", "cost": "2", "rarity": "Rare", "description": "Deal 14 damage."})
 }
 
-/// (The Python's defaults: hp 60, foe_hp 300.)
+/// (the original's defaults: hp 60, foe_hp 300.)
 fn fight(attack: Option<i64>, hp: i64, foe_hp: i64) -> Value {
     combat_state!([STRIKE(0)], [enemy_kw("A", foe_hp, json!({"attack": attack}))], energy = 1, hp = hp, kind = "boss")
 }

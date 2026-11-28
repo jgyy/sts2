@@ -18,7 +18,7 @@ use indexmap::IndexMap;
 use crate::cards::parse;
 use crate::games;
 use crate::learn;
-use crate::py;
+use crate::base;
 use crate::scripts::modelfight::{exit_code, out, quiet};
 use crate::sim::cards::{Card, CardDef, ViewArgs};
 use crate::sim::content::{self, sts1, sts2, Content};
@@ -62,7 +62,7 @@ pub fn owner(g: &Content, d: &CardDef) -> String {
 /// A dict of powers as the script's snapshot keeps it.
 type Dict = IndexMap<String, i64>;
 
-/// `a.get(k)` as Python prints it.
+/// `a.get(k)` as the original prints it.
 fn shown(d: &Dict, k: &str) -> String {
     d.get(k).map_or("None".to_string(), |v| v.to_string())
 }
@@ -119,7 +119,7 @@ pub fn played(g: &Rc<Content>, game: &str, key: &str) -> String {
     *made.entry(key.to_string()).or_insert(0) -= 1;
     made.retain(|_, n| *n > 0);
     if !made.is_empty() {
-        out.push(format!("cards made {{{}}}", made.iter().map(|(k, n)| format!("{}: {n}", py::str_repr(k))).collect::<Vec<_>>().join(", ")));
+        out.push(format!("cards made {{{}}}", made.iter().map(|(k, n)| format!("{}: {n}", base::str_repr(k))).collect::<Vec<_>>().join(", ")));
     }
     out.push(format!("hand {}->{} discard {}->{} draw {}->{}", before.piles[0], after.piles[0], before.piles[1], after.piles[1], before.piles[2], after.piles[2]));
     out.join("; ")
@@ -181,7 +181,7 @@ fn script(argv: &[String]) -> Result<(), String> {
         keys
     };
     for key in &keys {
-        let d = g.CARDS.get(key).ok_or_else(|| format!("KeyError: {}", py::str_repr(key)))?;
+        let d = g.CARDS.get(key).ok_or_else(|| format!("KeyError: {}", base::str_repr(key)))?;
         out!("{key:22} {}\n    {}", played(&g, game, key), head(&d.text, 150));
     }
     if all {
@@ -205,7 +205,7 @@ mod tests {
     const GOLDEN: &str = include_str!("../../tests/golden/scripts/audit_simcards.txt");
 
     #[test]
-    fn as_python() {
+    fn as_recorded() {
         for command in ["sts2", "sts1", "sts2 bone_shards FIGHT_ME hyperbeam", "sts1 REPROGRAM"] {
             let _playing = crate::games::playing("sts2");
             golden(main, &command.split(' ').collect::<Vec<_>>(), section(GOLDEN, command));

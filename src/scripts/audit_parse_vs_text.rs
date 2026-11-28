@@ -14,7 +14,7 @@ use serde_json::Value;
 use super::fightlog::{read_text, state_home, upto};
 use super::modelfight::{exit_code, out};
 use crate::cards::{self, CardInfo};
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 type Check = (&'static str, &'static str, fn(&CardInfo) -> i64);
 
@@ -39,9 +39,9 @@ fn script() -> Result<(), String> {
     let mut seen: HashSet<(&String, &str)> = HashSet::new();
     for (cid, v) in &wiki {
         for c in [&v["base"], &v["upgraded"]] {
-            let text = py::str_of(c["description"].or(&Value::String(String::new())));
+            let text = base::str_of(c["description"].or(&Value::String(String::new())));
             for (name, rx, get) in CHECKS {
-                if c.truthy() && py::re::cached(rx).is_match(&text) && get(&cards::parse(c)) == 0 && !seen.contains(&(*cid, name)) {
+                if c.truthy() && base::re::cached(rx).is_match(&text) && get(&cards::parse(c)) == 0 && !seen.contains(&(*cid, name)) {
                     seen.insert((*cid, name));
                     out!("{:22} {:6} {:10} {}", cid, kind(v)?, name, upto(&text.replace('\n', " "), 110));
                 }
@@ -50,7 +50,7 @@ fn script() -> Result<(), String> {
     }
     out!("-- conditions in the text (the card's own effect, not a Power's trigger)");
     for (cid, v) in &wiki {
-        let text = py::str_of(v["base"]["description"].or(&Value::String(String::new())));
+        let text = base::str_of(v["base"]["description"].or(&Value::String(String::new())));
         if matches!(v["type"].as_str(), Some("Attack" | "Skill")) && crate::re!(r"(?i)\bif\b|\bunless\b|\bonly\b").is_match(&text) {
             let i = cards::parse(&v["base"]);
             out!("{:22} {:100} d{} b{} p{} dr{}", cid, upto(&text.replace('\n', " "), 100), i.damage, i.block, i.poison, i.draw);
@@ -70,7 +70,7 @@ mod tests {
     use super::main;
 
     #[test]
-    fn as_python() {
+    fn as_recorded() {
         let _state = state();
         golden(main, &[], include_str!("../../tests/golden/logs/audit_parse_vs_text.txt"));
     }

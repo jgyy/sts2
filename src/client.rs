@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use serde_json::{json, Map, Value};
 
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 /// The game (or the bridge mod inside it) is not answering.
 #[derive(Clone, Debug, PartialEq)]
@@ -38,7 +38,7 @@ pub trait Game {
     fn ping(&mut self) -> bool;
 }
 
-/// `str(e)` of the OSError Python would have raised: "[Errno 111] Connection refused", "timed out".
+/// `str(e)` of the OSError the original would have raised: "[Errno 111] Connection refused", "timed out".
 pub fn os_error_text(e: &std::io::Error) -> String {
     use std::io::ErrorKind;
     if matches!(e.kind(), ErrorKind::TimedOut | ErrorKind::WouldBlock) {
@@ -57,7 +57,7 @@ fn is_py_space(c: char) -> bool {
     c.is_whitespace() || ('\x1c'..='\x1f').contains(&c)
 }
 
-fn py_strip(s: &str) -> &str {
+fn base_strip(s: &str) -> &str {
     s.trim_matches(is_py_space)
 }
 
@@ -88,9 +88,9 @@ fn bytes_repr(bytes: &[u8]) -> String {
 }
 
 /// `int(text, base)` for base 10 or 16: blanks around it, a sign, `0x` before hex digits, single underscores between
-/// digits. None for anything else (Python's ValueError). Numbers beyond an i64 stop at its ends.
-fn py_int(text: &str, base: u32, ascii_blanks: bool) -> Option<i64> {
-    let t = if ascii_blanks { text.trim_matches(|c: char| matches!(c, ' ' | '\t' | '\n' | '\r' | '\x0b' | '\x0c')) } else { py_strip(text) };
+/// digits. None for anything else (the original's ValueError). Numbers beyond an i64 stop at its ends.
+fn base_int(text: &str, base: u32, ascii_blanks: bool) -> Option<i64> {
+    let t = if ascii_blanks { text.trim_matches(|c: char| matches!(c, ' ' | '\t' | '\n' | '\r' | '\x0b' | '\x0c')) } else { base_strip(text) };
     let (negative, mut t) = match t.strip_prefix('-') {
         Some(rest) => (true, rest),
         None => (false, t.strip_prefix('+').unwrap_or(t)),
@@ -120,7 +120,7 @@ fn py_int(text: &str, base: u32, ascii_blanks: bool) -> Option<i64> {
     Some(if negative { -value } else { value })
 }
 
-/// A position as Python's slices and `index` read it: from the end when negative, kept inside the bytes.
+/// A position as the original's slices and `index` read it: from the end when negative, kept inside the bytes.
 fn clamp(i: i64, len: usize) -> usize {
     if i < 0 {
         (i.saturating_add(len as i64)).max(0) as usize
@@ -138,7 +138,7 @@ fn slice(body: &[u8], a: i64, b: i64) -> &[u8] {
     }
 }
 
-/// The body of a response sent with "Transfer-Encoding: chunked". (The error: the text of Python's ValueError.)
+/// The body of a response sent with "Transfer-Encoding: chunked". (The error: the text of the original's ValueError.)
 pub fn _dechunk(body: &[u8]) -> Result<Vec<u8>, String> {
     let mut out: Vec<u8> = Vec::new();
     let mut pos: i64 = 0;
@@ -148,7 +148,7 @@ pub fn _dechunk(body: &[u8]) -> Result<Vec<u8>, String> {
         let eol = eol.ok_or_else(|| "subsection not found".to_string())?;
         let line = slice(body, pos, eol);
         let word = line.split(|b| *b == b';').next().unwrap_or(&[]);
-        let size = py_int(&latin1(word), 16, true).ok_or_else(|| format!("invalid literal for int() with base 16: {}", bytes_repr(word)))?;
+        let size = base_int(&latin1(word), 16, true).ok_or_else(|| format!("invalid literal for int() with base 16: {}", bytes_repr(word)))?;
         if size == 0 {
             return Ok(out);
         }
@@ -194,24 +194,24 @@ pub fn _parse(raw: &[u8]) -> Result<(i64, Vec<u8>), GameUnavailable> {
     let mut fields: Vec<(String, &str)> = Vec::new();
     for line in &lines[1..] {
         let (k, v) = line.split_once(':').unwrap_or((line, ""));
-        let (k, v) = (py_strip(k).to_lowercase(), py_strip(v));
+        let (k, v) = (base_strip(k).to_lowercase(), base_strip(v));
         match fields.iter_mut().find(|(name, _)| *name == k) {
             Some(field) => field.1 = v,
             None => fields.push((k, v)),
         }
     }
     let field = |name: &str| fields.iter().find(|(k, _)| k == name).map(|(_, v)| *v).unwrap_or("");
-    let bad_int = |text: &str| GameUnavailable(format!("invalid literal for int() with base 10: {}", py::str_repr(text)));
+    let bad_int = |text: &str| GameUnavailable(format!("invalid literal for int() with base 10: {}", base::str_repr(text)));
     let length = field("content-length");
     let body = if field("transfer-encoding").to_lowercase().contains("chunked") {
         _dechunk(body).map_err(GameUnavailable)?
     } else if !length.is_empty() && length.chars().all(|c| c.is_ascii_digit() || matches!(c, '\u{b2}' | '\u{b3}' | '\u{b9}')) {
-        let n = py_int(length, 10, false).ok_or_else(|| bad_int(length))?;
+        let n = base_int(length, 10, false).ok_or_else(|| bad_int(length))?;
         slice(body, 0, n).to_vec()
     } else {
         body.to_vec()
     };
-    let code = py_int(status[1], 10, false).ok_or_else(|| bad_int(status[1]))?;
+    let code = base_int(status[1], 10, false).ok_or_else(|| bad_int(status[1]))?;
     Ok((code, body))
 }
 
@@ -270,7 +270,7 @@ impl Client {
         let mut message: Vec<u8> = Vec::with_capacity(head.len() + 2 + data.map_or(0, |d| d.len()));
         for (i, c) in head.chars().enumerate() {
             if c as u32 > 0xff {
-                return Err(GameUnavailable(format!("'latin-1' codec can't encode character {} in position {}: ordinal not in range(256)", py::str_repr(&c.to_string()), i)));
+                return Err(GameUnavailable(format!("'latin-1' codec can't encode character {} in position {}: ordinal not in range(256)", base::str_repr(&c.to_string()), i)));
             }
             message.push(c as u32 as u8);
         }
@@ -294,7 +294,7 @@ impl Client {
     }
 
     pub fn _request(&self, url: &str, body: Option<&Value>) -> Result<Value, GameUnavailable> {
-        let data = body.map(|b| py::json_dumps(b).into_bytes());
+        let data = body.map(|b| base::json_dumps(b).into_bytes());
         let (code, raw) = self._exchange(url, data.as_deref())?; // (also a status or chunk size that is not a number)
         if code >= 400 {
             // the mod reports action failures as 4xx/5xx with a JSON body
@@ -324,9 +324,9 @@ impl Client {
 
     /// The game's own entry for a card we have met: its text as it is and as it is upgraded.
     pub fn card(&self, card_id: &str) -> Result<Option<Value>, GameUnavailable> {
-        let found = self._request(&format!("{}/api/v1/wiki?type=card&limit=3&q={}", self.base, py::url_quote(card_id)), None)?;
+        let found = self._request(&format!("{}/api/v1/wiki?type=card&limit=3&q={}", self.base, base::url_quote(card_id)), None)?;
         for entry in found["results"].list() {
-            if py::str_of(&entry["id"]) == card_id {
+            if base::str_of(&entry["id"]) == card_id {
                 return Ok(Some(entry.clone()));
             }
         }
@@ -422,7 +422,7 @@ mod tests {
     }
 
     #[test]
-    fn dechunk_as_python() {
+    fn dechunk_as_recorded() {
         let golden: Value = serde_json::from_str(include_str!("../tests/golden/client.json")).unwrap();
         let cases = golden["dechunk"].list();
         assert!(cases.len() > 30);
@@ -435,9 +435,9 @@ mod tests {
         }
     }
 
-    /// Every crafted answer, served over a real socket: `_exchange` and `_request` give what Python's gave.
+    /// Every crafted answer, served over a real socket: `_exchange` and `_request` give what the original's gave.
     #[test]
-    fn answers_as_python() {
+    fn answers_as_recorded() {
         let golden: Value = serde_json::from_str(include_str!("../tests/golden/client.json")).unwrap();
         let cases = golden["answers"].list();
         assert!(cases.len() > 40);
@@ -452,8 +452,8 @@ mod tests {
             }
             let got = client._request(&client.url, Some(&json!({"action": "end_turn"})));
             match (&case["request_error"], got) {
-                (Value::Null, Ok(v)) => assert_eq!(py::json_dumps(&v), case["request"].s(), "{case}"),
-                // (the JSON reader's own words differ from Python's)
+                (Value::Null, Ok(v)) => assert_eq!(base::json_dumps(&v), case["request"].s(), "{case}"),
+                // (the JSON reader's own words differ from the original's)
                 (e, Err(got)) if e.s().starts_with("bad JSON from game: ") => assert!(got.0.starts_with("bad JSON from game: "), "{case}"),
                 (e, got) => assert_eq!(got, Err(GameUnavailable(e.s().to_string())), "{case}"),
             }
@@ -463,7 +463,7 @@ mod tests {
     }
 
     #[test]
-    fn requests_are_sent_as_python_sent_them() {
+    fn requests_are_sent_as_the_record_sent_them() {
         let golden: Value = serde_json::from_str(include_str!("../tests/golden/client.json")).unwrap();
         let ok = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}".to_vec();
         let wiki = b"HTTP/1.1 200 OK\r\n\r\n{\"results\": [{\"id\": \"OTHER\"}, {\"id\": \"A B/C+\", \"n\": 1}]}".to_vec();

@@ -20,7 +20,7 @@ use serde_json::{json, Value};
 use super::fightlog::{log_path, read_jsonl, read_text};
 use super::modelfight::{exit_code, out};
 use crate::cards;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 use crate::run::decks;
 
 pub const DOC: &str = "What the decks that fought cheaply held: fights.jsonl (each fight's deck, relics and HP in and out) against wiki.json
@@ -108,17 +108,17 @@ pub fn _slope(rows: &[(String, i64, f64)]) -> (f64, f64) {
     let mut centred: Vec<(f64, f64)> = Vec::new();
     for pts in by.values() {
         let mx = pts.iter().map(|p| p.0).sum::<i64>() as f64 / pts.len() as f64;
-        let my = py::fsum(pts.iter().map(|p| p.1)) / pts.len() as f64;
+        let my = base::fsum(pts.iter().map(|p| p.1)) / pts.len() as f64;
         centred.extend(pts.iter().map(|(x, y)| (*x as f64 - mx, y - my)));
     }
-    let sxx = py::fsum(centred.iter().map(|(x, _)| x * x));
-    let sxy = py::fsum(centred.iter().map(|(x, y)| x * y));
+    let sxx = base::fsum(centred.iter().map(|(x, _)| x * x));
+    let sxy = base::fsum(centred.iter().map(|(x, y)| x * y));
     let free = centred.len() as i64 - by.len() as i64 - 1;
     if sxx <= 0.0 || free <= 0 {
         return (0.0, 0.0);
     }
     let b = sxy / sxx;
-    (b, (py::fsum(centred.iter().map(|(x, y)| (y - b * x).powf(2.0))) / free as f64 / sxx).powf(0.5))
+    (b, (base::fsum(centred.iter().map(|(x, y)| (y - b * x).powf(2.0))) / free as f64 / sxx).powf(0.5))
 }
 
 pub fn report(fights: &[Value], bosses: bool) -> Result<(), String> {
@@ -146,8 +146,8 @@ pub fn report(fights: &[Value], bosses: bool) -> Result<(), String> {
         }
         let feats: Vec<IndexMap<&'static str, i64>> = sub.iter().map(|f| features(f, &wiki)).collect();
         let ys: Vec<f64> = sub.iter().map(|f| outcome(f)).collect();
-        let who = |f: &Value| py::str_of(&f["character"]);
-        out!("act {}: {} {} fights; {} {:.1} on average", act, sub.len(), if bosses { "boss" } else { "ordinary" }, what, py::fsum(ys.iter().copied()) / ys.len() as f64);
+        let who = |f: &Value| base::str_of(&f["character"]);
+        out!("act {}: {} {} fights; {} {:.1} on average", act, sub.len(), if bosses { "boss" } else { "ordinary" }, what, base::fsum(ys.iter().copied()) / ys.len() as f64);
         for name in feats[0].keys() {
             let xs: Vec<i64> = feats.iter().map(|ft| ft[name]).collect();
             let rows: Vec<(String, i64, f64)> = sub.iter().zip(&xs).zip(&ys).map(|((f, x), y)| (who(f), *x, *y)).collect();
@@ -159,7 +159,7 @@ pub fn report(fights: &[Value], bosses: bool) -> Result<(), String> {
                     dose.entry((*x).min(3)).or_default().push(*y);
                 }
             }
-            let table = dose.iter().map(|(k, v)| format!("{}{}: {:4.1} ({})", k, if *k == 3 { "+" } else { "" }, py::fsum(v.iter().copied()) / v.len() as f64, v.len())).collect::<Vec<_>>().join("  ");
+            let table = dose.iter().map(|(k, v)| format!("{}{}: {:4.1} ({})", k, if *k == 3 { "+" } else { "" }, base::fsum(v.iter().copied()) / v.len() as f64, v.len())).collect::<Vec<_>>().join("  ");
             out!(
                 "  {:17} held {:4.1}   one more: {:+5.2} {} (t {:+.1})   {}",
                 name,
@@ -174,7 +174,7 @@ pub fn report(fights: &[Value], bosses: bool) -> Result<(), String> {
         for (f, y) in sub.iter().zip(&ys) {
             lists.entry(who(f)).or_default().push(*y);
         }
-        let par: IndexMap<String, f64> = lists.into_iter().map(|(k, v)| (k, py::fsum(v.iter().copied()) / v.len() as f64)).collect();
+        let par: IndexMap<String, f64> = lists.into_iter().map(|(k, v)| (k, base::fsum(v.iter().copied()) / v.len() as f64)).collect();
         for (label, key) in [("cards", "deck"), ("relics", "relics")] {
             let mut seen: IndexMap<String, Vec<f64>> = IndexMap::new();
             for (f, y) in sub.iter().zip(&ys) {
@@ -183,8 +183,8 @@ pub fn report(fights: &[Value], bosses: bool) -> Result<(), String> {
                     seen.entry(item.to_string()).or_default().push(y - par[&who(f)]);
                 }
             }
-            let mut ranked: Vec<(f64, usize, &String)> = seen.iter().filter(|(_, v)| v.len() >= 25).map(|(k, v)| (py::fsum(v.iter().copied()) / v.len() as f64, v.len(), k)).collect();
-            py::sort_by_key(&mut ranked, |r| (r.0, r.1, r.2.clone()));
+            let mut ranked: Vec<(f64, usize, &String)> = seen.iter().filter(|(_, v)| v.len() >= 25).map(|(k, v)| (base::fsum(v.iter().copied()) / v.len() as f64, v.len(), k)).collect();
+            base::sort_by_key(&mut ranked, |r| (r.0, r.1, r.2.clone()));
             let ends: Vec<&(f64, usize, &String)> = if ranked.len() > 20 { ranked[..10].iter().chain(&ranked[ranked.len() - 10..]).collect() } else { ranked.iter().collect() };
             out!(
                 "  {} against the character's usual ({}; 25+ fights; the ten at each end): {}",
@@ -225,7 +225,7 @@ mod tests {
     use super::main;
 
     #[test]
-    fn as_python() {
+    fn as_recorded() {
         let _state = state();
         golden(main, &[], include_str!("../../tests/golden/logs/decklog.txt"));
         golden(main, &["1"], include_str!("../../tests/golden/logs/decklog_1.txt"));
@@ -233,7 +233,7 @@ mod tests {
     }
 
     #[test]
-    fn bosses_as_python() {
+    fn bosses_as_recorded() {
         let _state = state();
         golden(main, &["bosses"], include_str!("../../tests/golden/logs/decklog_bosses.txt"));
         golden(main, &["bosses", "1", "2026-11-20 09:30"], include_str!("../../tests/golden/logs/decklog_bosses_since.txt"));

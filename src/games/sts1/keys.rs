@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 
 use serde_json::Value;
 
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 pub const KEYS: [&str; 3] = ["ruby", "emerald", "sapphire"];
 pub const RUBY_HP: f64 = 0.70; // an act 3 rest site is given up for the Ruby Key from this share of Max HP up ...
@@ -36,7 +36,7 @@ pub fn emerald_ahead(game: &Value) -> bool {
     if game["keys"]["emerald"].truthy() || game["act"].int() < 3 {
         return true;
     }
-    let row = py::modulo(game["floor"].int() - 1, 17);
+    let row = base::modulo(game["floor"].int() - 1, 17);
     game["map"].list().iter().any(|n| n["emerald_key"].truthy() && n["y"].int() > row)
 }
 
@@ -52,7 +52,7 @@ pub fn wants_ruby(game: &Value) -> bool {
     }
     let hp = game["current_hp"].float();
     let top = if game["max_hp"].truthy() { game["max_hp"].float() } else { 1.0 };
-    let last = py::modulo(game["floor"].int(), 17) == BOSS_ROW_FLOOR;
+    let last = base::modulo(game["floor"].int(), 17) == BOSS_ROW_FLOOR;
     hp >= RUBY_HP * top || (last && hp >= RUBY_HP_LAST * top)
 }
 
@@ -68,12 +68,12 @@ pub fn wants_emerald(game: &Value) -> bool {
 
 #[cfg(test)]
 mod tests {
-    //! Replays tests/golden/sts1_text.json (written by CPython 3.13 from keys.py over the games of tests/sts1/test_keys.py and more).
+    //! Replays tests/golden/sts1_text.json (recorded from keys.rs over the games of tests/sts1/test_keys.rs and more).
     use super::*;
     use serde_json::json;
 
     #[test]
-    fn the_keys_are_wanted_when_python_wants_them() {
+    fn the_keys_are_wanted_when_the_record_wants_them() {
         let g: Value = serde_json::from_str(include_str!("../../../tests/golden/sts1_text.json")).unwrap();
         assert_eq!(json!([KEYS, RUBY_HP, RUBY_HP_LAST, BOSS_ROW_FLOOR]), json!(g["keys_consts"].list()[..4]));
         let cases = g["keys"].list();

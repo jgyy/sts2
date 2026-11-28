@@ -9,7 +9,7 @@ use indexmap::IndexMap;
 use serde_json::{json, Map, Value};
 
 use crate::cards::{parse, CardInfo};
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 use crate::run::crowd::rating as crowd_rating;
 use crate::Action;
 
@@ -132,7 +132,7 @@ macro_rules! enemy {
         }
 
         impl Default for Enemy {
-            /// The defaults of the Python dataclass (its six fields without one: "", 0, 0, false, false, 0).
+            /// The defaults of the original dataclass (its six fields without one: "", 0, 0, false, false, 0).
             fn default() -> Self {
                 Enemy { $($name: $default,)* }
             }
@@ -303,7 +303,7 @@ pub fn clone(e: &Enemy) -> Enemy {
     e.clone()
 }
 
-/// `max(a, b)` of two floats as Python has it: the first unless the second is greater.
+/// `max(a, b)` of two floats as the original has it: the first unless the second is greater.
 #[inline]
 fn fmax(a: f64, b: f64) -> f64 {
     if b > a {
@@ -313,7 +313,7 @@ fn fmax(a: f64, b: f64) -> f64 {
     }
 }
 
-/// `min(a, b)` of two floats as Python has it: the first unless the second is less.
+/// `min(a, b)` of two floats as the original has it: the first unless the second is less.
 #[inline]
 fn fmin(a: f64, b: f64) -> f64 {
     if b < a {
@@ -327,7 +327,7 @@ fn fmin(a: f64, b: f64) -> f64 {
 fn _str_of(d: &Value, key: &str) -> String {
     match d.get(key) {
         Some(Value::String(s)) => s.clone(),
-        Some(x) => py::str_of(x),
+        Some(x) => base::str_of(x),
         None => String::new(),
     }
 }
@@ -397,14 +397,14 @@ fn _names(id: &Value, power_id: &str) -> bool {
             }
         }
         other => {
-            let upper = py::str_of(other).to_uppercase();
+            let upper = base::str_of(other).to_uppercase();
             upper.strip_suffix("_POWER").unwrap_or(&upper) == power_id
         }
     }
 }
 
 /// The number the game shows on a power, named like VULNERABLE_POWER (`blank` if it shows none; None if there is no such power:
-/// the Python's `missing`, which callers give with `.unwrap_or(missing)`).
+/// the original's `missing`, which callers give with `.unwrap_or(missing)`).
 pub fn _shown(creature: &Value, power_id: &str, blank: i64) -> Option<i64> {
     for p in creature["status"].list() {
         let named = match p.get("id") {
@@ -413,7 +413,7 @@ pub fn _shown(creature: &Value, power_id: &str, blank: i64) -> Option<i64> {
         };
         if named {
             return Some(match &p["amount"] {
-                Value::Number(n) => n.as_i64().unwrap_or_else(|| n.as_f64().map(py::trunc).unwrap_or(blank)),
+                Value::Number(n) => n.as_i64().unwrap_or_else(|| n.as_f64().map(base::trunc).unwrap_or(blank)),
                 Value::Bool(b) => *b as i64,
                 _ => blank,
             });
@@ -592,10 +592,10 @@ pub fn _set_focus(enemies: &mut [Enemy]) {
     }
     let floor = FOCUS_FLOOR.get();
     let left = |e: &Enemy| ((1.max(e.hp - e.doom) + e.block) as f64) / (if e.vulnerable { 1.5 } else { 1.0 });
-    py::sort_by_key(&mut order, |&i| -fmax(enemies[i].threat, floor) / left(&enemies[i]));
-    let total = py::fsum(order.iter().map(|&i| fmax(enemies[i].threat, floor)));
+    base::sort_by_key(&mut order, |&i| -fmax(enemies[i].threat, floor) / left(&enemies[i]));
+    let total = base::fsum(order.iter().map(|&i| fmax(enemies[i].threat, floor)));
     for n in 0..order.len() {
-        let rest = py::fsum(order[n..].iter().map(|&o| fmax(enemies[o].threat, floor)));
+        let rest = base::fsum(order[n..].iter().map(|&o| fmax(enemies[o].threat, floor)));
         enemies[order[n]].focus = rest / total;
     }
 }
@@ -606,14 +606,14 @@ pub fn _reroll(e: &Value, player: &Value, base: i64) -> i64 {
         return 0;
     }
     let hit = ((base + 3 * _stacks(e, "STRENGTH")) as f64) * (if _has_power(player, "VULNERABLE") { 1.5 } else { 1.0 }) * (if _has_power(e, "WEAK") { 0.75 } else { 1.0 });
-    py::round(hit * (if player["stance"].text().to_uppercase() == "WRATH" { 2.0 } else { 1.0 }))
+    base::round(hit * (if player["stance"].text().to_uppercase() == "WRATH" { 2.0 } else { 1.0 }))
 }
 
 pub fn read_enemies(state: &Value) -> Vec<Enemy> {
     let mut out: Vec<Enemy> = Vec::new();
     let player = &state["player"];
     let listed = state["battle"]["enemies"].list();
-    let ids: Vec<String> = listed.iter().map(|e| py::str_of(&e["entity_id"])).collect();
+    let ids: Vec<String> = listed.iter().map(|e| base::str_of(&e["entity_id"])).collect();
     let mut raw: HashMap<&str, &Value> = HashMap::new();
     for (id, e) in ids.iter().zip(listed) {
         raw.insert(id.as_str(), e);
@@ -749,7 +749,7 @@ pub fn _per_hit(e: &Enemy, dmg_per_hit: i64, raw: bool) -> i64 {
             per *= 1.0 + e.slow as f64 / 100.0;
         }
     }
-    py::trunc(per)
+    base::trunc(per)
 }
 
 /// Whether this attack leaves the enemy dead, without touching it (worked out directly in the plain case: it is asked very often).
@@ -971,12 +971,12 @@ pub fn _draw_worth(player: &Value) -> (f64, f64, f64) {
         }
     }
     let n = pile.len() as f64;
-    (free / n, paid.len() as f64 / n, if paid.is_empty() { 0.0 } else { py::fsum(paid.iter().copied()) / paid.len() as f64 })
+    (free / n, paid.len() as f64 / n, if paid.is_empty() { 0.0 } else { base::fsum(paid.iter().copied()) / paid.len() as f64 })
 }
 
 /// Damage the next Wither does if still in the hand when the turn ends: 3 a level ("Wither+2" does 9); Aeonglass adds a level every third round.
 pub fn _next_wither(player: &Value, round_no: i64) -> i64 {
-    let mut level = 0.max(py::floordiv(round_no - 1, 3));
+    let mut level = 0.max(base::floordiv(round_no - 1, 3));
     for pile in ["hand", "draw_pile", "discard_pile", "exhaust_pile"] {
         for c in player[pile].list() {
             if let Some(n) = _wither_level(&c["name"].text()) {
@@ -1036,7 +1036,7 @@ pub fn cards_left_this_turn(state: &Value) -> Option<i64> {
 pub fn next_room(state: &Value) -> (f64, f64) {
     let player = &state["player"];
     for e in state["battle"]["enemies"].list() {
-        if RINGERS.contains(&_kind(&py::str_of(&e["entity_id"])).as_str()) && e["intents"].list().iter().any(|i| _str_of(i, "type").to_lowercase().contains("debuff")) {
+        if RINGERS.contains(&_kind(&base::str_of(&e["entity_id"])).as_str()) && e["intents"].list().iter().any(|i| _str_of(i, "type").to_lowercase().contains("debuff")) {
             return (-99.0, 0.0);
         }
     }
@@ -1052,7 +1052,7 @@ pub fn next_room(state: &Value) -> (f64, f64) {
         if crate::re!(r"(?i)\bunplayable\b").is_match(&c["description"].text()) {
             return 0.0;
         }
-        let n = if c["cost"].truthy() { py::str_of(&c["cost"]) } else { "0".to_string() };
+        let n = if c["cost"].truthy() { base::str_of(&c["cost"]) } else { "0".to_string() };
         if !n.is_empty() && n.chars().all(|ch| ch.is_ascii_digit()) {
             fmin(3.0, n.parse::<f64>().unwrap_or(3.0))
         } else {
@@ -1060,7 +1060,7 @@ pub fn next_room(state: &Value) -> (f64, f64) {
         }
     };
 
-    let per = py::fsum(pile.iter().map(cost)) / pile.len() as f64;
+    let per = base::fsum(pile.iter().map(cost)) / pile.len() as f64;
     let draws = 5 + 0.max(power_amount(player, "DRAW_CARDS_NEXT_TURN")) - 0.max(power_amount(player, "MIND_ROT")); // ("Draw 1 fewer card each turn")
     let have = _int_or(&player["max_energy"], 3) + 0.max(power_amount(player, "ENERGY_NEXT_TURN"));
     let mut caps: Vec<i64> = if _has_power(player, "SLOTH") { vec![3] } else { vec![] }; // (the Knowledge Demon's: "You cannot play more than 3 cards each turn")
@@ -1084,7 +1084,7 @@ pub fn next_energy_worth(gained: i64, room: (f64, f64), kept: i64) -> f64 {
 pub fn free_plays(state: &Value) -> i64 {
     let player = &state["player"];
     let costly = |c: &Value| {
-        let cost = if c["cost"].truthy() { py::str_of(&c["cost"]) } else { "0".to_string() };
+        let cost = if c["cost"].truthy() { base::str_of(&c["cost"]) } else { "0".to_string() };
         !matches!(cost.trim(), "0" | "X")
     };
     if player["hand"].list().iter().any(costly) {
@@ -1107,9 +1107,9 @@ pub fn _resists(e: &mut Enemy) -> bool {
 pub fn _poison_total(stack: i64, turns: i64) -> i64 {
     let stack = stack.max(0);
     if stack >= turns {
-        return turns * stack - py::floordiv(turns * (turns - 1), 2);
+        return turns * stack - base::floordiv(turns * (turns - 1), 2);
     }
-    py::floordiv(stack * (stack + 1), 2)
+    base::floordiv(stack * (stack + 1), 2)
 }
 
 /// What playing a Power is worth in an ordinary fight: from the table, else a guess from its cost; in a long fight, not less than crowd.rs says.
@@ -1225,7 +1225,7 @@ pub fn _pick_target<E: Borrow<Enemy>>(enemies: &[E], dmg_per_hit: i64, hits: i64
         }
         if !stay.is_empty() && segs.len() == alive().count() {
             let spare: Vec<(usize, &Enemy)> = segs.iter().copied().filter(|(_, e)| !(stay.contains(&&*e.entity_id) && _would_kill(e, dmg_per_hit, hits, double_if_vulnerable))).collect();
-            return py::max_by_key(if spare.is_empty() { segs } else { spare }, |(_, e)| e.hp + e.block).map(|(i, _)| i);
+            return base::max_by_key(if spare.is_empty() { segs } else { spare }, |(_, e)| e.hp + e.block).map(|(i, _)| i);
         }
     }
     // The biggest threat first, wasting the least damage; not one that revives unless it is about to hit us, nor an idle minion hit with twice its size.
@@ -1254,7 +1254,7 @@ pub fn _pick_target<E: Borrow<Enemy>>(enemies: &[E], dmg_per_hit: i64, hits: i64
     let floor = THREAT_FLOOR.get();
     let soaks = |e: &Enemy| e.block >= dmg_per_hit * hits && !e.keeps_block;
     let left = |e: &Enemy| ((1.max(e.hp - e.doom) + e.block) as f64) / (if e.vulnerable { 1.5 } else { 1.0 });
-    py::min_by_key(alive(), |(_, e)| (_fated(e), -e.worth(), soaks(e), left(e) / fmax(e.threat, floor), -e.incoming)).map(|(i, _)| i)
+    base::min_by_key(alive(), |(_, e)| (_fated(e), -e.worth(), soaks(e), left(e) / fmax(e.threat, floor), -e.incoming)).map(|(i, _)| i)
 }
 
 /// `_pick_target` among some of the enemies (`pool`: their places in `foes`, as `fool::turn::impaled_pool` gives them): the target's place in `foes`.
@@ -1272,7 +1272,7 @@ pub fn _fated(e: &Enemy) -> bool {
     e.doom >= e.hp && e.hp > 0 && !e.adapts
 }
 
-/// What the tests of the fight modules share: the states of tests/golden/fight, and Python's objects read back from JSON.
+/// What the tests of the fight modules share: the states of tests/golden/fight, and the original's objects read back from JSON.
 #[cfg(test)]
 pub(crate) mod testing {
     use super::*;
@@ -1421,7 +1421,7 @@ pub(crate) mod testing {
         }
     }
 
-    /// The states of tests/golden/fight/states*.json: {"g": game, "dw": the debuff_worth setting, "s": state, "r": what Python made of it}.
+    /// The states of tests/golden/fight/states*.json: {"g": game, "dw": the debuff_worth setting, "s": state, "r": what the original made of it}.
     pub fn states() -> Vec<Value> {
         let mut out = Vec::new();
         for text in [include_str!("../../tests/golden/fight/states.json"), include_str!("../../tests/golden/fight/states2.json")] {
@@ -1545,7 +1545,7 @@ mod tests {
             for (n, rec) in calls(&g, name, at_least).iter().enumerate() {
                 let _env = env(&rec["env"]);
                 let (got, want) = check(&rec["a"], rec);
-                assert_eq!(got, want, "{name} case {n}: {}", py::json_dumps(&rec["a"]));
+                assert_eq!(got, want, "{name} case {n}: {}", base::json_dumps(&rec["a"]));
                 checked += 1;
             }
         };
@@ -1620,7 +1620,7 @@ mod tests {
             let es = read_enemies(&state);
             (es[1].main_threat, es[2].threat, es[0].focus)
         };
-        // (python3: battle.read_enemies(state) -> main_threat True, threat 20.0, focus 6/26)
+        // (the first version: battle.read_enemies(state) -> main_threat True, threat 20.0, focus 6/26)
         assert_eq!(read(), (true, 20.0, 6.0 / 26.0));
         {
             let _minions = with_main_minions(&[]);

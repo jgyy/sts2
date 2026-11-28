@@ -71,7 +71,7 @@ pub fn rating(key: &str) -> Option<f64> {
 
 #[cfg(test)]
 mod tests {
-    //! Replays tests/golden/sts1_text.json (written by CPython 3.13 from tiers.py).
+    //! Replays tests/golden/sts1_text.json (recorded from tiers.rs).
     use super::*;
     use serde_json::{json, Value};
 
@@ -80,7 +80,7 @@ mod tests {
     }
 
     #[test]
-    fn the_tiers_are_python_s() {
+    fn the_tiers_are_the_recorded() {
         let g = golden();
         assert_eq!(json!([S, A, B, C, D]), json!(g["keys_consts"].as_array().unwrap()[4..9]));
         assert_eq!(json!(_TIERS.iter().map(|(v, s)| json!([v, s])).collect::<Vec<_>>()), g["_TIERS"]);
@@ -92,7 +92,7 @@ mod tests {
     }
 
     #[test]
-    fn every_card_rates_as_in_python() {
+    fn every_card_rates_as_recorded() {
         let g = golden();
         let cases = g["rating"].as_array().unwrap();
         assert!(cases.len() > text::CARDS().len());
@@ -108,14 +108,14 @@ mod tests {
 mod first_game_ratings {
     //! What the cards and crowd ports could not check before this module was there: `cards::deck_value` and
     //! `run::crowd::rating` while playing the first game, over every first-game card of tests/golden/cards.json
-    //! (tests/golden/cards_sts1.json, written by CPython 3.13).
+    //! (tests/golden/cards_sts1.json, written by the first version).
     use serde_json::Value;
 
     use crate::run::crowd;
     use crate::{cards, games, learn};
 
     #[test]
-    fn every_first_game_card_is_worth_what_python_says() {
+    fn every_first_game_card_is_worth_what_the_record_says() {
         let g: Value = serde_json::from_str(include_str!("../../../tests/golden/cards_sts1.json")).unwrap();
         let all: Value = serde_json::from_str(include_str!("../../../tests/golden/cards.json")).unwrap();
         let cases = all["cases"].as_array().unwrap();

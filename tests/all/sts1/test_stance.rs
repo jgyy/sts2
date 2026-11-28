@@ -17,14 +17,14 @@ const CARDS: [(&str, (&str, i64, bool)); 6] = [("Eruption", ("ATTACK", 1, true))
                                                ("ClearTheMind", ("SKILL", 1, false)), ("Blasphemy", ("SKILL", 1, false))];
 const NAMES: [(&str, &str); 3] = [("Strike_P", "Strike"), ("Defend_P", "Defend"), ("ClearTheMind", "Tranquility")];
 
-/// (The Python's default: index None.)
+/// (the original's default: index None.)
 pub fn card(cid: &str, index: Option<i64>) -> Value {
     let (kind, cost, aimed) = CARDS.iter().find(|(k, _)| *k == cid).unwrap_or_else(|| panic!("KeyError: '{cid}'")).1;
     let name = NAMES.iter().find(|(k, _)| *k == cid).map_or(cid, |(_, name)| *name);
     Screens::new().card(&json!({"id": cid, "name": name, "type": kind, "cost": cost, "has_target": aimed}), index, index.is_some())
 }
 
-/// `watcher`'s keywords, with the Python's defaults.
+/// `watcher`'s keywords, with the original's defaults.
 pub struct Kw {
     pub hp: i64,
     pub blow: i64,

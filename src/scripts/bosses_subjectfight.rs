@@ -17,9 +17,9 @@ use serde_json::{json, Value};
 use super::bosses_aeonfight::flip_arms;
 use super::modelfight::{
     attack, deal, differ, exit_code, face, flips, game_state, hand_cards, index, int, knob_setting, mean, mean_of, out, patched, piles, played, quiet, shuffled, status, table, through, trace_args,
-    turn, under, Face, GameStateArgs, Py,
+    turn, under, Face, GameStateArgs, Datum,
 };
-use crate::py::{self, floordiv, trunc, Random};
+use crate::base::{self, floordiv, trunc, Random};
 
 pub const FORM_HP: [i64; 3] = [111, 212, 313];
 // Ascension 9
@@ -50,7 +50,7 @@ pub fn CARDS(c: char, d: i64) -> Face {
         'F' => face("CLUMSY", "Clumsy", "Curse", -1, "Unplayable.", "None"),
         'U' => face("WOUND", "Wound", "Status", 0, "Unplayable.", "None"),
         'R' => face("BURN", "Burn", "Status", 0, "Unplayable. At the end of your turn, if this is in your Hand, take 2 damage.", "Self"),
-        _ => panic!("KeyError: {}", py::str_repr(&c.to_string())),
+        _ => panic!("KeyError: {}", base::str_repr(&c.to_string())),
     }
 }
 
@@ -67,12 +67,12 @@ fn off(on: bool, share: f64) -> f64 {
 }
 
 /// `lost_in`: {form: HP lost to it}.
-fn by_form(lost_in: &[i64; 3]) -> Py {
-    Py::Dict((1..=3).map(|f| (Py::Int(f), Py::Int(lost_in[f as usize - 1]))).collect())
+fn by_form(lost_in: &[i64; 3]) -> Datum {
+    Datum::Dict((1..=3).map(|f| (Datum::Int(f), Datum::Int(lost_in[f as usize - 1]))).collect())
 }
 
-/// (Python's defaults: maxhp 75, no trace.)
-pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Py {
+/// (the original's defaults: maxhp 75, no trace.)
+pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Datum {
     let (da, db, energy, size) = (spec[0], spec[1], spec[8], spec[9]);
     let (mut draw, mut disc, mut hp) = (shuffled(rng, "ABHVWF", &spec[2..]), Vec::new(), maxhp);
     let (mut form, mut k) = (1, 0); // form, and rounds it has had
@@ -85,7 +85,7 @@ pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Py {
         let intangible = form == 3 && k % 2 == 0;
         if trace {
             let (d, h, ..) = intent(form, k, e_st);
-            out!("r{r} F{form} hand {} hp {hp} boss {e_hp} intent {}{}", hand.iter().collect::<String>(), Py::ints(&[d, h]).repr(), if intangible { " INTANGIBLE" } else { "" });
+            out!("r{r} F{form} hand {} hp {hp} boss {e_hp} intent {}{}", hand.iter().collect::<String>(), Datum::ints(&[d, h]).repr(), if intangible { " INTANGIBLE" } else { "" });
         }
 
         let label = |e_st: i64, e_weak: i64| -> Vec<Value> {
@@ -161,7 +161,7 @@ pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Py {
         }
         let killed = e_hp <= 0;
         if killed && form == 3 {
-            return Py::Tuple(vec![Py::Bool(true), Py::Int(hp), Py::Int(r), Py::Int(3), by_form(&lost_in)]);
+            return Datum::Tuple(vec![Datum::Bool(true), Datum::Int(hp), Datum::Int(r), Datum::Int(3), by_form(&lost_in)]);
         }
         let burning = count(&hand, 'R');
         disc.append(&mut hand);
@@ -204,20 +204,20 @@ pub fn fight(spec: &[i64], rng: &mut Random, maxhp: i64, trace: bool) -> Py {
             );
         }
         if hp <= 0 {
-            return Py::Tuple(vec![Py::Bool(false), Py::Int(0), Py::Int(r), Py::Int(form), by_form(&lost_in)]);
+            return Datum::Tuple(vec![Datum::Bool(false), Datum::Int(0), Datum::Int(r), Datum::Int(form), by_form(&lost_in)]);
         }
         our_vuln = if kind.contains("Debuff") { 1 } else { 0.max(our_vuln - 1) };
         (e_vuln, e_weak) = (0.max(e_vuln - 1), 0.max(e_weak - 1));
         k += 1;
     }
-    Py::Tuple(vec![Py::Bool(false), Py::Int(0), Py::Int(40), Py::Int(form), by_form(&lost_in)])
+    Datum::Tuple(vec![Datum::Bool(false), Datum::Int(0), Datum::Int(40), Datum::Int(form), by_form(&lost_in)])
 }
 
-pub fn run(arm: &str, spec: &[i64], n: i64, seed: i64) -> Result<Py, String> {
+pub fn run(arm: &str, spec: &[i64], n: i64, seed: i64) -> Result<Datum, String> {
     let res = under(|| patched(arm, &knob_setting), || played(|spec: &[i64], rng| fight(spec, rng, 75, false), spec, n, seed))?;
-    let died = Py::Dict((1..=3).map(|f| (Py::Int(f), Py::Int(res.iter().filter(|o| !o.at(0).truthy() && o.at(3).int() == f).count() as i64))).collect());
-    let lost = Py::Dict((1..=3).map(|f| (Py::Int(f), Py::Float(res.iter().map(|o| o.at(4).get(&Py::Int(f)).unwrap().int()).sum::<i64>() as f64 / n as f64))).collect());
-    Ok(Py::Tuple(vec![Py::str(arm), Py::ints(spec), Py::Float(mean(&res, 0)), Py::Float(mean(&res, 1)), Py::Float(mean(&res, 2)), died, lost]))
+    let died = Datum::Dict((1..=3).map(|f| (Datum::Int(f), Datum::Int(res.iter().filter(|o| !o.at(0).truthy() && o.at(3).int() == f).count() as i64))).collect());
+    let lost = Datum::Dict((1..=3).map(|f| (Datum::Int(f), Datum::Float(res.iter().map(|o| o.at(4).get(&Datum::Int(f)).unwrap().int()).sum::<i64>() as f64 / n as f64))).collect());
+    Ok(Datum::Tuple(vec![Datum::str(arm), Datum::ints(spec), Datum::Float(mean(&res, 0)), Datum::Float(mean(&res, 1)), Datum::Float(mean(&res, 2)), died, lost]))
 }
 
 /// damage, Block, Strikes, Defends, heavy, Bash, Weak, dead, energy, hand size (tuned until the planner wins 0-60%)
@@ -250,12 +250,12 @@ fn script(args: &[String]) -> Result<(), String> {
     } else {
         let (out, arms) = table(args, &run, &decks, &["on"])?;
         for (arm, rows) in &arms {
-            let died = Py::Dict((1..=3).map(|f| (Py::Int(f), Py::Int(rows.iter().map(|o| o.at(5).get(&Py::Int(f)).unwrap().int()).sum()))).collect());
-            let lost = (1..=3).map(|f| format!("{:.0}", mean_of(rows.iter().map(|o| o.at(6).get(&Py::Int(f)).unwrap()), rows.len()))).collect::<Vec<_>>().join(" ");
+            let died = Datum::Dict((1..=3).map(|f| (Datum::Int(f), Datum::Int(rows.iter().map(|o| o.at(5).get(&Datum::Int(f)).unwrap().int()).sum()))).collect());
+            let lost = (1..=3).map(|f| format!("{:.0}", mean_of(rows.iter().map(|o| o.at(6).get(&Datum::Int(f)).unwrap()), rows.len()))).collect::<Vec<_>>().join(" ");
             out!("{arm:28}: won {:.3}  hp left {:5.1}  rounds {:4.1}  died in form {}  hp lost by form {lost}", mean(rows, 2), mean(rows, 3), mean(rows, 4), died.repr());
         }
         for dk in &decks {
-            let dk = Py::ints(dk);
+            let dk = Datum::ints(dk);
             out!("{} {}", dk.repr(), out.iter().filter(|o| *o.at(1) == dk).map(|o| format!("{}: won {:.2} hp {:4.1}", o.at(0).as_str(), o.at(2).float(), o.at(3).float())).collect::<Vec<_>>().join("  "));
         }
     }
@@ -274,7 +274,7 @@ mod tests {
     const GOLDEN: &str = include_str!("../../tests/golden/scripts/bosses_subjectfight.txt");
 
     #[test]
-    fn as_python() {
+    fn as_recorded() {
         for command in ["trace", "trace 4 2 FORM_WORTH=0+STAB_SCAR=30", "trace 9 5 K.caution=1.35+ENRAGE_PRICE=0", "3 on ENRAGE_PRICE=9+K.debuff_worth=1 STAB_SCAR=0", "flips 2 on FORM_WORTH=0"] {
             golden(main, &command.split(' ').collect::<Vec<_>>(), section(GOLDEN, command));
         }

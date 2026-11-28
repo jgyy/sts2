@@ -2,7 +2,7 @@
 
 use serde_json::{json, Value};
 use sts2bot::fight::battle;
-use sts2bot::py::JsonExt;
+use sts2bot::base::JsonExt;
 
 use crate::fake_game::with;
 use crate::fight::{aimed, combat_state, power};
@@ -15,7 +15,7 @@ fn BUFFING() -> Option<Value> {
 }
 
 /// A round of the fight as logged on Ascension 9 (the Nectar: 3, Buff, then 19 a turn), with what each has aimed at us a round so far, this round included (bot.rs's _threat).
-/// (The Python's defaults: rock 47, nectar 37, nectar_attack 3, rock_attack 16, no threat.)
+/// (the original's defaults: rock 47, nectar 37, nectar_attack 3, rock_attack 16, no threat.)
 fn bowlbugs(rock: i64, nectar: i64, nectar_attack: Option<i64>, rock_attack: Option<i64>, threat: Option<Value>) -> Value {
     let out = [with(enemy_kw("BOWLBUG_ROCK_0", rock, json!({"attack": rock_attack})), json!({"status": [power("IMBALANCED", 1)]})), enemy_kw("BOWLBUG_NECTAR_0", nectar, json!({"attack": nectar_attack}))];
     let seen = threat.unwrap_or_else(|| json!({"BOWLBUG_ROCK_0": rock_attack.unwrap_or(0) as f64, "BOWLBUG_NECTAR_0": nectar_attack.unwrap_or(0) as f64}));

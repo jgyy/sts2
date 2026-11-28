@@ -7,11 +7,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use indexmap::IndexMap;
 use serde_json::Value;
 
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 pub const WIN_FLOORS: i64 = 15;
 
-/// A setting's value as a dict key: a number (1, 1.0 and True are one key, as in Python).
+/// A setting's value as a dict key: a number (1, 1.0 and True are one key, as in the original).
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct Num(pub f64);
 
@@ -56,14 +56,14 @@ pub fn score(r: &Value) -> i64 {
     r["floor"].int() + if r["won"].truthy() { WIN_FLOORS } else { 0 }
 }
 
-/// (The numbers are all ints or all floats in Python, never a mix: an int is passed as the float it equals.)
+/// (The numbers are all ints or all floats in the original, never a mix: an int is passed as the float it equals.)
 pub fn mean_se(xs: &[f64]) -> (f64, f64) {
     let n = xs.len();
     if n == 0 {
         return (0.0, 0.0);
     }
-    let m = py::fsum(xs.iter().copied()) / n as f64;
-    (m, (py::fsum(xs.iter().map(|x| (x - m).powf(2.0))) / 1.max(n as i64 - 1) as f64 / n as f64).sqrt())
+    let m = base::fsum(xs.iter().copied()) / n as f64;
+    (m, (base::fsum(xs.iter().map(|x| (x - m).powf(2.0))) / 1.max(n as i64 - 1) as f64 / n as f64).sqrt())
 }
 
 pub fn pct(k: i64, n: i64) -> String {
@@ -79,7 +79,7 @@ fn is_num(v: &Value, n: i64) -> bool {
 }
 
 fn strings(v: &Value) -> Vec<String> {
-    v.list().iter().map(py::str_of).collect()
+    v.list().iter().map(base::str_of).collect()
 }
 
 pub fn boss_record<R: Borrow<Value>>(runs: &[R]) -> Vec<String> {
@@ -142,7 +142,7 @@ pub fn effects<R: Borrow<Value>>(runs: &[R]) -> Effects {
         }
         let base = mean_se(&by.values().flatten().copied().collect::<Vec<f64>>()).0;
         let mut rows: Vec<(&Num, &Vec<f64>)> = by.iter().collect();
-        py::sort_by_key(&mut rows, |(v, _)| **v);
+        base::sort_by_key(&mut rows, |(v, _)| **v);
         out.insert(name.clone(), rows.into_iter().map(|(v, s)| (*v, (mean_se(s).0 - base, mean_se(s).1, s.len() as i64))).collect());
     }
     out
@@ -167,7 +167,7 @@ pub fn pooled(groups: &Groups) -> Effects {
 /// (best value, its margin over the runner-up, that margin's standard error).
 pub fn best(values: &Values) -> (Num, f64, f64) {
     let mut rows: Vec<(&Num, &(f64, f64, i64))> = values.iter().collect();
-    py::sort_by_key(&mut rows, |(_, x)| -x.0);
+    base::sort_by_key(&mut rows, |(_, x)| -x.0);
     let ((v1, (d1, s1, _)), (_v2, (d2, s2, _))) = (rows[0], rows[1]);
     (*v1, d1 - d2, (s1 * s1 + s2 * s2).sqrt())
 }
@@ -203,7 +203,7 @@ pub fn settings_table(groups: &Groups, game: &str) -> Vec<String> {
                     None => String::new(),
                 });
             }
-            lines.push(format!("| {} | {} | {} | {:+.1}{} |", name, py::float_g(v.0), cells.join(" | "), d, mark(*d, *se)));
+            lines.push(format!("| {} | {} | {} | {:+.1}{} |", name, base::float_g(v.0), cells.join(" | "), d, mark(*d, *se)));
         }
     }
     lines
@@ -220,7 +220,7 @@ pub fn recommendations(groups: &Groups, game: &str) -> Vec<String> {
         for (name, values) in effects(&groups[key]) {
             let (v, margin, se) = best(&values);
             if margin > 1.96 * se {
-                picks.push(format!("{} {} (+{:.1} ± {:.1})", name, py::float_g(v.0), margin, se));
+                picks.push(format!("{} {} (+{:.1} ± {:.1})", name, base::float_g(v.0), margin, se));
             }
         }
         out.push(format!("- **{}**: {}", ch, if picks.is_empty() { "no setting separates from the rest at 95%".to_string() } else { picks.join(", ") }));
@@ -230,14 +230,14 @@ pub fn recommendations(groups: &Groups, game: &str) -> Vec<String> {
 
 /// Cards taken from rewards, by how much further the runs that took them got than the character's runs that left the
 /// same floor alive (learn.CardStats' measure: a card taken late is not credited with the floors before it).
-/// (Python's defaults: top 10, min_picks 30.)
+/// (the original's defaults: top 10, min_picks 30.)
 pub fn card_table<R: Borrow<Value>>(runs: &[R], top: usize, min_picks: usize) -> (Vec<CardRow>, Vec<CardRow>) {
     let mut usual: IndexMap<i64, f64> = IndexMap::new();
     let mut gained: IndexMap<String, Vec<f64>> = IndexMap::new();
     for r in runs {
         let r = r.borrow();
         for pick in r["picks"].list() {
-            let (floor, key) = (pick[0].int(), py::str_of(&pick[1]));
+            let (floor, key) = (pick[0].int(), base::str_of(&pick[1]));
             if !usual.contains_key(&floor) {
                 let alive: Vec<i64> = runs.iter().map(|x| x.borrow()).filter(|x| x["floor"].int() > floor || x["won"].truthy()).map(score).collect();
                 usual.insert(floor, if alive.is_empty() { 0.0 } else { alive.iter().sum::<i64>() as f64 / alive.len() as f64 });
@@ -246,32 +246,32 @@ pub fn card_table<R: Borrow<Value>>(runs: &[R], top: usize, min_picks: usize) ->
         }
     }
     let mut rows: Vec<CardRow> = gained.iter().filter(|(_, g)| g.len() >= min_picks).map(|(k, g)| (mean_se(g).0, k.clone(), g.len() as i64, mean_se(g).1)).collect();
-    py::sort_by_key_rev(&mut rows, |row| row.clone());
+    base::sort_by_key_rev(&mut rows, |row| row.clone());
     let good = rows[..top.min(rows.len())].to_vec();
     let mut bad = rows[if top == 0 { 0 } else { rows.len().saturating_sub(top) }..].to_vec();
     bad.reverse();
     (good, bad)
 }
 
-/// (Python's default: top 6.)
+/// (the original's default: top 6.)
 pub fn deaths<R: Borrow<Value>>(runs: &[R], top: usize) -> Vec<((i64, String, String), i64)> {
     let mut at: IndexMap<(i64, String, String), i64> = IndexMap::new();
     for r in runs {
         let r = r.borrow();
         if !r["won"].truthy() && r["fights"].truthy() {
             let last = r["fights"].list().last().expect("a fight");
-            *at.entry((last["act"].int(), py::str_of(&last["kind"]), strings(&last["foes"]).join("+"))).or_insert(0) += 1;
+            *at.entry((last["act"].int(), base::str_of(&last["kind"]), strings(&last["foes"]).join("+"))).or_insert(0) += 1;
         }
     }
     let mut rows: Vec<((i64, String, String), i64)> = at.into_iter().collect();
-    py::sort_by_key_rev(&mut rows, |row| row.1);
+    base::sort_by_key_rev(&mut rows, |row| row.1);
     rows.truncate(top);
     rows
 }
 
 /// Won runs next to the runs that got as far and lost to the last boss (runs that end early do less of everything).
 pub fn habits<R: Borrow<Value>>(runs: &[R]) -> String {
-    let last_act = || py::max_of(runs.iter().map(|x| x.borrow()["act"].float())).unwrap_or(0.0);
+    let last_act = || base::max_of(runs.iter().map(|x| x.borrow()["act"].float())).unwrap_or(0.0);
     let won: Vec<&Value> = runs.iter().map(|r| r.borrow()).filter(|r| r["won"].truthy()).collect();
     let lost: Vec<&Value> = runs
         .iter()
@@ -279,7 +279,7 @@ pub fn habits<R: Borrow<Value>>(runs: &[R]) -> String {
         .filter(|r| !r["won"].truthy() && r["fights"].truthy() && r["fights"].list().last().is_some_and(|f| f["kind"] == "boss") && r["act"].float() == last_act())
         .collect();
     let avg = |rs: &[&Value], k: &str| -> f64 {
-        let mut sum = py::Sum::new(0.0);
+        let mut sum = base::Sum::new(0.0);
         for r in rs {
             match &r[k] {
                 Value::Array(v) => sum.add_i(v.len() as i64),
@@ -292,14 +292,14 @@ pub fn habits<R: Borrow<Value>>(runs: &[R]) -> String {
     ["elites", "rests", "smiths", "removals", "skips", "potions", "deck"].iter().map(|k| format!("{} {:.1} / {:.1}", k, avg(&won, k), avg(&lost, k))).collect::<Vec<_>>().join(", ")
 }
 
-/// (Python's default: min_runs 30.)
+/// (the original's default: min_runs 30.)
 pub fn report(files: &[String], _min_runs: usize) -> String {
     let all = load(files);
     let errors = all.iter().filter(|r| r.has("error")).count();
     let runs: Vec<&Value> = all.iter().filter(|r| !r.has("error")).collect();
     let mut groups: Groups = IndexMap::new();
     for r in &runs {
-        groups.entry((py::str_of(&r["game"]), py::str_of(&r["character"]), if r.has("ascension") { r["ascension"].int() } else { 0 })).or_default().push(r);
+        groups.entry((base::str_of(&r["game"]), base::str_of(&r["character"]), if r.has("ascension") { r["ascension"].int() } else { 0 })).or_default().push(r);
     }
     let mut out: Vec<String> = vec!["# Model runs".to_string(), String::new()];
     if errors != 0 {
@@ -364,7 +364,7 @@ mod tests {
     }
 
     #[test]
-    fn the_report_is_pythons() {
+    fn the_report_is_the_recorded() {
         let g = golden();
         assert_eq!(report(&[RUNS.to_string()], 30), g["report"].s());
         // (two files: the same runs twice over)
@@ -372,7 +372,7 @@ mod tests {
     }
 
     #[test]
-    fn every_table_is_pythons() {
+    fn every_table_is_the_recorded() {
         let g = golden();
         let all = load(&[RUNS.to_string()]);
         let runs: Vec<&Value> = all.iter().filter(|r| !r.has("error")).collect();
@@ -410,7 +410,7 @@ mod tests {
     }
 
     #[test]
-    fn small_things_as_python() {
+    fn small_things_as_recorded() {
         let g = golden();
         for case in g["mean_se"].list() {
             let xs: Vec<f64> = case[0].list().iter().map(|x| x.float()).collect();

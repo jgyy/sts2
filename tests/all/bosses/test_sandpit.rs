@@ -2,13 +2,13 @@
 
 use serde_json::{json, Value};
 use sts2bot::fight::sandpit;
-use sts2bot::py::JsonExt;
+use sts2bot::base::JsonExt;
 
 use crate::fake_game::{card, with};
 use crate::fight::{combat_state, play_turn, power};
 use crate::helpers::{enemy, STRIKE};
 
-/// (The Python's default: cost 1.)
+/// (the original's default: cost 1.)
 fn ESCAPE(i: i64, cost: i64) -> Value {
     card(i, "FRANTIC_ESCAPE", "Frantic Escape", "Status", cost, "Get farther away. Increase Sandpit by 1. Increase the cost of this card by 1.", "None")
 }
@@ -21,7 +21,7 @@ fn DECK() -> Vec<Value> {
 }
 
 /// The hand indexes of the cards the planner plays this turn against the Insatiable, the Sandpit moving with each Escape.
-/// (The Python's default: energy 3.)
+/// (the original's default: energy 3.)
 fn plays(hand: Vec<Value>, hp: i64, pit: i64, round_no: i64, energy: i64) -> Vec<i64> {
     let boss = with(enemy!("INS", hp, attack = 0, status = [power("SANDPIT", pit)]), json!({"max_hp": 321}));
     let escapes = hand.iter().filter(|c| c["id"] == "FRANTIC_ESCAPE").count() as i64;

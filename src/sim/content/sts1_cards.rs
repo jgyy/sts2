@@ -295,7 +295,7 @@ pub fn _recursion(f: &mut Fight) {
     }
 }
 
-/// (No table names it: in the Python its row of AFTER sits inside a comment.)
+/// (No table names it: in the original its row of AFTER sits inside a comment.)
 pub fn _scrape(f: &mut Fight, c: &Card) {
     let before = f.hand.len();
     f.draw_cards(if c.up { 5 } else { 4 });

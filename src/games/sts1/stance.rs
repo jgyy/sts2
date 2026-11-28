@@ -11,7 +11,7 @@ use serde_json::Value;
 
 use crate::cards::parse;
 use crate::games::sts1::text::Raw;
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 
 /// an Attack's damage in each stance, against no stance
 pub static DEALT: LazyLock<IndexMap<&'static str, f64>> = LazyLock::new(|| IndexMap::from([("WRATH", 2.0), ("DIVINITY", 3.0)]));
@@ -85,7 +85,7 @@ impl Stance {
 
     /// An Attack's damage a hit, from what its text shows (in the stance the turn began in) to the stance now.
     pub fn deal(&self, per: i64) -> i64 {
-        py::round(per as f64 * _dealt(self.now) / _dealt(self.start))
+        base::round(per as f64 * _dealt(self.now) / _dealt(self.start))
     }
 
     /// Change to `to` (a card's CardInfo.stance: WRATH, CALM, DIVINITY or EXIT); the energy that gives.
@@ -148,7 +148,7 @@ pub fn stuck_odds(player: &Value, extra: i64) -> f64 {
         return 1.0;
     }
     let need = need.min(size);
-    py::comb(size - outs, need) as f64 / py::comb(size, need) as f64
+    base::comb(size - outs, need) as f64 / base::comb(size, need) as f64
 }
 
 /// What ending the turn in Wrath costs: the chance of no way out next turn and of an attack then (`attacks`: how often the

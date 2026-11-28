@@ -15,7 +15,7 @@ pub use crate::fight::{afflictions, handpick};
 use crate::learn::CardStats;
 pub use crate::learn::{knob, model_shift};
 use crate::logging::{Level, Logger};
-use crate::py::{self, JsonExt};
+use crate::base::{self, JsonExt};
 pub use crate::run::decks::{_blocks, _hitters, _punch, _stars, deck_fit, BIG_DECK, SKIP_THRESHOLD}; // (what a card is worth in this deck: its own module)
 pub use crate::run::events::{_event_option_value, event}; // (events live in their own module)
 pub use crate::run::potions::{boss_floors, boss_worth, saving};
@@ -55,7 +55,7 @@ pub struct Memory {
     pub event_id: String,           // the event on screen (its id), to tell one event from the next
     pub event_hp0: i64,             // our HP when that event began: what it has cost us so far
     pub map_nodes: IndexMap<(i64, i64), Value>, // the act's map as last seen: (col, row) -> node
-    pub map_at: Option<(i64, i64)>, // the node we walked to (Python's `()`: None)
+    pub map_at: Option<(i64, i64)>, // the node we walked to (the original's `()`: None)
     pub upgrade_gain: Option<UpgradeGain>, // callable(card) -> what its upgrade adds, or None if unknown
     pub over_waits: i64,            // looks at an end-of-run summary that is still animating
     pub max_ascension: IndexMap<String, i64>, // character id -> highest unlocked ascension
@@ -252,7 +252,7 @@ fn pair(c: &Value) -> Option<(i64, i64)> {
     }
 }
 
-/// `a == b` for two JSON values as Python compares what they stand for (1 == 1.0).
+/// `a == b` for two JSON values as the original compares what they stand for (1 == 1.0).
 fn same(a: &Value, b: &Value) -> bool {
     match (a, b) {
         (Value::Number(x), Value::Number(y)) => x.as_f64() == y.as_f64(),
@@ -272,10 +272,10 @@ fn sorted_by<K: PartialOrd>(items: impl IntoIterator<Item = Value>, mut key: imp
     keyed.into_iter().map(|t| t.1).collect()
 }
 
-/// `f"{_where(state)}"`: the tuple as Python prints it.
+/// `f"{_where(state)}"`: the tuple as the original prints it.
 fn where_repr(state: &Value) -> String {
     let run = &state["run"];
-    format!("({}, {})", py::repr_of(&run["act"]), py::repr_of(&run["floor"]))
+    format!("({}, {})", base::repr_of(&run["act"]), base::repr_of(&run["floor"]))
 }
 
 pub fn _where(state: &Value) -> Where {
@@ -296,7 +296,7 @@ pub fn _option_names(options: &Value) -> Vec<String> {
         if let Value::String(s) = o {
             out.push(s.clone());
         } else if o.is_object() && get_or_true(o, "enabled") && o["name"].truthy() {
-            out.push(py::str_of(&o["name"]));
+            out.push(base::str_of(&o["name"]));
         }
     }
     out
@@ -331,7 +331,7 @@ pub fn menu(state: &Value, mem: &mut Memory, character: &str) -> Vec<Action> {
         return pick(&["standard"]);
     }
     if screen == "character_select" {
-        let ids: Vec<String> = state["characters"].list().iter().filter(|c| !c["locked"].truthy()).map(|c| py::str_of(&c["id"])).collect();
+        let ids: Vec<String> = state["characters"].list().iter().filter(|c| !c["locked"].truthy()).map(|c| base::str_of(&c["id"])).collect();
         let want = choose_character(character, &ids, mem.runs_finished, Some(&mem.max_ascension), Some(&mem.epochs), Some(&mem.recent));
         let select: Vec<Action> = match &want {
             Some(w) if !w.is_empty() => vec![act_("menu_select", json!({"option": w}))],
@@ -390,12 +390,12 @@ pub fn timeline_complete(epochs: Option<&IndexMap<String, String>>) -> bool {
 
 /// How many of this character's own epochs (IRONCLAD2_EPOCH, ...) are still to be earned.
 pub fn missing_epochs(character: &str, epochs: Option<&IndexMap<String, String>>) -> i64 {
-    let prefix = py::re::cached(&format!(r"^{}\d+_EPOCH\n?\z", py::re::escape(&character.to_uppercase())));
+    let prefix = base::re::cached(&format!(r"^{}\d+_EPOCH\n?\z", base::re::escape(&character.to_uppercase())));
     epochs.map_or(0, |e| e.iter().filter(|(eid, state)| prefix.is_match(&eid.to_uppercase()) && !_EARNED.contains(&state.as_str())).count() as i64)
 }
 
 /// so a restart does not replay the same draws
-static _SESSION_DRAWN: LazyLock<i64> = LazyLock::new(|| py::Random::unseeded().getrandbits(32) as i64);
+static _SESSION_DRAWN: LazyLock<i64> = LazyLock::new(|| base::Random::unseeded().getrandbits(32) as i64);
 
 /// `_SESSION`: drawn once a process; a test (or a replay) can set its own for this thread with [`set_session`].
 pub fn _SESSION() -> i64 {
@@ -418,7 +418,7 @@ pub fn _who(name: &str) -> String {
 /// `setting` is a character id, or "auto" / "cycle" / "random" over the unlocked ones.
 /// "auto" first plays the characters with a Timeline epoch of their own still to earn; among those (or everyone) one on
 /// the lowest ascension unlocked: drawn at random once a run, or with `recent` (oldest first) the one played longest ago.
-/// (The Python's defaults: `max_ascension`, `epochs` and `recent` None.)
+/// (the original's defaults: `max_ascension`, `epochs` and `recent` None.)
 pub fn choose_character(
     setting: &str,
     unlocked: &[String],
@@ -436,13 +436,13 @@ pub fn choose_character(
     for u in &unlocked {
         by_upper.insert(u.to_uppercase(), u);
     }
-    let mut s = py_strip(setting).to_uppercase();
+    let mut s = base_strip(setting).to_uppercase();
     if let Some(u) = by_upper.get(&s) {
         return Some((*u).clone());
     }
     if s.starts_with("AUTO:") {
         // "auto:IRONCLAD": that character first, for as long as it has epochs of its own to earn.
-        let first = by_upper.get(py_strip(s.split_once(':').expect("a colon").1)).copied();
+        let first = by_upper.get(base_strip(s.split_once(':').expect("a colon").1)).copied();
         if let Some(first) = first {
             if !first.is_empty() && missing_epochs(first, epochs) > 0 {
                 return Some(first.clone());
@@ -474,17 +474,17 @@ pub fn choose_character(
             let longest = lowest.iter().map(|u| ago(u)).min().expect("someone lowest");
             lowest.retain(|u| ago(u) == longest);
         }
-        let drawn = py::Random::new((_SESSION() + runs_finished) as i128).choice_index(lowest.len());
+        let drawn = base::Random::new((_SESSION() + runs_finished) as i128).choice_index(lowest.len());
         return Some(lowest[drawn].clone());
     }
     if s == "CYCLE" {
-        return Some(unlocked[py::modulo(runs_finished, unlocked.len() as i64) as usize].clone());
+        return Some(unlocked[base::modulo(runs_finished, unlocked.len() as i64) as usize].clone());
     }
     Some(unlocked[0].clone())
 }
 
-/// `str.strip()`: Python's blanks (those of Unicode and the four separators 0x1c-0x1f).
-fn py_strip(s: &str) -> &str {
+/// `str.strip()`: the original's blanks (those of Unicode and the four separators 0x1c-0x1f).
+fn base_strip(s: &str) -> &str {
     s.trim_matches(|c: char| c.is_whitespace() || ('\x1c'..='\x1f').contains(&c))
 }
 
@@ -492,7 +492,7 @@ fn py_strip(s: &str) -> &str {
 pub const _ROOM_BASE: [(&str, f64); 4] = [("Unknown", 2.2), ("Treasure", 4.0), ("Boss", 0.0), ("Ancient", 3.0)]; // (the other kinds are worked out below)
 pub const EARLY_ROWS: i64 = 8; // act 1 rows where the deck is still close to the starter deck
 
-/// (The Python's defaults: `early` False, `act` None.)
+/// (the original's defaults: `early` False, `act` None.)
 pub fn _room_value(kind: &str, hp: f64, gold: i64, early: bool, act: Option<i64>) -> f64 {
     let mut v = _ROOM_BASE.iter().find(|(k, _)| *k == kind).map_or(1.0, |(_, v)| *v);
     if kind == "Elite" && early {
@@ -576,7 +576,7 @@ fn at_least_zero(x: f64) -> f64 {
 
 /// Chance of beating the boss given how healthy we arrive, next to arriving at full HP. Act 1: no difference from 85%
 /// up, hardly a win below 60%. Act 2: ACT2_ODDS. Act 3: the last boss is beaten from (nearly) full HP only.
-/// (The Python's default: `act` 1.)
+/// (the original's default: `act` 1.)
 pub fn boss_odds(hp_ratio: f64, act: i64) -> f64 {
     if act == 2 {
         return _between(&ACT2_ODDS, hp_ratio);
@@ -614,7 +614,7 @@ pub fn _upgrade_worth(act: Option<i64>) -> f64 {
 
 /// Expected worth of walking through `rooms` (type, row) in order, starting at `hp`: rewards along the way weighed
 /// against the state we reach the boss in, and at each rest site whichever of resting and upgrading comes out ahead.
-/// (The Python's default: `harsh` 1.0. A row that is not an int is None.)
+/// (the original's default: `harsh` 1.0. A row that is not an int is None.)
 pub fn path_value<S: AsRef<str>>(rooms: &[(S, Option<i64>)], hp: f64, max_hp: i64, gold: i64, act: i64, harsh: f64) -> f64 {
     let (mut hp, mut gold) = (hp, gold);
     let max = max_hp as f64;
@@ -684,7 +684,7 @@ pub fn path_value<S: AsRef<str>>(rooms: &[(S, Option<i64>)], hp: f64, max_hp: i6
         } else if kind == "Shop" {
             let buys = gold as f64 / 120.0;
             score += 0.3 + if buys < 8.0 { buys } else { 8.0 }; // gold is only worth what it buys
-            gold = py::modulo(gold, 75);
+            gold = base::modulo(gold, 75);
         } else if kind == "Unknown" {
             score += 0.9;
             let left = hp - unknown_cost(act) * max * harsh;
@@ -699,7 +699,7 @@ pub fn path_value<S: AsRef<str>>(rooms: &[(S, Option<i64>)], hp: f64, max_hp: i6
 }
 
 /// Best value over every way on from node `key` (`rooms` is the way so far, that node included).
-/// (`key`: None for Memory's "no node"; `budget`: Python's one-item list, the paths still to be walked.)
+/// (`key`: None for Memory's "no node"; `budget`: the original's one-item list, the paths still to be walked.)
 pub fn best_onward(nodes: &IndexMap<(i64, i64), Value>, key: Option<(i64, i64)>, rooms: &[(String, Option<i64>)], hp: f64, max_hp: i64, gold: i64, act: i64, budget: &mut i64) -> f64 {
     let mut way: Vec<(Cow<str>, Option<i64>)> = rooms.iter().map(|(kind, row)| (Cow::Borrowed(kind.as_str()), *row)).collect();
     _onward(nodes, key, &mut way, hp, max_hp, gold, act, budget)
@@ -716,7 +716,7 @@ fn _onward<'a>(nodes: &'a IndexMap<(i64, i64), Value>, key: Option<(i64, i64)>, 
     let mut best: Option<f64> = None;
     for k in kids {
         let kind = &nodes[&k]["type"];
-        rooms.push((kind.as_str().map_or_else(|| Cow::Owned(py::str_of(kind)), Cow::Borrowed), Some(k.1)));
+        rooms.push((kind.as_str().map_or_else(|| Cow::Owned(base::str_of(kind)), Cow::Borrowed), Some(k.1)));
         let v = _onward(nodes, Some(k), rooms, hp, max_hp, gold, act, budget);
         rooms.pop();
         if best.is_none_or(|b| v > b) {
@@ -747,8 +747,8 @@ pub fn map_screen(state: &Value, mem: &mut Memory) -> Vec<Action> {
     for q in m["quests"].list() {
         // the Spoils Map's 600 Gold: a node of this act's map to walk through (the mod's `quests`)
         let Some(key) = col_row(q) else { continue };
-        if q["kind"] == "spoils" && same(&q["act"], act_raw) && nodes.contains_key(&key) && !py::str_of(&nodes[&key]["type"]).starts_with(SPOILS) {
-            let kind = format!("{SPOILS}{}", py::str_of(&nodes[&key]["type"]));
+        if q["kind"] == "spoils" && same(&q["act"], act_raw) && nodes.contains_key(&key) && !base::str_of(&nodes[&key]["type"]).starts_with(SPOILS) {
+            let kind = format!("{SPOILS}{}", base::str_of(&nodes[&key]["type"]));
             nodes[&key]["type"] = json!(kind);
             crate::log_debug!(LOG, "map: the Spoils Map's gold at ({}, {})", key.0, key.1);
         }
@@ -760,38 +760,38 @@ pub fn map_screen(state: &Value, mem: &mut Memory) -> Vec<Action> {
     for opt in options {
         let v = match col_row(opt).filter(|key| nodes.contains_key(key)) {
             Some(key) => {
-                let mut way = vec![(Cow::Owned(py::str_of(&nodes[&key]["type"])), Some(key.1))];
+                let mut way = vec![(Cow::Owned(base::str_of(&nodes[&key]["type"])), Some(key.1))];
                 _onward(&nodes, Some(key), &mut way, hp_now as f64, max_hp, gold, act.unwrap_or(1), &mut budget)
             }
             None => {
                 let mut ahead: Option<f64> = None;
                 for k in opt["leads_to"].list() {
-                    let v = _room_value(&py::str_of(&k["type"]), hp, gold, is_early(&k["row"]), act);
+                    let v = _room_value(&base::str_of(&k["type"]), hp, gold, is_early(&k["row"]), act);
                     if ahead.is_none_or(|a| v > a) {
                         ahead = Some(v);
                     }
                 }
-                _room_value(&py::str_of(&opt["type"]), hp, gold, is_early(&opt["row"]), act) + 0.9 * ahead.unwrap_or(0.0)
+                _room_value(&base::str_of(&opt["type"]), hp, gold, is_early(&opt["row"]), act) + 0.9 * ahead.unwrap_or(0.0)
             }
         };
         scored.push((v, opt));
     }
-    let is_elite = |o: &Value| py::str_of(&o["type"]).contains("Elite");
+    let is_elite = |o: &Value| base::str_of(&o["type"]).contains("Elite");
     if hp < ELITE_FLOOR.get() && scored.iter().any(|(_, o)| !is_elite(o)) {
         // Badly hurt, every road "dies" on paper and the values no longer tell them apart: not an elite.
         scored = scored.into_iter().map(|(v, o)| (v - if is_elite(o) { 1000.0 } else { 0.0 }, o)).collect();
     }
     let mut ranked = scored.clone();
-    py::sort_by_key_rev(&mut ranked, |t| t.0);
+    base::sort_by_key_rev(&mut ranked, |t| t.0);
     let ranked: Vec<&Value> = ranked.into_iter().map(|(_, o)| o).collect();
     if LOG.enabled(Level::Debug) && scored.len() > 1 {
-        let shown: Vec<String> = scored.iter().map(|(v, o)| format!("{}@{} {:.1}", py::str_of(&o["type"]), py::str_of(&o["col"]), v)).collect();
+        let shown: Vec<String> = scored.iter().map(|(v, o)| format!("{}@{} {:.1}", base::str_of(&o["type"]), base::str_of(&o["col"]), v)).collect();
         crate::log_debug!(LOG, "map: {}", shown.join(", "));
     }
     let best = ranked[0];
     let leads = best["leads_to"].list();
     mem.boss_next = if !leads.is_empty() {
-        leads.iter().any(|k| py::str_of(&k["type"]) == "Boss")
+        leads.iter().any(|k| base::str_of(&k["type"]) == "Boss")
     } else {
         let here = col_row(best).and_then(|key| nodes.get(&key));
         here.map_or(&[][..], |n| n["children"].list()).iter().any(|c| pair(c).and_then(|k| nodes.get(&k)).is_some_and(|n| n["type"] == "Boss"))
@@ -830,15 +830,15 @@ pub fn rewards(state: &Value, mem: &mut Memory) -> Vec<Action> {
     let mut out: Vec<Action> = Vec::new();
     // Highest index first so earlier indices stay valid.
     for item in sorted_by(r["items"].list().iter().cloned(), |i| -index_of(i), false) {
-        let kind = py::str_of(&item["type"]);
+        let kind = base::str_of(&item["type"]);
         if kind == "potion" && belt_full {
             // A potion better than the least on the belt: pour that one away (twice a room at most, so a failed discard cannot loop).
             let held = player["potions"].list();
-            let worst = py::min_by_key(held.iter(), |p| boss_worth(p));
+            let worst = base::min_by_key(held.iter(), |p| boss_worth(p));
             let full = held.len() as i64 >= slots(player); // (and not Sozu, which lets none be taken)
             if let (true, Some(worst)) = (full, worst) {
                 if boss_worth(&item) >= boss_worth(worst) + POTION_SWAP && mem.potion_swaps.get(&_where(state)).copied().unwrap_or(0) < 2 {
-                    crate::log_debug!(LOG, "potion: {} poured away for {}", py::str_of(&worst["name"]), py::str_of(&item["potion_name"]));
+                    crate::log_debug!(LOG, "potion: {} poured away for {}", base::str_of(&worst["name"]), base::str_of(&item["potion_name"]));
                     out.push(act_("discard_potion", json!({"slot": worst["slot"].int()})));
                 }
             }
@@ -863,11 +863,11 @@ pub fn card_reward(state: &Value, mem: &mut Memory) -> Vec<Action> {
     let worth = |c: &Value| -> f64 {
         let mut v = deck_value(c) + deck_fit(c, &mem.deck, act, mem.max_energy);
         if let Some(stats) = &mem.card_stats {
-            v += stats.borrow_mut().shift(&who, &py::str_of(&c["name"]), Some(_kind(c)));
+            v += stats.borrow_mut().shift(&who, &base::str_of(&c["name"]), Some(_kind(c)));
         }
         v += model_shift(&who, &c["name"].text());
         // The starter deck cannot kill anything quickly: an attack first (deck_fit sees to it once the deck is known).
-        if mem.deck.is_empty() && act == Some(1) && mem.deck_size < 18 && py::str_of(&c["type"]) == "Attack" && v > 0.0 {
+        if mem.deck.is_empty() && act == Some(1) && mem.deck_size < 18 && base::str_of(&c["type"]) == "Attack" && v > 0.0 {
             v += 0.8;
         }
         v
@@ -880,7 +880,7 @@ pub fn card_reward(state: &Value, mem: &mut Memory) -> Vec<Action> {
         // the Silent drank an Attack Potion on round 1 of Donu and Deca and skipped all three for "need 4.0").
         ranked = afflictions::offered(&ranked, &state["_fight_state"]);
         if LOG.enabled(Level::Debug) {
-            crate::log_debug!(LOG, "card offer in a fight: {}", ranked.iter().map(|c| py::str_of(&c["name"])).collect::<Vec<_>>().join(", "));
+            crate::log_debug!(LOG, "card offer in a fight: {}", ranked.iter().map(|c| base::str_of(&c["name"])).collect::<Vec<_>>().join(", "));
         }
         let mut out = select(&ranked);
         out.push(act_("skip_card_reward", json!({})));
@@ -888,7 +888,7 @@ pub fn card_reward(state: &Value, mem: &mut Memory) -> Vec<Action> {
     }
     let threshold = reward_bar(mem.deck_size, act);
     if LOG.enabled(Level::Debug) {
-        let shown: Vec<String> = ranked.iter().map(|c| format!("{} {:.1}", py::str_of(&c["name"]), worth(c))).collect();
+        let shown: Vec<String> = ranked.iter().map(|c| format!("{} {:.1}", base::str_of(&c["name"]), worth(c))).collect();
         crate::log_debug!(LOG, "card reward (deck {}, need {:.1}): {}", mem.deck_size, threshold, shown.join(", "));
     }
     let take = select(&ranked);
@@ -910,7 +910,7 @@ pub fn rest_site(state: &Value, mem: &mut Memory) -> Vec<Action> {
     let full = act.and_then(|act| HEAL_BELOW.iter().find(|(a, _)| *a == act)).map_or(0.95, |(_, share)| *share);
     let mut heal_first = hp < if mem.boss_next { full } else { 0.6 };
     let node = if mem.map_nodes.is_empty() { None } else { mem.map_at.and_then(|at| mem.map_nodes.get(&at)) };
-    if node.is_some_and(|node| py::str_of(&node["type"]) == "RestSite" && node["children"].truthy()) {
+    if node.is_some_and(|node| base::str_of(&node["type"]) == "RestSite" && node["children"].truthy()) {
         let args = (max_hp, player["gold"].int(), act.unwrap_or(1));
         let mut budget = MAX_PATHS;
         let smith = _upgrade_worth(Some(args.2)) + best_onward(&mem.map_nodes, mem.map_at, &[], hp_now as f64, args.0, args.1, args.2, &mut budget);
@@ -971,7 +971,7 @@ pub fn _shop_card(item: &Value) -> Value {
     Value::Object(card)
 }
 
-/// (The Python's default: `key` "shop".)
+/// (the original's default: `key` "shop".)
 pub fn shop(state: &Value, mem: &mut Memory, key: &str) -> Vec<Action> {
     let mut s = &state[key];
     if key == "fake_merchant" {
@@ -994,7 +994,7 @@ pub fn shop(state: &Value, mem: &mut Memory, key: &str) -> Vec<Action> {
         mem.parasol = Some((act, floor, looks));
         return if looks > 8 || !s["items"].list().iter().any(|i| get_or_true(i, "is_stocked")) { vec![act_("proceed", json!({}))] } else { vec![] };
     }
-    let reserve = if relics.iter().any(|r| py::str_of(&r["id"]) == "SEAL_OF_GOLD") { SEAL_RESERVE } else { 0 };
+    let reserve = if relics.iter().any(|r| base::str_of(&r["id"]) == "SEAL_OF_GOLD") { SEAL_RESERVE } else { 0 };
     let debug = LOG.enabled(Level::Debug);
     let mut scored: Vec<(f64, &Value)> = Vec::new();
     let mut shelf: Vec<String> = Vec::new(); // (for the log: what was on offer, what it cost and what we made of it)
@@ -1006,7 +1006,7 @@ pub fn shop(state: &Value, mem: &mut Memory, key: &str) -> Vec<Action> {
         if !get_or_true(item, "is_stocked") {
             continue;
         }
-        let cat = py::str_of(&item["category"]);
+        let cat = base::str_of(&item["category"]);
         let mut rated: Option<f64> = None; // (a card's rating, for the log, when it is under the bar and so not wanted)
         let want: f64;
         if cat == "card_removal" {
@@ -1029,7 +1029,7 @@ pub fn shop(state: &Value, mem: &mut Memory, key: &str) -> Vec<Action> {
             let mut v = deck_value(&card) + deck_fit(&card, &mem.deck, act, mem.max_energy);
             if let Some(stats) = &mem.card_stats {
                 // (what our own runs say of the card and of its kind, as at a card reward)
-                v += stats.borrow_mut().shift(&player["character"].text(), &py::str_of(&item["card_name"]), Some(_kind(&card)));
+                v += stats.borrow_mut().shift(&player["character"].text(), &base::str_of(&item["card_name"]), Some(_kind(&card)));
             }
             v += model_shift(&player["character"].text(), &item["card_name"].text());
             // Only cards that make the deck better, and more freely when rich.
@@ -1077,7 +1077,7 @@ pub fn shop(state: &Value, mem: &mut Memory, key: &str) -> Vec<Action> {
             crate::log_debug!(LOG, "shop (gold {}, potions {} of {}): {}", gold, player["potions"].list().len(), slots(player), shelf.join(", "));
         }
     }
-    py::sort_by_key(&mut scored, |t| -t.0);
+    base::sort_by_key(&mut scored, |t| -t.0);
     let mut out: Vec<Action> = scored.iter().map(|(_, i)| act_("shop_purchase", json!({"index": index_of(i)}))).collect();
     out.push(act_("proceed", json!({})));
     out
@@ -1105,7 +1105,7 @@ pub fn _removal_rank(card: &Value) -> f64 {
     v
 }
 
-/// (The Python's defaults: `screen_type` "", `gain` None.)
+/// (the original's defaults: `screen_type` "", `gain` None.)
 pub fn _pick_order(cards: &[Value], prompt: &str, screen_type: &str, gain: Option<&UpgradeGain>) -> Vec<Value> {
     if _WORST_FIRST().is_match(prompt) || screen_type == "transform" {
         return sorted_by(cards.iter().cloned(), _removal_rank, false);
@@ -1125,7 +1125,7 @@ pub fn _pick_order(cards: &[Value], prompt: &str, screen_type: &str, gain: Optio
 
         let ranked = sorted_by(if fresh.is_empty() { cards.to_vec() } else { fresh }, rank, true);
         if gain.is_some() && LOG.enabled(Level::Debug) {
-            let shown: Vec<String> = ranked.iter().take(5).map(|c| format!("{} {:.1}", py::str_of(&c["name"]), rank(c))).collect();
+            let shown: Vec<String> = ranked.iter().take(5).map(|c| format!("{} {:.1}", base::str_of(&c["name"]), rank(c))).collect();
             crate::log_debug!(LOG, "upgrade: {}", shown.join(", "));
         }
         return ranked;
@@ -1155,10 +1155,10 @@ pub fn _card_select(state: &Value, mem: &mut Memory) -> Vec<Action> {
     if kind == "choose" {
         ordered = afflictions::offered(&ordered, &state["_fight_state"]); // (a card a potion offers mid-fight: by the turn)
         if LOG.enabled(Level::Debug) {
-            let shown = format!("{}|{}", key, cards.iter().map(|c| py::str_of(&c["name"])).collect::<Vec<_>>().join(","));
+            let shown = format!("{}|{}", key, cards.iter().map(|c| base::str_of(&c["name"])).collect::<Vec<_>>().join(","));
             if shown != mem.logged_select {
                 mem.logged_select = shown;
-                let each: Vec<String> = ordered.iter().map(|c| format!("{}: {}", py::str_of(&c["name"]), py::str_of(&c["description"]))).collect();
+                let each: Vec<String> = ordered.iter().map(|c| format!("{}: {}", base::str_of(&c["name"]), base::str_of(&c["description"]))).collect();
                 crate::log_debug!(LOG, "choose ({}): {}", prompt, each.join(" | "));
             }
         }
@@ -1205,8 +1205,8 @@ pub fn _put_back_order(cards: &[Value], energy: Option<i64>) -> Vec<Value> {
     fn cost(c: &Value) -> i64 {
         match &c["cost"] {
             Value::Bool(b) => *b as i64,
-            Value::Number(n) => n.as_i64().unwrap_or_else(|| n.as_f64().map_or(0, py::trunc)),
-            Value::String(s) => py_strip(s).parse().unwrap_or(0), // X-cost: playable with anything
+            Value::Number(n) => n.as_i64().unwrap_or_else(|| n.as_f64().map_or(0, base::trunc)),
+            Value::String(s) => base_strip(s).parse().unwrap_or(0), // X-cost: playable with anything
             _ => 0,
         }
     }
@@ -1249,10 +1249,10 @@ pub fn _EXHAUST() -> &'static regex::Regex {
 
 /// The card is `word` itself ("Retain.", "Ethereal."): not a card that only names it (Salvo: "Retain your Hand this turn").
 pub fn _keyword(c: &Value, word: &str) -> bool {
-    if c["keywords"].list().iter().any(|k| k.is_object() && py::str_of(&k["name"]).to_lowercase() == word) {
+    if c["keywords"].list().iter().any(|k| k.is_object() && base::str_of(&k["name"]).to_lowercase() == word) {
         return true;
     }
-    py::re::cached(&format!(r"(?i)(?:^|\.\s*){word}\.")).is_match(&c["description"].text())
+    base::re::cached(&format!(r"(?i)(?:^|\.\s*){word}\.")).is_match(&c["description"].text())
 }
 
 /// Unplayed cards stay in the hand this turn: Runic Pyramid, Ringing Triangle on the first turn, "Retain your Hand this turn".
@@ -1281,7 +1281,7 @@ pub fn _optional_pick(state: &Value, hs: &Value, prompt: &str) -> Option<Value> 
     let replacing = _REPLACE().is_match(prompt);
     let junk: Vec<&Value> = cards.iter().filter(|c| is_junk(c) && !(replacing && _keyword(c, "ethereal"))).collect();
     if !junk.is_empty() {
-        return py::min_by_key(junk, |c| (_keyword(c, "ethereal"), _removal_rank(c))).cloned(); // (with few to choose, those that would stay first)
+        return base::min_by_key(junk, |c| (_keyword(c, "ethereal"), _removal_rank(c))).cloned(); // (with few to choose, those that would stay first)
     }
     if !replacing && !matches!(state["_fight"].as_str(), Some("boss" | "elite")) {
         return None;
@@ -1305,18 +1305,18 @@ pub fn hand_select(state: &Value, mem: &mut Memory) -> Vec<Action> {
     let confirm = || act_("combat_confirm_selection", json!({}));
     let select = |c: &Value| act_("combat_select_card", json!({"card_index": index_of(c)}));
     let can_confirm = hs["can_confirm"].truthy();
-    let names = |cards: &[Value]| cards.iter().map(|c| py::str_of(&c["name"])).collect::<Vec<_>>().join(", ");
+    let names = |cards: &[Value]| cards.iter().map(|c| base::str_of(&c["name"])).collect::<Vec<_>>().join(", ");
     if _OPTIONAL().is_match(&prompt) && (_REPLACE().is_match(&prompt) || _EXHAUST().is_match(&prompt)) && kind.is_empty() {
         let Some(pick) = _optional_pick(state, hs, &prompt) else {
             return vec![confirm()];
         };
-        crate::log_debug!(LOG, "hand select ({}): {}", prompt, py::str_of(&pick["name"]));
+        crate::log_debug!(LOG, "hand select ({}): {}", prompt, base::str_of(&pick["name"]));
         return vec![select(&pick), confirm()];
     }
     if _PUT_BACK().is_match(&prompt) && !_WORST_FIRST().is_match(&prompt) {
         let energy = match &state["player"]["energy"] {
             Value::Bool(b) => Some(*b as i64),
-            Value::Number(n) => Some(n.as_i64().unwrap_or_else(|| n.as_f64().map_or(0, py::trunc))),
+            Value::Number(n) => Some(n.as_i64().unwrap_or_else(|| n.as_f64().map_or(0, base::trunc))),
             _ => None,
         };
         let ordered = _put_back_order(hs["cards"].list(), energy);
@@ -1337,16 +1337,16 @@ pub fn hand_select(state: &Value, mem: &mut Memory) -> Vec<Action> {
     let mut ordered = _pick_order(hs["cards"].list(), &prompt, kind, mem.upgrade_gain.as_ref());
     if crate::re!(r"(?i)\bmake free\b").is_match(&prompt) {
         // Touch of Insanity ("It is free to play this combat"): the dearest card, the best of those.
-        ordered = sorted_by(ordered, |c| (matches!(py::str_of(&c["type"]).as_str(), "Status" | "Curse"), -_parse(c).cost), false);
+        ordered = sorted_by(ordered, |c| (matches!(base::str_of(&c["type"]).as_str(), "Status" | "Curse"), -_parse(c).cost), false);
     }
     if crate::re!(r"(?i)\badd ethereal\b").is_match(&prompt) {
         // Sculpting Strike ("Add Ethereal to a card in your Hand"): on what the deck is better without, not on one Ethereal already.
-        let ethereal = |c: &Value| c["description"].text().to_lowercase().contains("ethereal") || c["keywords"].list().iter().any(|k| py::str_of(&k["name"]) == "Ethereal");
+        let ethereal = |c: &Value| c["description"].text().to_lowercase().contains("ethereal") || c["keywords"].list().iter().any(|k| base::str_of(&k["name"]) == "Ethereal");
         ordered = sorted_by(ordered, |c| (ethereal(c), _removal_rank(c)), false);
     }
     let discarding = crate::re!(r"(?i)\bdiscard\b").is_match(&prompt);
     // A Sly card discarded from the hand is played for free: the best thing to throw away.
-    let sly = |c: &Value| discarding && c["keywords"].list().iter().any(|k| py::str_of(&k["name"]) == "Sly");
+    let sly = |c: &Value| discarding && c["keywords"].list().iter().any(|k| base::str_of(&k["name"]) == "Sly");
     let (sly_ones, others): (Vec<Value>, Vec<Value>) = ordered.into_iter().partition(|c| sly(c));
     ordered = sorted_by(sly_ones, deck_value, true);
     ordered.extend(others);
@@ -1363,7 +1363,7 @@ pub fn hand_select(state: &Value, mem: &mut Memory) -> Vec<Action> {
                 return f64::NEG_INFINITY;
             }
             if discarding {
-                return if KEEP_AT_ALL_COSTS.contains(&_card_key(c).as_str()) { f64::INFINITY } else { py::round(cost / 2.0) as f64 };
+                return if KEEP_AT_ALL_COSTS.contains(&_card_key(c).as_str()) { f64::INFINITY } else { base::round(cost / 2.0) as f64 };
             }
             (cost >= handpick::RUINOUS) as i64 as f64 // (a Frantic Escape too, when every other card is the kill)
         };
@@ -1381,7 +1381,7 @@ pub fn bundle_select(state: &Value, _mem: &mut Memory) -> Vec<Action> {
     if bs["preview_showing"].truthy() || bs["can_confirm"].truthy() {
         out.push(act_("confirm_bundle_selection", json!({})));
     }
-    let bundles = sorted_by(bs["bundles"].list().iter().cloned(), |b| py::fsum(b["cards"].list().iter().map(deck_value)), true);
+    let bundles = sorted_by(bs["bundles"].list().iter().cloned(), |b| base::fsum(b["cards"].list().iter().map(deck_value)), true);
     out.extend(bundles.iter().map(|b| act_("select_bundle", json!({"index": index_of(b)}))));
     out.push(act_("confirm_bundle_selection", json!({})));
     out
@@ -1416,7 +1416,7 @@ pub fn crystal_sphere(state: &Value, _mem: &mut Memory) -> Vec<Action> {
     let (w, h) = (size(&cs["grid_width"], 9), size(&cs["grid_height"], 11));
     // from the middle: big tools reveal most there
     let at = |c: &Value, k: &str| c.get(k).map_or(0.0, |x| x.float());
-    let cells = sorted_by(cs["clickable_cells"].list().iter().cloned(), |c| (at(c, "x") - py::floordiv(w, 2) as f64).abs() + (at(c, "y") - py::floordiv(h, 2) as f64).abs(), false);
+    let cells = sorted_by(cs["clickable_cells"].list().iter().cloned(), |c| (at(c, "x") - base::floordiv(w, 2) as f64).abs() + (at(c, "y") - base::floordiv(h, 2) as f64).abs(), false);
     let mut out: Vec<Action> = cells.iter().take(6).map(|c| act_("crystal_sphere_click_cell", json!({"x": c["x"], "y": c["y"]}))).collect();
     out.push(act_("crystal_sphere_proceed", json!({})));
     out
@@ -1485,7 +1485,7 @@ mod tests {
         }
     }
 
-    /// `callable(card) -> gain` from the answers the Python gave for the cards it was asked about.
+    /// `callable(card) -> gain` from the answers the original gave for the cards it was asked about.
     fn table(rows: &Value) -> UpgradeGain {
         let rows: Vec<(Value, Option<f64>)> = rows.list().iter().map(|r| (r[0].clone(), r[1].as_f64())).collect();
         Rc::new(move |card: &Value| rows.iter().find(|(c, _)| c == card).unwrap_or_else(|| panic!("no recorded gain for {card}")).1)
@@ -1502,14 +1502,14 @@ mod tests {
         }
     }
 
-    /// The test-only JSON form of a Memory (the Python capture's `mem_json`), read back.
+    /// The test-only JSON form of a Memory (the original capture's `mem_json`), read back.
     fn mem_of(j: &Value, gain: UpgradeGain) -> Memory {
-        let strings = |v: &Value| -> Vec<String> { v.list().iter().map(py::str_of).collect() };
+        let strings = |v: &Value| -> Vec<String> { v.list().iter().map(base::str_of).collect() };
         Memory {
             deck_size: j["deck_size"].as_i64().unwrap(),
             deck: j["deck"].list().to_vec(),
             max_energy: j["max_energy"].as_i64().unwrap(),
-            picks: j["picks"].list().iter().map(|p| (p[0].int(), py::str_of(&p[1]))).collect(),
+            picks: j["picks"].list().iter().map(|p| (p[0].int(), base::str_of(&p[1]))).collect(),
             card_stats: None,
             card_skips: j["card_skips"].list().iter().map(|kn| (where_of(&kn[0]), kn[1].as_i64().unwrap())).collect(),
             select_key: j["select_key"].s().into(),
@@ -1527,7 +1527,7 @@ mod tests {
             over_waits: j["over_waits"].as_i64().unwrap(),
             max_ascension: j["max_ascension"].entries().map(|(k, v)| (k.clone(), v.int())).collect(),
             ascension_waits: j["ascension_waits"].as_i64().unwrap(),
-            epochs: j["epochs"].entries().map(|(k, v)| (k.clone(), py::str_of(v))).collect(),
+            epochs: j["epochs"].entries().map(|(k, v)| (k.clone(), base::str_of(v))).collect(),
             last_result: j["last_result"].s().into(),
             recent: strings(&j["recent"]),
             timeline_done: j["timeline_done"].truthy(),
@@ -1568,11 +1568,11 @@ mod tests {
     }
 
     fn strings(v: &Value) -> Vec<String> {
-        v.list().iter().map(py::str_of).collect()
+        v.list().iter().map(base::str_of).collect()
     }
 
     fn epochs_of(v: &Value) -> Option<IndexMap<String, String>> {
-        v.dict().map(|d| d.iter().map(|(k, x)| (k.clone(), py::str_of(x))).collect())
+        v.dict().map(|d| d.iter().map(|(k, x)| (k.clone(), base::str_of(x))).collect())
     }
 
     fn rooms_of(v: &Value) -> Vec<(String, Option<i64>)> {
@@ -1587,7 +1587,7 @@ mod tests {
         v.as_i64().unwrap()
     }
 
-    /// Every handler and helper as the Python tests and the model runs of both games called them (see the capture notes in the
+    /// Every handler and helper as the original tests and the model runs of both games called them (see the capture notes in the
     /// commit that added tests/golden/strategy/): the same actions, the same numbers, the same Memory afterwards.
     fn replay(text: &str) -> usize {
         let g: Value = serde_json::from_str(text).unwrap();
@@ -1620,7 +1620,7 @@ mod tests {
                 "menu" => actions(menu(state, &mut mem, a["character"].s())),
                 "timeline_complete" => json!(timeline_complete(epochs_of(&a["epochs"]).as_ref())),
                 "missing_epochs" => json!(missing_epochs(a["character"].s(), epochs_of(&a["epochs"]).as_ref())),
-                "_who" => json!(_who(&py::str_of(&a["name"]))),
+                "_who" => json!(_who(&base::str_of(&a["name"]))),
                 "choose_character" => {
                     let levels: Option<IndexMap<String, i64>> = a["max_ascension"].dict().map(|d| d.iter().map(|(k, v)| (k.clone(), v.int())).collect());
                     let recent = a["recent"].as_array().map(|_| strings(&a["recent"]));

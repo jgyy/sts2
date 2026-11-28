@@ -508,9 +508,9 @@ pub fn ensure(game_dir: &Path, mts_jar: Option<&Path>) -> bool {
 mod tests {
     use super::*;
 
-    /// The source and manifest are Python's, byte for byte: `speedmod._stamp()` and the whole sha256 there.
+    /// The source and manifest are the original's, byte for byte: `speedmod._stamp()` and the whole sha256 there.
     #[test]
-    fn the_stamp_is_pythons() {
+    fn the_stamp_is_the_recorded() {
         assert_eq!(_stamp(), "8082b7a9993beaf9");
         let digest = Sha256::digest(format!("{JAVA}{MANIFEST}").as_bytes());
         assert_eq!(digest.iter().map(|b| format!("{:02x}", b)).collect::<String>(), "8082b7a9993beaf9b42e4d0b3ccb52f719fe5ecfea973dfe756ddc873dcc36cb");

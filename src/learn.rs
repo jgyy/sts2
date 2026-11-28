@@ -12,7 +12,7 @@ use serde_json::{Map, Value};
 pub use crate::cards::key_of as card_key;
 use crate::games;
 use crate::logging::Logger;
-use crate::py::{self, JsonExt, Random};
+use crate::base::{self, JsonExt, Random};
 
 static LOG: Logger = Logger::new("sts2bot.learn");
 pub const WIN_BONUS: i64 = 15; // a win counts as this many floors beyond the last one
@@ -24,7 +24,7 @@ pub const CURIOSITY: f64 = 0.4; // head start for a card never tried, so that it
 pub const KIND_PRIOR: f64 = 300.0; // picks of a kind (cards.kind) before the kind's record counts for half of where its cards start
 pub const MAX_KIND: f64 = 1.5; // ... and a kind never moves its cards further than this
 
-/// Python's `max(a, b)` of two floats: the first unless the second is larger.
+/// the original's `max(a, b)` of two floats: the first unless the second is larger.
 fn fmax(a: f64, b: f64) -> f64 {
     if b > a {
         b
@@ -33,7 +33,7 @@ fn fmax(a: f64, b: f64) -> f64 {
     }
 }
 
-/// Python's `min(a, b)` of two floats: the first unless the second is smaller.
+/// the original's `min(a, b)` of two floats: the first unless the second is smaller.
 fn fmin(a: f64, b: f64) -> f64 {
     if b < a {
         b
@@ -91,7 +91,7 @@ pub fn _save(path: Option<&Path>, data: &Value, what: &str) {
             std::fs::create_dir_all(parent)?;
         }
         let tmp = path.with_extension("tmp");
-        std::fs::write(&tmp, py::json_dumps_pretty(data, 1, true))?;
+        std::fs::write(&tmp, base::json_dumps_pretty(data, 1, true))?;
         std::fs::rename(&tmp, path)
     };
     if let Err(e) = write() {
@@ -111,7 +111,7 @@ fn row_value(row: &[f64; 2]) -> Value {
 fn row_of(x: &Value) -> Result<[f64; 2], String> {
     match x.as_array() {
         Some(a) if a.len() == 2 && a.iter().all(|n| n.is_number()) => Ok([a[0].float(), a[1].float()]),
-        _ => Err(format!("not a pair of numbers: {}", py::json_dumps(x))),
+        _ => Err(format!("not a pair of numbers: {}", base::json_dumps(x))),
     }
 }
 
@@ -119,7 +119,7 @@ fn row_of(x: &Value) -> Result<[f64; 2], String> {
 fn items<'a>(data: &'a Map<String, Value>, key: &str) -> Result<Vec<(&'a String, &'a Value)>, String> {
     match data.get(key) {
         Some(Value::Object(m)) => Ok(m.iter().collect()),
-        Some(v) if v.truthy() => Err(format!("{} is not a JSON object", py::str_repr(key))),
+        Some(v) if v.truthy() => Err(format!("{} is not a JSON object", base::str_repr(key))),
         _ => Ok(Vec::new()),
     }
 }
@@ -155,11 +155,11 @@ impl CardStats {
     fn fill(&mut self, data: &Map<String, Value>) -> Result<(), String> {
         let mut finals = IndexMap::new();
         for (k, v) in items(data, "finals")? {
-            let list = v.as_array().ok_or_else(|| format!("not a list: {}", py::json_dumps(v)))?;
+            let list = v.as_array().ok_or_else(|| format!("not a list: {}", base::json_dumps(v)))?;
             let mut out = Vec::with_capacity(list.len());
             for f in list {
                 if !(f.is_int() || f.is_boolean()) {
-                    return Err(format!("not a floor: {}", py::json_dumps(f)));
+                    return Err(format!("not a floor: {}", base::json_dumps(f)));
                 }
                 out.push(f.int());
             }
@@ -168,7 +168,7 @@ impl CardStats {
         self.finals = finals;
         let mut cards = Rows::new();
         for (k, v) in items(data, "cards")? {
-            let table = v.as_object().ok_or_else(|| format!("not a JSON object: {}", py::json_dumps(v)))?;
+            let table = v.as_object().ok_or_else(|| format!("not a JSON object: {}", base::json_dumps(v)))?;
             let mut out = IndexMap::new();
             for (c, x) in table {
                 out.insert(c.clone(), row_of(x)?);
@@ -176,7 +176,7 @@ impl CardStats {
             cards.insert(k.clone(), out);
         }
         self.cards = cards;
-        self.kinds = items(data, "kinds")?.into_iter().map(|(k, v)| (k.clone(), py::str_of(v))).collect();
+        self.kinds = items(data, "kinds")?.into_iter().map(|(k, v)| (k.clone(), base::str_of(v))).collect();
         Ok(())
     }
 
@@ -195,9 +195,9 @@ impl CardStats {
         let Some(table) = self.cards.get(character) else {
             return 0.0;
         };
-        let picks = py::fsum(table.values().map(|x| x[0]));
+        let picks = base::fsum(table.values().map(|x| x[0]));
         if picks >= 50.0 {
-            py::fsum(table.values().map(|x| x[1])) / picks
+            base::fsum(table.values().map(|x| x[1])) / picks
         } else {
             0.0
         }
@@ -226,7 +226,7 @@ impl CardStats {
             Some(table) => table.iter().filter(|(key, _)| key.as_str() != but).map(|(_, x)| x).collect(),
             None => Vec::new(),
         };
-        let learned = py::fsum(rows.iter().map(|x| x[1])) / (py::fsum(rows.iter().map(|x| x[0])) + KIND_PRIOR) / FLOORS_PER_POINT;
+        let learned = base::fsum(rows.iter().map(|x| x[1])) / (base::fsum(rows.iter().map(|x| x[0])) + KIND_PRIOR) / FLOORS_PER_POINT;
         fmax(-MAX_KIND, fmin(MAX_KIND, learned))
     }
 
@@ -420,7 +420,7 @@ pub fn seed_from_history(stats: &mut CardStats, runs_file: Option<&Path>) {
     for r in history(runs_file) {
         if r["character"].truthy() && (r["floor"].is_int() || r["floor"].is_boolean()) {
             let r#final = r["floor"].int() + if r["result"].as_str() == Some("win") { WIN_BONUS } else { 0 };
-            stats.finals.entry(py::str_of(&r["character"])).or_default().push(r#final);
+            stats.finals.entry(base::str_of(&r["character"])).or_default().push(r#final);
         }
     }
     for finals in stats.finals.values_mut() {
@@ -570,7 +570,7 @@ pub fn defaults(game: Option<&str>) -> IndexMap<String, f64> {
 pub fn knob(name: &str) -> f64 {
     match KNOB.with(|k| k.borrow().get(name).copied()) {
         Some(value) => value,
-        None => *DEFAULTS.get(name).unwrap_or_else(|| panic!("KeyError: {}", py::str_repr(name))),
+        None => *DEFAULTS.get(name).unwrap_or_else(|| panic!("KeyError: {}", base::str_repr(name))),
     }
 }
 
@@ -632,14 +632,14 @@ impl Knobs {
     pub fn new(path: Option<PathBuf>, rng: Option<Random>) -> Self {
         let mut table = Rows::new();
         for (k, v) in _load(path.as_deref(), "tuning") {
-            let rows = v.as_object().unwrap_or_else(|| panic!("the tuning record's {} is not a JSON object", py::str_repr(&k)));
+            let rows = v.as_object().unwrap_or_else(|| panic!("the tuning record's {} is not a JSON object", base::str_repr(&k)));
             table.insert(k, rows.iter().map(|(c, x)| (c.clone(), row_of(x).unwrap_or_else(|e| panic!("the tuning record: {e}")))).collect());
         }
         Knobs { path, rng: rng.unwrap_or_default(), table }
     }
 
     fn row(&self, name: &str, value: f64) -> [f64; 2] {
-        self.table.get(name).and_then(|t| t.get(&py::float_repr(value))).copied().unwrap_or([0.0, 0.0])
+        self.table.get(name).and_then(|t| t.get(&base::float_repr(value))).copied().unwrap_or([0.0, 0.0])
     }
 
     /// Choose this run's settings and put them in force.
@@ -649,7 +649,7 @@ impl Knobs {
             let mut best_guess: Option<f64> = None;
             let seen: Vec<[f64; 2]> = choices.iter().map(|v| self.row(&name, *v)).collect();
             // An untried setting starts from what the tried ones average, not from zero (every run beats "the usual" by a few floors).
-            let par = py::fsum(seen.iter().map(|x| x[1])) / fmax(1.0, py::fsum(seen.iter().map(|x| x[0])));
+            let par = base::fsum(seen.iter().map(|x| x[1])) / fmax(1.0, base::fsum(seen.iter().map(|x| x[0])));
             for value in &choices {
                 let [runs, gained] = self.row(&name, *value);
                 // What this setting's true average might be, given what we have seen of it.
@@ -676,7 +676,7 @@ impl Knobs {
         };
         let now = knobs();
         for name in choices().keys() {
-            let setting = py::float_repr(*now.get(name).unwrap_or_else(|| panic!("KeyError: {}", py::str_repr(name))));
+            let setting = base::float_repr(*now.get(name).unwrap_or_else(|| panic!("KeyError: {}", base::str_repr(name))));
             let entry = self.table.entry(name.clone()).or_default().entry(setting).or_insert([0.0, 0.0]);
             entry[0] += 1.0;
             entry[1] += gained;
@@ -815,7 +815,7 @@ mod tests {
             let dir = tempfile::tempdir().unwrap();
             let path = dir.path().join("tuning.json");
             if run["start"].truthy() {
-                std::fs::write(&path, py::json_dumps(&run["start"])).unwrap();
+                std::fs::write(&path, base::json_dumps(&run["start"])).unwrap();
             }
             let mut k = Knobs::new(if run["path"].truthy() { Some(path.clone()) } else { None }, Some(Random::new(run["seed"].as_i64().unwrap() as i128)));
             for (i, op) in run["ops"].list().iter().enumerate() {

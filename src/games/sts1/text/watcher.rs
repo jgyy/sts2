@@ -1,4 +1,4 @@
-//! The Watcher's cards, as the planner reads them (notation: ironclad.py). What a stance does is worked out in stance.py.
+//! The Watcher's cards, as the planner reads them (notation: ironclad.rs). What a stance does is worked out in stance.rs.
 
 use indexmap::IndexMap;
 use std::sync::OnceLock;
