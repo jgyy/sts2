@@ -32,9 +32,11 @@ crate::tunables! {
     /// Max HP up the route keeps the burning elite in reach, whatever the path values say, taking the best way through it, and
     /// steps into it from EMERALD_GO; below that the values decide. In act 3 (the last chance) from EMERALD_LAST_HOLD and
     /// EMERALD_LAST. Met from 85% up it had killed 2 of 71 in act 1 and 1 of 15 in act 2, yet the values left it behind from
-    /// full HP: they count a death again at every fight that follows one.
+    /// full HP: they count a death again at every fight that follows one. EMERALD_GO 0.8 -> 0.6 (user 2026-11-28 16:00, "focus
+    /// more on getting keys"): 4 of the 5 runs that beat the act 3 boss without all three keys lacked the Emerald, mostly
+    /// after passing a burning elite next on 60-79% (none of 8 met in act 1 on 50-69% died; a decline got it later 5 times in 9).
     pub EMERALD_HOLD: f64 = 0.5;
-    pub EMERALD_GO: f64 = 0.8;
+    pub EMERALD_GO: f64 = 0.6;
     pub EMERALD_LAST_HOLD: f64 = 0.4;
     pub EMERALD_LAST: f64 = 0.5;
     /// ... a rest site with the burning elite next heals under this share

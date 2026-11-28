@@ -899,6 +899,7 @@ pub fn play_both(ap: &Parser, args: &Args, raw: &[String]) -> Result<i32, Exit> 
     log_info!(log, "playing {}; logs in {} and {}", titles.join(" and "), default_log_dir(games::GAMES[0]).display(), default_log_dir(games::GAMES[1]).display());
     Ok(match HOOKS.with(|h| h.borrow().both_run.clone()) {
         Some(hook) => hook(raw),
+        None if args.no_launch => both::run(raw, both::RunArgs { stop_games: Box::new(|_| Ok(())), ..Default::default() }), // (a low battery stops only the bots)
         None => both::run(raw, both::RunArgs::default()),
     })
 }

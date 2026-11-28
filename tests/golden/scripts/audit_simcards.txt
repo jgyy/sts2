@@ -23,6 +23,8 @@ BLOODLETTING           hp 80->77; hand 5->5 discard 3->4 draw 5->5
     Lose 3 HP. Gain [energy_icon.png][energy_icon.png].
 BLOOD_WALL             hp 80->78; hand 5->5 discard 3->4 draw 5->5
     Lose 2 HP. Gain 16 Block.
+BLOT_OUT_THE_SKY       cards made {'BLOSSOM_SHOT': 1}; hand 5->6 discard 3->3 draw 5->5
+    Add a random card that can Shoot into your Hand. It's free to play this turn. Exhaust.
 BONE_SHARDS            osty 5->0; hand 5->5 discard 3->4 draw 5->5
     If Osty is alive, he deals 9 damage to ALL enemies and you gain 9 Block. Osty dies.
 BOOST_AWAY             cards made {'DAZED': 1}; hand 5->5 discard 3->5 draw 5->5
@@ -49,6 +51,8 @@ CAPACITOR              powers.CAPACITOR None->2; orb slots 3->5; hand 5->5 disca
     Gain 2 Orb Slots.
 CAPTURE_SPIRIT         cards made {'SOUL': 3}; hand 5->5 discard 3->4 draw 5->8
     Enemy loses 3 HP. Add 3 Souls into your Draw Pile.
+CHO_BARBS              powers.CHO_BARBS None->2; powers.THORNS None->2; hand 5->5 discard 3->4 draw 5->5
+    Gain 8 Block. Gain 2 Thorns this turn.
 CLOAK_AND_DAGGER       cards made {'SHIV': 1}; hand 7->8 discard 3->4 draw 5->5
     Gain 6 Block. Add 1 Shiv into your Hand.
 COLLISION_COURSE       cards made {'DEBRIS': 1}; hand 5->6 discard 3->4 draw 5->5
@@ -75,10 +79,14 @@ DIRGE                  powers.OSTY_MAX 1->23; osty 5->23; hand 5->5 discard 3->3
     Summon 3 X times. Add X Souls into your Draw Pile.
 DISCOVERY              hand 5->5 discard 3->3 draw 5->5
     Choose 1 of 3 random cards to add into your Hand. It's free to play this turn.
+DISLIKE_YOU            enemy.DISLIKE_YOU None->50; hand 5->5 discard 3->4 draw 5->5
+    Deal 8 damage. The enemy takes 50% additional damage from Shots this turn.
 DREDGE                 hand 5->8 discard 3->0 draw 5->5
     Put 3 cards from your Discard Pile into your Hand.
 DYING_STAR             enemy.STRENGTH None->-9; hand 5->5 discard 3->4 draw 5->5
     Deal 9 damage to ALL enemies. ALL enemies lose 9 Strength this turn.
+ENCORE                 hand 5->7 discard 3->4 draw 5->3
+    Gain [fool_energy_icon.png]. Draw 2 cards. You can only play 1 more card this turn.
 ENFEEBLING_TOUCH       enemy.STRENGTH None->-8; hand 5->5 discard 3->4 draw 5->5
     Enemy loses 8 Strength this turn.
 EQUILIBRIUM            hand 5->5 discard 3->4 draw 5->5
@@ -115,6 +123,8 @@ GRAVEBLAST             hand 5->6 discard 3->2 draw 5->5
     Deal 4 damage. Put a card from your Discard Pile into your Hand.
 GRAVE_WARDEN           cards made {'SOUL': 1}; hand 5->5 discard 3->4 draw 5->6
     Gain 8 Block. Add a Soul into your Draw Pile.
+GROWTH                 hand 5->5 discard 3->4 draw 5->5
+    Gain 8 Block. Transform 1 random Sadness in your Hand into a copy of this card.
 GUNK_UP                cards made {'SLIMED': 1}; hand 5->5 discard 3->5 draw 5->5
     Deal 4 damage 3 times. Add a Slimed into your Discard Pile.
 HAND_TRICK             hand 7->7 discard 3->4 draw 5->5
@@ -141,10 +151,18 @@ INFINITE_BLADES        powers.INFINITE_BLADES None->1; hand 7->7 discard 3->3 dr
     At the start of your turn, add 1 Shiv into your Hand.
 JACK_OF_ALL_TRADES     cards made {'SECRET_WEAPON': 1}; hand 5->6 discard 3->3 draw 5->5
     Add 1 random Colorless card into your Hand.
+JEST                   cards made {'SADNESS': 1}; hand 5->6 discard 3->4 draw 5->5
+    Gain 15 Block. Add 1 Sadness into your Hand.
 JUGGLING               powers.JUGGLING None->1; hand 5->5 discard 3->3 draw 5->5
     Add a copy of the third Attack you play each turn into your Hand.
+KI_REST                powers.ENERGY_NEXT_TURN None->4; hand 5->5 discard 3->4 draw 5->5
+    Next turn, gain [fool_energy_icon.png][fool_energy_icon.png][fool_energy_icon.png][fool_energy_icon.png]. If you have a Wah Melody or Cho Melody, Reta
+KI_VERSE               powers.KI_VERSE None->1; hand 5->5 discard 3->4 draw 5->5
+    The next “Wah” or “Cho” card you play this turn is played an additional time.
 LEADING_STRIKE         cards made {'SHIV': 2}; hand 7->9 discard 3->4 draw 5->5
     Deal 3 damage. Add 2 Shivs into your Hand.
+LOCKED_IN              hand 5->5 discard 3->4 draw 5->5
+    Put a card that can Shoot from your Draw Pile into your Hand.
 LUNAR_BLAST            hand 5->5 discard 3->4 draw 5->5
     Deal 4 damage for each Skill already played this turn.
 MAKE_IT_SO             hand 5->5 discard 3->4 draw 5->5
@@ -161,6 +179,8 @@ MONARCHS_GAZE          powers.MONARCHS_GAZE None->1; hand 5->5 discard 3->3 draw
     Whenever you attack an enemy, it loses 1 Strength this turn.
 MONOLOGUE              powers.MONOLOGUE None->1; this turn.STRENGTH None->1; hand 5->5 discard 3->4 draw 5->5
     Whenever you play a card this turn, gain 1 Strength this turn.
+MYTHIC_FORM            powers.MYTHIC_FORM None->1; hand 5->5 discard 3->3 draw 5->5
+    Ethereal. At the start of your turn, add a random Tarot card into your Hand.
 NIGHTMARE              hand 7->7 discard 3->3 draw 5->5
     Choose a card. Next turn, add 3 copies of that card into your Hand.
 OBLIVION               enemy.DOOM None->3; hand 5->5 discard 3->4 draw 5->5
@@ -177,6 +197,8 @@ PINPOINT               hand 7->7 discard 3->4 draw 5->5
     Deal 15 damage. Costs 1 less [energy_icon.png] for each Skill played this turn.
 QUASAR                 cards made {'FASTEN': 1}; hand 5->6 discard 3->4 draw 5->5
     Choose 1 of 3 random Colorless cards to add into your Hand.
+QUIETUS                hand 5->5 discard 3->3 draw 5->5
+    This turn, your next Shot deals double damage. Exhaust.
 RADIATE                hand 5->5 discard 3->4 draw 5->5
     Deal 3 damage to ALL enemies for each [star_icon.png] gained this turn.
 RAGE                   powers.RAGE None->3; hand 5->5 discard 3->4 draw 5->5
@@ -191,6 +213,8 @@ REFLECT                hand 5->5 discard 3->4 draw 5->5
     Gain 15 Block. Blocked attack damage is reflected to your attacker this turn.
 RESONANCE              powers.STRENGTH None->1; enemy.STRENGTH None->-1; hand 5->5 discard 3->4 draw 5->5
     Gain 1 Strength. ALL enemies lose 1 Strength.
+RUMMAGE                cards made {'SADNESS': 1}; hand 5->9 discard 3->4 draw 5->2
+    Draw 3 cards. Add a Sadness into your Hand.
 SACRIFICE              osty 5->0; hand 5->5 discard 3->4 draw 5->5
     If Osty is alive, he dies and you gain Block equal to triple his Max HP.
 SALVO                  hand 5->5 discard 3->4 draw 5->5
@@ -211,8 +235,12 @@ SHADOWMELD             powers.SHADOWMELD None->1; hand 7->7 discard 3->4 draw 5-
     Double your Block gain this turn.
 SHARED_FATE            powers.STRENGTH None->-2; enemy.STRENGTH None->-2; hand 5->5 discard 3->3 draw 5->5
     Lose 2 Strength. Enemy loses 2 Strength.
+SHOW_OFF               powers.AIM 6->11; hand 5->5 discard 3->3 draw 5->5
+    Gain 5 Aim. If a non-minion enemy dies this turn, permanently increase this card's Aim by 2. Exhaust.
 SIC_EM                 hand 5->5 discard 3->4 draw 5->5
     Osty deals 5 damage. Whenever Osty hits this enemy this turn, Summon 3.
+SORROWFUL_STRIKE       cards made {'SADNESS': 1}; hand 5->6 discard 3->4 draw 5->5
+    Deal 13 damage. Add 1 Sadness into your Hand.
 SPECTRUM_SHIFT         powers.SPECTRUM_SHIFT None->1; cards made {'SECRET_WEAPON': 1}; hand 5->6 discard 3->3 draw 5->5
     At the start of your turn, add 1 random Colorless card into your Hand.
 SPITE                  hand 5->5 discard 3->4 draw 5->5
@@ -239,6 +267,8 @@ UNDEATH                cards made {'UNDEATH': 1}; hand 5->5 discard 3->5 draw 5-
     Gain 7 Block. Add a copy of this card into your Discard Pile.
 UP_MY_SLEEVE           cards made {'SHIV': 3}; hand 7->10 discard 3->4 draw 5->5
     Add 3 Shivs into your Hand. Reduce this card's cost by 1.
+VITRIOL                enemy.WEAK None->2; cards made {'SADNESS': 2}; hand 5->7 discard 3->4 draw 5->5
+    Apply 2 Weak. Add 2 Sadness into your Hand.
 VOID_FORM              powers.TURN_OVER None->1; powers.VOID_FORM None->2; hand 5->5 discard 3->3 draw 5->5
     End your turn. The first 2 cards you play each turn are free to play.
 WHITE_NOISE            cards made {'SMOKESTACK': 1}; hand 5->6 discard 3->3 draw 5->5

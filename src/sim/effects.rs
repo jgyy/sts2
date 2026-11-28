@@ -14,6 +14,7 @@ use indexmap::IndexMap;
 use crate::cards::CardInfo;
 use crate::base;
 use crate::sim::cards::Card;
+use crate::sim::content::fool;
 use crate::sim::engine::{Fight, Fx, Move, Orb, Pile};
 use crate::sim::monsters;
 use crate::sim::run::Potion;
@@ -185,8 +186,11 @@ pub fn resolve(f: &mut Fight, c: &mut Card, foe: Option<usize>, x: i64) {
     }
     if i.block != 0 && i.melody_block == 0 {
         for _ in 0..xs {
-            let b = f.block_value(i.block + c.bonus);
-            f.gain_block(b);
+            let base = fool::stretched(f, i.block + c.bonus);
+            f.gain_block(f.block_value(base));
+        }
+        if i.arrow_block && fool::free(f) > 0 {
+            f.gain_block(f.block_value(i.block + c.bonus)); // Cho Firm: "If you have an Arrow, gain Block an additional time"
         }
     }
     if i.hp_loss != 0 {
@@ -257,6 +261,9 @@ pub fn after(f: &mut Fight, c: &mut Card, foe: Option<usize>, xs: i64, dealt: i6
     if let Some(rule) = g.AFTER.get(c.key()) {
         rule(f, c, foe, xs, dealt);
     }
+    if fool::playing(f) {
+        fool::after(f, c, foe, xs, dealt);
+    }
     if c.r#type() == "Power" {
         if let Some(rule) = g.POWER.get(c.key()) {
             rule(f, c);
@@ -267,7 +274,7 @@ pub fn after(f: &mut Fight, c: &mut Card, foe: Option<usize>, xs: i64, dealt: i6
 /// The hits of an attack; the HP they took off.
 pub fn attack(f: &mut Fight, c: &Card, foe: Option<usize>, base: i64, hits: i64, i: &CardInfo) -> i64 {
     let mut dealt = 0;
-    let (osty, atk) = (i.osty_attack, c.r#type() == "Attack");
+    let (osty, atk, fool) = (i.osty_attack, c.r#type() == "Attack", fool::playing(f));
     if osty && f.osty == 0 {
         return 0;
     }
@@ -293,8 +300,12 @@ pub fn attack(f: &mut Fight, c: &Card, foe: Option<usize>, base: i64, hits: i64,
         };
         for t in targets {
             let before = f.foes[t].hp;
-            let amount = f.attack_value(base, Some(t), osty, !atk) * double;
+            let mut amount = f.attack_value(base, Some(t), osty, !atk) * double;
+            let stuck = fool && fool::hit(f, c, i, t, &mut amount);
             dealt += f.hurt(t, amount, atk);
+            if stuck {
+                fool::wear(f, c, t);
+            }
             if atk && f.foes[t].powers.on("THORNS") && !osty {
                 let n = f.foes[t].powers["THORNS"];
                 f.take(n, Some(t), false);
@@ -694,6 +705,9 @@ pub fn fight_start(f: &mut Fight) {
 pub fn RELIC_START(f: &mut Fight, rid: &str) {
     match rid {
         "ANCHOR" => f.gain_block(10),
+        "SONG_BOW" => {
+            add(&mut f.pw, "AIM", 6);
+        }
         "BLOOD_VIAL" => f.heal(2),
         "MUTAGENIC_STRENGTH" => {
             add(&mut f.temp, "STRENGTH", 3);

@@ -1,12 +1,39 @@
 # Model runs: what the simulator says
 
-**Latest round (2026-11-27, round 6):** 10,600 runs (Slay the Spire 2 at **Ascension 8**, the first game at Ascension
-0): 1,800 of the bot as it was, 7,200 in two varied batches on separate seeds, and 1,600 of the first game before and
-after. One thing held up on every batch, **the first game's card table brought up to date**; four candidate rules did
-not, and the second batch is what showed it. A run's **score** is the floor it ended on, plus 15 for a win (one point is
-about one floor). [Round 5](#round-5-2026-11-26) follows, then [round 4](#round-4-2026-11-26),
+**Latest round (2026-11-28, round 7): the Fool joins the model runs.** 23,000 runs of his at **Ascension 9** gave him a
+card table of his own, the step the other five took in rounds 3-5; until then his cards were rated by one writer's tiers
+alone. A run's **score** is the floor it ended on, plus 15 for a win (one point is about one floor).
+[Round 6](#round-6-2026-11-27) follows, then [round 5](#round-5-2026-11-26), [round 4](#round-4-2026-11-26),
 [round 3](#round-3-2026-11-26), the batches of [2026-11-25](#batches-of-2026-11-25) and the A5 batches
 [further down](#earlier-9000-runs-at-ascension-5-and-0).
+
+## Round 7 (2026-11-28): the Fool
+
+- **The model now plays the Fool** (`src/sim/content/fool.rs`): Arrows and Impale (a Shot needs a free Arrow; it stands in
+  its target for three Attack hits or until it dies), Aim (on every hit of a Shot, as the live logs show), Stretch,
+  Melodies and the Powers that pay on a new one, Ki Verse, Sadness and Joy. His cards are **as the game v0.114.0 has
+  them**, read from the mod's wiki: 53 of v0.111.1's 84 had changed (Growth, Trick Shot, Tune, Wah Ki, Recall and Arrow
+  Stab rewritten, Wah Cho Ki at 2 energy, Heavy Shot 16 damage with Aim 3 times), Twin Shot and Optimism are new and
+  Rapid Shot is gone. Mythic Form (Tarot cards), Florescence and Encore are left out of his pool.
+- **The model Fool is the live one**: at A9, no card table, 3,000 runs: 0.2% won, act 1 boss 53%, act 2 boss 19%, act 3
+  boss 4%; live on 2026-11-28: 0 of 215 won, 62%, 27%, 0 of 21.
+- **His card table** (shipped): one round from runs without it, a second from runs that played it (`--onto ... --table
+  1`); a third went back (-0.4 ± 0.6). Against no table, 2,000 pairs on fresh seeds (900000): **+6.6 ± 0.5 floors**,
+  wins 0.1% → 1.8%, act 1 boss 53% → 75%, act 2 boss 19% → 41%, act 3 boss 4% → 9%. It ranks Hobbling Shot, Sky Shot,
+  Wah Cho, Wah Cho Ki and Melodic Shot first and Song Path, Quick Shot, Harmonic Shield, Nock and Vitriol last, and
+  agrees with the live per-card record where the writer's tiers did not: over the 44 cards with 30+ live picks the
+  pick-weighted correlation is **+0.58** for the table and -0.04 for the tiers.
+- **Found on the way:** the planner read v0.114's Ki Verse ("The next "Wah" or "Cho" card ...") as a blank card, its
+  pattern wanting the old "Wah", "Cho", or "Ki" (fixed in `cards::parse`).
+
+```sh
+sim run --game sts2 --character FOOL --runs 3000 --seed 91000 --ascension 9 --out fA.jsonl
+sim prior fA.jsonl --onto src/run/model_cards.json --out F1.json
+sim run --game sts2 --character FOOL --runs 3000 --seed 300000 --ascension 9 --set model_table=1 --alt-cards F1.json --out fR.jsonl
+sim prior fR.jsonl --onto F1.json --table 1 --out F2.json                          # shipped as src/run/model_cards.json
+sim run --game sts2 --character FOOL --runs 2000 --seed 900000 --ascension 9 [--set model_table=1 --alt-cards F2.json] --out y.jsonl
+scripts audit/simcards sts2 FOOLISH_SHOT ...                                       # what the model does with each card
+```
 
 ## Round 6 (2026-11-27)
 
@@ -561,11 +588,11 @@ the combat planner (`src/fight/combat.rs`), the map, reward, shop, rest-site, ev
 
 | Part | First game | Slay the Spire 2 |
 |---|---|---|
-| Cards | every card's text from `src/games/sts1/text/`, costs and rarities from `src/sim/content/sts1_cards.rs` | 638 cards of v0.111.1 (Spire Codex), keywords included |
+| Cards | every card's text from `src/games/sts1/text/`, costs and rarities from `src/sim/content/sts1_cards.rs` | 638 cards of v0.111.1 (Spire Codex), keywords included; the Fool's as v0.114.0 has them (the mod's wiki) |
 | Effects | what the planner's parser reads, plus handlers for ~150 cards whose text says more (conditions, piles, powers) | the same, and Powers read from their own text ("At the start of your turn, ...", "Whenever you play ...") |
 | Enemies | ~60 monsters, elites and bosses written from the game's rules, Ascension 0 numbers | 115 monsters with their move state machines (spire-mentor) and A8/A9 numbers, their powers acted out |
 | Run | 3 acts (no act 4), Neow, map rules, unknown-room odds, rewards, shops, rest sites, boss relics; ascension rules (A6: start at 90% HP, A5: heal 75% after a boss) | 3 acts, Ancients (heal and a relic choice), the same, boss rewards without relics; the A1-A10 rules (more elites, 80% Ancient heal, less gold, 2 potion slots, Ascender's Bane, dearer removal, half the rares and upgrades, then the monsters' A8-A9 numbers and two act 3 bosses) |
-| Simplified | events (a table of typical outcomes, chosen by the bot's event handler), a common subset of relics and potions, no Scry choices | the same; no enchantments, quests or the Fool; Dampen, Galvanic, Infested, Possess, Ravenous and Surprise do nothing |
+| Simplified | events (a table of typical outcomes, chosen by the bot's event handler), a common subset of relics and potions, no Scry choices | the same; no enchantments or quests, the Fool's Tarot cards left out; Dampen, Galvanic, Infested, Possess, Ravenous and Surprise do nothing |
 
 Each run draws its own value of every setting (`--vary`, the values in `sim/__main__.GRID`: the bot's choices and one
 on either side), so a setting's effect is the difference between the runs that drew each of its values; a regression

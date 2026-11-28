@@ -17,6 +17,8 @@ pub static log: Logger = Logger::new("sts2bot.both");
 crate::tunables! {
     pub RESTART_DELAY: f64 = 15.0; // as the unit's RestartSec
     pub MAX_DELAY: f64 = 300.0; // a bot that keeps failing straight away is tried less and less often, down to this
+    pub BATTERY_LOW: i64 = 50; // (user 2026-11-28, slow charger) under this charge the bots and games stop ...
+    pub BATTERY_HIGH: i64 = 90; // ... until it is back to this
 }
 pub const HEALTHY: f64 = 600.0; // a bot that ran this long before it failed is tried again after the short pause
 pub const RELOAD_DELAY: f64 = 1.0; // a bot ended by SIGUSR1 (a deliberate reload) comes back after this, whatever its back-off (2026-11-26: five reloads in an hour had it at 240 s)
@@ -210,37 +212,75 @@ pub fn command(game: &str, rest: &[String]) -> Vec<String> {
     out
 }
 
-/// `run`'s keyword arguments: the games to play, and what starts a bot, tells the time and waits (tests bring their own;
-/// a `sleep` that gives the interrupt stands for Ctrl+C or SIGTERM arriving meanwhile).
+/// The battery's charge in percent (the mean of the machine's own batteries, not a mouse's), None without one.
+pub fn charge() -> Option<i64> {
+    let read = |p: &std::path::Path, f: &str| std::fs::read_to_string(p.join(f)).map(|s| s.trim().to_string()).unwrap_or_default();
+    let levels: Vec<i64> = std::fs::read_dir("/sys/class/power_supply").ok()?.flatten().map(|e| e.path())
+        .filter(|p| read(p, "type") == "Battery" && read(p, "scope") != "Device").filter_map(|p| read(&p, "capacity").parse().ok()).collect();
+    (!levels.is_empty()).then(|| levels.iter().sum::<i64>() / levels.len() as i64)
+}
+
+/// Kill the games of `games` (the bots are stopped first: one that saw its game die would take it for a crash).
+pub fn stop_games(games: &[String]) -> Result<(), KeyboardInterrupt> {
+    if games.iter().any(|g| g == "sts2") {
+        crate::supervisor::kill_game(STOP_GRACE)?;
+    }
+    if games.iter().any(|g| g == "sts1") {
+        super::sts1::host::Sts1Host::new(None, true, 1.0).kill(STOP_GRACE)?;
+    }
+    Ok(())
+}
+
+/// `run`'s keyword arguments: the games to play, and what starts a bot, tells the time, waits, reads the battery and kills the
+/// games (tests bring their own; a `sleep` that gives the interrupt stands for Ctrl+C or SIGTERM arriving meanwhile).
 pub struct RunArgs<'a> {
     pub games: Vec<String>,
     pub spawn: Box<dyn FnMut(&[String]) -> Box<dyn Proc> + 'a>,
     pub clock: Box<dyn FnMut() -> f64 + 'a>,
     pub sleep: Box<dyn FnMut(f64) -> Result<(), KeyboardInterrupt> + 'a>,
+    pub battery: Box<dyn FnMut() -> Option<i64> + 'a>,
+    pub stop_games: Box<dyn FnMut(&[String]) -> Result<(), KeyboardInterrupt> + 'a>,
 }
 
 impl Default for RunArgs<'_> {
     fn default() -> Self {
-        RunArgs { games: GAMES.iter().map(|g| g.to_string()).collect(), spawn: Box::new(popen), clock: Box::new(monotonic), sleep: Box::new(sleep) }
+        let games = GAMES.iter().map(|g| g.to_string()).collect();
+        RunArgs { games, spawn: Box::new(popen), clock: Box::new(monotonic), sleep: Box::new(sleep), battery: Box::new(charge), stop_games: Box::new(stop_games) }
     }
 }
 
 /// Play every game in `games` at once until each bot finishes (or forever, without --runs). Returns 0.
 pub fn run(argv: &[String], args: RunArgs) -> i32 {
-    let RunArgs { games, mut spawn, mut clock, mut sleep } = args;
+    let RunArgs { games, mut spawn, mut clock, mut sleep, mut battery, mut stop_games } = args;
     let rest = without_game(argv);
     let mut procs: Vec<(String, Box<dyn Proc>)> = Vec::new(); // (in the order they were started, as the original's dict)
     let mut started: HashMap<String, f64> = HashMap::new();
     let mut due: HashMap<String, f64> = games.iter().map(|g| (g.clone(), 0.0)).collect(); // when each bot is to be (re)started
     let mut delay: HashMap<String, f64> = games.iter().map(|g| (g.clone(), RESTART_DELAY.get())).collect();
     let mut done: HashSet<String> = HashSet::new();
+    let mut charging = false; // stopped for a low battery
 
     let handling = Handling::new();
     let mut body = || -> Result<(), KeyboardInterrupt> {
         while done.len() < games.len() {
             let now = clock();
+            match battery() {
+                Some(level) if !charging && level < BATTERY_LOW.get() => {
+                    charging = true;
+                    log_warning!(log, "battery at {}%: stopping the games until it is charged to {}%", level, BATTERY_HIGH.get());
+                    let mut left: Vec<Box<dyn Proc>> = procs.drain(..).map(|(_, p)| p).collect();
+                    _stop(&mut left, &mut *clock, &mut *sleep)?;
+                    stop_games(&games)?;
+                }
+                Some(level) if charging && level >= BATTERY_HIGH.get() => {
+                    charging = false;
+                    log_info!(log, "battery at {}%: playing again", level);
+                    due.values_mut().for_each(|at| *at = now);
+                }
+                _ => {}
+            }
             for game in &games {
-                if done.contains(game) {
+                if done.contains(game) || charging {
                     continue;
                 }
                 let at = procs.iter().position(|(g, _)| g == game);
@@ -337,6 +377,7 @@ mod tests {
         pid: i64,
         code: Option<i64>,
         signals: Vec<i32>,
+        born: f64,
     }
 
     struct FakeProc(Rc<RefCell<Fake>>);
@@ -367,6 +408,8 @@ mod tests {
         t: f64,
         procs: Vec<Rc<RefCell<Fake>>>,
         until: f64,
+        battery: Option<i64>,
+        games_stopped: usize,
     }
 
     impl Rig {
@@ -376,12 +419,12 @@ mod tests {
     }
 
     fn play(rig: &Rc<RefCell<Rig>>, argv: &[&str], games: &[&str], mut script: impl FnMut(&mut Rig) -> Result<(), KeyboardInterrupt>) -> i32 {
-        let (a, b, c) = (rig.clone(), rig.clone(), rig.clone());
+        let (a, b, c, d, e) = (rig.clone(), rig.clone(), rig.clone(), rig.clone(), rig.clone());
         let args = RunArgs {
             games: words(games),
             spawn: Box::new(move |argv| {
                 let mut r = a.borrow_mut();
-                let fake = Rc::new(RefCell::new(Fake { argv: argv.to_vec(), pid: 1000 + r.procs.len() as i64, ..Default::default() }));
+                let fake = Rc::new(RefCell::new(Fake { argv: argv.to_vec(), pid: 1000 + r.procs.len() as i64, born: r.t, ..Default::default() }));
                 if r.t >= r.until {
                     fake.borrow_mut().code = Some(0);
                 }
@@ -393,6 +436,11 @@ mod tests {
                 let mut r = c.borrow_mut();
                 r.t += dt;
                 script(&mut r)
+            }),
+            battery: Box::new(move || d.borrow().battery),
+            stop_games: Box::new(move |_| {
+                e.borrow_mut().games_stopped += 1;
+                Ok(())
             }),
         };
         crate::logging::capture(|| run(&words(argv), args)).0
@@ -489,6 +537,31 @@ mod tests {
         let r = r.borrow();
         assert_eq!(r.procs.len(), 2);
         assert!(r.procs.iter().all(|p| p.borrow().signals == [libc::SIGINT]));
+    }
+
+    #[test]
+    fn a_low_battery_stops_bots_and_games_until_it_is_charged() {
+        let r = rig(f64::INFINITY);
+        let mut stopped = false;
+        let code = play(&r, &["--game", "both"], &["sts2", "sts1"], move |rig| {
+            rig.battery = Some(match rig.t as i64 {
+                0..10 => 60,
+                10..100 => 49,
+                100..200 => 89,
+                _ => 90,
+            });
+            if rig.t >= 300.0 && !stopped {
+                stopped = true;
+                return Err(KeyboardInterrupt);
+            }
+            Ok(())
+        });
+        assert_eq!(code, 0);
+        let r = r.borrow();
+        assert_eq!(r.games_stopped, 1);
+        let born: Vec<i64> = r.procs.iter().map(|p| p.borrow().born as i64).collect();
+        assert_eq!(born, [0, 0, 200, 200]); // nothing started again until it was back at 90%
+        assert!(r.procs.iter().all(|p| p.borrow().signals == [libc::SIGINT])); // the first two at 49%, the others at the end
     }
 
     #[test]

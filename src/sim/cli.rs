@@ -116,7 +116,10 @@ pub fn _job(args: &Job, tables: &Tables) -> Value {
     }
     for (name, value) in knobs.iter().filter(|(k, _)| is_constant(k)) {
         // (for this worker thread from now on: every run of a batch names the same constants)
-        let set = crate::fight::eruption::set_tunable(name, value.float()) || crate::fight::closing::set_tunable(name, value.float()) || crate::scripts::modelfight::setting(name, value.float()).is_ok();
+        let set = crate::fight::eruption::set_tunable(name, value.float())
+            || crate::fight::closing::set_tunable(name, value.float())
+            || crate::fight::fool::sadness::set_tunable(name, value.float())
+            || crate::scripts::modelfight::setting(name, value.float()).is_ok();
         assert!(set, "{name} is not a constant that can be set by name");
     }
     let played = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Run::new(&content(game), character, *seed, Some(&floats(knobs)), *asc).play()));

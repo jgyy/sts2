@@ -1258,6 +1258,14 @@ fn test_the_burning_elite_is_kept_in_reach_while_healthy() {
     let opts = [opt(0, 0, 1, "Monster"), opt(1, 1, 1, "RestSite")];
     let way = |hp: i64| first(&strategy::map_screen(&base("map", json!({"hp": hp, "max_hp": 80, "act": 2, "map": {"next_options": opts, "nodes": nodes}})), &mut Memory::new())).clone();
     assert_eq!((way(80), way(36)), (json!({"index": 0}), json!({"index": 1}))); // (under EMERALD_HOLD the values decide)
+    // The burning elite next and a rest site the other way: from EMERALD_GO it is the elite (a run on 68% rested, met no other,
+    // and won the act 3 boss without the key).
+    let mut near: Vec<Value> = (2..6).map(|row| node(0, row, "Monster", &[(0, row + 1)])).collect();
+    near.extend([node(0, 1, "EmeraldElite", &[(0, 2)]), node(1, 1, "RestSite", &[(1, 2)]), node(1, 2, "Treasure", &[(1, 3)]), node(1, 3, "Treasure", &[])]);
+    let offers = [opt(0, 0, 1, "EmeraldElite"), opt(1, 1, 1, "RestSite")];
+    let next = |hp: i64| first(&strategy::map_screen(&base("map", json!({"hp": hp, "max_hp": 80, "act": 1, "map": {"next_options": offers, "nodes": near}})), &mut Memory::new())).clone();
+    assert_eq!((next(54), next(44)), (json!({"index": 0}), json!({"index": 1})));
+    assert_eq!({ let _was = strategy::EMERALD_GO.set(0.8); next(54) }, json!({"index": 1})); // (where the values had it)
     let _off = strategy::EMERALD_HOLD.set(0.0);
     assert_eq!(way(80), json!({"index": 1}));
 }

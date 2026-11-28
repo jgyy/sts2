@@ -19,7 +19,7 @@ use crate::fight::combat;
 use crate::base::{self, JsonExt, Random};
 use crate::run::strategy;
 use crate::sim::cards::{Card, ViewArgs};
-use crate::sim::content::Content;
+use crate::sim::content::{fool, Content};
 use crate::sim::effects::{self, add, Powers};
 use crate::sim::monsters::{self, FightLike};
 use crate::sim::run::Run;
@@ -303,7 +303,7 @@ impl Fight {
             Some(base) if c.r#type() == "Attack" => Some(self.attack_value(base, None, i.osty_attack, false)),
             _ => None,
         };
-        let blk = if i.block != 0 && i.melody_block == 0 { Some(self.block_value(i.block + c.bonus)) } else { None };
+        let blk = if i.block != 0 && i.melody_block == 0 { Some(self.block_value(i.block + c.bonus + self.pw.val("STRETCH"))) } else { None };
         (dmg, blk)
     }
 
@@ -341,6 +341,7 @@ impl Fight {
         if c.r#type() == "Skill" && self.pw.on("CORRUPTION") || c.r#type() == "Attack" && self.free_attack || self.pw.on("VOID_FREE") {
             return 0;
         }
+        let cost = if fool::playing(self) { fool::cost(self, c, cost) } else { cost };
         cost + self.pw.val("SURCHARGE") + if c.r#type() == "Attack" && self.pw.on("TANGLED") { 1 } else { 0 }
     }
 
@@ -360,7 +361,7 @@ impl Fight {
         for (k, v) in self.temp_view() {
             shown.insert(k, v);
         }
-        let mut status: Vec<Value> = shown.iter().filter(|(k, v)| **v != 0 && !INTERNAL.contains(k)).map(|(k, v)| json!({"id": format!("{k}_POWER"), "amount": v, "description": ""})).collect();
+        let mut status: Vec<Value> = shown.iter().filter(|(k, v)| **v != 0 && !INTERNAL.contains(k) && !k.starts_with('_')).map(|(k, v)| json!({"id": format!("{k}_POWER"), "amount": v, "description": ""})).collect();
         if self.mantra != 0 {
             status.push(json!({"id": "MANTRA_POWER", "amount": self.mantra, "description": ""})); // (the game shows Mantra as a power)
         }
@@ -389,12 +390,18 @@ impl Fight {
         for c in &self.run.deck {
             costs.insert(c.name(), json!(c.cost().max(0)));
         }
-        json!({
+        let mut state = json!({
             "state_type": self.kind, "run": self.run.r#where(), "player": player,
             "battle": {"round": self.round, "turn": "player", "is_play_phase": true, "enemies": enemies},
             "_plays_this_turn": self.turn_cards.len(), "_played_names": self.turn_cards, "_dislodged": false, "_facing": self.facing,
             "_revive_pending": false, "_threat": if self.kind == "monster" { Value::Object(threat) } else { json!({}) }, "_blow": blow, "_costs": costs,
-        })
+        });
+        if fool::playing(self) {
+            let mut player = state["player"].take();
+            fool::view(self, &mut player, &mut state);
+            state["player"] = player;
+        }
+        state
     }
 
     pub fn temp_view(&self) -> Vec<(&str, i64)> {
@@ -813,7 +820,7 @@ impl Fight {
             self.pw["AMPLIFY"] -= 1;
             times += 1;
         }
-        times += c.info().replay;
+        times += c.info().replay + fool::encore(self, &c);
         for _ in 0..times {
             if self.won || self.lost {
                 break;
@@ -828,7 +835,9 @@ impl Fight {
         self.skills_turn += (ctype == "Skill") as i64;
         self.last_type = ctype;
         effects::played(self, &c);
+        let uid = c.uid;
         self.put_away(c);
+        fool::put_back(self, uid);
         true
     }
 

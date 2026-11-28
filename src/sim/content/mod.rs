@@ -34,6 +34,7 @@
 //!   `run.act_id`, `run.bosses` (act -> the names drawn for its boss).
 
 pub mod common;
+pub mod fool;
 pub mod sts1;
 pub mod sts1_cards;
 pub mod sts1_foes;

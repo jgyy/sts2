@@ -126,6 +126,9 @@ sts2bot service status|start|stop|enable|disable
 `stop` lasts until the next login, `disable` until you `enable` it again. Killing the process is not enough: the
 service restarts it.
 
+On a laptop, `--game both` stops both bots and games when the battery falls under 50% and starts them again once it
+is charged to 90% (`both::BATTERY_LOW`, `BATTERY_HIGH`).
+
 ## Options
 
 | Option | Default | Meaning |

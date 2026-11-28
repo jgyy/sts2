@@ -109,7 +109,8 @@ fn test_every_rated_relic_is_one_the_game_has() {
     let dump: Value = serde_json::from_str(&std::fs::read_to_string(&wiki).unwrap()).unwrap();
     let known = &dump["relics"];
     let rated: BTreeSet<&str> = relicworth::WORTH.keys().chain(relicworth::LONG_RUN.iter()).chain(relicworth::_DECK.keys()).copied().chain(["LEES_WAFFLE"]).collect();
-    let missing: Vec<&str> = rated.into_iter().filter(|r| known.get(r).is_none() && !known.as_array().is_some_and(|a| a.iter().any(|k| k == r))).collect();
+    let gone = ["HELICAL_DART"]; // (not in the game since v0.114; its rating stays for the recorded golden)
+    let missing: Vec<&str> = rated.into_iter().filter(|r| !gone.contains(r) && known.get(r).is_none() && !known.as_array().is_some_and(|a| a.iter().any(|k| k == r))).collect();
     assert_eq!(missing, Vec::<&str>::new());
 }
 

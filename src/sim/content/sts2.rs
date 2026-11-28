@@ -20,7 +20,7 @@ use crate::cards::CardInfo;
 use crate::base::{self, JsonExt};
 use crate::sim::cards::{Card, CardDef};
 use crate::sim::content::sts1_cards::{_pick, replace};
-use crate::sim::content::{common, sts1, sts1_cards, sts2_foes, AfterRule, Character, Choice, Content, DamageRule, HandRule, Item, Nodes, Odds, PlayableRule, PowerRule, PreRule};
+use crate::sim::content::{common, fool, sts1, sts1_cards, sts2_foes, AfterRule, Character, Choice, Content, DamageRule, HandRule, Item, Nodes, Odds, PlayableRule, PowerRule, PreRule};
 use crate::sim::effects::{self as fx, add, Powers};
 use crate::sim::engine::{Fight, Foe, Pile, Spec};
 use crate::sim::run::{Potion, Run};
@@ -42,7 +42,7 @@ pub fn ROOM_WEIGHTS() -> IndexMap<String, f64> {
     [("Monster", 0.42), ("Unknown", 0.30), ("RestSite", 0.12), ("Shop", 0.05), ("Elite", 0.07)].into_iter().map(|(k, v)| (k.to_string(), v)).collect()
 }
 
-pub const PLAYED: &[&str] = &["Main", "IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT"];
+pub const PLAYED: &[&str] = &["Main", "IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT", "FOOL"];
 
 /// The game's data as the file has it (the original reads sts2_data.json next to the module; here it is built in).
 pub const DATA_TEXT: &str = include_str!("sts2_data.json");
@@ -146,7 +146,7 @@ pub fn pool(character: &str) -> Pool {
     if let Some(p) = POOLS.with(|p| p.borrow().get(character).cloned()) {
         return p;
     }
-    let made: Pool = Rc::new(CARDS().values().filter(|d| d.color == character && matches!(d.rarity.as_str(), "Common" | "Uncommon" | "Rare")).cloned().collect());
+    let made: Pool = Rc::new(CARDS().values().filter(|d| d.color == character && matches!(d.rarity.as_str(), "Common" | "Uncommon" | "Rare") && !fool::LEFT_OUT.contains(&d.key.as_str())).cloned().collect());
     POOLS.with(|p| p.borrow_mut().insert(character.to_string(), made.clone()));
     made
 }
@@ -350,8 +350,11 @@ pub fn DAMAGE() -> HashMap<String, DamageRule> {
         ("TIMES_UP", d(|_f, _c| 0)),
         ("DEATH_MARCH", d(|f, c| (if c.up { 10 } else { 8 }) + (if c.up { 5 } else { 4 }) * f.pw.val("DRAWN_TURN"))),
         ("RAMPAGE", d(|_f, c| 10 + c.bonus)),
+        ("ANGUISH", d(fool::anguish)),
+        ("WAH_SYMPHONY", d(fool::symphony)),
     ];
-    rows.into_iter().map(|(k, r)| (k.to_string(), r)).collect()
+    let shots = CARDS().values().filter(|d| d.color == "FOOL" && make(&d.key, false).info().shoots).map(|d| (d.key.clone(), self::d(fool::shot_damage))).collect::<Vec<_>>();
+    rows.into_iter().map(|(k, r)| (k.to_string(), r)).chain(shots).collect()
 }
 
 pub fn PRE() -> HashMap<String, PreRule> {
@@ -384,6 +387,10 @@ pub fn PRE() -> HashMap<String, PreRule> {
     let first = sts1_cards::PRE();
     for k in ["FIEND_FIRE", "BURNING_PACT", "SECOND_WIND"] {
         out.insert(k.to_string(), first[k].clone());
+    }
+    let fools = pre(fool::pre);
+    for d in CARDS().values().filter(|d| d.color == "FOOL") {
+        out.insert(d.key.clone(), fools.clone());
     }
     out
 }
@@ -643,6 +650,9 @@ pub fn _register(f: &mut Fight, c: &mut Card) {
 
 /// `OWN_POWER.get(key)`.
 pub fn OWN_POWER(key: &str) -> Option<fn(&mut Fight, &Card)> {
+    if fool::POWERS.contains(&key) {
+        return Some(fool::power);
+    }
     Some(match key {
         "BARRICADE" => |f, _c| f.pw.put("BARRICADE", 1),
         "CORRUPTION" => |f, _c| f.pw.put("CORRUPTION", 1),
@@ -734,6 +744,9 @@ pub fn POWER() -> HashMap<String, PowerRule> {
 
 pub fn START(f: &mut Fight) {
     f.triggers = Vec::new();
+    if fool::playing(f) {
+        fool::fight_start(f);
+    }
     if f.run.has("CRACKED_CORE") {
         f.channel("LIGHTNING");
     }
@@ -786,11 +799,17 @@ pub fn TURN_START(f: &mut Fight) {
             }
         }
     }
+    if fool::playing(f) {
+        fool::turn_start(f);
+    }
     trigger(f, "start", None);
 }
 
 pub fn TURN_END(f: &mut Fight) {
     trigger(f, "end", None);
+    if fool::playing(f) {
+        fool::turn_end(f);
+    }
     if f.pw.on("PLATING") {
         // (its Block is in: Plating wears off by 1 a turn)
         f.pw["PLATING"] -= 1;
@@ -1375,16 +1394,19 @@ mod tests {
         }
         let potions: Vec<Value> = _POTIONS().iter().map(|(k, (name, rarity, text))| json!([k, name, rarity, text])).collect();
         assert_eq!(json!(potions), want["potions"]);
-        let pools: serde_json::Map<String, Value> = CHARACTERS().keys().map(|ch| (ch.clone(), json!(pool(ch).iter().map(|d| d.key.clone()).collect::<Vec<_>>()))).collect();
+        // (the Fool joined the model runs on 2026-11-28, his cards as v0.114.0 has them: not in the recording)
+        let pools: serde_json::Map<String, Value> = CHARACTERS().keys().filter(|ch| *ch != "FOOL").map(|ch| (ch.clone(), json!(pool(ch).iter().map(|d| d.key.clone()).collect::<Vec<_>>()))).collect();
         assert_eq!(base::json_dumps(&Value::Object(pools)), base::json_dumps(&want["pools"]));
         assert_eq!(json!(colorless().iter().map(|d| d.key.clone()).collect::<Vec<_>>()), want["colorless"]);
-        let rows: Vec<Value> = cards.values().map(|d| json!([d.key, d.name, d.r#type, d.cost, d.rarity, d.targeted, d.text, d.text_up, d.cost_up, d.color, d.star_cost, d.star_cost_up, d.keywords, d.keywords_up])).collect();
-        assert_eq!(rows.len(), want["cards"].list().len());
-        for (got, wanted) in rows.iter().zip(want["cards"].list()) {
+        let added = |d: &CardDef| d.color == "FOOL" || matches!(d.key.as_str(), "SADNESS" | "JOY");
+        let rows: Vec<Value> = cards.values().filter(|d| !added(d)).map(|d| json!([d.key, d.name, d.r#type, d.cost, d.rarity, d.targeted, d.text, d.text_up, d.cost_up, d.color, d.star_cost, d.star_cost_up, d.keywords, d.keywords_up])).collect();
+        let want_cards: Vec<&Value> = want["cards"].list().iter().filter(|r| r[9].s() != "FOOL").collect();
+        assert_eq!(rows.len(), want_cards.len());
+        for (got, wanted) in rows.iter().zip(want_cards) {
             assert_eq!(got, wanted);
             checked += 1;
         }
-        let characters: serde_json::Map<String, Value> = CHARACTERS().iter().map(|(k, c)| (k.clone(), json!({"title": c.title, "hp": c.hp, "deck": c.deck, "relics": c.relics, "orbs": c.orbs}))).collect();
+        let characters: serde_json::Map<String, Value> = CHARACTERS().iter().filter(|(k, _)| *k != "FOOL").map(|(k, c)| (k.clone(), json!({"title": c.title, "hp": c.hp, "deck": c.deck, "relics": c.relics, "orbs": c.orbs}))).collect();
         assert_eq!(base::json_dumps(&Value::Object(characters)), base::json_dumps(&want["characters"]));
         let scarce: serde_json::Map<String, Value> = SCARCE_ODDS().iter().map(|(k, v)| (k.clone(), json!(v.iter().map(|(r, p)| json!([r, p])).collect::<Vec<_>>()))).collect();
         assert_eq!(base::json_dumps(&Value::Object(scarce)), base::json_dumps(&want["scarce"]));
@@ -1402,12 +1424,13 @@ mod tests {
             json!(keys)
         };
         assert_eq!(sorted(g.AFTER.keys().collect()), want["after"]);
-        assert_eq!(sorted(g.PRE.keys().collect()), want["pre"]);
-        assert_eq!(sorted(g.DAMAGE.keys().collect()), want["damage"]);
+        let mine = |k: &&String| cards.get(*k).is_none_or(|d| d.color != "FOOL"); // (the Fool's: not in the recording)
+        assert_eq!(sorted(g.PRE.keys().filter(mine).collect()), want["pre"]);
+        assert_eq!(sorted(g.DAMAGE.keys().filter(mine).collect()), want["damage"]);
         for key in want["own_power"].list() {
             assert!(OWN_POWER(key.s()).is_some(), "{key}");
         }
-        assert!(cards.keys().filter(|k| OWN_POWER(k).is_some()).count() <= want["own_power"].list().len());
+        assert!(cards.keys().filter(|k| OWN_POWER(k).is_some() && mine(k)).count() <= want["own_power"].list().len());
         assert!(OWN_POWER("INFLAME").is_none());
         assert!(checked > 1200, "{checked} golden cases");
     }

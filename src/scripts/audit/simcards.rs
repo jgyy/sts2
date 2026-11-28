@@ -103,7 +103,7 @@ pub fn played(g: &Rc<Content>, game: &str, key: &str) -> String {
     for (name, (a, b)) in ["powers", "this turn", "enemy"].into_iter().zip(before.dicts.iter().zip(&after.dicts)) {
         let keys: BTreeSet<&String> = a.keys().chain(b.keys()).collect();
         for k in keys {
-            if a.get(k) != b.get(k) && k != "DRAWN_TURN" {
+            if a.get(k) != b.get(k) && k != "DRAWN_TURN" && !k.starts_with('_') {
                 out.push(format!("{name}.{k} {}->{}", shown(a, k), shown(b, k)));
             }
         }

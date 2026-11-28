@@ -57,6 +57,10 @@ fn test_ki_verse_says_how_many_cards_it_plays_again() {
     assert_eq!(parse(&VERSE(0, true)).verse, 2);
     assert_eq!(parse(&STRIKE(0)).verse, 0);
     assert_eq!(parse(&VERSE(0, false)).melody, ["KI"]); // (a Ki card itself)
+    // v0.114's wording (read as nothing until 2026-11-28, so Ki Verse was a blank card to the planner)
+    for (text, n) in [("The next “Wah” or “Cho” card you play this turn is played an additional time.", 1), ("The next 2 “Wah” or “Cho” cards you play this turn are played an additional time.", 2)] {
+        assert_eq!(parse(&card(0, "KI_VERSE", "Ki Verse", "Skill", 1, text, "None")).verse, n);
+    }
 }
 
 #[test]

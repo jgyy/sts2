@@ -178,7 +178,7 @@ pub struct CardInfo {
     pub melody_block: i64,
     /// Wah Blast: "If you have a Cho Melody or Ki Melody, hits twice" (the original: a tuple of names; empty for none)
     pub melody_twice: Vec<String>,
-    /// Ki Verse: "The next (2) "Wah", "Cho", or "Ki" card(s) you play this turn ... played an additional time"
+    /// Ki Verse: "The next (2) "Wah" or "Cho" card(s) you play this turn ... played an additional time" (before v0.114: "Wah", "Cho", or "Ki")
     pub verse: i64,
     /// the first game's Watcher: the stance the card puts her in (WRATH, CALM, DIVINITY, EXIT; games/sts1/stance.rs)
     pub stance: String,
@@ -923,7 +923,7 @@ pub fn _parse(card: &Value) -> CardInfo {
         energy_drain: if ctype == "Power" { int!(r"gain\s+(\d+)\s+less\s+energy\s+at\s+the\s+start\s+of\s+(?:your|each)\s+turn", full_text) } else { 0 },
         stance,
         wrath_next: found!(r"\bnext\s+turn,\s*enter\s+wrath\b", next_text),
-        verse: match search!(r"the\s+next\s+(?:(\d+)\s+)?\W*wah\W+cho\W+or\s+\W*ki\W*\s+cards?\s+you\s+play\s+this\s+turn\s+(?:is|are)\s+played\s+an\s+additional\s+time", full_text) {
+        verse: match search!(r"the\s+next\s+(?:(\d+)\s+)?\W*wah\W+(?:or\s+\W*)?cho\W*(?:,?\s*or\s+\W*ki\W*)?\s*cards?\s+you\s+play\s+this\s+turn\s+(?:is|are)\s+played\s+an\s+additional\s+time", full_text) {
             Some(m) => m.get(1).map(|n| to_int(n.as_str())).unwrap_or(1),
             None => 0,
         },
