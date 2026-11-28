@@ -1,6 +1,7 @@
 //! The first Slay the Spire: the state as the bot reads it, the commands its actions become, whole runs.
 
 use std::cell::RefCell;
+use std::path::Path;
 use std::rc::Rc;
 
 use serde_json::{json, Value};
@@ -10,22 +11,14 @@ use sts2bot::fight::combat;
 use sts2bot::games;
 use sts2bot::games::sts1::client::{Prefs, Sts1Client};
 use sts2bot::games::sts1::screens::Screens;
-use sts2bot::games::sts1::{text, tiers};
+use sts2bot::games::sts1::{host, speedmod, text, tiers};
 use sts2bot::py::JsonExt;
 use sts2bot::run::{crowd, potions, strategy};
+use sts2bot::supervisor;
 
 use super::fake_comm::FakeComm;
 use super::helpers::{direct, direct_with, sts1_case};
 use crate::helpers::make_bot_kw;
-
-// TODO(host): SaveFilesAndSetup.test_ascension_and_wins_come_from_the_save_files (host.read_prefs)
-// TODO(host): SaveFilesAndSetup.test_a_first_win_opens_ascension_1 (host.read_prefs)
-// TODO(host): SaveFilesAndSetup.test_a_win_act_4_does_not_know_of_leaves_the_character_on_0 (host.read_prefs)
-// TODO(host): SaveFilesAndSetup.test_a_new_profile_has_only_the_ironclad (host.read_prefs; its second half, the client over those prefs, waits with it)
-// TODO(host): SaveFilesAndSetup.test_the_game_is_set_to_full_screen_and_fast_mode_before_it_opens (host.prepare_game)
-// TODO(host): SaveFilesAndSetup.test_the_bot_s_old_profile_name_becomes_the_user_s (host.prepare_game)
-// TODO(host): SaveFilesAndSetup.test_the_game_is_launched_with_its_clock_sped_up_and_its_output_kept (host.Sts1Host.launch, supervisor._spawn and speedmod.ensure patched)
-// TODO(host): SaveFilesAndSetup.test_communication_mod_is_pointed_at_the_relay (host.write_comm_config)
 
 fn shared(game: FakeComm) -> Rc<RefCell<FakeComm>> {
     Rc::new(RefCell::new(game))
@@ -45,6 +38,24 @@ fn started(room: Option<&str>) -> (Rc<RefCell<FakeComm>>, Sts1Client) {
         game.borrow_mut()._fight(room);
     }
     (game, client)
+}
+
+/// host.read_prefs over a save folder of these files (a dict written as JSON, a str as it is).
+fn read_saves(files: &[(&str, Value)]) -> Value {
+    let d = tempfile::tempdir().unwrap();
+    for (name, body) in files {
+        std::fs::write(d.path().join(name), match body {
+            Value::String(text) => text.clone(),
+            other => other.to_string(),
+        })
+        .unwrap();
+    }
+    host::read_prefs(Some(d.path()))
+}
+
+/// `json.loads(path.read_text())`.
+fn read_json(path: &Path) -> Value {
+    serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
 }
 
 /// `[x[key] for x in items]`.
@@ -221,6 +232,52 @@ fn test_unknown_game_is_refused() {
 // class SaveFilesAndSetup
 
 #[test]
+fn test_ascension_and_wins_come_from_the_save_files() {
+    let _case = sts1_case();
+    let prefs = read_saves(&[
+        ("STSDataVagabond", json!({"WIN_COUNT": "3", "ASCENSION_LEVEL": "6"})),
+        ("STSDataTheSilent", json!({"WIN_COUNT": "0", "ASCENSION_LEVEL": "1"})),
+        ("STSDataDefect", json!("not json")),
+        ("STSUnlocks", json!({"The Silent": "2", "Defect": "1", "GUARDIAN": "2"})),
+        ("STSPlayer", json!({"IRONCLAD_WIN": "true"})),
+    ]); // (Vagabond: the Ironclad)
+    assert_eq!(prefs["wins"], 3);
+    assert_eq!(prefs["max_ascension"], json!({"IRONCLAD": 6, "THE_SILENT": 0}));
+    assert_eq!(prefs["locked"], json!(["WATCHER"]));
+}
+
+#[test]
+fn test_a_first_win_opens_ascension_1() {
+    let _case = sts1_case();
+    // The game keeps no ASCENSION_LEVEL until the first level-up and reads it as 1 once a character has won.
+    let prefs = read_saves(&[
+        ("STSDataVagabond", json!({"WIN_COUNT": "1", "WIN_STREAK": "0"})),
+        ("STSDataTheSilent", json!({"WIN_STREAK": "0"})),
+        ("STSPlayer", json!({"IRONCLAD_WIN": "true"})),
+    ]);
+    assert_eq!(prefs["max_ascension"], json!({"IRONCLAD": 1, "THE_SILENT": 0}));
+}
+
+#[test]
+fn test_a_win_act_4_does_not_know_of_leaves_the_character_on_0() {
+    let _case = sts1_case();
+    // (A win from before the bot's mod set no DEFECT_WIN: the rotation plays the Defect until it wins again.)
+    let prefs = read_saves(&[("STSDataDefect", json!({"WIN_COUNT": "1"})), ("STSDataWatcher", json!({"WIN_STREAK": "0"})), ("STSPlayer", json!({"IRONCLAD_WIN": "true"}))]);
+    assert_eq!(prefs["max_ascension"], json!({"DEFECT": 0, "WATCHER": 0}));
+}
+
+#[test]
+fn test_a_new_profile_has_only_the_ironclad() {
+    let _case = sts1_case();
+    let prefs = read_saves(&[]);
+    assert_eq!(prefs, json!({"max_ascension": {}, "wins": 0, "locked": ["THE_SILENT", "DEFECT", "WATCHER"]}));
+    let mut client = direct_with(&shared(FakeComm::default()), Prefs::Dict(prefs));
+    assert_eq!(each(&client.profile().unwrap()["characters"], "id"), ["IRONCLAD"]);
+    client.act("menu_select", &json!({"option": "singleplayer"})).unwrap();
+    assert_eq!(client.act("menu_select", &json!({"option": "DEFECT"})).unwrap()["status"], "error"); // (a locked one is not picked)
+}
+
+#[test]
 fn test_the_save_files_are_read_again_before_each_run() {
     let _case = sts1_case();
     let seen = Rc::new(RefCell::new(json!({"max_ascension": {"IRONCLAD": 0}, "wins": 0, "locked": ["THE_SILENT", "DEFECT", "WATCHER"]})));
@@ -230,4 +287,96 @@ fn test_the_save_files_are_read_again_before_each_run() {
     *seen.borrow_mut() = json!({"max_ascension": {"IRONCLAD": 1}, "wins": 1, "locked": ["DEFECT", "WATCHER"]}); // a win: A1, and the Silent
     assert_eq!(client.profile().unwrap()["characters"], json!([{"id": "IRONCLAD", "max_ascension": 1}, {"id": "THE_SILENT", "max_ascension": 0}]));
     assert_eq!(client.profile().unwrap()["total_wins"], 1);
+}
+
+#[test]
+fn test_the_game_is_set_to_full_screen_and_fast_mode_before_it_opens() {
+    let _case = sts1_case();
+    let d = tempfile::tempdir().unwrap();
+    let (game, prefs) = (d.path().to_path_buf(), d.path().join("preferences"));
+    let display = || std::fs::read_to_string(game.join("info.displayconfig")).unwrap().split_whitespace().map(|w| w.to_string()).collect::<Vec<_>>();
+    std::fs::write(game.join("info.displayconfig"), "2560\n1600\n60\nfalse\nfalse\ntrue\n").unwrap();
+    let changed = host::prepare_game(true, Some(&prefs), Some(&game));
+    assert_eq!(display(), ["2560", "1600", &host::FRAME_CAP.to_string(), "false", "true", "false"]);
+    assert_eq!(read_json(&prefs.join("STSGameplaySettings"))["Fast Mode"], "true");
+    let tips = read_json(&prefs.join("STSTips"));
+    assert_eq!((&tips["INTENT_TIP"], &tips["CARD_REWARD_TIP"], &tips["NO_FTUE"]), (&json!("true"), &json!("true"), &json!("true")));
+    let slots = read_json(&prefs.join("STSSaveSlots"));
+    assert_eq!((&slots["DEFAULT_SLOT"], &slots["PROFILE_NAME"]), (&json!("0"), &json!(host::PROFILE_NAME))); // (a profile, as the game's name screen makes)
+    let sound = read_json(&prefs.join("STSSound"));
+    assert_eq!((&sound["Master Volume"], &sound["Music Volume"], &sound["Sound Volume"], &sound["Mute in Bg"]), (&json!("1.0"), &json!("1.0"), &json!("1.0"), &json!("true")));
+    assert_eq!(changed.len(), 5);
+    assert_eq!(host::prepare_game(true, Some(&prefs), Some(&game)), Vec::<String>::new()); // (once set, left alone)
+    host::prepare_game(false, Some(&prefs), Some(&game));
+    assert_eq!(display()[3..5], ["false", "false"]); // --windowed
+}
+
+#[test]
+fn test_the_bot_s_old_profile_name_becomes_the_user_s() {
+    let _case = sts1_case();
+    let d = tempfile::tempdir().unwrap();
+    let (game, prefs) = (d.path().to_path_buf(), d.path().join("preferences"));
+    std::fs::create_dir(&prefs).unwrap();
+    let old = json!({"DEFAULT_SLOT": "0", "PROFILE_NAME": "sts2bot", "COMPLETION": "37.7", "PLAYTIME": "180208"});
+    for name in ["STSSaveSlots", "STSSaveSlots.backUp"] {
+        std::fs::write(prefs.join(name), old.to_string()).unwrap();
+    }
+    let changed = host::prepare_game(true, Some(&prefs), Some(&game));
+    for name in ["STSSaveSlots", "STSSaveSlots.backUp"] {
+        let slots = read_json(&prefs.join(name));
+        assert_eq!((&slots["PROFILE_NAME"], &slots["PLAYTIME"]), (&json!("jegoh"), &json!("180208")));
+    }
+    assert!(changed.iter().any(|c| c == "profile renamed 'sts2bot' -> 'jegoh'"), "{changed:?}");
+    let mut someone = old.clone();
+    someone["PROFILE_NAME"] = json!("Someone");
+    std::fs::write(prefs.join("STSSaveSlots"), someone.to_string()).unwrap();
+    host::prepare_game(true, Some(&prefs), Some(&game));
+    assert_eq!(read_json(&prefs.join("STSSaveSlots"))["PROFILE_NAME"], "Someone"); // (a name the user chose stays)
+}
+
+#[test]
+fn test_the_game_is_launched_with_its_clock_sped_up_and_its_output_kept() {
+    let _case = sts1_case();
+    let d = tempfile::tempdir().unwrap();
+    let dir = d.path().to_path_buf();
+    // (`mock.patch.dict("os.environ", ...)`: the environment as this thread's supervisor sees it, not the process's)
+    let mut env = supervisor::environ();
+    env.insert("STS1_GAME_DIR".to_string(), dir.to_string_lossy().into_owned());
+    env.insert("STS1_PREFS_DIR".to_string(), dir.join("preferences").to_string_lossy().into_owned());
+    // What `_spawn` was called with: argv, and env (None: no `env` keyword).
+    type Spawned = Option<(Vec<String>, Option<indexmap::IndexMap<String, String>>)>;
+    let spawned: Rc<RefCell<Spawned>> = Rc::new(RefCell::new(None));
+    let seen = spawned.clone();
+    let _p = supervisor::patch(|s| {
+        s.environ = Some(env);
+        s.set_spawn(move |argv, kw| {
+            *seen.borrow_mut() = Some((argv.to_vec(), kw.env));
+            Ok(())
+        });
+    });
+    {
+        let _ensure = speedmod::with_ensure_hook(|_, _| true);
+        host::Sts1Host::new(Some(dir.clone()), true, 3.0).launch(&format!("java -jar mts.jar --skip-launcher --mods {}", host::MODS));
+    }
+    let (argv, env) = spawned.borrow_mut().take().unwrap();
+    assert!(argv.contains(&format!("{},{}", host::MODS, speedmod::MOD_ID)), "{argv:?}");
+    assert_eq!(env.unwrap()[speedmod::ENV], "3");
+    assert!(dir.join("game.log").exists());
+    {
+        let _ensure = speedmod::with_ensure_hook(|_, _| false);
+        host::Sts1Host::new(Some(dir.clone()), true, 3.0).launch(&format!("java -jar mts.jar --mods {}", host::MODS));
+    }
+    let (_argv, env) = spawned.borrow_mut().take().unwrap();
+    assert!(env.is_none()); // (no mod: the game as it is)
+    assert!(dir.join("game.log.1").exists()); // (the launch before)
+}
+
+#[test]
+fn test_communication_mod_is_pointed_at_the_relay() {
+    let _case = sts1_case();
+    let d = tempfile::tempdir().unwrap();
+    let written = std::fs::read_to_string(host::write_comm_config(15599, Some(&d.path().join("CommunicationMod").join("config.properties"))).unwrap()).unwrap();
+    assert!(written.contains(" relay --port 15599"), "{written}");
+    assert!(written.contains("runAtGameStart=true"));
+    assert!(written.contains("verbose=false")); // (every message echoed into game.log otherwise)
 }
