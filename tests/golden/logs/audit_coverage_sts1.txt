@@ -33,6 +33,5 @@
    unnamed      0  Odd                        
    unnamed      0  Strength_Power             Seen in the log:  strength_power .
    unnamed      0  Weak_Power                 Seen in the log:  weak_power .
-== sts1 relics: 1  text 1
-   text         0  Runic Dome                 A relic:  runic_dome
-== sts1 monsters: 11  intents 11
+== sts1 relics: 1  rule 1
+== sts1 monsters: 11  rule 11

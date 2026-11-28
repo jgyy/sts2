@@ -404,3 +404,29 @@ fn test_a_card_the_crowd_has_no_numbers_for_is_mixed_with_its_rarity() {
     approx(cards::deck_value(&nock), 0.4 * bare + 0.6 * cards::_RARITY_CROWD["Common"]);
     assert_eq!(cards::deck_value(&with(STRIKE(0), json!({"rarity": "Basic"}))), -2.5); // (no mean for a Basic card: left alone)
 }
+
+#[test]
+fn test_dislike_you_goes_before_the_shot_it_adds_to() {
+    // 2026-11-24 to 28: of 70 turns with Dislike You and a Shot the Shot went first in 55 (the mark was not read).
+    let dislike = |i| card(i, "DISLIKE_YOU", "Dislike You", "Attack", 1, "Deal 8 damage. The enemy takes 50% additional damage from Shots this turn.", "AnyEnemy");
+    let state = combat_state!([FOOLISH(0), dislike(1)], [enemy!("A", 200, attack = 8)], energy = 2);
+    assert_eq!(pick(&state), 1);
+    // ... and on an enemy it already marks, 15 comes to 22
+    let marked = read_foes(&[enemy!("A", 22, status = [power("DISLIKE_YOU", 50)])]);
+    assert_eq!(marked[0].marked, 50);
+    assert!(combat::simulate(&[parse(&FOOLISH(0))], &marked, ctx!(energy = 1, arrows = 1)).unwrap().score > combat::simulate(&[parse(&STRIKE(0))], &marked, ctx!(energy = 1, arrows = 1)).unwrap().score);
+}
+
+#[test]
+fn test_cho_chorus_goes_before_the_wah_and_ki_cards_it_plays_free() {
+    // 2026-11-28: "Wah Hammer, Cho Chorus" and "Cho Ki, Cho Chorus": the Chorus plays those itself, so the energy was thrown away.
+    let chorus = card(0, "CHO_CHORUS", "Cho Chorus", "Skill", 3, "Gain 12 Block. Play ALL \u{201c}Wah\u{201d} and \u{201c}Ki\u{201d} cards in your Hand.", "Self");
+    let hammer = |i| card(i, "WAH_HAMMER", "Wah Hammer", "Attack", 1, "Deal 9 damage. Deals double damage to Impaled enemies.", "AnyEnemy");
+    let state = combat_state!([hammer(1), chorus, hammer(2)], [enemy!("A", 90, attack = 12)], energy = 3);
+    assert_eq!(pick(&state), 0);
+    // Cho Limbs costs nothing once a Wah Melody is in
+    let limbs = parse(&card(1, "CHO_LIMBS", "Cho Limbs", "Skill", 2, &LIMBS(5), "Self"));
+    let foes = read_foes(&[enemy!("A", 90, attack = 12)]);
+    assert!(combat::simulate(&[parse(&hammer(0)), limbs.clone()], &foes, ctx!(energy = 1)).is_some());
+    assert!(combat::simulate(&[limbs, parse(&hammer(0))], &foes, ctx!(energy = 1)).is_none());
+}

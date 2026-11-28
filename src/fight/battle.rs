@@ -45,6 +45,13 @@ crate::tunables! {
     pub THREAT_FLOOR: f64 = 6.0;
     /// the first game's Transient read as it plays (off: a 999 HP enemy like any other, as before 2026-11-28)
     pub SHIFTING: bool = true;
+    /// the Fool's cards read as they play: Dislike You's mark on Shots, Cho Chorus's free Wah and Ki cards, the Melodies
+    /// that make Cho Limbs and Coda cheaper (off: as before 2026-11-28)
+    pub FOOL_READS: bool = true;
+    /// the first game's Champ under half HP wipes every debuff off him and gains Strength for good: a turn that takes him under
+    /// by little costs this less what it takes him under by, in points of damage (2026-11-28, model runs: 1,536 against 1,505
+    /// of 2,723 fights met at the same HP; 100 was worse; 0: off)
+    pub CHAMP_HOLD: f64 = 40.0;
 }
 
 /// whose Debuff leaves us Ringing ("You can only play 1 card this turn") next turn
@@ -264,6 +271,8 @@ enemy! {
     focus: f64 = 1.0;
     /// Impaled: our Arrow stands in it until this many more hits land (or it dies); 0: none
     impaled: i64 = 0;
+    /// Dislike You: Shots deal this percent more on it this turn
+    marked: i64 = 0;
     /// Beat of Death (the first game's Heart): damage we take for every card we play, once it has resolved (Block takes it)
     beat: i64 = 0;
     /// Malleable (the first game's Snake Plant, Writhing Mass): Block after each hit that hurts it, 1 more each time this turn
@@ -690,6 +699,7 @@ pub fn read_enemies(state: &Value) -> Vec<Enemy> {
             skittish: if e["block"].int() != 0 { 0 } else { or(_stacks(e, "SKITTISH"), &|| _stacks(e, "CURL_UP")) },
             max_hp: e["max_hp"].int(),
             impaled: _stacks(e, "IMPALED"),
+            marked: if FOOL_READS.get() { _stacks(e, "DISLIKE_YOU") } else { 0 },
             serrated: 1.0 + _stacks(player, "SERRATED_ARROWS") as f64 / 100.0,
             beat: _stacks(e, "BEAT_OF_DEATH"),
             malleable: _stacks(e, "MALLEABLE"),
@@ -1414,7 +1424,7 @@ pub(crate) mod testing {
     }
 
     pub fn env(v: &Value) -> Env {
-        let mut constants = vec![crate::fight::eruption::ERUPTION.set(false), SHIFTING.set(false)]; // (the recordings are older than these rules)
+        let mut constants = vec![crate::fight::eruption::ERUPTION.set(false), SHIFTING.set(false), FOOL_READS.set(false), CHAMP_HOLD.set(0.0)]; // (the recordings are older than these rules)
         for (name, x) in v["tun"].entries() {
             constants.push(match name.as_str() {
                 "RAGE_BLOCK" => RAGE_BLOCK.set(x.int()),

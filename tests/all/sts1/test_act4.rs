@@ -170,3 +170,18 @@ fn test_necronomicurse_is_never_played_and_other_curses_cost_their_hp() {
     let pain = Screens::new().card(&json!({"id": "Pain", "name": "Pain", "type": "CURSE", "cost": 0, "is_playable": true}), Some(0), true);
     assert_eq!(parse(&pain).hp_loss, 1);
 }
+
+#[test]
+fn test_under_runic_dome_an_enemy_is_taken_to_hit_its_usual_blow() {
+    // 2026-11-28: with the intents hidden the planner saw no attack and never blocked (those runs ended on floor 12 on average).
+    let _case = sts1_case();
+    let state = |relics: Value| {
+        let mut s = surrounded_with(("NONE", -1, 1), ("NONE", -1, 1), true);
+        let mut raw = (*s.raw).clone();
+        raw["game_state"]["relics"] = relics;
+        s.raw = Rc::new(raw);
+        s.combat()["battle"]["enemies"][1]["intents"].clone()
+    };
+    assert_eq!(state(json!([{"id": "Runic Dome"}])), json!([{"type": "Attack", "label": "19"}]));
+    assert_eq!(state(json!([]))[0]["type"], "Unknown");
+}

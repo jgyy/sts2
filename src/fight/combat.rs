@@ -197,6 +197,19 @@ pub fn _debuff(e: &mut Enemy, c: &CardInfo, x: i64) {
     }
 }
 
+/// What the Fool pays: nothing for a Wah or Ki card Cho Chorus plays, nor for Cho Limbs once a Wah or Ki Melody is in, and
+/// Coda 2 less for each Melody the line has added (the cost on show counts those it started with).
+fn melody_cost(c: &CardInfo, cost: i64, ft: &FoolTurn, chorus: bool) -> i64 {
+    let sings = |m: &str| m == "WAH" || m == "KI";
+    if (chorus && c.melody.iter().any(|m| sings(m))) || (c.key == "CHO_LIMBS" && ft.tune.iter().any(|m| sings(m))) {
+        0
+    } else if c.key == "CODA" {
+        0.max(cost - 2 * (ft.tune.len() as i64 - ft.tune0))
+    } else {
+        cost
+    }
+}
+
 /// A newly Weak enemy hits for 25% less this turn. (the original's default: 1 turn.)
 pub fn _weaken(e: &mut Enemy, turns: i64) {
     if _resists(e) {
@@ -439,6 +452,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
     let mut surcharge = 0i64; // energy every further card costs on top of its own, after one that says so
     let mut echo: Option<&'static str> = if args.doubled { Some("Any") } else { None }; // the kind of card that is played an extra time next (Burst, One-Two Punch)
     let (mut dooming, mut free_all) = (false, false); // a card applied Doom; Bullet Time: everything left in the hand is free this turn
+    let mut chorus = false; // Cho Chorus: it plays every Wah and Ki card in the hand, free
     let (mut healed, mut nimble, mut might, mut summoned, mut pet, pet0) = (0i64, 0i64, args.might0, 0i64, pet_start, pet_start); // HP given back; Dexterity and Strength gained; HP given Osty (and his HP as the texts were written)
     let mut faced: Option<Arc<str>> = None; // the last enemy a card was aimed at
     let mut held: Vec<(&str, i64, i64)> = args.orbs.iter().map(|(kind, passive, burst)| (kind.as_str(), *passive, *burst)).collect(); // the Defect's orbs
@@ -520,6 +534,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
             // Flatten costs 0 once Osty has attacked this turn, after a Poke in the same line too.
             let free_kind = free_next.is_some_and(|kind| c.r#type == kind);
             let cost = if (c.key == "FLATTEN" && osty_hits != 0) || free_kind || free_all || n < args.free { 0 } else { c.cost + surcharge };
+            let cost = if battle::FOOL_READS.get() { melody_cost(&c, cost, &ft, chorus) } else { cost };
             free_next = if free_kind { None } else { free_next };
             if cost > energy {
                 return None;
@@ -567,6 +582,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
                 c = Cow::Owned(new);
             }
         }
+        chorus = chorus || c.key == "CHO_CHORUS";
         energy *= if c.key == "DOUBLE_ENERGY" { 2 } else { 1 };
         free_all = free_all || c.key == "BULLET_TIME";
         energy += c.energy_gain;
@@ -709,6 +725,10 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
                     self_loss += e.thorns * _hit_count(e, n_hits, c.double_if_vulnerable);
                     dazed += e.hive * _hit_count(e, n_hits, c.double_if_vulnerable) * attack as i64;
                     let done = _fated(e); // damage that does not kill it now changes nothing
+                    let per = if c.shoots && e.marked != 0 { per * (100 + e.marked) / 100 } else { per };
+                    if c.shoots && !c.aoe {
+                        dealt = per * hits; // (Blossom Shot's Stretch and Rain Shot's splash go by what it deals)
+                    }
                     let removed = _hit(e, per, n_hits, c.double_if_vulnerable, false);
                     let gain = _progress(e, removed, chip_rate) * dmg_value * e.worth() * e.focus;
                     score += gain * (if done && e.alive() { 0.2 } else { 1.0 });
@@ -725,6 +745,9 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
             for &i in struck {
                 if foes[i].alive() {
                     _debuff(&mut foes[i], &c, xs);
+                    if c.key == "DISLIKE_YOU" && battle::FOOL_READS.get() {
+                        foes[i].marked += if c.name.ends_with('+') { 75 } else { 50 };
+                    }
                 }
             }
         } else if c.needs_target {
@@ -1148,6 +1171,12 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
         let bite = foes[i].poison.min(foes[i].hp);
         foes[i].shift(bite); // (Poison bites before it moves)
     }
+    for (e, was) in foes.iter().zip(enemies) {
+        // (the Champ just under half: see battle::CHAMP_HOLD)
+        if e.entity_id.contains("CHAMP") && was.hp * 2 >= was.max_hp && e.hp > 0 && e.hp * 2 < e.max_hp {
+            score -= fmax(0.0, battle::CHAMP_HOLD.get() - (e.max_hp / 2 - e.hp) as f64) * dmg_value;
+        }
+    }
     if let Some(faced) = &faced {
         // turning to face an enemy takes away its 50% bonus and gives it to the other one
         for &i in &survivors {
@@ -1504,6 +1533,7 @@ pub fn _choose_card(state: &Value, plan: Option<&mut Plan>) -> Option<Action> {
         c.energy_gain != 0
             || c.star_gain != 0
             || triggers::PAYS.contains(&c.key.as_str())
+            || (c.key == "CHO_CHORUS" && battle::FOOL_READS.get())
             || (c.evoke != 0 && !orbs.is_empty() && orbs[0].0 == "PLASMA")
             || (c.evoke_all != 0 && orbs.iter().any(|o| o.0 == "PLASMA"))
     };
@@ -1535,6 +1565,8 @@ pub fn _choose_card(state: &Value, plan: Option<&mut Plan>) -> Option<Action> {
             let key = order_key(c);
             if c.key == "FLATTEN" || c.key == "RATTLE" || c.key == "NO_ESCAPE" {
                 (key.0, 1e3, c.index)
+            } else if c.key == "DISLIKE_YOU" && battle::FOOL_READS.get() {
+                (2, key.1 as f64, key.2) // (before the Shots it makes harder)
             } else {
                 (key.0, key.1 as f64, key.2)
             }

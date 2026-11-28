@@ -3,7 +3,7 @@
 
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::LazyLock;
 
@@ -28,6 +28,20 @@ pub const POTION_SWAP: f64 = 6.0; // how much more a potion on offer must be wor
 
 crate::tunables! {
     pub ELITE_FLOOR: f64 = 0.35; // share of Max HP under which an elite is never chosen while there is another way on
+    /// The first game's Emerald Key (user, 2026-11-28: "focus even more to get key"; 0: all of this off): from EMERALD_HOLD of
+    /// Max HP up the route keeps the burning elite in reach, whatever the path values say, taking the best way through it, and
+    /// steps into it from EMERALD_GO; below that the values decide. In act 3 (the last chance) from EMERALD_LAST_HOLD and
+    /// EMERALD_LAST. Met from 85% up it had killed 2 of 71 in act 1 and 1 of 15 in act 2, yet the values left it behind from
+    /// full HP: they count a death again at every fight that follows one.
+    pub EMERALD_HOLD: f64 = 0.5;
+    pub EMERALD_GO: f64 = 0.8;
+    pub EMERALD_LAST_HOLD: f64 = 0.4;
+    pub EMERALD_LAST: f64 = 0.5;
+    /// ... a rest site with the burning elite next heals under this share
+    pub EMERALD_REST: f64 = 0.9;
+    /// ... and from this share up one Recalls (the Ruby Key) rather than rest, unless the boss or the burning elite is next
+    /// (0: Recall only over an upgrade)
+    pub RUBY_NOW: f64 = 0.7;
 }
 
 /// `_where(state)`: (the act, the floor) as the state gives them (None for one that is missing).
@@ -702,12 +716,16 @@ pub fn path_value<S: AsRef<str>>(rooms: &[(S, Option<i64>)], hp: f64, max_hp: i6
 /// (`key`: None for Memory's "no node"; `budget`: the original's one-item list, the paths still to be walked.)
 pub fn best_onward(nodes: &IndexMap<(i64, i64), Value>, key: Option<(i64, i64)>, rooms: &[(String, Option<i64>)], hp: f64, max_hp: i64, gold: i64, act: i64, budget: &mut i64) -> f64 {
     let mut way: Vec<(Cow<str>, Option<i64>)> = rooms.iter().map(|(kind, row)| (Cow::Borrowed(kind.as_str()), *row)).collect();
-    _onward(nodes, key, &mut way, hp, max_hp, gold, act, budget)
+    _onward(nodes, key, &mut way, hp, max_hp, gold, act, budget, false)
 }
 
-fn _onward<'a>(nodes: &'a IndexMap<(i64, i64), Value>, key: Option<(i64, i64)>, rooms: &mut Vec<(Cow<'a, str>, Option<i64>)>, hp: f64, max_hp: i64, gold: i64, act: i64, budget: &mut i64) -> f64 {
+/// (`burning`: only ways through the burning elite: a way not yet through it goes on only to where it still lies ahead.)
+fn _onward<'a>(nodes: &'a IndexMap<(i64, i64), Value>, key: Option<(i64, i64)>, rooms: &mut Vec<(Cow<'a, str>, Option<i64>)>, hp: f64, max_hp: i64, gold: i64, act: i64, budget: &mut i64, burning: bool) -> f64 {
     let node = key.and_then(|k| nodes.get(&k));
-    let kids: Vec<(i64, i64)> = node.map_or(&[][..], |n| n["children"].list()).iter().filter_map(pair).filter(|k| nodes.contains_key(k)).collect();
+    let mut kids: Vec<(i64, i64)> = node.map_or(&[][..], |n| n["children"].list()).iter().filter_map(pair).filter(|k| nodes.contains_key(k)).collect();
+    if burning && !rooms.iter().any(|(kind, _)| kind == "EmeraldElite") {
+        kids.retain(|k| nodes[k]["type"] == "EmeraldElite" || _burning_after(nodes, *k, &mut HashSet::new()));
+    }
     if kids.is_empty() || *budget <= 0 {
         *budget -= 1;
         // A route is also judged by how it goes when fights cost a good deal more than average.
@@ -717,13 +735,18 @@ fn _onward<'a>(nodes: &'a IndexMap<(i64, i64), Value>, key: Option<(i64, i64)>, 
     for k in kids {
         let kind = &nodes[&k]["type"];
         rooms.push((kind.as_str().map_or_else(|| Cow::Owned(base::str_of(kind)), Cow::Borrowed), Some(k.1)));
-        let v = _onward(nodes, Some(k), rooms, hp, max_hp, gold, act, budget);
+        let v = _onward(nodes, Some(k), rooms, hp, max_hp, gold, act, budget, burning);
         rooms.pop();
         if best.is_none_or(|b| v > b) {
             best = Some(v);
         }
     }
     best.expect("a way on")
+}
+
+/// Whether the burning elite is on some way on from node `key` (`seen`: nodes already looked past).
+fn _burning_after(nodes: &IndexMap<(i64, i64), Value>, key: (i64, i64), seen: &mut HashSet<(i64, i64)>) -> bool {
+    nodes[&key]["children"].list().iter().filter_map(pair).any(|k| nodes.contains_key(&k) && seen.insert(k) && (nodes[&k]["type"] == "EmeraldElite" || _burning_after(nodes, k, seen)))
 }
 
 pub fn map_screen(state: &Value, mem: &mut Memory) -> Vec<Action> {
@@ -761,7 +784,7 @@ pub fn map_screen(state: &Value, mem: &mut Memory) -> Vec<Action> {
         let v = match col_row(opt).filter(|key| nodes.contains_key(key)) {
             Some(key) => {
                 let mut way = vec![(Cow::Owned(base::str_of(&nodes[&key]["type"])), Some(key.1))];
-                _onward(&nodes, Some(key), &mut way, hp_now as f64, max_hp, gold, act.unwrap_or(1), &mut budget)
+                _onward(&nodes, Some(key), &mut way, hp_now as f64, max_hp, gold, act.unwrap_or(1), &mut budget, false)
             }
             None => {
                 let mut ahead: Option<f64> = None;
@@ -780,6 +803,25 @@ pub fn map_screen(state: &Value, mem: &mut Memory) -> Vec<Action> {
     if hp < ELITE_FLOOR.get() && scored.iter().any(|(_, o)| !is_elite(o)) {
         // Badly hurt, every road "dies" on paper and the values no longer tell them apart: not an elite.
         scored = scored.into_iter().map(|(v, o)| (v - if is_elite(o) { 1000.0 } else { 0.0 }, o)).collect();
+    }
+    if EMERALD_HOLD.get() > 0.0 {
+        let (hold, go) = if act == Some(3) { (EMERALD_LAST_HOLD.get(), EMERALD_LAST.get()) } else { (EMERALD_HOLD.get(), EMERALD_GO.get()) };
+        // each option's best value along a way through the burning elite, with HP enough to keep it in reach
+        let through: Vec<Option<f64>> = scored
+            .iter()
+            .map(|(_, o)| {
+                let key = col_row(o).filter(|key| nodes.contains_key(key))?;
+                let burning = nodes[&key]["type"] == "EmeraldElite";
+                if hp < if burning { go } else { hold } || !(burning || _burning_after(&nodes, key, &mut HashSet::new())) {
+                    return None;
+                }
+                let mut way = vec![(Cow::Owned(base::str_of(&nodes[&key]["type"])), Some(key.1))];
+                Some(_onward(&nodes, Some(key), &mut way, hp_now as f64, max_hp, gold, act.unwrap_or(1), &mut MAX_PATHS.clone(), true))
+            })
+            .collect();
+        if through.iter().any(Option::is_some) {
+            scored = scored.into_iter().zip(through).map(|((v, o), t)| (t.unwrap_or(v - 1e6), o)).collect();
+        }
     }
     let mut ranked = scored.clone();
     base::sort_by_key_rev(&mut ranked, |t| t.0);
@@ -922,6 +964,9 @@ pub fn rest_site(state: &Value, mem: &mut Memory) -> Vec<Action> {
         heal_first = hp < 0.5 || (rest > smith && hp < 0.95) || (mem.boss_next && hp < full);
         crate::log_debug!(LOG, "rest site at {}/{}: rest {:.1}, upgrade {:.1}", hp_now, max_hp, rest, smith);
     }
+    let keys_first = EMERALD_HOLD.get() > 0.0;
+    let burning_next = keys_first && node.is_some_and(|node| node["children"].list().iter().filter_map(pair).any(|k| mem.map_nodes.get(&k).is_some_and(|n| n["type"] == "EmeraldElite")));
+    heal_first = heal_first || (burning_next && hp < EMERALD_REST.get());
 
     let rank = |o: &Value| -> f64 {
         let oid = o["id"].or(&o["name"]).text().to_lowercase();
@@ -932,7 +977,9 @@ pub fn rest_site(state: &Value, mem: &mut Memory) -> Vec<Action> {
             return 5.0;
         }
         if oid == "recall" {
-            return 5.5; // the first game's Ruby Key, offered only while it is missing (games/sts1/keys.rs): over an upgrade, not over a needed rest
+            // The first game's Ruby Key, offered only while it is missing (games/sts1/keys.rs): over an upgrade, and over a rest
+            // while healthy enough (not before the boss, nor the burning elite)
+            return if keys_first && RUBY_NOW.get() > 0.0 && hp >= RUBY_NOW.get() && !mem.boss_next && !burning_next { 11.0 } else { 5.5 };
         }
         // A relic's option beats the upgrade: Girya's Lift (Strength, for a deck that hits), Shovel's Dig, Pumpkin Candle's Kindle.
         if oid.contains("lift") {
@@ -1597,6 +1644,7 @@ mod tests {
             let case = resolve(case, blobs);
             let name = case["fn"].s();
             let _game = games::playing(case["game"].s());
+            let _newer = EMERALD_HOLD.set(0.0); // (the recordings are older than the rule)
             let knob: IndexMap<String, f64> = case["knob"].entries().map(|(k, v)| (k.clone(), v.float())).collect();
             let before = learn::knobs();
             learn::set_knobs(&knob);

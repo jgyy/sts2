@@ -44,6 +44,22 @@ pub const AMOUNT: &[(&str, i64)] = &[("UNAWAKENED", 1)]; // powers that show no 
 #[rustfmt::skip]
 pub const INTENT_TYPE: &[(&str, &str)] = &[("BUFF", "Buff"), ("DEBUFF", "Debuff"), ("STRONG_DEBUFF", "Debuff"), ("DEFEND", "Defend"), ("ESCAPE", "Escape"),
                ("SLEEP", "Sleep"), ("STUN", "Stun"), ("MAGIC", "Buff"), ("UNKNOWN", "Unknown"), ("NONE", "Unknown"), ("DEBUG", "Unknown")];
+/// Runic Dome hides every intent, so each enemy is taken to hit for what its turns have averaged in our logs, by key.
+/// (2026-11-28: the 9 runs that got it, all from Neow's swap, ended on floor 12 on average against 33: no attack in
+/// sight, the planner never blocked.)
+#[rustfmt::skip]
+pub const USUAL_BLOW: &[(&str, i64)] = &[
+    ("ACIDSLIME_L", 10), ("ACIDSLIME_M", 6), ("ACIDSLIME_S", 2), ("AWAKENEDONE", 26), ("BANDITBEAR", 10), ("BANDITCHILD", 11), ("BANDITLEADER", 13), ("BOOKOFSTABBING", 23),
+    ("BRONZEAUTOMATON", 17), ("BRONZEORB", 4), ("BYRD", 7), ("CENTURION", 10), ("CHAMP", 17), ("CHOSEN", 9), ("CORRUPTHEART", 34), ("CULTIST", 6), ("DAGGER", 14), ("DARKLING", 8),
+    ("DECA", 15), ("DONU", 16), ("EXPLODER", 10), ("FUNGIBEAST", 6), ("FUZZYLOUSEDEFENSIVE", 5), ("FUZZYLOUSENORMAL", 5), ("GIANTHEAD", 22), ("GREMLINFAT", 5),
+    ("GREMLINLEADER", 15), ("GREMLINNOB", 15), ("GREMLINTHIEF", 10), ("GREMLINTSUNDERE", 0), ("GREMLINWARRIOR", 6), ("GREMLINWIZARD", 31), ("HEALER", 3), ("HEXAGHOST", 13),
+    ("JAWWORM", 9), ("LAGAVULIN", 13), ("LOOTER", 9), ("MAW", 13), ("MUGGER", 8), ("NEMESIS", 20), ("ORB_WALKER", 16), ("REPTOMANCER", 34), ("REPULSOR", 2), ("SENTRY", 5),
+    ("SERPENT", 14), ("SHELLED_PARASITE", 14), ("SLAVERBLUE", 11), ("SLAVERBOSS", 8), ("SLAVERRED", 11), ("SLIMEBOSS", 10), ("SNAKEPLANT", 15), ("SNECKO", 12),
+    ("SPHERICGUARDIAN", 12), ("SPIKER", 4), ("SPIKESLIME_L", 7), ("SPIKESLIME_M", 3), ("SPIKESLIME_S", 6), ("SPIRESHIELD", 19), ("SPIRESPEAR", 19), ("THECOLLECTOR", 15),
+    ("THEGUARDIAN", 12), ("TIMEEATER", 23), ("TORCHHEAD", 9), ("TRANSIENT", 52), ("WRITHINGMASS", 22),
+];
+/// ... and one the table lacks, by the room
+pub const USUAL_BLOW_ROOM: &[(&str, i64)] = &[("monster", 9), ("elite", 14), ("boss", 18)];
 /// What a hand selection is for, by the action that asked for it (CommunicationMod does not send the game's prompt).
 #[rustfmt::skip]
 pub const HAND_PROMPT: &[(&str, &str)] = &[
@@ -382,6 +398,8 @@ impl Screens {
         let cs = &g["combat_state"];
         let mut enemies = vec![];
         self.targets = IndexMap::new();
+        let dome = g["relics"].list().iter().any(|r| key_of(&r["id"].text()) == "RUNIC_DOME");
+        let room = lookup(ROOM_KIND, &base::str_of(&g["room_type"])).unwrap_or("monster");
         for (i, m) in cs["monsters"].list().iter().enumerate() {
             if m["is_gone"].truthy() {
                 continue;
@@ -396,8 +414,13 @@ impl Screens {
             } else {
                 None
             };
+            let mut intents = Self::intents(m);
+            if dome && matches!(m["intent"].text().as_str(), "" | "NONE" | "UNKNOWN") {
+                let blow = lookup(USUAL_BLOW, &key_of(&m["id"].or(&m["name"]).text())).or_else(|| lookup(USUAL_BLOW_ROOM, room)).unwrap_or(9);
+                intents = vec![json!({"type": "Attack", "label": blow.to_string()})];
+            }
             let mut entry = json!({"entity_id": eid, "name": m["name"], "hp": if m["half_dead"].truthy() { json!(0) } else { m["current_hp"].clone() }, "max_hp": m["max_hp"],
-                     "block": get(m, "block", &json!(0)), "status": status, "intents": Self::intents(m)});
+                     "block": get(m, "block", &json!(0)), "status": status, "intents": intents});
             if let Some(behind) = behind {
                 entry["behind"] = json!(behind);
             }
@@ -405,7 +428,7 @@ impl Screens {
         }
         let playing = self.can("play") || self.can("end");
         let battle = json!({"round": cs["turn"], "turn": if playing { "player" } else { "enemy" }, "is_play_phase": playing, "enemies": enemies});
-        self._wrap(lookup(ROOM_KIND, &base::str_of(&g["room_type"])).unwrap_or("monster"), vec![("battle", battle)])
+        self._wrap(room, vec![("battle", battle)])
     }
 
     pub fn intents(m: &Value) -> Vec<Value> {

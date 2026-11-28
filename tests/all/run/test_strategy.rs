@@ -1248,3 +1248,29 @@ fn test_snecko_eye_is_bought_like_any_relic() {
                        "shop": {"items": [with(item(0, "relic", 150), json!({"relic_id": "SNECKO_EYE"}))], "can_proceed": true}});
     assert_eq!(strategy::shop(&state, &mut Memory::new(), "shop")[0], act("shop_purchase", json!({"index": 0})));
 }
+
+#[test]
+fn test_the_burning_elite_is_kept_in_reach_while_healthy() {
+    // Five hallway fights lead to the key, a rest and two chests the other way: on paper the first road dies (the values said
+    // so from full HP in live runs too).
+    let mut nodes: Vec<Value> = (1..6).map(|row| node(0, row, "Monster", &[(0, row + 1)])).collect();
+    nodes.extend([node(0, 6, "EmeraldElite", &[]), node(1, 1, "RestSite", &[(1, 2)]), node(1, 2, "Treasure", &[(1, 3)]), node(1, 3, "Treasure", &[])]);
+    let opts = [opt(0, 0, 1, "Monster"), opt(1, 1, 1, "RestSite")];
+    let way = |hp: i64| first(&strategy::map_screen(&base("map", json!({"hp": hp, "max_hp": 80, "act": 2, "map": {"next_options": opts, "nodes": nodes}})), &mut Memory::new())).clone();
+    assert_eq!((way(80), way(36)), (json!({"index": 0}), json!({"index": 1}))); // (under EMERALD_HOLD the values decide)
+    let _off = strategy::EMERALD_HOLD.set(0.0);
+    assert_eq!(way(80), json!({"index": 1}));
+}
+
+#[test]
+fn test_for_the_key_a_rest_comes_before_the_burning_elite_and_recall_before_a_needless_rest() {
+    let rest = |hp: i64, child: &str| {
+        let mut mem = Memory::new();
+        mem.map_nodes = [((0, 1), node(0, 1, "RestSite", &[(0, 2)])), ((0, 2), node(0, 2, child, &[]))].into_iter().collect();
+        mem.map_at = Some((0, 1));
+        let state = base("rest_site", json!({"hp": hp, "max_hp": 80, "act": 2, "rest_site": {"options": [{"index": 0, "id": "rest"}, {"index": 1, "id": "smith"}, {"index": 2, "id": "recall"}]}}));
+        first(&strategy::rest_site(&state, &mut mem)).clone()
+    };
+    assert_eq!(rest(68, "EmeraldElite"), json!({"index": 0})); // 85%: heal for the elite
+    assert_eq!(rest(68, "Monster"), json!({"index": 2})); // else the Ruby Key
+}
