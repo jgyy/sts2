@@ -83,6 +83,11 @@ retries later (5 minutes, then up to hourly). Fixing such a break means updating
 the lowest ascension (rotating among equals), always at its highest unlocked ascension. It clicks through the
 end-of-run summary because that is where score epochs are earned.
 
+**Blitz and Dread** (`src/run/modes.rs`, v0.113+). While every character has Ascension 10 and Blitz is not yet at its
+Ascension 5, it plays Blitz only; after that Blitz and the standard game take turns until every character has won at
+the top of both, then Dread. In each mode the character that has won least goes first. Only standard runs teach the
+card record, the settings and the relics; `runs.jsonl` marks the others with `mode`.
+
 ## Slay the Spire 1
 
 ```sh

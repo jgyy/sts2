@@ -22,7 +22,7 @@ use crate::learn;
 use crate::logging::{Level, Logger};
 use crate::base::{self, JsonExt};
 use crate::run::strategy::{self, Memory, Where};
-use crate::run::{events, relics};
+use crate::run::{events, modes, relics};
 use crate::Action;
 
 static LOG: Logger = Logger::new("sts2bot");
@@ -278,7 +278,13 @@ impl Bot {
         mem.card_stats = Some(card_stats.clone());
         if let Some(runs) = &runs {
             learn::seed_from_history(&mut card_stats.borrow_mut(), Some(runs));
-            let recent: Vec<String> = learn::history(Some(runs)).map(|r| r["character"].text()).collect(); // (the rotation goes on across restarts)
+            let mut recent = Vec::new(); // (the rotations go on across restarts)
+            for r in learn::history(Some(runs)) {
+                mem.modes.note(&r);
+                if modes::standard(&r) {
+                    recent.push(r["character"].text());
+                }
+            }
             mem.recent = recent[recent.len().saturating_sub(RECENT_RUNS)..].to_vec();
         }
         relics::load(runs.as_deref(), events::_ANCIENT.keys()); // what the Ancients' relics did in our runs
@@ -402,8 +408,9 @@ impl Bot {
     pub fn candidates(&mut self, state: &Value) -> Vec<Action> {
         let kind = &state["state_type"];
         if kind == "menu" {
-            if state["menu_screen"] == "character_select" && !self.mem.character_selected {
-                self._refresh_ascensions();
+            let blitz_offered = || state["menu_screen"] == "singleplayer" && strategy::_option_names(&state["options"]).iter().any(|o| o == "blitz");
+            if (state["menu_screen"] == "character_select" && !self.mem.character_selected) || blitz_offered() {
+                self._refresh_ascensions(); // (the choice of a mode goes by the ascensions too)
             }
             if self.abandon_next && (!state["menu_screen"].truthy() || state["menu_screen"] == "main") {
                 let names: Vec<&Value> = state["options"].list().iter().map(|o| if o.is_string() { o } else { &o["name"] }).collect();
@@ -453,7 +460,7 @@ impl Bot {
             "card_select" => strategy::card_select(state, mem),
             "bundle_select" => strategy::bundle_select(state, mem),
             "relic_select" => strategy::relic_select(state, mem),
-            "crystal_sphere" => strategy::crystal_sphere(state, mem),
+            "crystal_sphere" => strategy::crystal_sphere(state),
             "game_over" => strategy::game_over(state, mem),
             "overlay" => strategy::overlay(state, mem),
             _ => vec![],
@@ -489,6 +496,7 @@ impl Bot {
         if profile["total_wins"].is_number() || profile["total_wins"].is_boolean() {
             self._wins_seen = Some(profile["total_wins"].int());
         }
+        self.mem.modes.profile(&profile);
         // (What the original raised on a profile of another shape, an AttributeError, TypeError or ValueError, is the `Err` here.)
         let read = || -> Result<(IndexMap<String, i64>, IndexMap<String, String>), String> {
             let listed = |v: &Value, what: &str| if v.truthy() && !v.is_array() { Err(format!("{what} is not a list")) } else { Ok(()) };
@@ -498,7 +506,7 @@ impl Bot {
                 if !c.is_object() {
                     return Err(format!("{} object has no attribute 'get'", base::repr_of(c)));
                 }
-                if !c["id"].truthy() {
+                if !c["id"].truthy() || !strategy::is_character(&c["id"].text()) {
                     continue;
                 }
                 let top = &c["max_ascension"];
@@ -820,6 +828,7 @@ impl Bot {
         let Some(profile) = self._profile() else {
             return;
         };
+        self.mem.modes.profile(&profile);
         let epochs = Bot::_epochs(&profile);
         let earned = |table: &IndexMap<String, String>| -> BTreeSet<String> { table.iter().filter(|(_, v)| strategy::_EARNED.contains(&v.as_str())).map(|(k, _)| k.clone()).collect() };
         let had = earned(&self.mem.epochs);
@@ -857,9 +866,12 @@ impl Bot {
         self.runs_finished += 1;
         self.wins += won as i64;
         self.mem.last_result = if won { "win" } else { "loss" }.to_string();
-        self.mem.recent.push(p["character"].text());
-        if self.mem.recent.len() > RECENT_RUNS {
-            self.mem.recent.drain(..self.mem.recent.len() - RECENT_RUNS);
+        let standard = modes::standard(run);
+        if standard {
+            self.mem.recent.push(p["character"].text());
+            if self.mem.recent.len() > RECENT_RUNS {
+                self.mem.recent.drain(..self.mem.recent.len() - RECENT_RUNS);
+            }
         }
         let mut deck: Vec<String> = self.mem.deck.iter().map(|c| base::str_of(&c["name"])).collect();
         deck.sort();
@@ -872,16 +884,24 @@ impl Bot {
         if !run["keys"].is_null() {
             entry["keys"] = run["keys"].clone(); // (the first game's act 4 keys, once act 4 is open)
         }
+        if !standard {
+            entry["mode"] = run["mode"].clone();
+        }
+        self.mem.modes.note(&entry);
         let who = entry["character"].text();
         let usual = self.card_stats.borrow().usual(&who, 0);
         let floor = &entry["floor"];
-        if let (true, Some(usual), true) = (self._knobs_whole_run, usual, floor.is_int() || floor.is_boolean()) {
+        // (Blitz and Dread runs teach nothing: another game and another difficulty, with floors that do not compare)
+        if let (true, Some(usual), true) = (self._knobs_whole_run && standard, usual, floor.is_int() || floor.is_boolean()) {
             self.knobs.record(Some((floor.int() + if won { learn::WIN_BONUS } else { 0 }) as f64 - usual));
         }
         entry["knobs"] = if self._knobs_whole_run { Value::Object(learn::knobs().into_iter().map(|(k, v)| (k, json!(v))).collect()) } else { Value::Null };
-        self.card_stats.borrow_mut().record(&who, entry["floor"].int(), won, &self.mem.picks);
-        relics::note(&entry, true);
-        crate::log_info!(LOG, "run {} over: {} on act {} floor {} ({} wins so far)", self.runs_finished, base::str_of(&entry["result"]), base::str_of(&entry["act"]), base::str_of(&entry["floor"]), self.wins);
+        if standard {
+            self.card_stats.borrow_mut().record(&who, entry["floor"].int(), won, &self.mem.picks);
+            relics::note(&entry, true);
+        }
+        let tag = if standard { String::new() } else { format!(" [{} A{}]", modes::of(&entry), base::str_of(&entry["ascension"])) };
+        crate::log_info!(LOG, "run {} over: {} on act {} floor {} ({} wins so far){}", self.runs_finished, base::str_of(&entry["result"]), base::str_of(&entry["act"]), base::str_of(&entry["floor"]), self.wins, tag);
         if let Some(dir) = &self.log_dir {
             let written = std::fs::create_dir_all(dir).and_then(|_| std::fs::OpenOptions::new().create(true).append(true).open(dir.join("runs.jsonl"))).and_then(|mut f| f.write_all(format!("{}\n", base::json_dumps(&entry)).as_bytes()));
             if let Err(e) = written {
@@ -1218,7 +1238,7 @@ mod tests {
         let _playing = crate::games::playing(game);
         strategy::set_session(Some(12345)); // (the draw of who plays next: as the recorder set it)
         learn::set_knobs(&learn::defaults(Some(game)));
-        let _older = crate::fight::battle::BARRICADE_HOLDS.set(false); // (the recordings are older than this rule)
+        let _older = (crate::fight::battle::BARRICADE_HOLDS.set(false), crate::run::sphere::SPHERE_AIM.set(false)); // (the recordings are older than these rules)
         for op in g["pre"].list() {
             assert!(op[0] == "tunable" && op[1] == "SKIP_THRESHOLD");
             crate::run::decks::SKIP_THRESHOLD.set_forever(op[2].as_f64().unwrap());

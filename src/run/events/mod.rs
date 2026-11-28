@@ -348,6 +348,11 @@ pub fn event(state: &Value, mem: &mut Memory) -> Vec<Action> {
     if opts.is_empty() {
         return vec![("advance_dialogue".to_string(), json!({})), ("proceed".to_string(), json!({}))];
     }
+    if ev["event_id"] == "MATCH_AND_KEEP" && opts.len() > 1 {
+        let titles: Vec<&str> = opts.iter().map(|o| o["title"].as_str().unwrap_or("")).collect();
+        let order = sts1::match_pick(&titles, ev["match_first"].as_str());
+        return order.into_iter().map(|i| ("choose_event_option".to_string(), json!({"index": opts[i]["index"].int_or(0)}))).collect();
+    }
     let player = &state["player"];
     let (hp, max_hp) = (int_or(&player["hp"], 1), int_or(&player["max_hp"], 1));
     // One event is one floor: the same event on a later floor starts again from its own HP.

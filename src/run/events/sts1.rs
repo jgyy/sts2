@@ -603,6 +603,40 @@ pub static GENERIC_CHECKED: LazyLock<IndexMap<&'static str, &'static str>> = Laz
 /// (A set in the original: only asked whether an event is in it.)
 pub static COVERED: LazyLock<BTreeSet<&'static str>> = LazyLock::new(|| RULES.keys().chain(GENERIC_CHECKED.keys()).copied().collect());
 
+/// Match and Keep (user, 2026-11-28: find the pairs, not the two cards top left). The options are the face-down cards,
+/// named once seen, else `cardN`; `first`: the card face up while we pick the second. A pair taken goes into the deck, so a
+/// curse's pair is never completed. Returns the options in order of preference.
+pub fn match_pick(titles: &[&str], first: Option<&str>) -> Vec<usize> {
+    let key = |t: &str| t.chars().filter(char::is_ascii_alphabetic).collect::<String>().to_uppercase();
+    let unseen = |t: &str| t.to_lowercase().strip_prefix("card").is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()));
+    let curse = |t: &str| super::_JUNK_NAMES.contains(&key(t).as_str()); // (the game deals ordinary curses only: all listed)
+    let second = first.is_some() || titles.len() % 2 == 1; // (a matched pair leaves two fewer: odd means one is face up)
+    let rank = |i: usize| -> u8 {
+        let t = titles[i];
+        let pairs = first.map_or(false, |f| key(f) == key(t));
+        if second && first.is_some_and(curse) {
+            // anything but its partner: a seen card of another name is sure not to be it
+            return if pairs { 3 } else if unseen(t) { 1 } else { 0 };
+        }
+        if pairs {
+            return 0;
+        }
+        if !second && !unseen(t) && !curse(t) && titles.iter().enumerate().any(|(j, u)| j != i && key(u) == key(t) && !unseen(u)) {
+            return 0; // half of a pair we know
+        }
+        if unseen(t) {
+            1 // turn up a new one
+        } else if curse(t) {
+            3
+        } else {
+            2
+        }
+    };
+    let mut order: Vec<usize> = (0..titles.len()).collect();
+    order.sort_by_key(|&i| rank(i));
+    order
+}
+
 pub fn value(event_id: &str, opt: &Value, ctx: &Ctx) -> Option<f64> {
     let rule = RULES.get(event_id)?;
     rule(opt, ctx)
@@ -612,6 +646,18 @@ pub fn value(event_id: &str, opt: &Value, ctx: &Ctx) -> Option<f64> {
 mod tests {
     use super::*;
     use crate::games;
+
+    #[test]
+    fn match_and_keep_takes_known_pairs_and_never_a_curse() {
+        // first pick: half of a pair known, else a new card
+        assert_eq!(match_pick(&["card0", "Zap", "card2", "Zap"], None)[0], 1);
+        assert_eq!(match_pick(&["Zap", "card1", "Bash", "card3"], None)[0], 1);
+        assert_eq!(match_pick(&["Writhe", "card1", "Writhe", "card3"], None)[0], 1); // a curse's pair is left alone
+        // second pick (an odd number face down): the partner of the card face up, else a new one
+        assert_eq!(match_pick(&["card0", "Bash", "Zap"], Some("Zap"))[0], 2);
+        assert_eq!(match_pick(&["Bash", "card1", "Zap"], Some("Defragment"))[0], 1);
+        assert_eq!(match_pick(&["card0", "Writhe", "Bash"], Some("Writhe"))[0], 2); // not the curse's partner, for sure
+    }
 
     fn ctx_of(v: &Value, cards: &[Value]) -> Ctx {
         Ctx {

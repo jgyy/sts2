@@ -399,7 +399,7 @@ pub fn seed_from_history(stats: &mut CardStats, runs_file: Option<&Path>) {
     if !stats.finals.is_empty() {
         return;
     }
-    for r in history(runs_file) {
+    for r in history(runs_file).filter(crate::run::modes::standard) {
         if r["character"].truthy() && (r["floor"].is_int() || r["floor"].is_boolean()) {
             let r#final = r["floor"].int() + if r["result"].as_str() == Some("win") { WIN_BONUS } else { 0 };
             stats.finals.entry(base::str_of(&r["character"])).or_default().push(r#final);

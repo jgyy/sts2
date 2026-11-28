@@ -32,14 +32,17 @@ import com.megacrit.cardcrawl.core.AbstractCreature;
 import com.megacrit.cardcrawl.core.CardCrawlGame;
 import com.megacrit.cardcrawl.core.Settings;
 import com.megacrit.cardcrawl.dungeons.AbstractDungeon;
+import com.megacrit.cardcrawl.events.shrines.GremlinMatchGame;
 import com.megacrit.cardcrawl.map.MapRoomNode;
 import com.megacrit.cardcrawl.monsters.AbstractMonster;
 import com.megacrit.cardcrawl.monsters.MonsterGroup;
 import com.megacrit.cardcrawl.powers.AbstractPower;
+import com.megacrit.cardcrawl.rooms.AbstractRoom;
 import com.megacrit.cardcrawl.screens.DeathScreen;
 import com.megacrit.cardcrawl.screens.GameOverScreen;
 import com.megacrit.cardcrawl.screens.VictoryScreen;
 import com.megacrit.cardcrawl.unlock.UnlockTracker;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -198,6 +201,30 @@ public class TimeScale {
         }
     }
 
+    // Match and Keep: the card face up while the second one is picked (CommunicationMod lists the face-down cards only).
+    @SpirePatch(cls = "communicationmod.GameStateConverter", method = "getGameState", requiredModId = "CommunicationMod", optional = true)
+    public static class MatchGame {
+        @SpirePostfixPatch
+        public static HashMap<String, Object> Postfix(HashMap<String, Object> __result) {
+            try {
+                AbstractRoom room = AbstractDungeon.getCurrRoom();
+                if (room != null && room.event instanceof GremlinMatchGame) {
+                    Field flipped = GremlinMatchGame.class.getDeclaredField("cardFlipped");
+                    Field chosen = GremlinMatchGame.class.getDeclaredField("chosenCard");
+                    flipped.setAccessible(true);
+                    chosen.setAccessible(true);
+                    AbstractCard card = (AbstractCard) chosen.get(room.event);
+                    if (flipped.getBoolean(room.event) && card != null) {
+                        __result.put("match_first", card.cardID);
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println("sts2botspeed: match game failed: " + e);
+            }
+            return __result;
+        }
+    }
+
     // Which elite on the map carries the Emerald Key (the burning one).
     @SpirePatch(cls = "communicationmod.GameStateConverter", method = "convertMapRoomNodeToJson", requiredModId = "CommunicationMod", optional = true)
     public static class EmeraldNode {
@@ -320,7 +347,7 @@ pub const MANIFEST: &str = r#"{
   "modid": "sts2botspeed",
   "name": "sts2bot speed",
   "author_list": ["sts2bot"],
-  "description": "For the bot: runs the game clock faster (STS2BOT_TIME_SCALE), does what the death screen's button would (unlocks, ascension, act 4), turns the player to face a target when surrounded and adds card numbers, keys, stances and who is behind to CommunicationMod's state.",
+  "description": "For the bot: runs the game clock faster (STS2BOT_TIME_SCALE), does what the death screen's button would (unlocks, ascension, act 4), turns the player to face a target when surrounded and adds card numbers, keys, stances, who is behind and the face-up card of Match and Keep to CommunicationMod's state.",
   "version": "1.0.0",
   "sts_version": "12-18-2022",
   "mts_version": "3.18.0",
@@ -508,13 +535,14 @@ pub fn ensure(game_dir: &Path, mts_jar: Option<&Path>) -> bool {
 mod tests {
     use super::*;
 
-    /// The source and manifest are the original's, byte for byte: `speedmod._stamp()` and the whole sha256 there.
+    /// The source and manifest as last reviewed (the original's until Match and Keep's face-up card was added, 2026-11-28):
+    /// a change here is one on purpose, and rebuilds the mod on the next launch.
     #[test]
     fn the_stamp_is_the_recorded() {
-        assert_eq!(_stamp(), "8082b7a9993beaf9");
+        assert_eq!(_stamp(), "837d454406498503");
         let digest = Sha256::digest(format!("{JAVA}{MANIFEST}").as_bytes());
-        assert_eq!(digest.iter().map(|b| format!("{:02x}", b)).collect::<String>(), "8082b7a9993beaf9b42e4d0b3ccb52f719fe5ecfea973dfe756ddc873dcc36cb");
-        assert_eq!((JAVA.len(), MANIFEST.len()), (14159, 476));
+        assert_eq!(digest.iter().map(|b| format!("{:02x}", b)).collect::<String>(), "837d454406498503459822b6a4ea8ae4d25c835913ed7ad954e9245ade769fe1");
+        assert_eq!((JAVA.len(), MANIFEST.len()), (15592, 512));
         assert!(JAVA.starts_with("package sts2botspeed;\n\nimport") && JAVA.ends_with("}\n}\n") && MANIFEST.starts_with("{\n  \"modid\"") && MANIFEST.ends_with("]\n}\n"));
     }
 

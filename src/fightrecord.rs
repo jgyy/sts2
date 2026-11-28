@@ -102,6 +102,9 @@ impl FightWatch {
             f.insert("time".into(), json!((self.now)()));
             f.insert("character".into(), player["character"].clone());
             f.insert("ascension".into(), run["ascension"].clone());
+            if !crate::run::modes::standard(run) {
+                f.insert("mode".into(), run["mode"].clone());
+            }
             f.insert("act".into(), r#where[0].clone());
             f.insert("floor".into(), r#where[1].clone());
             f.insert("kind".into(), json!(kind));

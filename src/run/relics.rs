@@ -124,7 +124,7 @@ fn _int(x: &Value) -> Result<i64, String> {
 /// `note`, with what the original raises on a line it cannot read (a ValueError or TypeError) as an Err.
 pub fn try_note(run: &Value, rebuild: bool) -> Result<(), String> {
     let (relics, floor) = (&run["relics"], &run["floor"]);
-    if !run["character"].truthy() || relics.is_null() || !(floor.is_int() || floor.is_boolean()) {
+    if !crate::run::modes::standard(run) || !run["character"].truthy() || relics.is_null() || !(floor.is_int() || floor.is_boolean()) {
         return Ok(()); // (the first hundred runs were written down without their relics)
     }
     let r#final = floor.int() + if run["result"].as_str() == Some("win") { WIN_BONUS } else { 0 };

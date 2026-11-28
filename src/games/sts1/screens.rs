@@ -588,11 +588,12 @@ impl Screens {
             let locked = o["disabled"].truthy() || o["choice_index"].is_null();
             opts.push(json!({"index": get(o, "choice_index", &json!(-1)), "title": title, "description": desc, "is_locked": locked, "is_proceed": options.len() == 1}));
         }
-        self._wrap(
-            "event",
-            vec![("event", json!({"event_id": key_of(&ss["event_id"].or(&ss["event_name"]).text()), "event_name": ss["event_name"],
-                                          "body": clean(&ss["body_text"]), "options": opts, "in_dialogue": false}))],
-        )
+        let mut event = json!({"event_id": key_of(&ss["event_id"].or(&ss["event_name"]).text()), "event_name": ss["event_name"],
+                               "body": clean(&ss["body_text"]), "options": opts, "in_dialogue": false});
+        if let Some(first) = raw["game_state"]["match_first"].as_str() {
+            event["match_first"] = json!(first); // (Match and Keep's face-up card, from our helper mod)
+        }
+        self._wrap("event", vec![("event", event)])
     }
 
     pub fn _rest(&mut self) -> Value {

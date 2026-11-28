@@ -18,7 +18,7 @@ use crate::{cards, learn};
 
 pub fn rebuilt() -> Result<learn::CardStats, String> {
     let mut stats = learn::CardStats::new(None);
-    for r in read_jsonl(&log_path("runs.jsonl"))? {
+    for r in read_jsonl(&log_path("runs.jsonl"))?.into_iter().filter(crate::run::modes::standard) {
         let floor = &r["floor"];
         if !(floor.is_int() || floor.is_boolean()) {
             return Err(format!("TypeError: unsupported operand type(s) for +: '{}' and 'int'", if floor.is_null() { "NoneType" } else { "str" }));

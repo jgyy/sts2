@@ -529,6 +529,8 @@ pub fn load() -> Result<(Vec<Fight>, Vec<Rc<Value>>), String> {
             cur = None;
         }
     }
+    // (the reports are about the standard game: Blitz's floors and ascensions mean something else)
+    fights.retain(|f| f.run.as_deref().is_none_or(crate::run::modes::standard));
     Ok((fights, runs))
 }
 
@@ -661,7 +663,7 @@ pub fn deaths(since: &str) -> Result<(), String> {
 pub fn knobs(since: &str) -> Result<(), String> {
     let mut runs: Vec<Value> = Vec::new();
     for r in read_jsonl(&log_path("runs.jsonl"))? {
-        if r["knobs"].truthy() && r["time"].as_str().ok_or("KeyError: 'time'")? >= since {
+        if r["knobs"].truthy() && crate::run::modes::standard(&r) && r["time"].as_str().ok_or("KeyError: 'time'")? >= since {
             runs.push(r);
         }
     }

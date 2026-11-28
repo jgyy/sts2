@@ -18,8 +18,10 @@ use crate::logging::{Level, Logger};
 use crate::base::{self, JsonExt};
 pub use crate::run::decks::{_blocks, _hitters, _punch, _stars, deck_fit, BIG_DECK, SKIP_THRESHOLD}; // (what a card is worth in this deck: its own module)
 pub use crate::run::events::{_event_option_value, event}; // (events live in their own module)
+use crate::run::modes;
 pub use crate::run::potions::{boss_floors, boss_worth, saving};
 pub use crate::run::relicworth::worth as relic_worth;
+pub use crate::run::sphere::crystal_sphere;
 pub use crate::Action;
 
 static LOG: Logger = Logger::new("sts2bot.strategy");
@@ -78,7 +80,8 @@ pub struct Memory {
     pub ascension_waits: i64,       // times we held off embarking for the ascension level to show
     pub epochs: IndexMap<String, String>, // epoch id -> state, from the game's profile
     pub last_result: String,        // "win" or "loss": how the run on the end screen went (set when it is recorded)
-    pub recent: Vec<String>,        // the characters of the last runs played, oldest first (for the rotation)
+    pub recent: Vec<String>,        // the characters of the last standard runs, oldest first (for the rotation)
+    pub modes: modes::Record,       // Blitz and Dread: which mode and character are next (modes.rs)
     pub timeline_done: bool,        // the Timeline has nothing more to reveal this visit
     pub timeline_stuck: BTreeSet<String>, // epochs it could not reveal (not retried)
     pub parasol: Option<(Option<i64>, Option<i64>, i64)>, // the shop Lord's Parasol is emptying, and how often we have looked at it: (act, floor, looks)
@@ -112,6 +115,7 @@ impl Default for Memory {
             epochs: IndexMap::new(),
             last_result: String::new(),
             recent: Vec::new(),
+            modes: modes::Record::default(),
             timeline_done: false,
             timeline_stuck: BTreeSet::new(),
             parasol: None,
@@ -344,11 +348,18 @@ pub fn menu(state: &Value, mem: &mut Memory, character: &str) -> Vec<Action> {
         return if mem.timeline_done { pick(&["back", "advance"]) } else { pick(&["advance", "back"]) };
     }
     if screen == "singleplayer" {
-        return pick(&["standard"]);
+        let offered: Vec<String> = lower.keys().cloned().collect();
+        let mode = mem.modes.next(&offered, &mem.max_ascension);
+        return if mode == "standard" { pick(&[mode]) } else { pick(&[mode, "standard"]) };
     }
     if screen == "character_select" {
         let ids: Vec<String> = state["characters"].list().iter().filter(|c| !c["locked"].truthy()).map(|c| base::str_of(&c["id"])).collect();
-        let want = choose_character(character, &ids, mem.runs_finished, Some(&mem.max_ascension), Some(&mem.epochs), Some(&mem.recent));
+        // The lowest in this mode first: standard by the ascension unlocked (then a win at it), epochs owed before that.
+        let mode = modes::of(state);
+        let unlocked = |id: &str| mem.max_ascension.iter().find(|(k, _)| k.to_uppercase() == id.to_uppercase()).map_or(0, |(_, v)| *v);
+        let levels: IndexMap<String, i64> = ids.iter().map(|id| (id.clone(), mem.modes.level(mode, id, unlocked(id)))).collect();
+        let (epochs, recent) = if mode == "standard" { (Some(&mem.epochs), &mem.recent[..]) } else { (None, mem.modes.recent.get(mode).map_or(&[][..], |r| &r[..])) };
+        let want = choose_character(character, &ids, mem.runs_finished, Some(&levels), epochs, Some(recent));
         let select: Vec<Action> = match &want {
             Some(w) if !w.is_empty() => vec![act_("menu_select", json!({"option": w}))],
             _ => vec![],
@@ -357,7 +368,7 @@ pub fn menu(state: &Value, mem: &mut Memory, character: &str) -> Vec<Action> {
         if !mem.character_selected {
             return [select, embark].concat();
         }
-        // Every run is played at the highest ascension the character has unlocked: a win there unlocks the next.
+        // Every run is played at the highest ascension the character (in Blitz: everyone) has unlocked: a win there unlocks the next.
         let (top, now) = (as_int(&state["max_ascension"]), as_int(&state["ascension"]));
         let raise_asc: Vec<Action> = match (top, now) {
             (Some(top), Some(now)) if now != top => vec![act_("set_ascension", json!({"level": state["max_ascension"]}))],
@@ -367,8 +378,8 @@ pub fn menu(state: &Value, mem: &mut Memory, character: &str) -> Vec<Action> {
         let wanted = want.as_deref().unwrap_or("None").to_uppercase();
         let mut known = 0;
         for (k, v) in &mem.max_ascension {
-            if k.to_uppercase() == wanted {
-                known = *v;
+            if mode == "standard" && k.to_uppercase() == wanted {
+                known = *v; // (Blitz's and Dread's levels show at once: they are not the character's)
             }
         }
         let patience = if top.is_some() { 4 } else { 20 };
@@ -423,6 +434,12 @@ pub fn set_session(session: Option<i64>) {
     SESSION.with(|s| s.set(session));
 }
 
+/// False for the game's "Random" tile and Dread's rotating one: listed among the characters, and in the profile.
+pub fn is_character(id: &str) -> bool {
+    let id = id.to_uppercase();
+    !(id.starts_with("RANDOM") || id.starts_with("ROTATING"))
+}
+
 /// A character's name as the menu lists it ("THE_SILENT", "SILENT") and as runs.jsonl keeps it ("The Silent"), alike.
 pub fn _who(name: &str) -> String {
     let upper = name.to_uppercase();
@@ -443,8 +460,8 @@ pub fn choose_character(
     epochs: Option<&IndexMap<String, String>>,
     recent: Option<&[String]>,
 ) -> Option<String> {
-    // The game's own "Random" tile is listed like a character, on ascension 0 for ever: never pick it.
-    let mut unlocked: Vec<&String> = unlocked.iter().filter(|u| !u.to_uppercase().starts_with("RANDOM")).collect();
+    // The game's own "Random" tile (and Dread's rotating one) is listed like a character, on ascension 0 for ever: never pick it.
+    let mut unlocked: Vec<&String> = unlocked.iter().filter(|u| is_character(u)).collect();
     if unlocked.is_empty() {
         return None;
     }
@@ -952,7 +969,8 @@ pub fn rest_site(state: &Value, mem: &mut Memory) -> Vec<Action> {
     // Rest or upgrade: whichever leaves the way to the boss better off (without the map, a rule of thumb; HEAL_BELOW before a boss).
     let act = as_int(&state["run"]["act"]);
     let full = act.and_then(|act| HEAL_BELOW.iter().find(|(a, _)| *a == act)).map_or(0.95, |(_, share)| *share);
-    let mut heal_first = hp < if mem.boss_next { full } else { 0.6 };
+    let boss_next = mem.boss_next || modes::of(&state["run"]) == "blitz"; // (Blitz has no map: its rest site leads to the boss)
+    let mut heal_first = hp < if boss_next { full } else { 0.6 };
     let node = if mem.map_nodes.is_empty() { None } else { mem.map_at.and_then(|at| mem.map_nodes.get(&at)) };
     if node.is_some_and(|node| base::str_of(&node["type"]) == "RestSite" && node["children"].truthy()) {
         let args = (max_hp, player["gold"].int(), act.unwrap_or(1));
@@ -963,7 +981,7 @@ pub fn rest_site(state: &Value, mem: &mut Memory) -> Vec<Action> {
         let mut budget = MAX_PATHS;
         let rest = best_onward(&mem.map_nodes, mem.map_at, &[], healed, args.0, args.1, args.2, &mut budget);
         // Below half HP the path values hardly tell 6 HP from 40 (no boss is won under 30%): heal then, and before a boss.
-        heal_first = hp < 0.5 || (rest > smith && hp < 0.95) || (mem.boss_next && hp < full);
+        heal_first = hp < 0.5 || (rest > smith && hp < 0.95) || (boss_next && hp < full);
         crate::log_debug!(LOG, "rest site at {}/{}: rest {:.1}, upgrade {:.1}", hp_now, max_hp, rest, smith);
     }
     let keys_first = EMERALD_HOLD.get() > 0.0;
@@ -981,7 +999,7 @@ pub fn rest_site(state: &Value, mem: &mut Memory) -> Vec<Action> {
         if oid == "recall" {
             // The first game's Ruby Key, offered only while it is missing (games/sts1/keys.rs): over an upgrade, and over a rest
             // while healthy enough (not before the boss, nor the burning elite)
-            return if keys_first && RUBY_NOW.get() > 0.0 && hp >= RUBY_NOW.get() && !mem.boss_next && !burning_next { 11.0 } else { 5.5 };
+            return if keys_first && RUBY_NOW.get() > 0.0 && hp >= RUBY_NOW.get() && !boss_next && !burning_next { 11.0 } else { 5.5 };
         }
         // A relic's option beats the upgrade: Girya's Lift (Strength, for a deck that hits), Shovel's Dig, Pumpkin Candle's Kindle.
         if oid.contains("lift") {
@@ -1103,6 +1121,9 @@ pub fn shop(state: &Value, mem: &mut Memory, key: &str) -> Vec<Action> {
             } else {
                 want = if gold - price >= 60 { 2.0 } else { -1.0 };
             }
+        } else if cat == "blitz" {
+            want = modes::blitz_worth(item, &mem.deck, player["hp"].int(), player["max_hp"].int());
+            rated = Some(want);
         } else {
             want = -1.0;
         }
@@ -1112,7 +1133,7 @@ pub fn shop(state: &Value, mem: &mut Memory, key: &str) -> Vec<Action> {
         };
         let afford = can && (reserve == 0 || gold - price >= reserve);
         if debug {
-            let name = item["card_name"].or(&item["relic_name"]).or(&item["potion_name"]).text();
+            let name = item["card_name"].or(&item["relic_name"]).or(&item["potion_name"]).or(&item["blitz_type"]).text();
             shelf.push(format!("{} {} {}{} [{:.1}]", cat, name, price, if afford { "" } else { "!" }, rated.unwrap_or(want)).replace("  ", " "));
         }
         if want > 0.0 && afford {
@@ -1456,21 +1477,6 @@ pub fn treasure(state: &Value, _mem: &mut Memory) -> Vec<Action> {
     out
 }
 
-pub fn crystal_sphere(state: &Value, _mem: &mut Memory) -> Vec<Action> {
-    let cs = &state["crystal_sphere"];
-    if cs["can_proceed"].truthy() {
-        return vec![act_("crystal_sphere_proceed", json!({}))];
-    }
-    let size = |v: &Value, default: i64| if v.truthy() { v.int() } else { default };
-    let (w, h) = (size(&cs["grid_width"], 9), size(&cs["grid_height"], 11));
-    // from the middle: big tools reveal most there
-    let at = |c: &Value, k: &str| c.get(k).map_or(0.0, |x| x.float());
-    let cells = sorted_by(cs["clickable_cells"].list().iter().cloned(), |c| (at(c, "x") - base::floordiv(w, 2) as f64).abs() + (at(c, "y") - base::floordiv(h, 2) as f64).abs(), false);
-    let mut out: Vec<Action> = cells.iter().take(6).map(|c| act_("crystal_sphere_click_cell", json!({"x": c["x"], "y": c["y"]}))).collect();
-    out.push(act_("crystal_sphere_proceed", json!({})));
-    out
-}
-
 pub const OVER_PATIENCE: i64 = 60; // looks at the end-of-run summary before giving up on it
 
 /// Leave the end-of-run screen, by way of the run summary: that is where the game adds the run's score to the
@@ -1579,6 +1585,7 @@ mod tests {
             epochs: j["epochs"].entries().map(|(k, v)| (k.clone(), base::str_of(v))).collect(),
             last_result: j["last_result"].s().into(),
             recent: strings(&j["recent"]),
+            modes: Default::default(),
             timeline_done: j["timeline_done"].truthy(),
             timeline_stuck: strings(&j["timeline_stuck"]).into_iter().collect(),
             parasol: match j["parasol"].list() {
@@ -1646,7 +1653,7 @@ mod tests {
             let case = resolve(case, blobs);
             let name = case["fn"].s();
             let _game = games::playing(case["game"].s());
-            let _newer = EMERALD_HOLD.set(0.0); // (the recordings are older than the rule)
+            let _newer = (EMERALD_HOLD.set(0.0), crate::run::sphere::SPHERE_AIM.set(false)); // (the recordings are older than these rules)
             let knob: IndexMap<String, f64> = case["knob"].entries().map(|(k, v)| (k.clone(), v.float())).collect();
             let before = learn::knobs();
             learn::set_knobs(&knob);
@@ -1708,7 +1715,7 @@ mod tests {
                 "bundle_select" => actions(bundle_select(state, &mut mem)),
                 "relic_select" => actions(relic_select(state, &mut mem)),
                 "treasure" => actions(treasure(state, &mut mem)),
-                "crystal_sphere" => actions(crystal_sphere(state, &mut mem)),
+                "crystal_sphere" => actions(crystal_sphere(state)),
                 "game_over" => actions(game_over(state, &mut mem)),
                 "overlay" => actions(overlay(state, &mut mem)),
                 other => panic!("no replay for {other}"),
