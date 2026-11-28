@@ -52,6 +52,12 @@ crate::tunables! {
     /// by little costs this less what it takes him under by, in points of damage (2026-11-28, model runs: 1,536 against 1,505
     /// of 2,723 fights met at the same HP; 100 was worse; 0: off)
     pub CHAMP_HOLD: f64 = 40.0;
+    /// a card that makes us Vulnerable (the first game's Berserk) puts half again on this turn's blows when we are not already
+    /// (2026-11-28: an Ironclad on 48 HP played Berserk into the reborn Awakened One's 44 and died to 66; off: as before)
+    pub SELF_VULN: bool = true;
+    /// the first game's Barricade (Spheric Guardian) is not Burrowed: its Block stays, but breaking it Stuns nothing (2026-11-28: a
+    /// Defect with 4 Defends and 3 Lightning orbs took 12x2 for nothing, the orbs read as Stunning it; off: read as Burrowed, as before)
+    pub BARRICADE_HOLDS: bool = true;
 }
 
 /// whose Debuff leaves us Ringing ("You can only play 1 card this turn") next turn
@@ -152,6 +158,9 @@ macro_rules! enemy {
             pub fn to_json(&self) -> Value {
                 let mut out = Map::new();
                 $(out.insert(stringify!($name).into(), EnemyField::put(&self.$name));)*
+                if !self.barricade {
+                    out.remove("barricade"); // (as the records older than it have it)
+                }
                 Value::Object(out)
             }
 
@@ -193,6 +202,8 @@ enemy! {
     incoming_hits: i64 = 0;
     /// Burrowed: its Block stays until we break it, which Stuns it
     keeps_block: bool = false;
+    /// Barricade (BARRICADE_HOLDS): its Block stays too, and breaking it Stuns nothing
+    barricade: bool = false;
     /// Block our attacks have removed so far in this plan
     chipped: i64 = 0;
     /// ... and Slippery stacks our hits have taken off
@@ -672,7 +683,8 @@ pub fn read_enemies(state: &Value) -> Vec<Enemy> {
             shell: _shown(e, "HARDENED_SHELL", 0).unwrap_or(-1),
             slow: _shown(e, "SLOW", 0).unwrap_or(-1),
             minion: _has_power(e, "MINION"),
-            keeps_block: _has_power(e, "BURROWED") || _has_power(e, "BARRICADE"),
+            keeps_block: _has_power(e, "BURROWED") || (_has_power(e, "BARRICADE") && !BARRICADE_HOLDS.get()),
+            barricade: _has_power(e, "BARRICADE") && BARRICADE_HOLDS.get(),
             artifact: _stacks(e, "ARTIFACT"),
             poison: _stacks(e, "POISON"),
             doom: _stacks(e, "DOOM"),
@@ -787,7 +799,7 @@ pub fn _progress(e: &mut Enemy, hp_removed: i64, chip_rate: f64) -> f64 {
     let strip = e.stripped;
     e.stripped = 0;
     let hp_removed = hp_removed as f64 + strip as f64 * fmin(SLIP_WORTH.get(), e.hp as f64 / 3.0);
-    hp_removed + chip as f64 * (if e.keeps_block || (e.incoming == 0 && chip != 0 && e.block == 0 && chip_rate >= 1.0) { 1.0 } else { chip_rate })
+    hp_removed + chip as f64 * (if e.keeps_block || e.barricade || (e.incoming == 0 && chip != 0 && e.block == 0 && chip_rate >= 1.0) { 1.0 } else { chip_rate })
 }
 
 /// Apply an attack hit by hit, return HP actually removed. `raw` is damage that is not an Attack (an orb's): Vulnerable does nothing for it.
@@ -1272,7 +1284,7 @@ pub fn _pick_target<E: Borrow<Enemy>>(enemies: &[E], dmg_per_hit: i64, hits: i64
     }
     // Else whoever dies soonest for the damage it does (Doom as health gone), leaders first, not one Doomed already or whose Block swallows it all.
     let floor = THREAT_FLOOR.get();
-    let soaks = |e: &Enemy| e.block >= dmg_per_hit * hits && !e.keeps_block;
+    let soaks = |e: &Enemy| e.block >= dmg_per_hit * hits && !e.keeps_block && !e.barricade;
     let left = |e: &Enemy| ((1.max(e.hp - e.doom) + e.block) as f64) / (if e.vulnerable { 1.5 } else { 1.0 });
     base::min_by_key(alive(), |(_, e)| (_fated(e), -e.worth(), soaks(e), left(e) / fmax(e.threat, floor), -e.incoming)).map(|(i, _)| i)
 }
@@ -1424,7 +1436,7 @@ pub(crate) mod testing {
     }
 
     pub fn env(v: &Value) -> Env {
-        let mut constants = vec![crate::fight::eruption::ERUPTION.set(false), SHIFTING.set(false), FOOL_READS.set(false), CHAMP_HOLD.set(0.0)]; // (the recordings are older than these rules)
+        let mut constants = vec![crate::fight::eruption::ERUPTION.set(false), SHIFTING.set(false), FOOL_READS.set(false), CHAMP_HOLD.set(0.0), SELF_VULN.set(false), BARRICADE_HOLDS.set(false)]; // (the recordings are older than these rules)
         for (name, x) in v["tun"].entries() {
             constants.push(match name.as_str() {
                 "RAGE_BLOCK" => RAGE_BLOCK.set(x.int()),

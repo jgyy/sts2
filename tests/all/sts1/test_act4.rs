@@ -185,3 +185,66 @@ fn test_under_runic_dome_an_enemy_is_taken_to_hit_its_usual_blow() {
     assert_eq!(state(json!([{"id": "Runic Dome"}])), json!([{"type": "Attack", "label": "19"}]));
     assert_eq!(state(json!([]))[0]["type"], "Unknown");
 }
+
+// class SelfVulnerable
+
+/// The reborn Awakened One's 44 on a 48 HP Ironclad with 5 Block (2026-11-28 14:06): Berserk's Vulnerable makes it 66.
+#[test]
+fn test_berserk_is_not_played_into_a_blow_it_makes_lethal() {
+    let _case = sts1_case();
+    let mut s = Screens::new();
+    let hand = [("Berserk", "POWER", 0, false), ("Cleave", "ATTACK", 1, false)];
+    s.raw = Rc::new(json!({"in_game": true, "available_commands": ["play", "end"], "game_state": {
+        "act": 3, "floor": 50, "room_type": "MonsterRoomBoss", "screen_type": "NONE", "room_phase": "COMBAT", "current_hp": 48, "max_hp": 95,
+        "combat_state": {"turn": 8, "player": {"current_hp": 48, "max_hp": 95, "block": 5, "energy": 4, "powers": []},
+                         "hand": hand.iter().map(|(id, kind, cost, aimed)| json!({"id": id, "name": id, "type": kind, "cost": cost, "has_target": aimed})).collect::<Vec<_>>(),
+                         "draw_pile": [], "discard_pile": [], "exhaust_pile": [],
+                         "monsters": [{"id": "AwakenedOne", "name": "Awakened One", "current_hp": 300, "max_hp": 300, "block": 0,
+                                       "powers": [{"id": "Regenerate", "amount": 10}, {"id": "Strength", "amount": 4}],
+                                       "intent": "ATTACK", "move_adjusted_damage": 44, "move_hits": 1}]}}}));
+    let state = s.combat();
+    let first = |on: bool| {
+        let _rule = battle::SELF_VULN.set(on);
+        let mut state = state.clone();
+        let mut names = Vec::new();
+        while let Some((action, params)) = combat::choose_card(&state, None) {
+            if action != "play_card" {
+                break;
+            }
+            let i = params["card_index"].as_i64().unwrap() as usize;
+            names.push(state["player"]["hand"][i]["name"].text());
+            state["player"]["hand"].as_array_mut().unwrap().remove(i);
+            for (n, c) in state["player"]["hand"].as_array_mut().unwrap().iter_mut().enumerate() {
+                c["index"] = json!(n);
+            }
+        }
+        names
+    };
+    assert!(!first(true).iter().any(|n| n == "Berserk"), "{:?}", first(true));
+    assert!(first(false).iter().any(|n| n == "Berserk"), "{:?}", first(false)); // (as it played before the rule)
+}
+
+/// A Defect with three Lightning orbs (Focus 1) and four Frail Defends against a Spheric Guardian's 12x2 behind 10 Block
+/// (2026-11-28 13:27:20): the planner played nothing, expecting to lose 0, and lost 24. Barricade keeps Block; it is Burrowed
+/// that is Stunned when its Block is broken.
+#[test]
+fn test_lightning_orbs_do_not_hide_a_blow() {
+    let _case = sts1_case();
+    let mut s = Screens::new();
+    let defend = json!({"id": "Defend_B", "name": "Defend", "type": "SKILL", "cost": 1, "has_target": false});
+    let lightning = json!({"id": "Lightning", "name": "Lightning", "passive_amount": 4, "evoke_amount": 9});
+    s.raw = Rc::new(json!({"in_game": true, "available_commands": ["play", "end"], "game_state": {
+        "act": 2, "floor": 18, "room_type": "MonsterRoom", "screen_type": "NONE", "room_phase": "COMBAT", "current_hp": 66, "max_hp": 75,
+        "combat_state": {"turn": 3, "player": {"current_hp": 66, "max_hp": 75, "block": 0, "energy": 6, "orbs": [lightning, lightning, lightning],
+                                               "powers": [{"id": "Focus", "amount": 1}, {"id": "Frail", "amount": 5}]},
+                         "hand": [defend, defend, defend, defend], "draw_pile": [], "discard_pile": [], "exhaust_pile": [],
+                         "monsters": [{"id": "SphericGuardian", "name": "Spheric Guardian", "current_hp": 20, "max_hp": 20, "block": 10,
+                                       "powers": [{"id": "Barricade", "amount": -1}, {"id": "Strength", "amount": 1}],
+                                       "intent": "ATTACK", "move_adjusted_damage": 12, "move_hits": 2}]}}}));
+    let state = s.combat();
+    let got = |on: bool| {
+        let _rule = battle::BARRICADE_HOLDS.set(on);
+        combat::choose_card(&state, None).map(|(action, _)| action)
+    };
+    assert_eq!((got(true).as_deref(), got(false)), (Some("play_card"), None)); // (off: as it played)
+}

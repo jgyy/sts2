@@ -28,7 +28,7 @@ fn golden_choose_card() {
             && plan.lost == want["lost"].as_i64()
             && plan.score == want["score"].as_f64()
             && plan.line.as_ref().map(|l| l.iter().map(|c| c.index).collect::<Vec<_>>()) == line
-            && (!rec.has("ctx") || _context(&state) == args(&rec["ctx"]))
+            && (!rec.has("ctx") || SimulateArgs { vulnerable: false, .._context(&state) } == args(&rec["ctx"])) // (newer than the recordings)
             && (!rec.has("describe") || json!(describe(&state)) == rec["describe"])
             && json!(expected_end_loss(&state)) == rec["end"]
             && json!(fortifier(&state["player"])) == rec["fort"]

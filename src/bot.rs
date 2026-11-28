@@ -1218,6 +1218,7 @@ mod tests {
         let _playing = crate::games::playing(game);
         strategy::set_session(Some(12345)); // (the draw of who plays next: as the recorder set it)
         learn::set_knobs(&learn::defaults(Some(game)));
+        let _older = crate::fight::battle::BARRICADE_HOLDS.set(false); // (the recordings are older than this rule)
         for op in g["pre"].list() {
             assert!(op[0] == "tunable" && op[1] == "SKIP_THRESHOLD");
             crate::run::decks::SKIP_THRESHOLD.set_forever(op[2].as_f64().unwrap());

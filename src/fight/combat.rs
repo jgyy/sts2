@@ -324,6 +324,8 @@ pub struct SimulateArgs {
     pub mantra0: i64,
     /// the Waterfall Giant's Steam Eruption: what the next hand can do about the blast (fight/eruption.rs `outlook`)
     pub eruption: Option<eruption::View>,
+    /// we are Vulnerable already (the shown blows have it in them)
+    pub vulnerable: bool,
 }
 
 impl Default for SimulateArgs {
@@ -387,6 +389,7 @@ impl Default for SimulateArgs {
             sadness: None,
             mantra0: 0,
             eruption: None,
+            vulnerable: false,
         }
     }
 }
@@ -455,6 +458,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
     let mut chorus = false; // Cho Chorus: it plays every Wah and Ki card in the hand, free
     let (mut healed, mut nimble, mut might, mut summoned, mut pet, pet0) = (0i64, 0i64, args.might0, 0i64, pet_start, pet_start); // HP given back; Dexterity and Strength gained; HP given Osty (and his HP as the texts were written)
     let mut faced: Option<Arc<str>> = None; // the last enemy a card was aimed at
+    let mut exposed = false; // a card made us Vulnerable (Berserk)
     let mut held: Vec<(&str, i64, i64)> = args.orbs.iter().map(|(kind, passive, burst)| (kind.as_str(), *passive, *burst)).collect(); // the Defect's orbs
     let (mut drawn, mut debris, mut dazed, mut tainted, mut junked) = (0i64, 0i64, 0i64, 0i64, 0i64); // cards drawn; Debris and Dazed (Personal Hive) put in our deck; Vital Spark's extra damage a hit; other statuses
     let (mut lasting, mut enduring, mut future) = (0.0, 0.0, 0.0); // worth of effects that pay off over the fight (x `span`), of what stays all fight, of all that pays off after this turn
@@ -955,6 +959,7 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
             debris += if c.debris > 0 { c.debris } else { 0.max(10 - (hand_size - (n + 1) + drawn + debris)) };
         }
         buffer += (c.key == "BUFFER") as i64; // played now, it stops this turn's hit
+        exposed |= c.key == "BERSERK";
         for e in foes.iter_mut() {
             if e.slow >= 0 {
                 e.slow += 10; // for the cards after this one (the card itself gets no bonus)
@@ -1188,6 +1193,11 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
             }
         }
     }
+    if exposed && !args.vulnerable && battle::SELF_VULN.get() {
+        for &i in &survivors {
+            foes[i].incoming = base::trunc(foes[i].incoming as f64 * 1.5);
+        }
+    }
     let survivors: Vec<&Enemy> = survivors.iter().map(|&i| &foes[i]).collect();
     let incoming = base::round(survivors.iter().map(|e| e.incoming + tainted * e.incoming_hits).sum::<i64>() as f64 * st.taken());
     if block <= 0 && can_block {
@@ -1402,6 +1412,7 @@ pub fn _context(state: &Value) -> SimulateArgs {
         sadness: sad_hand::outlook(state, draws),
         mantra0: 0.max(power_amount(player, "MANTRA")),
         eruption: eruption::outlook(state),
+        vulnerable: _has_power(player, "VULNERABLE"),
         fight,
         // (the rest: as `simulate` has them when they are not given)
         end_loss: 0,
