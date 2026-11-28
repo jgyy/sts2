@@ -174,8 +174,8 @@ Cut, Pillar of Creation without card creation.
 that impale enemies, Aim and Stretch, and the Wah/Cho/Ki Melodies. Sadness ("Unplayable. Retain.") from Sorrowful Strike,
 Mourning Blow, Jest, Vitriol, Rummage and Ennui stays in the hand all fight and the hand holds 10: past five or so, every
 one is a card not drawn each turn, until Punch of Joy or Ecstasy turns it into Joy (a boss was lost on a hand of ten
-Sadness). Take the makers only with Joy to match; play Ennui in short fights. The bot plays it (`sts2bot/fight/fool/`,
-Sadness in `sadness.py`); the model runs do not yet.
+Sadness). Take the makers only with Joy to match; play Ennui in short fights. The bot plays it (`src/fight/fool/`,
+Sadness in `sadness.rs`); the model runs do not yet.
 
 ## 5. Recent changes
 
