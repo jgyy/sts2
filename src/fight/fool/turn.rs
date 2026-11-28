@@ -9,6 +9,7 @@ use std::collections::BTreeSet;
 
 use serde_json::Value;
 
+use crate::base::JsonExt;
 use crate::cards::{melodies, CardInfo, MELODIES};
 use crate::fight::battle::{Enemy, _stacks};
 
@@ -19,9 +20,13 @@ pub const STRETCH_LATER: f64 = 0.5; // ... and a point of Stretch, in Block
 /// `fool_powers`' five: (Song Path's Block, Motif's draw, Lullaby's Block, Ki Verse's cards, Yah!'s energy).
 pub type Powers = (i64, i64, i64, i64, i64);
 
-/// Arrows we have: one, and one more for each Quiver ("Gain 1 additional Arrow").
-pub fn arrows_owned(player: &Value) -> i64 {
-    1 + _stacks(player, "QUIVER")
+/// Arrows we have: the free ones as the mod counts them and those standing in a living enemy (Quiver, "Gain 1 additional
+/// Arrow", is no power: until 2026-11-28 the second Arrow was never counted). Without the mod's count: one.
+pub fn arrows_owned(player: &Value, foes: &[Value]) -> i64 {
+    match player.get("arrows_free") {
+        Some(free) => free.int() + foes.iter().filter(|e| e["hp"].int() > 0 && _stacks(e, "IMPALED") > 0).count() as i64,
+        None => 1 + _stacks(player, "QUIVER"),
+    }
 }
 
 /// Enemies holding one of our Arrows.
@@ -313,7 +318,7 @@ mod tests {
             let player = &state["player"];
             let powers = |dislodged: bool| fool_powers(player, dislodged).map(|p| json!([p.0, p.1, p.2, p.3, p.4])).unwrap_or(Value::Null);
             let names: Vec<String> = state["_played_names"].list().iter().map(|x| x.text()).collect();
-            let got = json!([arrows_owned(player), powers(false), powers(true), played_melodies(&names)]);
+            let got = json!([arrows_owned(player, &[]), powers(false), powers(true), played_melodies(&names)]);
             fools += (got != json!([1, null, null, []])) as usize;
             assert_eq!(got, r["fool"], "state {n}");
             let es = read_enemies(state);

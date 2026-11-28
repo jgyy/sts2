@@ -43,6 +43,8 @@ crate::tunables! {
     pub WITHER_FIGHT: i64 = 11;
     /// damage a turn every enemy is taken to do at least, when choosing whom to hit first
     pub THREAT_FLOOR: f64 = 6.0;
+    /// the first game's Transient read as it plays (off: a 999 HP enemy like any other, as before 2026-11-28)
+    pub SHIFTING: bool = true;
 }
 
 /// whose Debuff leaves us Ringing ("You can only play 1 card this turn") next turn
@@ -270,6 +272,12 @@ enemy! {
     soft: i64 = 0;
     /// Steam Eruption (the Waterfall Giant): killed, it deals this much at the end of our next turn (eruption.rs)
     blast: i64 = 0;
+    /// Serrated Arrows: what an Attack's hit on it does, times this, while our Arrow stands in it
+    serrated: f64 = 1.0;
+    /// Shifting (the first game's Transient): each HP it loses comes off its blow this turn, times this (0: no such power)
+    shifting: f64 = 0.0;
+    /// Fading: it leaves by itself in a few turns, long before its HP runs out (`_progress`)
+    fading: bool = false;
 }
 
 impl Enemy {
@@ -295,6 +303,14 @@ impl Enemy {
     #[inline]
     pub fn alive(&self) -> bool {
         self.hp > 0
+    }
+
+    /// Shifting: HP it has just lost comes off its blow this turn (as Strength: Weak cuts that too).
+    #[inline]
+    pub fn shift(&mut self, lost: i64) {
+        if self.shifting != 0.0 {
+            self.incoming = 0.max(self.incoming - base::trunc(lost as f64 * self.shifting * (if self.weak { self.weak_cut } else { 1.0 })) * 1.max(self.incoming_hits));
+        }
     }
 }
 
@@ -674,9 +690,13 @@ pub fn read_enemies(state: &Value) -> Vec<Enemy> {
             skittish: if e["block"].int() != 0 { 0 } else { or(_stacks(e, "SKITTISH"), &|| _stacks(e, "CURL_UP")) },
             max_hp: e["max_hp"].int(),
             impaled: _stacks(e, "IMPALED"),
+            serrated: 1.0 + _stacks(player, "SERRATED_ARROWS") as f64 / 100.0,
             beat: _stacks(e, "BEAT_OF_DEATH"),
             malleable: _stacks(e, "MALLEABLE"),
             // (not once the blast is its intent: it is in `incoming` then)
+            // (as its intent shows the blow: with our Vulnerable and Wrath in it)
+            shifting: if SHIFTING.get() && _has_power(e, "SHIFTING") { (if _has_power(player, "VULNERABLE") { 1.5 } else { 1.0 }) * (if player["stance"].text().to_uppercase() == "WRATH" { 2.0 } else { 1.0 }) } else { 0.0 },
+            fading: SHIFTING.get() && _has_power(e, "FADING"),
             blast: if crate::fight::eruption::ERUPTION.get() && (!spent || intents.iter().map(intent_damage).sum::<i64>() == 0) { _stacks(e, "STEAM_ERUPTION") } else { 0 },
             ..Enemy::default()
         });
@@ -738,7 +758,7 @@ pub fn _per_hit(e: &Enemy, dmg_per_hit: i64, raw: bool) -> i64 {
 
 /// Whether this attack leaves the enemy dead, without touching it (worked out directly in the plain case: it is asked very often).
 pub fn _would_kill(e: &Enemy, dmg_per_hit: i64, hits: i64, double_if_vulnerable: bool) -> bool {
-    if e.skittish != 0 || e.hit_cap != 0 || e.slippery != 0 || e.shell >= 0 || e.flutter != 0 {
+    if e.skittish != 0 || e.hit_cap != 0 || e.slippery != 0 || e.shell >= 0 || e.flutter != 0 || (e.impaled != 0 && e.serrated != 1.0) {
         let mut trial = clone(e);
         _hit(&mut trial, dmg_per_hit, hits, double_if_vulnerable, false);
         return !trial.alive();
@@ -750,6 +770,9 @@ pub fn _would_kill(e: &Enemy, dmg_per_hit: i64, hits: i64, double_if_vulnerable:
 pub fn _progress(e: &mut Enemy, hp_removed: i64, chip_rate: f64) -> f64 {
     let chip = e.chipped;
     e.chipped = 0;
+    if e.fading {
+        return 0.0; // (it is gone long before its HP is: a hit is worth what it takes off its blow, see `shift`)
+    }
     // A Slippery stack taken off is a later hit that lands in full.
     let strip = e.stripped;
     e.stripped = 0;
@@ -765,10 +788,12 @@ pub fn _hit(e: &mut Enemy, dmg_per_hit: i64, hits: i64, double_if_vulnerable: bo
         if e.hp <= 0 {
             break;
         }
+        let mut hit = per;
         if e.impaled != 0 && !raw {
+            hit = base::trunc(per as f64 * e.serrated); // (the Shot that Impales it lands before the Arrow stands)
             e.impaled -= 1; // (Block or not)
         }
-        let absorbed = e.block.min(per);
+        let absorbed = e.block.min(hit);
         e.block -= absorbed;
         e.chipped += absorbed;
         if absorbed != 0 && e.block == 0 && e.keeps_block {
@@ -778,7 +803,7 @@ pub fn _hit(e: &mut Enemy, dmg_per_hit: i64, hits: i64, double_if_vulnerable: bo
         // Skittish: the first hit of a turn lands, the rest meet its Block
         e.block += e.skittish;
         e.skittish = 0;
-        let mut through = per - absorbed;
+        let mut through = hit - absorbed;
         if through <= 0 {
             continue;
         }
@@ -798,6 +823,7 @@ pub fn _hit(e: &mut Enemy, dmg_per_hit: i64, hits: i64, double_if_vulnerable: bo
         }
         e.hp -= lost;
         removed += lost;
+        e.shift(lost);
         if e.malleable != 0 && lost != 0 && e.hp > 0 && !raw {
             // (an Attack's hit that hurts without killing; orbs and Poison do not count)
             e.soft += e.malleable;
@@ -1388,7 +1414,7 @@ pub(crate) mod testing {
     }
 
     pub fn env(v: &Value) -> Env {
-        let mut constants = vec![crate::fight::eruption::ERUPTION.set(false)]; // (the recordings are older than eruption.rs)
+        let mut constants = vec![crate::fight::eruption::ERUPTION.set(false), SHIFTING.set(false)]; // (the recordings are older than these rules)
         for (name, x) in v["tun"].entries() {
             constants.push(match name.as_str() {
                 "RAGE_BLOCK" => RAGE_BLOCK.set(x.int()),

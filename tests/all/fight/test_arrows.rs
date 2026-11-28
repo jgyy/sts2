@@ -101,8 +101,23 @@ fn test_the_enemy_reads_its_impale_and_hits_count_it_down() {
     assert_eq!(foe.impaled, 1);
     battle::_hit(&mut foe, 5, 1, false, true); // (an orb's damage is no hit)
     assert_eq!(foe.impaled, 1);
-    assert_eq!(turn::arrows_owned(&json!({"status": [power("QUIVER", 1)]})), 2);
-    assert_eq!(turn::arrows_owned(&json!({})), 1);
+    assert_eq!(turn::arrows_owned(&json!({"status": [power("QUIVER", 1)]}), &[]), 2);
+    assert_eq!(turn::arrows_owned(&json!({}), &[]), 1);
+    // the mod's count: the free ones, and one for each living enemy that holds one
+    let stuck = [enemy!("A", 50, status = [IMPALED(3)]), enemy!("B", 0, status = [IMPALED(1)]), enemy!("C", 9)];
+    assert_eq!(turn::arrows_owned(&json!({"arrows": 2, "arrows_free": 1}), &stuck), 2);
+}
+
+#[test]
+fn test_serrated_arrows_adds_to_every_hit_on_an_impaled_enemy() {
+    // Logged 2026-11-27/28: a Strike of 6 took 9 under Serrated Arrows 50 and 12 under 100; the Shot that Impales took its own.
+    let mut state = combat_state!([], [enemy!("A", 50, status = [IMPALED(3)]), enemy!("B", 50)]);
+    state["player"]["status"] = json!([power("SERRATED_ARROWS", 50)]);
+    let mut foes = battle::read_enemies(&state);
+    assert_eq!(battle::_hit(&mut foes[0], 6, 4, false, false), 9 + 9 + 9 + 6); // (the Arrow is out after three)
+    assert_eq!(battle::_hit(&mut foes[1], 6, 1, false, false), 6);
+    let stuck = Enemy { hp: 14, ..battle::read_enemies(&state).remove(0) };
+    assert!(battle::_would_kill(&stuck, 6, 2, false) && !battle::_would_kill(&Enemy { serrated: 1.0, ..stuck.clone() }, 6, 2, false));
 }
 
 // Planning
@@ -112,6 +127,17 @@ fn test_a_shot_with_our_only_arrow_in_an_enemy_is_not_played() {
     // Seen 40-odd times in the Fool's first runs: the Shot was paid for and did nothing.
     assert_eq!(pick(&combat_state!([FOOLISH(0), STRIKE(1)], [enemy!("A", 60, attack = 8, status = [IMPALED(3)])], energy = 1)), 1);
     assert_eq!(pick(&combat_state!([FOOLISH(0), STRIKE(1)], [enemy!("A", 60, attack = 8)], energy = 1)), 0);
+}
+
+#[test]
+fn test_a_second_arrow_from_quiver_is_shot_while_the_first_stands_in_the_enemy() {
+    // 2026-11-28, Vantom: Quiver played (it is no power on us), one Arrow in the boss, Shots left in the hand for three turns.
+    let mut state = combat_state!([FOOLISH(0), STRIKE(1)], [enemy!("A", 60, attack = 8, status = [IMPALED(3)])], energy = 1);
+    state["player"]["arrows"] = json!(2);
+    state["player"]["arrows_free"] = json!(1);
+    assert_eq!(pick(&state), 0);
+    state["player"]["arrows_free"] = json!(0);
+    assert_eq!(pick(&state), 1);
 }
 
 #[test]

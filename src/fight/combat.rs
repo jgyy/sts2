@@ -1144,6 +1144,10 @@ pub fn simulate_aimed<L: Borrow<CardInfo>>(line: &[L], enemies: &[Enemy], args: 
             score -= pit::price(sandpit + escapes, survivors.iter().map(|&i| foes[i].hp).max().unwrap(), dealt, round_no, args.escape_odds);
         }
     }
+    for &i in &survivors {
+        let bite = foes[i].poison.min(foes[i].hp);
+        foes[i].shift(bite); // (Poison bites before it moves)
+    }
     if let Some(faced) = &faced {
         // turning to face an enemy takes away its 50% bonus and gives it to the other one
         for &i in &survivors {
@@ -1357,7 +1361,7 @@ pub fn _context(state: &Value) -> SimulateArgs {
         taint: std::iter::once(player).chain(foes).map(|e| power_amount(e, "VITAL_SPARK")).max().unwrap_or(0),
         pace: closing::pace(state),
         room: next_room(state),
-        arrows: arrows_owned(player),
+        arrows: arrows_owned(player, foes),
         aiming: 0.max(power_amount(player, "AIM")),
         stretch: 0.max(power_amount(player, "STRETCH")),
         tune: played_melodies(&state["_played_names"].list().iter().map(|name| name.text()).collect::<Vec<_>>()),

@@ -136,6 +136,25 @@ fn test_each_hit_that_hurts_it_buys_it_block_for_the_next_card() {
     }
 }
 
+#[test]
+fn test_what_the_transient_loses_comes_off_its_blow() {
+    let _case = sts1_case();
+    // Shifting: three Strikes take 18 off a blow of 40 (13 off 30 through its Weak); its 999 HP are no reason to hit it.
+    let powers = |more: Value| json!([{"id": "FADING_POWER", "amount": 5}, {"id": "SHIFTING_POWER", "amount": -1}, more]);
+    let strikes = [STRIKE(0), STRIKE(1), STRIKE(2)];
+    let line: Vec<_> = strikes.iter().map(parse).collect();
+    for (foe, lost) in [(enemy!("TRANSIENT_0", 999, attack = "40", status = powers(json!({}))), 22), (enemy!("TRANSIENT_0", 999, attack = "30", status = powers(json!({"id": "WEAK_POWER", "amount": 1}))), 18)] {
+        let state = combat_state!(strikes.clone(), [foe]);
+        assert_eq!(combat::simulate(&line, &battle::read_enemies(&state), combat::_context(&state)).unwrap().lost, lost);
+    }
+    // 2026-11-28: 7 of 15 fights lost. A Strike (6 off the blow) before a Defend (5); with the blow covered, neither.
+    let foe = |blow: &str| enemy!("TRANSIENT_0", 999, attack = blow, status = powers(json!({})));
+    let state = combat_state!([DEFEND(0), STRIKE(1)], [foe("40")], energy = 1);
+    assert_eq!(combat::choose_card(&state, None).unwrap().1["card_index"], json!(1));
+    let state = combat_state!([DEFEND(0), STRIKE(1)], [foe("4")], energy = 2, block = 4);
+    assert!(combat::choose_card(&state, None).is_none());
+}
+
 // class BlueCandle
 
 #[test]

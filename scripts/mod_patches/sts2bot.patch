@@ -350,7 +350,7 @@ index 3eb9b38..cb634f7 100644
          var tutorialFtue = FindVisibleAcceptTutorialsFtue(root);
          if (tutorialFtue != null && IsFtueNodeActive(tutorialFtue))
 diff --git a/McpMod.StateBuilder.cs b/McpMod.StateBuilder.cs
-index 76eee84..b596fb7 100644
+index 76eee84..324b508 100644
 --- a/McpMod.StateBuilder.cs
 +++ b/McpMod.StateBuilder.cs
 @@ -65,7 +65,7 @@ public static partial class McpMod
@@ -519,18 +519,26 @@ index 76eee84..b596fb7 100644
          battle["enemies"] = enemies;
  
          return battle;
-@@ -1115,13 +1131,17 @@ public static partial class McpMod
+@@ -1114,14 +1130,25 @@ public static partial class McpMod
+                 state["stars"] = combatState.Stars;
              }
  
-             // Hand
+-            // Hand
 -            var hand = new List<Dictionary<string, object?>>();
 -            int cardIndex = 0;
 -            foreach (var card in combatState.Hand.Cards)
-+            var hand = Prof.Time("hand", () =>
++            // Arrows (The Fool's): how many it has, and how many of those are not standing in an enemy
++            if (combatState.Arrows.Count > 0)
              {
 -                hand.Add(BuildCardState(card, cardIndex));
 -                cardIndex++;
--            }
++                state["arrows"] = combatState.Arrows.Count;
++                state["arrows_free"] = combatState.AvailableArrowCount;
+             }
++
++            // Hand
++            var hand = Prof.Time("hand", () =>
++            {
 +                var cards = new List<Dictionary<string, object?>>();
 +                int cardIndex = 0;
 +                foreach (var card in combatState.Hand.Cards)
@@ -543,7 +551,7 @@ index 76eee84..b596fb7 100644
              state["hand"] = hand;
  
              // Pile counts
-@@ -1134,9 +1154,9 @@ public static partial class McpMod
+@@ -1134,9 +1161,9 @@ public static partial class McpMod
              drawCards.Sort((c1, c2) => c1.Rarity != c2.Rarity
                  ? c1.Rarity.CompareTo(c2.Rarity)
                  : string.Compare(c1.Id.Entry, c2.Id.Entry, StringComparison.Ordinal));
@@ -556,7 +564,7 @@ index 76eee84..b596fb7 100644
  
              // Orbs
              var orbQueue = combatState.OrbQueue;
-@@ -1181,21 +1201,25 @@ public static partial class McpMod
+@@ -1181,21 +1208,25 @@ public static partial class McpMod
          state["gold"] = player.Gold;
  
          // Powers (status effects)
@@ -593,7 +601,7 @@ index 76eee84..b596fb7 100644
          state["relics"] = relics;
  
          // Potions
-@@ -1564,7 +1588,8 @@ public static partial class McpMod
+@@ -1564,7 +1595,8 @@ public static partial class McpMod
      {
          var state = new Dictionary<string, object?>();
  
@@ -603,7 +611,7 @@ index 76eee84..b596fb7 100644
          if (inventory == null)
          {
              state["items"] = new List<Dictionary<string, object?>>();
-@@ -1670,6 +1695,38 @@ public static partial class McpMod
+@@ -1670,6 +1702,38 @@ public static partial class McpMod
          return state;
      }
  
@@ -642,7 +650,7 @@ index 76eee84..b596fb7 100644
      private static Dictionary<string, object?> BuildMapState(RunState runState)
      {
          var state = new Dictionary<string, object?>();
-@@ -1739,6 +1796,9 @@ public static partial class McpMod
+@@ -1739,6 +1803,9 @@ public static partial class McpMod
          }
          state["next_options"] = nextOptions;
  
@@ -652,7 +660,7 @@ index 76eee84..b596fb7 100644
          // Full map - all nodes organized for planning
          var nodes = new List<Dictionary<string, object?>>();
  
-@@ -1933,6 +1993,12 @@ public static partial class McpMod
+@@ -1933,6 +2000,12 @@ public static partial class McpMod
          bool previewShowing = (previewSingle?.Visible ?? false)
                              || (previewMulti?.Visible ?? false)
                              || (previewGeneric?.Visible ?? false);

@@ -100,7 +100,15 @@ pub fn can_play(f: &Fight, c: &Card) -> bool {
 
 pub fn move_damage(f: &Fight, foe: usize, m: &Move) -> i64 {
     let foe = &f.foes[foe];
-    foe.mem.dmg.get(&foe.move_name).copied().unwrap_or(m.dmg)
+    // The first game's Ascension 2, 3 and 4 (enemies, elites, bosses "are deadlier"): about a tenth more a hit (Jaw Worm 11 to 12,
+    // Lagavulin 18 to 20, the Champ 16 to 18, Hyper Beam 45 to 50), where the damage is the table's own.
+    let level = match f.kind.as_str() {
+        "boss" => 4,
+        "elite" => 3,
+        _ => 2,
+    };
+    let deadlier = if f.game.KEY == "sts1" && f.run.asc >= level { (m.dmg + 5) / 10 } else { 0 };
+    foe.mem.dmg.get(&foe.move_name).copied().unwrap_or(m.dmg + deadlier)
 }
 
 pub fn move_hits(f: &Fight, foe: usize, m: &Move) -> i64 {

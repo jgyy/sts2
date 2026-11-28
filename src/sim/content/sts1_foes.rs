@@ -276,12 +276,12 @@ pub fn revive_round(f: &mut Fight) {
     }
 }
 
-/// Fading 5: it loses a stack at the start of each of its turns and dies instead of acting on the fifth.
+/// Fading 5: it loses a stack after each of its turns and dies after the fifth.
 pub fn _transient_end(f: &mut Fight, i: usize) {
     let foe = &mut f.foes[i];
     let fading = foe.powers.get("FADING").copied().unwrap_or(5) - 1;
     foe.powers.put("FADING", fading);
-    if fading <= 1 {
+    if fading <= 0 {
         f.kill(i);
     }
 }
@@ -577,7 +577,7 @@ fn _specs() -> Table {
     spec(s, "SPIRE_GROWTH", "Spire Growth", (170, 170), vec![("quick", m(16)), ("smash", m(22)), ("constrict", mx(0, vec![Fx::n("constrict", 10)]))], pat(_spire_growth), none());
     spec(s, "TRANSIENT", "Transient", (999, 999), vec![("attack", m(30))],
          pat(|f, i| {
-             let dmg = 30 + 10 * f.foes[i].history.len() as i64;
+             let dmg = 30 + 10 * (f.run.asc >= 2) as i64 + 10 * f.foes[i].history.len() as i64; // (Ascension 2: 40 to begin with)
              _set(&mut f.foes[i], "attack", Some(dmg), None);
              "attack".to_string()
          }),

@@ -33,14 +33,14 @@ pub fn golden() -> Golden {
 pub struct Env {
     _game: games::Playing,
     _knobs: crate::learn::KnobGuard,
-    /// (the recordings are older than eruption.rs: the rule is off for them)
-    _eruption: crate::tunable::Restore,
+    /// (the recordings are older than these rules: they are off for them)
+    _newer: [crate::tunable::Restore; 2],
 }
 
 impl Golden {
     pub fn env(&self, v: &Value) -> Env {
         let knobs: Vec<(&str, f64)> = self.knobs[v["k"].int() as usize].iter().map(|(name, x)| (name.as_str(), *x)).collect();
-        Env { _game: games::playing(v["g"].s()), _knobs: crate::learn::with_knobs(&knobs), _eruption: eruption::ERUPTION.set(false) }
+        Env { _game: games::playing(v["g"].s()), _knobs: crate::learn::with_knobs(&knobs), _newer: [eruption::ERUPTION.set(false), crate::fight::battle::SHIFTING.set(false)] }
     }
 
     fn item(&self, x: &Value) -> Value {
