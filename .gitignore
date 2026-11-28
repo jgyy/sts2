@@ -1,18 +1,8 @@
-# Python
-__pycache__/
-*.py[cod]
-*.egg-info/
-build/
-dist/
-.venv/
-.pytest_cache/
-.ruff_cache/
-
 # The bridge mod, built by scripts/install_mod.sh
 .build/
 
 # Worktrees made by Claude Code agents
 .claude/worktrees/
 
-# Rust
+# Cargo's build directory
 target/
