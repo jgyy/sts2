@@ -10,7 +10,7 @@ looks one turn ahead. The model runs in [simulation.md](simulation.md) test the 
   the 15th, the boss on 16, 33 and 50), then The Ending (act 4: rest site, shop, the Spire Shield and Spear, the
   Corrupt Heart), open only with all three keys once the Ironclad, the Silent and the Defect have each won a run.
 - **Keys**: Ruby (a rest site's Recall instead of resting or smithing), Emerald (the burning elite on the map),
-  Sapphire (a chest's key instead of its relic). The bot goes for them (`sts2bot/games/sts1/keys.py`): Ruby only in act
+  Sapphire (a chest's key instead of its relic). The bot goes for them (`src/games/sts1/keys.rs`): Ruby only in act
   3 with 70% HP (55% at the last rest site), Emerald whenever its elite is on a reasonable route.
 - **Neow** offers four blessings at the start: a card one (remove, upgrade, transform or choose a card), a resource one
   (max HP, gold, a common relic, potions), one with a drawback attached, and swapping the starter relic for a random
@@ -51,7 +51,7 @@ Skip freely; a thin deck plays its best cards more often.
 gold left at the end is wasted.
 
 **Boss relics.** Energy is the strongest effect for any deck, but the bot depends on seeing intents, so Runic Dome is
-never taken, and Coffee Dripper and Cursed Key are avoided (`text/potions.py` ranks the rest: Black Blood, Ring of the
+never taken, and Coffee Dripper and Cursed Key are avoided (`text/potions.rs` ranks the rest: Black Blood, Ring of the
 Serpent, Frozen Core, Holy Water, Philosopher's Stone, Mark of Pain ...).
 
 **Combat.** Lethal first; then survival; Vulnerable and Weak before the hits they change; Strength and other scaling
@@ -122,9 +122,9 @@ Collect. Smith Eruption (cost 1) first. Never end a turn in Wrath in front of an
 
 ## 5. How the bot plays it
 
-- Card text comes from `sts2bot/games/sts1/text/` (CommunicationMod sends none); the hand shows live numbers
+- Card text comes from `src/games/sts1/text/` (CommunicationMod sends none); the hand shows live numbers
   (Strength, Weak, Dexterity, Frail, stance) through the bot's own mod.
-- The planner knows stances (`games/sts1/stance.py`): a stance change inside a turn, the energy it gives and the hit it
+- The planner knows stances (`games/sts1/stance.rs`): a stance change inside a turn, the energy it gives and the hit it
   doubles. A turn ended in Wrath is charged when the next hand may hold no way out (no Calm, exit or Divinity card in
   the next five draws) and the enemies' usual blows, doubled, would kill her: a Hyper Beam of 104 and the Champ's
   Execute of 54×2 ended two runs that way. Mantra counts toward Divinity (at 10, mid-turn: 3 energy, Attacks tripled); it
@@ -132,5 +132,5 @@ Collect. Smith Eruption (cost 1) first. Never end a turn in Wrath in front of an
 - A card a potion or Discovery offers in a fight is taken by what it does for that turn (the planner's line with it
   free in the hand), never skipped; the Stance Potion's Wrath or Calm the same way.
 - The hand-made card ratings and the crowd's win rates are Slay the Spire 2's, so here cards are rated from their text
-  and corrected by `learn.py` from the bot's own runs.
+  and corrected by `learn.rs` from the bot's own runs.
 - CommunicationMod cannot resume a run: a crash starts a new one.

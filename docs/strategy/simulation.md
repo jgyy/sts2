@@ -59,15 +59,15 @@ about one floor). [Round 5](#round-5-2026-11-26) follows, then [round 4](#round-
   Ironclad 30.5%, Defect 29.5%, Watcher 9% (25.5%).
 
 ```sh
-python3 -m sim run --game sts2 --character all --runs 200 --seed 60000 --ascension 8 --out base_sts2.jsonl   # the bot as it was
-python3 -m sim run --game sts1 --character all --runs 200 --seed 61000 --out base_sts1.jsonl
-python3 -m sim prior base_sts2.jsonl base_sts1.jsonl --onto sts2bot/run/model_cards.json --out E.json         # (its first game half is shipped)
-python3 -m sim run --game sts1 --character all --runs 400 --seed 63000 --vary --alt-cards E.json,F.json \
+sim run --game sts2 --character all --runs 200 --seed 60000 --ascension 8 --out base_sts2.jsonl   # the bot as it was
+sim run --game sts1 --character all --runs 200 --seed 61000 --out base_sts1.jsonl
+sim prior base_sts2.jsonl base_sts1.jsonl --onto src/run/model_cards.json --out E.json         # (its first game half is shipped)
+sim run --game sts1 --character all --runs 400 --seed 63000 --vary --alt-cards E.json,F.json \
   --only model_table,boss_caution,early_rows,own_cost,elite_worth --grid elite_worth=6,10 --out var_sts1.jsonl   # (F: E with the buried cards at 0)
-python3 -m sim prior var_sts1.jsonl --onto F.json --table 2 --out G.json                                      # the table that tried them, re-learned
-python3 -m sim run --game sts1 --character all --runs 400 --seed 65000 --vary --alt-cards E.json,G.json \
+sim prior var_sts1.jsonl --onto F.json --table 2 --out G.json                                      # the table that tried them, re-learned
+sim run --game sts1 --character all --runs 400 --seed 65000 --vary --alt-cards E.json,G.json \
   --only model_table,boss_caution,early_rows,elite_worth --grid elite_worth=6,10 --out conf_sts1.jsonl           # (Slay the Spire 2 alike: seeds 62000, 64000)
-python3 -m sim run --game sts1 --character all --runs 200 --seed 66000 --out after.jsonl                      # ("before": the table of 9b0e9db)
+sim run --game sts1 --character all --runs 200 --seed 66000 --out after.jsonl                      # ("before": the table of 9b0e9db)
 ```
 
 ## Round 5 (2026-11-26)
@@ -77,7 +77,7 @@ python3 -m sim run --game sts1 --character all --runs 200 --seed 66000 --out aft
   damage to all enemies for nothing whenever drawn (+7.5 floors a pick at A8). At `model_lean` 2 that is 6 rating points,
   and on the corrected model 29% of the Silent's decks took it and it beat the act 3 boss 10% of the time (2% and 25%
   with the corrected table). An audit that plays every card with a drawback or a pile clause in a model fight
-  (`scripts/audit/simcards.py`) found the rest: **Bone Shards** left Osty alive and **Fight Me** gave the enemy no
+  (`scripts audit/simcards`) found the rest: **Bone Shards** left Osty alive and **Fight Me** gave the enemy no
   Strength (both at +3); statuses cards put in our piles were never added (Fight Through's two Wounds, +3; Boost Away,
   Gunk Up, Overclock, Turbo), nor copies (Adaptive Strike, Undeath), Colorless cards (Bundle of Joy, Manifest Authority,
   Quasar), Stoke's new hand or cards moved between piles (Dredge, Graveblast, All for One, Secret Technique, Cosmic
@@ -147,20 +147,20 @@ python3 -m sim run --game sts1 --character all --runs 200 --seed 66000 --out aft
   first game's (the Defect 36% → 22%, Reprogram).
 
 ```sh
-python3 -m sim run --game sts2 --character all --runs 300 --seed 50000 --ascension 8 --out base_sts2.jsonl   # the bot as it was
-python3 -m sim run --game sts1 --character all --runs 300 --seed 51000 --out base_sts1.jsonl
-python3 -m sim prior base_sts2.jsonl base_sts1.jsonl --onto sts2bot/run/model_cards.json --out C.json         # (the 25 cards then reset to 0)
-python3 -m sim run --game sts2 --character all --runs 400 --seed 52000 --ascension 8 --vary --alt-cards C.json \
+sim run --game sts2 --character all --runs 300 --seed 50000 --ascension 8 --out base_sts2.jsonl   # the bot as it was
+sim run --game sts1 --character all --runs 300 --seed 51000 --out base_sts1.jsonl
+sim prior base_sts2.jsonl base_sts1.jsonl --onto src/run/model_cards.json --out C.json         # (the 25 cards then reset to 0)
+sim run --game sts2 --character all --runs 400 --seed 52000 --ascension 8 --vary --alt-cards C.json \
   --only model_table,belt_spare,elite_potions,hp_fear,caution,block_want,upgrade_worth --grid caution=1,1.35 --out var_sts2.jsonl
-python3 -m sim prior var_sts2.jsonl var_sts1.jsonl --onto C.json --table 1 --out D.json                        # (the first game alike, seed 53000; shipped)
-python3 -m sim run --game sts2 --character all --runs 200 --seed 54000 --ascension 8 --out after.jsonl          # ("before": the bot of 28bddab on this model)
-python3 scripts/audit/simcards.py sts2                                                                       # what the model does with each card's text
+sim prior var_sts2.jsonl var_sts1.jsonl --onto C.json --table 1 --out D.json                        # (the first game alike, seed 53000; shipped)
+sim run --game sts2 --character all --runs 200 --seed 54000 --ascension 8 --out after.jsonl          # ("before": the bot of 28bddab on this model)
+scripts audit/simcards sts2                                                                       # what the model does with each card's text
 ```
 
 ## Round 4 (2026-11-26)
 
 - **The card table now also learns from the runs that play it.** It was built only from runs that did not lean on it,
-  so it described cards for a bot that ignores it. `python3 -m sim prior --onto TABLE` keeps a table and adds what the
+  so it described cards for a bot that ignores it. `sim prior --onto TABLE` keeps a table and adds what the
   runs that played it (at the game's own `model_lean`) still say of each card: a card whose picks still went with
   deeper runs than the runs that left the same floor alive moves up, one whose picks went with shallower runs moves
   down (the same measure as before, shrunk by 40 picks, no card past ±3). Built from 1,000 + 800 runs of the bot as
@@ -191,7 +191,7 @@ python3 scripts/audit/simcards.py sts2                                          
   Ironclad's Immolate and the Silent's Masterful Stab to +3.0, Bloodletting +0.1 → -3.0, Hologram +1.4 → -1.4 and
   Worship +0.7 → -1.9. The old table's own rule stands: correct it again when the model or the bot's card play changes.
 
-- **Two act 3 monsters of Slay the Spire 2 were harder in the model than in the game** (`sim/content/sts2_foes.py`).
+- **Two act 3 monsters of Slay the Spire 2 were harder in the model than in the game** (`src/sim/content/sts2_foes.rs`).
   The Owl Magistrate's Soar ("Receives 50% less attack damage until it lands", Spire Codex) lasted the rest of the
   fight once Judicial Flight had raised it; it now ends with Verdict, the swoop that follows. A new Axebot that
   replaces a killed one (Stock) kept the old one's Strength (Boot Up gives 3 a time) and debuffs; it now starts
@@ -231,15 +231,15 @@ python3 scripts/audit/simcards.py sts2                                          
   back on the way, buying one before the boss), not yet a rule.
 
 ```sh
-python3 -m sim run --game sts2 --character all --runs 200 --seed 40000 --ascension 7 --out base_sts2.jsonl   # the bot as it was
-python3 -m sim run --game sts1 --character all --runs 200 --seed 41000 --out base_sts1.jsonl
-python3 -m sim prior base_sts2.jsonl base_sts1.jsonl --onto sts2bot/run/model_cards.json --out T2.json
-python3 -m sim run --game sts2 --character all --runs 400 --seed 42000 --ascension 7 --vary --alt-cards T2.json \
+sim run --game sts2 --character all --runs 200 --seed 40000 --ascension 7 --out base_sts2.jsonl   # the bot as it was
+sim run --game sts1 --character all --runs 200 --seed 41000 --out base_sts1.jsonl
+sim prior base_sts2.jsonl base_sts1.jsonl --onto src/run/model_cards.json --out T2.json
+sim run --game sts2 --character all --runs 400 --seed 42000 --ascension 7 --vary --alt-cards T2.json \
   --only model_table,model_upgrade,model_removal,upgrade_worth,elite_worth,caution,debuff_worth,punch,block_want,attack_room --out p2_sts2.jsonl
-python3 -m sim prior base_sts2.jsonl p2_sts2.jsonl --onto sts2bot/run/model_cards.json --out A.json      # (the first game alike, seeds 43000)
-python3 -m sim prior p2_sts2.jsonl --onto T2.json --table 1 --out B.json                                  # (shipped)
-python3 -m sim run --game sts2 --character all --runs 200 --seed 44000 --ascension 7 --out before.jsonl
-python3 -m sim run --game sts2 --character all --runs 200 --seed 44000 --ascension 7 --alt-cards B.json --set model_table=1 --out after.jsonl
+sim prior base_sts2.jsonl p2_sts2.jsonl --onto src/run/model_cards.json --out A.json      # (the first game alike, seeds 43000)
+sim prior p2_sts2.jsonl --onto T2.json --table 1 --out B.json                                  # (shipped)
+sim run --game sts2 --character all --runs 200 --seed 44000 --ascension 7 --out before.jsonl
+sim run --game sts2 --character all --runs 200 --seed 44000 --ascension 7 --alt-cards B.json --set model_table=1 --out after.jsonl
 ```
 
 ## Round 3 (2026-11-26)
@@ -272,10 +272,10 @@ python3 -m sim run --game sts2 --character all --runs 200 --seed 44000 --ascensi
   still where runs end.
 
 ```sh
-python3 -m sim run --game sts2 --character all --runs 300 --vary --seed 30000 --ascension 7 --out r3_sts2.jsonl
-python3 -m sim run --game sts1 --character all --runs 300 --vary --seed 31000 --out r3_sts1.jsonl
-python3 -m sim run --game sts2 --character all --runs 200 --seed 32000 --ascension 7 --set model_lean=2 --out lean2.jsonl  # and =1, =3
-python3 -m sim run --game sts1 --character all --runs 200 --seed 33000 --set model_lean=2 --out lean2_sts1.jsonl
+sim run --game sts2 --character all --runs 300 --vary --seed 30000 --ascension 7 --out r3_sts2.jsonl
+sim run --game sts1 --character all --runs 300 --vary --seed 31000 --out r3_sts1.jsonl
+sim run --game sts2 --character all --runs 200 --seed 32000 --ascension 7 --set model_lean=2 --out lean2.jsonl  # and =1, =3
+sim run --game sts1 --character all --runs 200 --seed 33000 --set model_lean=2 --out lean2_sts1.jsonl
 ```
 
 ## Batches of 2026-11-25
@@ -295,8 +295,8 @@ At the levels the live bot plays, every decision made by the bot's own code. Set
   +2.1; the act 2 bosses beaten 48% → 65% the Kaiser Crab, 34% → 45% the Knowledge Demon, 48% → 66% the Insatiable),
   the first game at A0 **+3.9 ± 0.6** (wins 5.4% → 13.5%; the Silent +6.9, Defect +4.7, Ironclad +2.6, Watcher +1.5;
   the Champ 42% → 56%).
-- **Most of it comes from rating cards by what the model runs say of them** (`model_lean`, `sts2bot/run/model_cards.json`,
-  built by `python3 -m sim prior`). On seeds the table had not learned from, Slay the Spire 2 runs with it went
+- **Most of it comes from rating cards by what the model runs say of them** (`model_lean`, `src/run/model_cards.json`,
+  built by `sim prior`). On seeds the table had not learned from, Slay the Spire 2 runs with it went
   **4.0 floors further** (99%), better for all five characters, and won 6.6% of runs instead of 2.9%; first-game runs
   went **3.4 floors further** (99%) and won 10.6% instead of 4.1%.
 - **Per-game defaults** (`learn.GAME_DEFAULTS`: played with `--no-tuning` and by the model): Slay the Spire 2 takes
@@ -326,7 +326,7 @@ At the levels the live bot plays, every decision made by the bot's own code. Set
 the bot now, with each game's defaults and the card table (seeds 9000-9199 and 10000-10199, which no table or setting
 was chosen on). The live bot plays neither exactly: it draws each setting from `learn.CHOICES`.
 
-**The card table.** `python3 -m sim prior` reads run files and writes, per game and character, the floors each card's
+**The card table.** `sim prior` reads run files and writes, per game and character, the floors each card's
 picks gained over the runs that left the same floor alive (the measure of the card lists below and of
 `learn.CardStats`), less the character's average pick, shrunk by 40 picks and capped at ±3 rating points. With
 `model_lean` 1 that is added to the card's rating at rewards and on the Merchant's shelf. Slay the Spire 2's was built
@@ -555,13 +555,13 @@ the Silent beats it 9% of the time, the Ironclad 42%.
 
 ## Method
 
-`sim/` (see the [README](../../README.md#model-runs)) plays whole runs with every decision made by the bot's own code:
-the combat planner (`sts2bot/fight/combat.py`), the map, reward, shop, rest-site, event and selection handlers
-(`sts2bot/run/strategy.py`), and the settings `learn.py` tunes. Only the game is modelled:
+`src/sim/` (see the [README](../../README.md#model-runs)) plays whole runs with every decision made by the bot's own code:
+the combat planner (`src/fight/combat.rs`), the map, reward, shop, rest-site, event and selection handlers
+(`src/run/strategy.rs`), and the settings `learn.rs` tunes. Only the game is modelled:
 
 | Part | First game | Slay the Spire 2 |
 |---|---|---|
-| Cards | every card's text from `sts2bot/games/sts1/text/`, costs and rarities from `sim/content/sts1_cards.py` | 638 cards of v0.111.1 (Spire Codex), keywords included |
+| Cards | every card's text from `src/games/sts1/text/`, costs and rarities from `src/sim/content/sts1_cards.rs` | 638 cards of v0.111.1 (Spire Codex), keywords included |
 | Effects | what the planner's parser reads, plus handlers for ~150 cards whose text says more (conditions, piles, powers) | the same, and Powers read from their own text ("At the start of your turn, ...", "Whenever you play ...") |
 | Enemies | ~60 monsters, elites and bosses written from the game's rules, Ascension 0 numbers | 115 monsters with their move state machines (spire-mentor) and A8/A9 numbers, their powers acted out |
 | Run | 3 acts (no act 4), Neow, map rules, unknown-room odds, rewards, shops, rest sites, boss relics; ascension rules (A6: start at 90% HP, A5: heal 75% after a boss) | 3 acts, Ancients (heal and a relic choice), the same, boss rewards without relics; the A1-A10 rules (more elites, 80% Ancient heal, less gold, 2 potion slots, Ascender's Bane, dearer removal, half the rares and upgrades, then the monsters' A8-A9 numbers and two act 3 bosses) |
@@ -571,15 +571,15 @@ Each run draws its own value of every setting (`--vary`, the values in `sim/__ma
 on either side), so a setting's effect is the difference between the runs that drew each of its values; a regression
 on every setting at once (and the character) sharpens it a little. With 300 runs a character (1,500 a game) a
 setting's effect has a standard error of about 0.5 floors pooled. A rule under test is a setting in `GRID` whose
-default is today's behaviour, so `python3 -m sim trace` shows the bot unchanged until it is adopted.
+default is today's behaviour, so `sim trace` shows the bot unchanged until it is adopted.
 
 ```sh
-python3 -m sim run --game sts2 --character all --runs 300 --vary --seed 5000 --ascension 7 --out sts2.jsonl   # base and round 1
-python3 -m sim run --game sts1 --character all --runs 300 --vary --seed 6000 --out sts1.jsonl
-python3 -m sim prior sts2.jsonl sts1.jsonl --out sts2bot/run/model_cards.json                                # the card table
-python3 -m sim run --game sts2 --character all --runs 400 --vary --seed 7000 --ascension 7 --out round2.jsonl # fresh seeds
-python3 -m sim run --game sts2 --character all --runs 200 --seed 9000 --ascension 7 --out after.jsonl         # once per version of the bot
-python3 -m sim report sts2.jsonl sts1.jsonl
+sim run --game sts2 --character all --runs 300 --vary --seed 5000 --ascension 7 --out sts2.jsonl   # base and round 1
+sim run --game sts1 --character all --runs 300 --vary --seed 6000 --out sts1.jsonl
+sim prior sts2.jsonl sts1.jsonl --out src/run/model_cards.json                                # the card table
+sim run --game sts2 --character all --runs 400 --vary --seed 7000 --ascension 7 --out round2.jsonl # fresh seeds
+sim run --game sts2 --character all --runs 200 --seed 9000 --ascension 7 --out after.jsonl         # once per version of the bot
+sim report sts2.jsonl sts1.jsonl
 ```
 
 ## How far to trust it
@@ -590,7 +590,7 @@ win rates are the model's, not the game's; what transfers is the **comparison** 
 under the bot's own play, and where in a run the bot loses. A finding is a candidate for `learn.CHOICES` (the live
 bot then tests it on real runs), not a fact about the game.
 
-The bosses were checked against the model fights built from the bot's own logs (`scripts/bosses/`, `demonfight.py`):
+The bosses were checked against the model fights built from the bot's own logs (`scripts/bosses/`, `demonfight.rs`):
 the Knowledge Demon matched, and the Test Subject (Strength reset between forms, Multi-Claw growing a hit a round) and
 the Aeonglass (Withering Presence, Withers growing with each buff) were corrected to match before these batches. So
 were debuffs that enemies put on us (they lasted a turn too few, so Weak 1 from a monster did nothing), Slay the Spire

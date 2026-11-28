@@ -25,8 +25,8 @@ they disagree, and the model runs are where a rule is tried before it goes live.
 | Race enemies that gain Strength | `Enemy.grows` raises what damage is worth |
 | Crab claws together, Decimillipede segments together | `battle._rage_blocks`, `Enemy.reattach` |
 | Doom, Osty, Stars, orbs, Shivs, stances | the planner simulates each (`combat.simulate`) |
-| Ratings from other players' runs and its own | `crowd.py` (tierspire.com), `learn.CardStats`, mixed by the `crowd` setting |
-| ... and from the model runs | `learn.model_shift` over `run/model_cards.json` (`python3 -m sim prior`, corrected by the runs that played it with `--onto`), weighed by the `model_lean` setting |
+| Ratings from other players' runs and its own | `crowd.rs` (tierspire.com), `learn.CardStats`, mixed by the `crowd` setting |
+| ... and from the model runs | `learn.model_shift` over `run/model_cards.json` (`sim prior`, corrected by the runs that played it with `--onto`), weighed by the `model_lean` setting |
 | Never Runic Dome; avoid Coffee Dripper, Cursed Key | `games/sts1/text/potions.AVOID`, the boss relic order |
 
 ## Open questions worth testing
@@ -37,7 +37,7 @@ they disagree, and the model runs are where a rule is tried before it goes live.
 2. **Slay the Spire 2's act 3 bosses** stop even the best decks in the model (at A7 the Queen 9%, Test Subject 18%,
    Aeonglass 14% beaten; with the corrected card table of 2026-11-26 26%, 34% and 34%; at A8, the bot as it was, 20%,
    29% and 28%, and a third of all runs end there). The Test Subject and Aeonglass rules match the bot's logs; the Queen now has a model fight
-   built from them (`scripts/bosses/queenfight.py`), not yet checked against the whole-run model's.
+   built from them (`scripts bosses/queenfight`), not yet checked against the whole-run model's.
 3. **Settings the model runs favour** are among `learn.CHOICES` (`punch` 0.9 again from 2026-11-25) and, per game, in
    `learn.GAME_DEFAULTS`; the live runs decide whether they stay. At A7 `caution` and `debuff_worth` point different ways
    from batch to batch.
@@ -49,7 +49,7 @@ they disagree, and the model runs are where a rule is tried before it goes live.
    removals that lean on it gained nothing. **Round 5 found the table had learned the model's own bugs** (Grand Finale,
    Bone Shards, Fight Me and two dozen more cards whose text the model left out, all at or near its +3 cap): before
    trusting a card at the top or bottom of the table, check what the model does with its text
-   (`scripts/audit/simcards.py`).
+   (`scripts audit/simcards`).
 5. **Which card to remove.** `_removal_rank` goes by rating: guides say Strikes, then Defends only once Block is
    covered (not early for the Defect and Necrobinder).
 6. **One-turn potions** (Flex, Energy, Swift, Duplicator) are drunk on round 1 of a boss like the rest; pricing each by

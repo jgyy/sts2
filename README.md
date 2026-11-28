@@ -12,32 +12,36 @@ or the last one.
 
 ```
 Slay the Spire 2  <-- STS2_MCP mod (HTTP, localhost:15526) -->  sts2bot
-Slay the Spire    <-- CommunicationMod (stdin/stdout) --> relay.py <-- HTTP, localhost:15527 -->  sts2bot --game sts1
+Slay the Spire    <-- CommunicationMod (stdin/stdout) --> sts2bot relay <-- HTTP, localhost:15527 -->  sts2bot --game sts1
 ```
 
 | Part | What it does |
 |---|---|
 | [STS2_MCP](https://github.com/Gennadiyev/STS2MCP) (MIT) | runs inside the game and serves its state and actions; `scripts/install_mod.sh` builds it at a pinned commit with the bot's patch |
-| `sts2bot/fight/` | the combat planner: `battle.py` reads the fight (enemies, intents, powers), `combat.py` scores every affordable line of cards with a small simulation (damage, kills, Block against intents, lethal checks), plays its first card and plans again |
-| `sts2bot/run/` | everything between fights: whole-route map planning against the HP the bot would reach the boss with, rewards, shops, rest sites, events, potions; `decks.py` rates a card for the deck that would take it |
-| `sts2bot/cards.py` | reads what a card does from its text (so new and rebalanced cards work), plus hand-made ratings |
-| `sts2bot/run/crowd.py` | other players' win and pick rates per card (tierspire.com), mixed into the ratings |
-| `sts2bot/learn.py` | learns from its own runs: shifts card ratings by how far runs that took them got, and tunes a dozen settings by Thompson sampling (`tuning.json`; `--no-tuning` turns it off); one of them weighs in what the model runs say of each card (`run/model_cards.json`) |
-| `sts2bot/supervisor.py` | starts Steam and the game, restarts it when it hangs, rebuilds the mod after a game update, and after a crash does something different in the room it crashed in |
-| `sts2bot/games/sts1/` | the first game: translates CommunicationMod's state into the bot's and the bot's actions back, holds every card's text (CommunicationMod sends none), the Watcher's stances and the act 4 keys |
-| `sim/` | model runs of both games played by the bot's own code (see [Model runs](#model-runs)) |
+| `src/fight/` | the combat planner: `battle.rs` reads the fight (enemies, intents, powers), `combat.rs` scores every affordable line of cards with a small simulation (damage, kills, Block against intents, lethal checks), plays its first card and plans again |
+| `src/run/` | everything between fights: whole-route map planning against the HP the bot would reach the boss with, rewards, shops, rest sites, events, potions; `decks.rs` rates a card for the deck that would take it |
+| `src/cards.rs` | reads what a card does from its text (so new and rebalanced cards work), plus hand-made ratings |
+| `src/run/crowd.rs` | other players' win and pick rates per card (tierspire.com), mixed into the ratings |
+| `src/learn.rs` | learns from its own runs: shifts card ratings by how far runs that took them got, and tunes a dozen settings by Thompson sampling (`tuning.json`; `--no-tuning` turns it off); one of them weighs in what the model runs say of each card (`run/model_cards.json`) |
+| `src/supervisor.rs` | starts Steam and the game, restarts it when it hangs, rebuilds the mod after a game update, and after a crash does something different in the room it crashed in |
+| `src/games/sts1/` | the first game: translates CommunicationMod's state into the bot's and the bot's actions back, holds every card's text (CommunicationMod sends none), the Watcher's stances and the act 4 keys |
+| `src/sim/` | model runs of both games played by the bot's own code (see [Model runs](#model-runs)) |
 
 ## Setup (Slay the Spire 2)
 
-Needs Linux, Python 3.11+, git, the .NET SDK and the game from Steam.
+Needs Linux, Rust (cargo, 1.80 or newer), git, the .NET SDK and the game from Steam.
 
 ```sh
+cargo build --release               # builds target/release/sts2bot (the bot), sim (model runs) and scripts (analysis)
 scripts/install_mod.sh              # build and install the bridge mod (STS2_GAME_DIR if the game is elsewhere)
 # start the game once, accept the mod dialog (or Settings -> Mods), restart it, then check:
 curl -s http://localhost:15526/
-python3 -m sts2bot                  # plays forever, launching the game if needed
-python3 -m sts2bot --runs 1 -v      # one run, logging every action
+target/release/sts2bot              # plays forever, launching the game if needed
+target/release/sts2bot --runs 1 -v  # one run, logging every action
 ```
+
+The commands below are written `sts2bot`, `sim` and `scripts`: the binaries in `target/release/` (put that directory
+on your `PATH`, or run them as `cargo run --release --bin sim -- ...`).
 
 With mods enabled the game uses a separate save profile (a fresh one has only the first character). Stop with
 Ctrl+C; the game saves the run and the bot resumes it next time.
@@ -54,9 +58,9 @@ end-of-run summary because that is where score epochs are earned.
 ## Slay the Spire 1
 
 ```sh
-python3 -m sts2bot sts1-setup                 # once: point CommunicationMod at the bot's relay
-python3 -m sts2bot --game sts1                # launches ModTheSpire with BaseMod and CommunicationMod
-python3 -m sts2bot --game sts1 --character WATCHER --runs 1 -v
+sts2bot sts1-setup                 # once: point CommunicationMod at the bot's relay
+sts2bot --game sts1                # launches ModTheSpire with BaseMod and CommunicationMod
+sts2bot --game sts1 --character WATCHER --runs 1 -v
 ```
 
 Subscribe to ModTheSpire, BaseMod and CommunicationMod on the Workshop first (or set `STS1_GAME_DIR`, `STS1_MTS_JAR`
@@ -66,15 +70,15 @@ ascension (read from the save's `preferences/`, `STS1_PREFS_DIR` for another).
 - The bot's own ModTheSpire mod turns Fast Mode on, runs the clock `--sts1-time-scale` times faster (default 8) and
   adds what CommunicationMod leaves out: live card numbers, the Watcher's stance, the act 4 keys.
 - The card ratings and crowd tables are Slay the Spire 2's, so here cards are judged from their text and corrected
-  by `learn.py`. Logs and learning live in `~/.local/state/sts2bot/sts1/`.
+  by `learn.rs`. Logs and learning live in `~/.local/state/sts2bot/sts1/`.
 - The planner knows stances and Mantra; it does not plan Scry. Once the first three characters have each won, it goes
-  for the three keys and act 4 (`games/sts1/keys.py`).
+  for the three keys and act 4 (`games/sts1/keys.rs`).
 - CommunicationMod cannot continue a saved run: after a crash the bot starts a new one.
 
 ## Both games at once
 
 ```sh
-python3 -m sts2bot --game both [-v] [--runs N]
+sts2bot --game both [-v] [--runs N]
 ```
 
 One bot process per game; every other option is passed to both (`--port`, `--log-dir` and `--launch-cmd` are refused
@@ -88,7 +92,7 @@ is set up for the relay (`sts1-setup` fixes it).
 of the file; Steam must log in without a password). Add `--game both` to `ExecStart` to run both games.
 
 ```sh
-python3 -m sts2bot service status|start|stop|enable|disable
+sts2bot service status|start|stop|enable|disable
 ```
 
 `stop` lasts until the next login, `disable` until you `enable` it again. Killing the process is not enough: the
@@ -116,33 +120,33 @@ service restarts it.
 
 ## Logs and analysis
 
-`bot.log` (rotated at 5 MB), `runs.jsonl` (one line per run: character, result, floor, relics, deck, picks, settings),
+`bot.log` (rotated at 20 MB), `runs.jsonl` (one line per run: character, result, floor, relics, deck, picks, settings),
 `fights.jsonl` (every fight: deck, enemies, rounds, HP before and after), `card_stats.json`, `tuning.json`.
 
 | Script | Shows |
 |---|---|
-| `scripts/fightlog.py COMMAND` | read `bot.log` fight by fight: `bosses`, `costs`, `show 'YYYY-MM-DD HH:MM'`, `knobs`, `deaths`, `pace`, `rooms SETTING`, `bosspace`, `reads`, `unplayed`, `surprises`, `idle`, `powers`, `events`, `pit`, `crabs`, `artifact`, `ancients`, `wiki` |
-| `scripts/decklog.py [bosses]` | what a fight costs against what the deck holds (`fights.jsonl`) |
-| `scripts/relearn.py` | rebuild `card_stats.json` from `runs.jsonl` |
-| `scripts/demonfight.py`, `crabfight.py`, `kinfight.py`, `knightfight.py`, `roomfight.py`, `bosses/*.py` | model fights: one boss or room played by the real planner thousands of times (most take `NAME=VALUE` to try a constant); `demonfight.py` also solves the Knowledge Demon exactly |
-| `scripts/demon/*.py`, `scripts/audit/*.py` | relic and affliction prices at the Demon; cards played for nothing and text the parser misreads; what the model runs do with each card's text (`simcards.py`) |
+| `scripts fightlog COMMAND` | read `bot.log` fight by fight: `bosses`, `costs`, `show 'YYYY-MM-DD HH:MM'`, `knobs`, `deaths`, `pace`, `rooms SETTING`, `bosspace`, `reads`, `unplayed`, `surprises`, `idle`, `powers`, `events`, `pit`, `crabs`, `artifact`, `ancients`, `wiki` |
+| `scripts decklog [bosses]` | what a fight costs against what the deck holds (`fights.jsonl`) |
+| `scripts relearn` | rebuild `card_stats.json` from `runs.jsonl` |
+| `scripts demonfight`, `crabfight`, `kinfight`, `knightfight`, `roomfight`, `bosses/NAME` | model fights: one boss or room played by the real planner thousands of times (most take `NAME=VALUE` to try a constant); `demonfight` also solves the Knowledge Demon exactly |
+| `scripts demon/*`, `scripts audit/*` | relic and affliction prices at the Demon; cards played for nothing and text the parser misreads; what the model runs do with each card's text (`audit/simcards`) |
 
 ## Model runs
 
-`sim/` plays whole runs of either game with every decision made by the bot's own code: the combat planner, the
+`src/sim/` plays whole runs of either game with every decision made by the bot's own code: the combat planner, the
 map, reward, shop, rest-site, event and selection handlers, and the tuned settings. The engine knows cards by their
-text (the first game's from the bot's tables, Slay the Spire 2's from `sim/content/sts2_data.json`, extracted from
+text (the first game's from the bot's tables, Slay the Spire 2's from `src/sim/content/sts2_data.json`, extracted from
 the game by Spire Codex), monsters by their move tables, and a common subset of relics and potions.
 
 ```sh
-python3 -m sim run --game sts1 --character all --runs 1000 --vary --out runs.jsonl   # --vary: random settings per run
-python3 -m sim run --game sts2 --character NECROBINDER --runs 200 --ascension 5
-python3 -m sim report runs.jsonl                                                     # by character, setting, boss, card
-python3 -m sim trace                                                                 # one hash per character
-python3 -m sim prior sts2.jsonl sts1.jsonl --out sts2bot/run/model_cards.json         # the card table the bot reads
-python3 -m sim prior runs.jsonl --onto sts2bot/run/model_cards.json --out new.json     # ... corrected by runs that played it
-python3 -m sim run --game sts2 --runs 400 --vary --only model_table,caution --alt-cards new.json   # vary only these; two tables (more: a,b)
-python3 -m sim run --game sts1 --runs 400 --vary --only caution,belt_spare --grid caution=1,1.35      # caution drawn from these values only
+sim run --game sts1 --character all --runs 1000 --vary --out runs.jsonl   # --vary: random settings per run
+sim run --game sts2 --character NECROBINDER --runs 200 --ascension 5
+sim report runs.jsonl                                                     # by character, setting, boss, card
+sim trace                                                                 # one hash per character
+sim prior sts2.jsonl sts1.jsonl --out src/run/model_cards.json         # the card table the bot reads
+sim prior runs.jsonl --onto src/run/model_cards.json --out new.json     # ... corrected by runs that played it
+sim run --game sts2 --runs 400 --vary --only model_table,caution --alt-cards new.json   # vary only these; two tables (more: a,b)
+sim run --game sts1 --runs 400 --vary --only caution,belt_spare --grid caution=1,1.35      # caution drawn from these values only
 ```
 
 `trace` hashes every decision of seeded runs: a change that should not alter behaviour must leave the hashes as they
@@ -151,12 +155,16 @@ were. Results and limits: [docs/strategy/simulation.md](docs/strategy/simulation
 ## Development
 
 ```sh
-python3 -m unittest discover -s tests -t .   # against fake games: the bot loop, the StS1 relay, the planner
-ruff check .
-PYTHONHASHSEED=0 python3 -m sim trace         # unchanged hashes = unchanged decisions
+cargo test                    # against fake games: the bot loop, the StS1 relay, the planner, the model runs
+cargo test --release -- --ignored   # the long ones: hundreds more seeded model runs
+sim trace                     # unchanged hashes = unchanged decisions
 ```
 
-`tests/test_size.py` keeps files under 1000 lines, directories under 10 files and dict literals free of repeated keys.
+`tests/all/test_size.rs` keeps source files under 2500 lines and directories under 25 files.
+
+The bot was first written in Python and rewritten in Rust module for module. `tests/golden/` holds what the Python
+version answered (card readings, planner choices, whole bot sessions, the decisions of seeded model runs): the tests
+replay them and compare exactly, so `sim trace` prints the hashes the Python version printed.
 Strategy notes for both games are in [docs/strategy/](docs/strategy/).
 
 ## Uninstall

@@ -1,16 +1,17 @@
 # User service that keeps the bot (and through it, the game) running 24/7.
 #
+#   cargo build --release
 #   mkdir -p ~/.config/systemd/user
 #   sed "s|@REPO@|$PWD|" systemd/sts2bot.service > ~/.config/systemd/user/sts2bot.service
 #   systemctl --user daemon-reload
 #   systemctl --user enable --now sts2bot
 #   journalctl --user -u sts2bot -f
 #
-# To turn it off: python3 -m sts2bot service disable (see the README, "Running 24/7").
+# To turn it off: sts2bot service disable (see the README, "Running 24/7").
 #
 # The bot starts Steam itself if it is not running (Steam must be able to log in unattended).
 #
-# To play both games at the same time, add --game both at the end of ExecStart (run `python3 -m sts2bot sts1-setup`
+# To play both games at the same time, add --game both at the end of ExecStart (run `sts2bot sts1-setup`
 # once first); --game sts1 plays only the first Slay the Spire. Each line in the journal names its game.
 
 [Unit]
@@ -21,7 +22,7 @@ PartOf=graphical-session.target
 [Service]
 WorkingDirectory=@REPO@
 # systemd-inhibit keeps the machine from idling to sleep while the bot plays.
-ExecStart=/usr/bin/systemd-inhibit --what=idle:sleep --who=sts2bot --why="Playing Slay the Spire 2" /usr/bin/python3 -m sts2bot
+ExecStart=/usr/bin/systemd-inhibit --what=idle:sleep --who=sts2bot --why="Playing Slay the Spire 2" @REPO@/target/release/sts2bot
 Restart=always
 RestartSec=15
 
