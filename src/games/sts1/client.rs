@@ -225,9 +225,7 @@ impl Sts1Client {
     }
 
     pub fn card(&mut self, card_id: &str) -> Result<Option<Value>, GameUnavailable> {
-        let Some(key) = text::card_key(card_id, "") else {
-            return Ok(None);
-        };
+        let Some(key) = text::card_key(card_id, "") else { return Ok(None) };
         let cost = text::UPGRADE_COST().get(key.as_str());
         let side = |upgraded: bool| {
             let mut out = Map::new();

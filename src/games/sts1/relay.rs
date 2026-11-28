@@ -98,7 +98,7 @@ impl Relay {
 
     /// One line from the game.
     pub fn feed(&self, line: &str) {
-        let line = line.trim_matches(|c: char| c.is_whitespace() || ('\x1c'..='\x1f').contains(&c));
+        let line = base::strip(line);
         if line.is_empty() {
             return;
         }
@@ -182,9 +182,7 @@ pub fn handle(relay: &Relay, method: &str, path: &str, content_length: Option<&s
             if content_length.is_some_and(|n| !n.trim().is_empty() && n.trim().parse::<i64>().is_err()) {
                 return bad;
             }
-            let Ok(body) = serde_json::from_slice::<Value>(if body.is_empty() { b"{}" } else { body }) else {
-                return bad;
-            };
+            let Ok(body) = serde_json::from_slice::<Value>(if body.is_empty() { b"{}" } else { body }) else { return bad };
             if !path.starts_with("/command") || !body.is_object() {
                 return Some((404, json!({"status": "error", "error": "unknown request"})));
             }

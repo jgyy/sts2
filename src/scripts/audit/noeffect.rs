@@ -12,7 +12,7 @@ use indexmap::IndexMap;
 
 use crate::scripts::fightlog::{io_error, read_text, state_home, upto};
 use crate::scripts::modelfight::{exit_code, out};
-use crate::re;
+use crate::{base, re};
 
 /// (our side, the enemies, the cards in hand) of a `combat r` line.
 pub fn split(s: &str) -> (String, String, Vec<String>) {
@@ -20,15 +20,6 @@ pub fn split(s: &str) -> (String, String, Vec<String>) {
     let hand = if parts[parts.len() - 1].starts_with("hand") { parts[parts.len() - 1] } else { "" };
     let foes = if !hand.is_empty() { parts[1..parts.len() - 1].join(" | ") } else { parts[1..].join(" | ") };
     (parts[0].to_string(), foes, re!(r"\d+:([^,(]+)\(").captures_iter(hand).map(|c| c[1].trim().to_string()).collect())
-}
-
-/// `str.splitlines()`.
-fn splitlines(text: &str) -> Vec<&str> {
-    let mut lines: Vec<&str> = text.split(['\n', '\x0b', '\x0c', '\x1c', '\x1d', '\x1e', '\u{85}', '\u{2028}', '\u{2029}']).collect();
-    if lines.last() == Some(&"") {
-        lines.pop();
-    }
-    lines
 }
 
 /// card -> [plays, plays that changed nothing, examples]
@@ -62,7 +53,7 @@ pub fn scan(since: &str) -> Result<Stats, String> {
         let mut last: Option<(i64, String, String)> = None;
         let mut prev: Option<(i64, String, String)> = None;
         let mut pending: Option<String> = None;
-        for line in splitlines(&text) {
+        for line in base::splitlines(&text) {
             if !since.is_empty() && upto(line, 16) < since {
                 continue;
             }

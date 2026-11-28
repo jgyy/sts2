@@ -30,9 +30,7 @@ fn shown(path: &Path) -> String {
 
 /// The JSON object kept in `path` ({} when there is none yet, or it cannot be read).
 pub fn _load(path: Option<&Path>, what: &str) -> Map<String, Value> {
-    let Some(path) = path else {
-        return Map::new();
-    };
+    let Some(path) = path else { return Map::new() };
     let text = match std::fs::read(path) {
         Ok(bytes) => match String::from_utf8(bytes) {
             Ok(text) => text,
@@ -65,9 +63,7 @@ fn _loads(text: &str, path: &str, what: &str) -> Map<String, Value> {
 }
 
 pub fn _save(path: Option<&Path>, data: &Value, what: &str) {
-    let Some(path) = path else {
-        return;
-    };
+    let Some(path) = path else { return };
     let write = || -> std::io::Result<()> {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -174,9 +170,7 @@ impl CardStats {
 
     /// Floors a pick of this character gains on average: what a card's record is measured against.
     pub fn _par(&self, character: &str) -> f64 {
-        let Some(table) = self.cards.get(character) else {
-            return 0.0;
-        };
+        let Some(table) = self.cards.get(character) else { return 0.0 };
         let picks = base::fsum(table.values().map(|x| x[0]));
         if picks >= 50.0 {
             base::fsum(table.values().map(|x| x[1])) / picks
@@ -653,9 +647,7 @@ impl Knobs {
 
     /// A run with the current settings ended `gained` floors beyond what is usual for its character.
     pub fn record(&mut self, gained: Option<f64>) {
-        let Some(gained) = gained else {
-            return;
-        };
+        let Some(gained) = gained else { return };
         let now = knobs();
         for name in choices().keys() {
             let setting = base::float_repr(*now.get(name).unwrap_or_else(|| panic!("KeyError: {}", base::str_repr(name))));

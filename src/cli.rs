@@ -645,10 +645,6 @@ enum Stop {
     Help,
 }
 
-fn is_py_space(c: char) -> bool {
-    c.is_whitespace() || ('\x1c'..='\x1f').contains(&c)
-}
-
 /// Digits, with single underscores between them (the original's numbers): the digits alone.
 fn digits(s: &str) -> Option<String> {
     let ok = !s.is_empty() && s.split('_').all(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit()));
@@ -657,7 +653,7 @@ fn digits(s: &str) -> Option<String> {
 
 /// `int(text)` (None: its ValueError; also a number past 64 bits).
 pub fn base_int(text: &str) -> Option<i64> {
-    let s = text.trim_matches(is_py_space);
+    let s = base::strip(text);
     let (negative, body) = match s.strip_prefix('-') {
         Some(rest) => (true, rest),
         None => (false, s.strip_prefix('+').unwrap_or(s)),
@@ -668,7 +664,7 @@ pub fn base_int(text: &str) -> Option<i64> {
 
 /// `float(text)` (None: its ValueError).
 pub fn base_float(text: &str) -> Option<f64> {
-    let s = text.trim_matches(is_py_space);
+    let s = base::strip(text);
     let (negative, body) = match s.strip_prefix('-') {
         Some(rest) => (true, rest),
         None => (false, s.strip_prefix('+').unwrap_or(s)),

@@ -560,9 +560,7 @@ pub fn costs() -> Result<(), String> {
     // (act, kind, enemies) -> [fights, deaths, costs, rounds]
     let mut table: IndexMap<(i64, String, String), (i64, i64, Vec<f64>, Vec<i64>)> = IndexMap::new();
     for f in load()?.0 {
-        let (Some(died), Some(enemies)) = (f.died, f.enemies.as_deref().filter(|e| !e.is_empty())) else {
-            continue;
-        };
+        let (Some(died), Some(enemies)) = (f.died, f.enemies.as_deref().filter(|e| !e.is_empty())) else { continue };
         if f.kind != "boss" {
             let row = table.entry((f.act, f.kind.clone(), upto(enemies, 56).to_string())).or_default();
             row.0 += 1;
@@ -765,9 +763,7 @@ pub fn reads() -> Result<(), String> {
             if before.group(8).contains(" ; ") || odd.iter().any(|o| before.group(8).contains(o)) || _enemy_hp(after.group(8)) == 0 {
                 continue;
             }
-            let Some(card) = IN_HAND!().captures_iter(before.group(9)).find(|c| c[2].trim() == name) else {
-                continue;
-            };
+            let Some(card) = IN_HAND!().captures_iter(before.group(9)).find(|c| c[2].trim() == name) else { continue };
             if &card[3] == "X" {
                 continue;
             }
@@ -819,9 +815,7 @@ pub fn rooms(name: &str, since: &str) -> Result<(), String> {
     let mut table: Vec<((Option<String>, i64, Value), Vec<(i64, f64, f64, bool)>)> = Vec::new();
     for f in load()?.0 {
         let value = _knobs(&f).get(name).cloned().unwrap_or(Value::Null);
-        let Some(died) = f.died else {
-            continue;
-        };
+        let Some(died) = f.died else { continue };
         if f.kind != "monster" || f.turns.is_empty() || value.is_null() || f.t.as_str() < since {
             continue;
         }
@@ -1027,9 +1021,7 @@ pub fn artifact(since: &str, kinds: &[String]) -> Result<(), String> {
     let mut gone: std::collections::BTreeMap<String, Vec<(i64, i64)>> = std::collections::BTreeMap::new();
     for f in load()?.0 {
         let left = _by_round(&f, |e| re!(r"ARTIFACT:(\d+)").captures_iter(e).map(|m| int(&m[1])).sum::<i64>());
-        let Some(died) = f.died else {
-            continue;
-        };
+        let Some(died) = f.died else { continue };
         if left.is_empty() || left[0] == 0 || f.t.as_str() < since {
             continue;
         }
@@ -1058,9 +1050,7 @@ pub fn artifact(since: &str, kinds: &[String]) -> Result<(), String> {
 pub fn crabs(since: &str) -> Result<(), String> {
     let mut tally: std::collections::BTreeMap<(String, String), i64> = std::collections::BTreeMap::new();
     for f in load()?.0 {
-        let Some(died) = f.died else {
-            continue;
-        };
+        let Some(died) = f.died else { continue };
         if f.enemies.as_deref() != Some("CRUSHER+ROCKET") || f.t.as_str() < since {
             continue;
         }

@@ -53,14 +53,6 @@ pub fn os_error_text(e: &std::io::Error) -> String {
     }
 }
 
-fn is_py_space(c: char) -> bool {
-    c.is_whitespace() || ('\x1c'..='\x1f').contains(&c)
-}
-
-fn base_strip(s: &str) -> &str {
-    s.trim_matches(is_py_space)
-}
-
 fn latin1(bytes: &[u8]) -> String {
     bytes.iter().map(|b| *b as char).collect()
 }
@@ -90,7 +82,7 @@ fn bytes_repr(bytes: &[u8]) -> String {
 /// `int(text, base)` for base 10 or 16: blanks around it, a sign, `0x` before hex digits, single underscores between
 /// digits. None for anything else (the original's ValueError). Numbers beyond an i64 stop at its ends.
 fn base_int(text: &str, base: u32, ascii_blanks: bool) -> Option<i64> {
-    let t = if ascii_blanks { text.trim_matches(|c: char| matches!(c, ' ' | '\t' | '\n' | '\r' | '\x0b' | '\x0c')) } else { base_strip(text) };
+    let t = if ascii_blanks { text.trim_matches(|c: char| matches!(c, ' ' | '\t' | '\n' | '\r' | '\x0b' | '\x0c')) } else { base::strip(text) };
     let (negative, mut t) = match t.strip_prefix('-') {
         Some(rest) => (true, rest),
         None => (false, t.strip_prefix('+').unwrap_or(t)),
@@ -194,7 +186,7 @@ pub fn _parse(raw: &[u8]) -> Result<(i64, Vec<u8>), GameUnavailable> {
     let mut fields: Vec<(String, &str)> = Vec::new();
     for line in &lines[1..] {
         let (k, v) = line.split_once(':').unwrap_or((line, ""));
-        let (k, v) = (base_strip(k).to_lowercase(), base_strip(v));
+        let (k, v) = (base::strip(k).to_lowercase(), base::strip(v));
         match fields.iter_mut().find(|(name, _)| *name == k) {
             Some(field) => field.1 = v,
             None => fields.push((k, v)),

@@ -10,7 +10,7 @@ use sts2bot::fight::fool::turn;
 
 use super::{combat_state, ctx, pick, power, read_foes};
 use crate::fake_game::{card, with};
-use crate::helpers::{enemy, DEFEND, STRIKE};
+use crate::helpers::{approx, enemy, DEFEND, STRIKE};
 
 fn IMPALED(n: i64) -> Value {
     power("IMPALED", n)
@@ -43,10 +43,6 @@ fn KW() -> SimulateArgs {
 
 fn tune(melodies: &[&str]) -> BTreeSet<String> {
     melodies.iter().map(|m| m.to_string()).collect()
-}
-
-fn approx(a: f64, b: f64) {
-    assert!((a - b).abs() < 5e-8, "{a} != {b}"); // (assertAlmostEqual: 7 places)
 }
 
 // Reading

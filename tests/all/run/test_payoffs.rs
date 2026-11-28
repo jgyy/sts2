@@ -4,12 +4,10 @@ use serde_json::{json, Value};
 use sts2bot::cards::deck_value;
 use sts2bot::run::{decks, strategy};
 
+use crate::helpers::approx;
+
 fn silent(cid: &str, name: &str, ctype: &str, cost: i64, text: &str) -> Value {
     json!({"id": cid, "name": name, "type": ctype, "cost": cost, "rarity": "Uncommon", "description": text})
-}
-
-fn approx(a: f64, b: f64) {
-    assert!((a - b).abs() < 5e-8, "{a} != {b}"); // (assertAlmostEqual: 7 places)
 }
 
 // Payoffs

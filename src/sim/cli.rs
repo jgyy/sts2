@@ -574,9 +574,7 @@ pub fn parse_args(argv: &[String]) -> Result<Args, i32> {
         unknown.push(argv[at].clone());
         at += 1;
     }
-    let Some(cmd) = argv.get(at) else {
-        return wrong(USAGE, "sim", "the following arguments are required: cmd".to_string());
-    };
+    let Some(cmd) = argv.get(at) else { return wrong(USAGE, "sim", "the following arguments are required: cmd".to_string()) };
     if !COMMANDS.contains(&cmd.as_str()) {
         return wrong(USAGE, "sim", format!("argument cmd: invalid choice: {} (choose from 'run', 'trace', 'report', 'prior')", base::str_repr(cmd)));
     }

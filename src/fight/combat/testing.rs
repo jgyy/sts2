@@ -23,8 +23,8 @@ pub fn rows(texts: &[&str], key: &str) -> Vec<Value> {
 }
 
 pub fn golden() -> Golden {
-    let meta = [include_str!("../../tests/golden/combat/meta.json")];
-    let atoms = rows(&[include_str!("../../tests/golden/combat/atoms0.json"), include_str!("../../tests/golden/combat/atoms1.json")], "atoms");
+    let meta = [include_str!("../../../tests/golden/combat/meta.json")];
+    let atoms = rows(&[include_str!("../../../tests/golden/combat/atoms0.json"), include_str!("../../../tests/golden/combat/atoms1.json")], "atoms");
     let knobs = rows(&meta, "knobs").iter().map(|k| k.entries().map(|(name, x)| (name.clone(), x.float())).collect()).collect();
     Golden { atoms, cards: rows(&meta, "cards").iter().map(card_from_json).collect(), knobs }
 }
@@ -200,4 +200,4 @@ pub fn actions_json(all: &[Action]) -> Value {
     all.iter().map(|(name, params)| json!([name, params])).collect()
 }
 
-pub const CALLS: &str = include_str!("../../tests/golden/combat/calls.json");
+pub const CALLS: &str = include_str!("../../../tests/golden/combat/calls.json");

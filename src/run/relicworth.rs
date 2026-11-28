@@ -120,9 +120,7 @@ pub fn spare_energy(energy: i64, held: &[Value], deck: &[Value]) -> f64 {
 
 /// What an energy-a-turn or cards-a-turn relic is worth over its table rating for this deck (0 when the energy is not known).
 pub fn energy_lean(relic_id: &str, energy: Option<i64>, held: &[Value], deck: &[Value]) -> f64 {
-    let (Some(energy), Some(lean)) = (energy, TURN_LEAN.get(relic_id)) else {
-        return 0.0;
-    };
+    let (Some(energy), Some(lean)) = (energy, TURN_LEAN.get(relic_id)) else { return 0.0 };
     if spare_energy(energy, held, deck) < 0.5 {
         lean.0
     } else {
@@ -165,26 +163,9 @@ mod tests {
     //! Replays tests/golden/relicworth.json: calls recorded from the original tests and model runs, every relic of the tables
     //! in each act, and the tables themselves (recorded from relicworth.rs).
     use super::*;
+    use crate::run::decks::tests::{resolve, same};
     use crate::games;
     use serde_json::json;
-
-    fn resolve(v: &Value, g: &Value, cards: &[Value]) -> Value {
-        match v {
-            Value::Object(m) if m.len() == 1 && m.contains_key("$") => g["pool"][m["$"].as_u64().unwrap() as usize].clone(),
-            Value::Object(m) if m.len() == 1 && m.contains_key("c") => cards[m["c"].as_u64().unwrap() as usize]["card"].clone(),
-            Value::Object(m) if m.len() == 1 && m.contains_key("L") => resolve(&g["lists"][m["L"].as_u64().unwrap() as usize], g, cards),
-            Value::Array(a) => Value::Array(a.iter().map(|x| resolve(x, g, cards)).collect()),
-            other => other.clone(),
-        }
-    }
-
-    fn same(got: &Value, want: &Value) -> bool {
-        match (got, want) {
-            (Value::Number(a), Value::Number(b)) if a.is_f64() && b.is_f64() => a.as_f64().unwrap().to_bits() == b.as_f64().unwrap().to_bits(),
-            (Value::Number(a), Value::Number(b)) => a.as_f64() == b.as_f64(),
-            _ => got == want,
-        }
-    }
 
     #[test]
     fn golden() {

@@ -37,44 +37,27 @@ pub static ETERNAL: LazyLock<HashSet<&'static str>> =
     LazyLock::new(|| HashSet::from(["ascenders bane", "greed", "curse of the bell", "folly", "bad luck", "enthralled", "necronomicurse"]));
 pub const RANDOM_CURSE: f64 = 4.5; // "Add a random Curse": the mean of what can come
 
-/// The run as an event sees it.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Ctx {
-    pub hp: i64,
-    pub max_hp: i64,
-    pub gold: i64,
-    pub act: i64,
-    pub floor: i64,
-    pub deck: Vec<Value>, // card dicts (strategy.Memory.deck)
-    pub relics: Vec<Value>,
-    pub potions: Vec<Value>,
-    pub slots: i64, // potion slots
-    pub character: String,
-    pub game: String,
-    pub bled: i64,                // HP this event has taken already
-    pub keys: Option<Vec<Value>>, // the first game's keys, once act 4 is open
+crate::defaults! {
+    /// The run as an event sees it.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Ctx {
+        pub hp: i64,
+        pub max_hp: i64,
+        pub gold: i64,
+        pub act: i64 = 1,
+        pub floor: i64 = 1,
+        pub deck: Vec<Value>, // card dicts (strategy.Memory.deck)
+        pub relics: Vec<Value>,
+        pub potions: Vec<Value>,
+        pub slots: i64 = 3, // potion slots
+        pub character: String,
+        pub game: String = "sts2".to_string(),
+        pub bled: i64,                // HP this event has taken already
+        pub keys: Option<Vec<Value>>, // the first game's keys, once act 4 is open
+    }
 }
 
 /// (`hp` and `max_hp` have no default in the original: every caller gives them.)
-impl Default for Ctx {
-    fn default() -> Self {
-        Ctx {
-            hp: 0,
-            max_hp: 0,
-            gold: 0,
-            act: 1,
-            floor: 1,
-            deck: Vec::new(),
-            relics: Vec::new(),
-            potions: Vec::new(),
-            slots: 3,
-            character: String::new(),
-            game: "sts2".to_string(),
-            bled: 0,
-            keys: None,
-        }
-    }
-}
 
 impl Ctx {
     pub fn free_slots(&self) -> i64 {

@@ -221,7 +221,7 @@ pub fn literals(source: &str) -> Vec<String> {
     found
 }
 
-/// The Rust files of the behaviour code, in order.
+/// The Rust files of the behaviour code, in order (a module's tests in files of their own left out, as `literals` leaves them).
 pub fn behaviour_files() -> Result<Vec<PathBuf>, String> {
     fn rglob(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), String> {
         let shown = dir.to_string_lossy().into_owned();
@@ -229,7 +229,7 @@ pub fn behaviour_files() -> Result<Vec<PathBuf>, String> {
             let path = entry.map_err(|e| io_error(&e, &shown))?.path();
             if path.is_dir() {
                 rglob(&path, files)?;
-            } else if path.extension().is_some_and(|x| x == "rs") {
+            } else if path.extension().is_some_and(|x| x == "rs") && !path.file_name().is_some_and(|n| n == "tests.rs" || n == "testing.rs") {
                 files.push(path);
             }
         }

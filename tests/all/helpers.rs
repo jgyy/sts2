@@ -105,3 +105,7 @@ pub fn STRIKE(i: i64) -> Value {
 pub fn DEFEND(i: i64) -> Value {
     card(i, "DEFEND_R", "Defend", "Skill", 1, "Gain 5 Block.", "Self")
 }
+
+pub fn approx(a: f64, b: f64) {
+    assert!((a - b).abs() < 5e-8, "{a} != {b}"); // (assertAlmostEqual: 7 places)
+}

@@ -415,14 +415,14 @@ pub fn reward_bar(deck_size: i64, act: Option<i64>) -> f64 {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     //! Replays tests/golden/decks.json: calls recorded from the original tests and model runs of both games, and every card
     //! of tests/golden/cards.json through each function (recorded from decks.rs).
     use super::*;
     use crate::{games, learn};
 
     /// A recorded argument with its cards put back: {"$": n} is the file's pool, {"c": n} a card of cards.json, {"L": n} a list of them.
-    fn resolve(v: &Value, g: &Value, cards: &[Value]) -> Value {
+    pub(crate) fn resolve(v: &Value, g: &Value, cards: &[Value]) -> Value {
         match v {
             Value::Object(m) if m.len() == 1 && m.contains_key("$") => g["pool"][m["$"].as_u64().unwrap() as usize].clone(),
             Value::Object(m) if m.len() == 1 && m.contains_key("c") => cards[m["c"].as_u64().unwrap() as usize]["card"].clone(),
@@ -433,7 +433,7 @@ mod tests {
     }
 
     /// Equal as the original's `==` would have it for results (an int and a float of one value are the same number), floats bit for bit.
-    fn same(got: &Value, want: &Value) -> bool {
+    pub(crate) fn same(got: &Value, want: &Value) -> bool {
         match (got, want) {
             (Value::Number(a), Value::Number(b)) if a.is_f64() && b.is_f64() => a.as_f64().unwrap().to_bits() == b.as_f64().unwrap().to_bits(),
             (Value::Number(a), Value::Number(b)) => a.as_f64() == b.as_f64(),

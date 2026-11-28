@@ -10,6 +10,8 @@ use sts2bot::run::strategy::{self, Memory};
 use sts2bot::run::relics;
 use sts2bot::Action;
 
+use crate::helpers::approx;
+
 /// (the original's defaults: result "loss", who "The Regent", ascension 7.)
 fn run_(floor: i64, held: &[&str], result: &str, who: &str, ascension: i64) -> Value {
     json!({"character": who, "ascension": ascension, "floor": floor, "result": result, "relics": held})
@@ -27,10 +29,6 @@ fn set_up() {
 /// `events._event_option_value({"title": title}, 60, 75)`.
 fn value(title: &str) -> f64 {
     events::_event_option_value(&json!({"title": title}), 60, 75, EventOptionValueArgs::default())
-}
-
-fn approx(a: f64, b: f64) {
-    assert!((a - b).abs() < 5e-8, "{a} != {b}"); // (assertAlmostEqual: 7 places)
 }
 
 fn held(names: &[&str]) -> BTreeSet<String> {

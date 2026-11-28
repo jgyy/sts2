@@ -110,7 +110,7 @@ fn int(x: &Value) -> Result<i64, ()> {
         Value::Bool(b) => Ok(*b as i64),
         Value::Number(n) => n.as_i64().or_else(|| n.as_f64().filter(|f| f.is_finite()).map(|f| f.trunc() as i64)).ok_or(()),
         Value::String(s) => {
-            let s = supervisor::strip(s);
+            let s = base::strip(s);
             let (sign, digits) = match s.strip_prefix('-') {
                 Some(rest) => (-1, rest),
                 None => (1, s.strip_prefix('+').unwrap_or(s)),
@@ -144,17 +144,11 @@ pub fn read_prefs(folder: Option<&Path>) -> Value {
     let flags = _json(&folder.join("STSPlayer")).unwrap_or_default();
     for who in CHARACTERS {
         let stat_file = STAT_FILE.iter().find(|(c, _)| *c == who).expect("a stat file for each character").1;
-        let Some(data) = _json(&folder.join(stat_file)) else {
-            continue;
-        };
+        let Some(data) = _json(&folder.join(stat_file)) else { continue };
         let null = Value::Null;
-        let Ok(wins) = int_or(data.get("WIN_COUNT").unwrap_or(&null), 0) else {
-            continue;
-        };
+        let Ok(wins) = int_or(data.get("WIN_COUNT").unwrap_or(&null), 0) else { continue };
         // After a win the game reads a missing ASCENSION_LEVEL as 1 (Prefs.getInteger(..., 1)).
-        let Ok(level) = int_or(data.get("ASCENSION_LEVEL").unwrap_or(&null), if wins > 0 { 1 } else { 0 }) else {
-            continue;
-        };
+        let Ok(level) = int_or(data.get("ASCENSION_LEVEL").unwrap_or(&null), if wins > 0 { 1 } else { 0 }) else { continue };
         total += wins;
         max_ascension.insert(who.to_string(), json!(if wins > 0 || level > 1 { level.min(20) } else { 0 }));
         let won = flags.get(&format!("{who}_WIN")).map(base::str_of).unwrap_or_default();
@@ -301,15 +295,13 @@ pub fn write_comm_config(port: i64, path: Option<&Path>) -> std::io::Result<Path
 pub fn comm_command(path: Option<&Path>) -> Option<String> {
     let path = path.filter(|p| !p.as_os_str().is_empty()).map(|p| p.to_path_buf()).unwrap_or_else(comm_config_path);
     let text = std::fs::read_to_string(path).ok()?;
-    supervisor::splitlines(&text).into_iter().find_map(|line| line.strip_prefix("command=")).map(|rest| supervisor::strip(rest).to_string())
+    base::splitlines(&text).into_iter().find_map(|line| line.strip_prefix("command=")).map(|rest| base::strip(rest).to_string())
 }
 
 /// Why CommunicationMod will not start the relay this bot listens to on `port` (None when it will): without it the game never answers.
 pub fn comm_config_problem(port: i64, path: Option<&Path>) -> Option<String> {
     let path = path.filter(|p| !p.as_os_str().is_empty());
-    let Some(command) = comm_command(path) else {
-        return Some(format!("CommunicationMod has no command to start ({})", path.map(|p| p.to_path_buf()).unwrap_or_else(comm_config_path).display()));
-    };
+    let Some(command) = comm_command(path) else { return Some(format!("CommunicationMod has no command to start ({})", path.map(|p| p.to_path_buf()).unwrap_or_else(comm_config_path).display())) };
     if !command.contains(&RELAY()) {
         return Some(format!("CommunicationMod starts another program with the game: {command}"));
     }
@@ -328,16 +320,12 @@ pub fn _game_processes() -> Vec<String> {
     let out = supervisor::run(&argv, None).unwrap_or_else(|e| panic!("{e}")).stdout;
     let relay = RELAY();
     let mut pids = Vec::new();
-    for line in supervisor::splitlines(&out) {
+    for line in base::splitlines(&out) {
         // (line.split(None, 2): the pid, the state, and the command line as it is)
         let line = line.trim_start_matches(base_space);
-        let Some((pid, rest)) = line.split_once(base_space) else {
-            continue;
-        };
+        let Some((pid, rest)) = line.split_once(base_space) else { continue };
         let rest = rest.trim_start_matches(base_space);
-        let Some((stat, args)) = rest.split_once(base_space) else {
-            continue;
-        };
+        let Some((stat, args)) = rest.split_once(base_space) else { continue };
         let args = args.trim_start_matches(base_space);
         if args.is_empty() {
             continue;

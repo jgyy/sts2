@@ -2,13 +2,13 @@
 //! files than the cap: past that, the rest go in a new directory.
 //! And the recorded answers in `tests/golden/` stay under 100 MB in all: past that, a recording is cut down or dropped.
 //! (the original version capped files at 1000 lines of up to 250 columns and directories at 10 files; Rust's lines are
-//! shorter and its module tree wider; the caps are the user's of 2026-11-28: 2,000 lines a file, 20 files a directory.)
+//! shorter and its module tree wider; the caps are the user's of 2026-11-28: 1,500 lines a file, 15 files a directory.)
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const MAX_LINES: usize = 2000;
-const MAX_FILES: usize = 20; // a directory's files, subdirectories not counted
+const MAX_LINES: usize = 1500;
+const MAX_FILES: usize = 15; // a directory's files, subdirectories not counted
 const MAX_GOLDEN_BYTES: u64 = 100_000_000; // tests/golden/ as a whole, every file in it (user rule, 2026-11-28)
 const SKIP: [&str; 5] = [".git", ".build", ".claude", "target", "golden"]; // generated, recorded, or not ours
 

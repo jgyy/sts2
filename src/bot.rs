@@ -389,9 +389,7 @@ impl Bot {
 
     /// The game just died: never ask its last request again in that room. True if that is something new to avoid.
     pub fn note_crash(&mut self) -> bool {
-        let Some(sent) = self._last_sent.take() else {
-            return false;
-        };
+        let Some(sent) = self._last_sent.take() else { return false };
         if self.crashed_on(&sent.0, &sent.1, &sent.2, &sent.3) {
             return false;
         }
@@ -490,9 +488,7 @@ impl Bot {
 
     /// Ask the game how far each character has climbed (used to pick who plays next).
     pub fn _refresh_ascensions(&mut self) {
-        let Some(profile) = self._profile() else {
-            return;
-        };
+        let Some(profile) = self._profile() else { return };
         if profile["total_wins"].is_number() || profile["total_wins"].is_boolean() {
             self._wins_seen = Some(profile["total_wins"].int());
         }
@@ -825,9 +821,7 @@ impl Bot {
 
     /// Log the Timeline epochs the run just finished has earned, and remember where the Timeline stands.
     pub fn _note_epochs_earned(&mut self) {
-        let Some(profile) = self._profile() else {
-            return;
-        };
+        let Some(profile) = self._profile() else { return };
         self.mem.modes.profile(&profile);
         let epochs = Bot::_epochs(&profile);
         let earned = |table: &IndexMap<String, String>| -> BTreeSet<String> { table.iter().filter(|(_, v)| strategy::_EARNED.contains(&v.as_str())).map(|(k, _)| k.clone()).collect() };

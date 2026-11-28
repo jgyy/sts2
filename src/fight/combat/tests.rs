@@ -8,9 +8,9 @@ fn golden_choose_card() {
     let g = golden();
     let cases = rows(
         &[
-            include_str!("../../tests/golden/combat/choose0.json"),
-            include_str!("../../tests/golden/combat/choose1.json"),
-            include_str!("../../tests/golden/combat/choose2.json"),
+            include_str!("../../../tests/golden/combat/choose0.json"),
+            include_str!("../../../tests/golden/combat/choose1.json"),
+            include_str!("../../../tests/golden/combat/choose2.json"),
         ],
         "choose",
     );
@@ -58,7 +58,7 @@ fn golden_choose_card() {
 #[test]
 fn golden_simulate() {
     let g = golden();
-    let cases = rows(&[include_str!("../../tests/golden/combat/sim0.json"), include_str!("../../tests/golden/combat/sim1.json")], "sim");
+    let cases = rows(&[include_str!("../../../tests/golden/combat/sim0.json"), include_str!("../../../tests/golden/combat/sim1.json")], "sim");
     assert!(cases.len() >= 3000, "{} cases", cases.len());
     let (mut none, mut bad) = (0, Vec::new());
     for (n, rec) in cases.iter().enumerate() {

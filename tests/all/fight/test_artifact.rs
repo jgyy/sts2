@@ -5,7 +5,7 @@ use sts2bot::cards::parse;
 use sts2bot::fight::{artifact, combat};
 
 use super::{combat_state, pick, power};
-use crate::helpers::{card, enemy, STRIKE};
+use crate::helpers::{approx, card, enemy, STRIKE};
 
 fn SCOURGE(i: i64) -> Value {
     card(i, "SCOURGE", "Scourge", "Skill", 1, "Apply 13 Doom.", "AnyEnemy")
@@ -22,10 +22,6 @@ fn DOOM_DECK() -> Vec<Value> {
 /// (the original's default: 3 charges; its other keywords: the energy.)
 fn state(hand: Vec<Value>, pile: Vec<Value>, charges: i64, energy: i64) -> Value {
     combat_state!(hand, [enemy!("BOSS", 480, status = [power("ARTIFACT", charges)])], kind = "boss", draw_pile = pile, discard_pile = json!([]), energy = energy)
-}
-
-fn approx(a: f64, b: f64) {
-    assert!((a - b).abs() < 5e-8, "{a} != {b}"); // (assertAlmostEqual: 7 places)
 }
 
 // StrippingArtifact

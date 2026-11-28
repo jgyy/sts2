@@ -15,7 +15,7 @@ pub use self::value::Ctx;
 use crate::cards::{deck_value, is_basic, is_known as _known_card};
 use crate::games::uses_sts2_tables;
 use crate::logging::{Level, Logger};
-use crate::base::{self, fmax, fmin, JsonExt};
+use crate::base::{self, fmax, fmin, strip, JsonExt};
 use crate::run::potions::boss_worth;
 use crate::run::relics;
 use crate::run::relicworth::{energy_lean, id_of as relic_id, worth as relic_worth};
@@ -113,11 +113,6 @@ static FIGHT_RE: LazyLock<Vec<regex::Regex>> = LazyLock::new(|| EVENT_FIGHT_HP.i
 /// `int(digits)` of a number a pattern found (one too long for an i64, never seen, reads as a very large one).
 fn int(digits: &str) -> i64 {
     digits.parse().unwrap_or(i64::MAX >> 16)
-}
-
-/// `str.strip()`: the original's blanks (those of Unicode and the four separators 0x1c-0x1f).
-fn strip(s: &str) -> &str {
-    s.trim_matches(|c: char| c.is_whitespace() || ('\x1c'..='\x1f').contains(&c))
 }
 
 /// The keyword arguments of [`_event_option_value`], with the original's defaults (`potions`, `held`, `deck`: None when not given).

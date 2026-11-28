@@ -8,6 +8,7 @@ use sts2bot::run::decks;
 use sts2bot::run::strategy::{self, Memory};
 
 use crate::fake_game::with;
+use crate::helpers::approx;
 
 /// (the original's default: rarity "Common".)
 fn c(cid: &str, name: &str, ctype: &str, cost: i64, text: &str, rarity: &str) -> Value {
@@ -122,10 +123,6 @@ fn PLAIN() -> Vec<Value> {
 /// (one of the two live settings; at it our own table says Friendship 4.5, Grave Warden 6.0)
 fn CROWD() -> learn::KnobGuard {
     learn::with_knobs(&[("crowd", 0.3)])
-}
-
-fn approx(a: f64, b: f64) {
-    assert!((a - b).abs() < 5e-8, "{a} != {b}"); // (assertAlmostEqual: 7 places)
 }
 
 /// The card a reward is answered with (None: skipped). (the original's default: act 1.)

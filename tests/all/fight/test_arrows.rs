@@ -12,7 +12,7 @@ use sts2bot::run::decks;
 
 use super::{combat_state, ctx, pick, power, read_foes};
 use crate::fake_game::{card, with};
-use crate::helpers::{enemy, DEFEND, STRIKE};
+use crate::helpers::{approx, enemy, DEFEND, STRIKE};
 
 /// (the original's default: 15 damage.)
 fn FOOLISH(i: i64) -> Value {
@@ -54,10 +54,6 @@ fn ONES() -> Vec<Value> {
 
 fn score<L: std::borrow::Borrow<cards::CardInfo>>(line: &[L], foes: &[Enemy], kw: &SimulateArgs) -> f64 {
     combat::simulate(line, foes, kw).unwrap().score
-}
-
-fn approx(a: f64, b: f64) {
-    assert!((a - b).abs() < 5e-8, "{a} != {b}"); // (assertAlmostEqual: 7 places)
 }
 
 fn tune(melodies: &[&str]) -> BTreeSet<String> {

@@ -15,7 +15,7 @@ use sts2bot::run::{crowd, decks};
 use sts2bot::Action;
 
 use crate::fake_game::{card, with};
-use crate::helpers::{combat_state, enemy, DEFEND, STRIKE};
+use crate::helpers::{approx, combat_state, enemy, DEFEND, STRIKE};
 
 /// A card as the deck lists it. (the original's `**kw`: `with`.)
 fn c(cid: &str, name: &str, ctype: &str, cost: i64, text: &str) -> Value {
@@ -66,10 +66,6 @@ fn character_select(locked: &[(&str, bool)]) -> Value {
 
 fn act(name: &str, params: Value) -> Action {
     (name.to_string(), params)
-}
-
-fn approx(a: f64, b: f64) {
-    assert!((a - b).abs() < 5e-8, "{a} != {b}"); // (assertAlmostEqual: 7 places)
 }
 
 /// `strategy.path_value(rooms, hp, max_hp, gold, act)`.

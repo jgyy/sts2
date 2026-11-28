@@ -18,7 +18,7 @@ use super::value::{
     card_worth, curse, gold, heal, hp_cost, is_curse, max_hp_gain, max_hp_loss, name_of, num, potions_gained, random_upgrades, removals, transforms, Ctx, CARD_REWARD,
     ETERNAL, POTION, RELIC, UPGRADE,
 };
-use crate::base::{self, fmax, fmin, JsonExt};
+use crate::base::{self, fmax, fmin, strip, JsonExt};
 use crate::run::relicworth::{id_of as relic_id, worth as relic_worth};
 
 pub const BASE: f64 = 0.5;
@@ -26,11 +26,6 @@ pub const RUN: f64 = 25.0; // what the rest of the run is worth, in these points
 
 /// An event's rule: the option's score, or None to leave it to the generic scorer.
 pub type Rule = fn(&Value, &Ctx) -> Option<f64>;
-
-/// `str.strip()`: the original's blanks (those of Unicode and the four separators 0x1c-0x1f).
-fn strip(s: &str) -> &str {
-    s.trim_matches(|c: char| c.is_whitespace() || ('\x1c'..='\x1f').contains(&c))
-}
 
 pub fn _text(opt: &Value) -> (String, String) {
     (strip(&opt["title"].text()).to_lowercase(), opt["description"].text())
@@ -43,9 +38,7 @@ pub fn _fight(share: f64, ctx: &Ctx) -> f64 {
 
 /// What losing the card an option names costs (a Strike or a curse gone is a gain).
 pub fn _lost_card(text: &str, ctx: &Ctx) -> f64 {
-    let Some(m) = crate::re!(r"(?i)lose ([a-z' +.-]+?)(?:\.|\n?\z)").captures(text) else {
-        return 0.0;
-    };
+    let Some(m) = crate::re!(r"(?i)lose ([a-z' +.-]+?)(?:\.|\n?\z)").captures(text) else { return 0.0 };
     let named = m.get(1).map_or("", |g| g.as_str());
     let wanted = name_of(named);
     let card = match ctx.deck.iter().find(|c| name_of(*c) == wanted) {

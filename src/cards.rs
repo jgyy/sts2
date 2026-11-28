@@ -44,239 +44,155 @@ fn to_int(digits: &str) -> i64 {
     digits.parse().unwrap_or(0)
 }
 
-/// What a card does, as read from its text. A plain value: `CardInfo { cost: 0, ..c.clone() }` for `dataclasses.replace(c, cost=0)`.
-/// `CardInfo::default()` is all zeros, empty and false but for `aim_times` (1) and `play_limit` (-1), the two defaults that are neither.
-#[derive(Clone, Debug, PartialEq)]
-pub struct CardInfo {
-    pub index: i64,
-    pub name: String,
-    /// Attack, Skill, Power, Status, Curse
-    pub r#type: String,
-    /// energy; X-cost cards report -1
-    pub cost: i64,
-    pub star_cost: i64,
-    /// per hit
-    pub damage: i64,
-    pub hits: i64,
-    /// "If the enemy is Vulnerable, hits twice."
-    pub double_if_vulnerable: bool,
-    pub aoe: bool,
-    pub random_target: bool,
-    pub block: i64,
-    pub vulnerable: i64,
-    pub weak: i64,
-    pub draw: i64,
-    pub energy_gain: i64,
-    pub hp_loss: i64,
-    pub needs_target: bool,
-    pub playable: bool,
-    /// the text says it can kill us outright ("... die.")
-    pub deadly: bool,
-    /// stops us gaining Block afterwards
-    pub block_lock: bool,
-    /// False when no effect could be parsed from the text
-    pub known: bool,
-    /// Strength we gain when it is played
-    pub strength: i64,
-    /// ... and keep after this turn
-    pub strength_lasts: bool,
-    /// "Enemy loses N Strength this turn."
-    pub enemy_strength_loss: i64,
-    /// ... or for good, without the "this turn" (Shared Fate, Resonance)
-    pub enemy_strength_lasts: bool,
-    /// card id without the upgrade mark, e.g. DEMON_FORM
-    pub key: String,
-    /// afflicted with Bound: only one such card can be played per turn
-    pub bound: bool,
-    // --- other characters' mechanics
-    /// Poison applied (per application)
-    pub poison: i64,
-    /// ... only to an enemy that already has Poison (Bubble Bubble: nothing otherwise)
-    pub poison_needs: bool,
-    /// Doom applied
-    pub doom: i64,
-    /// Shivs (0-cost 4 damage cards) added to the hand
-    pub shivs: i64,
-    /// Stars gained (the Regent's second resource)
-    pub star_gain: i64,
-    /// damage added to the Sovereign Blade for the fight
-    pub forge: i64,
-    /// HP given to Osty, who takes hits for the Necrobinder
-    pub summon: i64,
-    /// Dexterity gained
-    pub dexterity: i64,
-    pub dexterity_lasts: bool,
-    /// orbs channeled, e.g. ["LIGHTNING", "FROST"] (the original: a tuple of names; empty for none)
-    pub channel: Vec<String>,
-    /// times the rightmost orb is evoked
-    pub evoke: i64,
-    /// energy gained next turn
-    pub next_energy: i64,
-    /// extra cards drawn next turn
-    pub next_draw: i64,
-    /// Block gained next turn
-    pub next_block: i64,
-    /// "Retain your Hand this turn": ["ANY"], or the Melodies it needs (Ki Rest: "If you have a Wah Melody or Cho Melody") (the original: a tuple of names; empty for none)
-    pub keeps_hand: Vec<String>,
-    /// "Enemy loses N HP." (ignores Block)
-    pub enemy_hp_loss: i64,
-    /// Souls added to the draw pile (each: draw 2 cards)
-    pub souls: i64,
-    /// times every orb is evoked (Shatter)
-    pub evoke_all: i64,
-    /// cannot be played right now only for want of energy or Stars
-    pub short: bool,
-    /// "Osty deals N damage": nothing happens while Osty is dead
-    pub osty_attack: bool,
-    /// Bone Shards: Osty dies, and with him the HP that stood in front of us
-    pub osty_dies: bool,
-    /// End of Days: enemies with as much Doom as HP die at once, not at the end of their turn
-    pub doom_kills: bool,
-    /// Debris (1 energy: Exhaust) it adds to our hand; -1: as many as the hand has room for (Crash Landing)
-    pub debris: i64,
-    /// other statuses it puts in our piles (Wild Strike's Wound, Fight Through's two, Overclock's Burn, Turbo's Void)
-    pub junk: i64,
-    /// Strength it gives the enemy for good (Fight Me: "The enemy gains 1 Strength")
-    pub enemy_strength_gain: i64,
-    /// HP it gives back when played (Not Yet)
-    pub heal: i64,
-    /// gone for the fight if it is still in the hand when the turn ends
-    pub ethereal: bool,
-    /// "End your turn." (Void Form), "Exhaust your Hand." (Fiend Fire, Stoke): nothing in the hand can be played after it
-    pub ends_turn: bool,
-    /// times it is played again by itself ("Replay 1": Sword Sage's Sovereign Blade, Hidden Gem, Transfigure)
-    pub replay: i64,
-    /// "You can only play 1 more card this turn." (Encore): cards allowed after it (-1: no limit)
-    pub play_limit: i64,
-    // --- the Fool's Arrows: a card that Shoots needs an Arrow not standing in an enemy, or it does nothing
-    pub shoots: bool,
-    /// "Aim affects this card 2 times" (Heavy Shot): the Aim in its text counts this often
-    pub aim_times: i64,
-    /// Aim gained ("Your next Arrow deals more damage"), per energy on an X card (Brace)
-    pub aim: i64,
-    /// Stretch gained ("The next time you gain Block from a card, gain additional Block")
-    pub stretch: i64,
-    /// Nail: "If the enemy is Impaled, Deal 20 damage ...": nothing otherwise
-    pub impaled_only: bool,
-    /// (energy, cards drawn) it adds when its target is Impaled (Bow Smack, Ki Hop) (the original: that pair, or the empty tuple: None here)
-    pub on_impaled: Option<(i64, i64)>,
-    /// Rain Shot: "Damage ALL other enemies equal to the damage dealt": the same again on each other enemy
-    pub splash: bool,
-    /// Blossom Shot: "gain Stretch equal to the damage dealt" (what its hits did, as Stretch)
-    pub stretch_dealt: bool,
-    /// takes our Arrow back out of its (Impaled) target: Uproot, Recall
-    pub dislodge: bool,
-    /// Wah Hammer: "Deals double damage to Impaled enemies"
-    pub impaled_double: bool,
-    /// Cho Firm: "If you have an Arrow, gain Block an additional time"
-    pub arrow_block: bool,
-    /// the Melodies playing it gives for the turn: the Wah, Cho and Ki in its name (the original: a tuple of names, in MELODIES' order)
-    pub melody: Vec<String>,
-    /// "Hits an additional time for each Melody you have" (its text counts those there are)
-    pub melody_hits: bool,
-    /// "Gain 5 Block for each Melody you have" (Harmonic Shield): Block a Melody
-    pub melody_block: i64,
-    /// Wah Blast: "If you have a Cho Melody or Ki Melody, hits twice" (the original: a tuple of names; empty for none)
-    pub melody_twice: Vec<String>,
-    /// Ki Verse: "The next (2) "Wah" or "Cho" card(s) you play this turn ... played an additional time" (before v0.114: "Wah", "Cho", or "Ki")
-    pub verse: i64,
-    /// the first game's Watcher: the stance the card puts her in (WRATH, CALM, DIVINITY, EXIT; games/sts1/stance.rs)
-    pub stance: String,
-    /// Simmering Fury: "At the start of your next turn, enter Wrath" (the next turn begins in it, as one ended in Wrath)
-    pub wrath_next: bool,
-    /// a Power's energy taken away at the start of every turn from now on (the first game's Fasting)
-    pub energy_drain: i64,
-    /// the first game's Watcher: Mantra gained (at 10 she enters Divinity)
-    pub mantra: i64,
-    /// the Fool's Sadness it puts in the hand when played (Sorrowful Strike 2, Mourning Blow itself), less those it turns into Joy
-    pub sadness: i64,
-    /// a Power's (Sadness, cards drawn) added at the start of every turn: Ennui (1, 2); Ecstasy's Joy (-1, 0) (fight/fool/sadness.rs) (the original: that pair, or the empty tuple: None here)
-    pub sad_turn: Option<(i64, i64)>,
-}
-
-impl Default for CardInfo {
-    fn default() -> Self {
-        CardInfo {
-            index: 0,
-            name: String::new(),
-            r#type: String::new(),
-            cost: 0,
-            star_cost: 0,
-            damage: 0,
-            hits: 0,
-            double_if_vulnerable: false,
-            aoe: false,
-            random_target: false,
-            block: 0,
-            vulnerable: 0,
-            weak: 0,
-            draw: 0,
-            energy_gain: 0,
-            hp_loss: 0,
-            needs_target: false,
-            playable: false,
-            deadly: false,
-            block_lock: false,
-            known: false,
-            strength: 0,
-            strength_lasts: false,
-            enemy_strength_loss: 0,
-            enemy_strength_lasts: false,
-            key: String::new(),
-            bound: false,
-            poison: 0,
-            poison_needs: false,
-            doom: 0,
-            shivs: 0,
-            star_gain: 0,
-            forge: 0,
-            summon: 0,
-            dexterity: 0,
-            dexterity_lasts: false,
-            channel: Vec::new(),
-            evoke: 0,
-            next_energy: 0,
-            next_draw: 0,
-            next_block: 0,
-            keeps_hand: Vec::new(),
-            enemy_hp_loss: 0,
-            souls: 0,
-            evoke_all: 0,
-            short: false,
-            osty_attack: false,
-            osty_dies: false,
-            doom_kills: false,
-            debris: 0,
-            junk: 0,
-            enemy_strength_gain: 0,
-            heal: 0,
-            ethereal: false,
-            ends_turn: false,
-            replay: 0,
-            play_limit: -1,
-            shoots: false,
-            aim_times: 1,
-            aim: 0,
-            stretch: 0,
-            impaled_only: false,
-            on_impaled: None,
-            splash: false,
-            stretch_dealt: false,
-            dislodge: false,
-            impaled_double: false,
-            arrow_block: false,
-            melody: Vec::new(),
-            melody_hits: false,
-            melody_block: 0,
-            melody_twice: Vec::new(),
-            verse: 0,
-            stance: String::new(),
-            wrath_next: false,
-            energy_drain: 0,
-            mantra: 0,
-            sadness: 0,
-            sad_turn: None,
-        }
+crate::defaults! {
+    /// What a card does, as read from its text. A plain value: `CardInfo { cost: 0, ..c.clone() }` for `dataclasses.replace(c, cost=0)`.
+    /// `CardInfo::default()` is all zeros, empty and false but for `aim_times` (1) and `play_limit` (-1), the two defaults that are neither.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct CardInfo {
+        pub index: i64,
+        pub name: String,
+        /// Attack, Skill, Power, Status, Curse
+        pub r#type: String,
+        /// energy; X-cost cards report -1
+        pub cost: i64,
+        pub star_cost: i64,
+        /// per hit
+        pub damage: i64,
+        pub hits: i64,
+        /// "If the enemy is Vulnerable, hits twice."
+        pub double_if_vulnerable: bool,
+        pub aoe: bool,
+        pub random_target: bool,
+        pub block: i64,
+        pub vulnerable: i64,
+        pub weak: i64,
+        pub draw: i64,
+        pub energy_gain: i64,
+        pub hp_loss: i64,
+        pub needs_target: bool,
+        pub playable: bool,
+        /// the text says it can kill us outright ("... die.")
+        pub deadly: bool,
+        /// stops us gaining Block afterwards
+        pub block_lock: bool,
+        /// False when no effect could be parsed from the text
+        pub known: bool,
+        /// Strength we gain when it is played
+        pub strength: i64,
+        /// ... and keep after this turn
+        pub strength_lasts: bool,
+        /// "Enemy loses N Strength this turn."
+        pub enemy_strength_loss: i64,
+        /// ... or for good, without the "this turn" (Shared Fate, Resonance)
+        pub enemy_strength_lasts: bool,
+        /// card id without the upgrade mark, e.g. DEMON_FORM
+        pub key: String,
+        /// afflicted with Bound: only one such card can be played per turn
+        pub bound: bool,
+        // --- other characters' mechanics
+        /// Poison applied (per application)
+        pub poison: i64,
+        /// ... only to an enemy that already has Poison (Bubble Bubble: nothing otherwise)
+        pub poison_needs: bool,
+        /// Doom applied
+        pub doom: i64,
+        /// Shivs (0-cost 4 damage cards) added to the hand
+        pub shivs: i64,
+        /// Stars gained (the Regent's second resource)
+        pub star_gain: i64,
+        /// damage added to the Sovereign Blade for the fight
+        pub forge: i64,
+        /// HP given to Osty, who takes hits for the Necrobinder
+        pub summon: i64,
+        /// Dexterity gained
+        pub dexterity: i64,
+        pub dexterity_lasts: bool,
+        /// orbs channeled, e.g. ["LIGHTNING", "FROST"] (the original: a tuple of names; empty for none)
+        pub channel: Vec<String>,
+        /// times the rightmost orb is evoked
+        pub evoke: i64,
+        /// energy gained next turn
+        pub next_energy: i64,
+        /// extra cards drawn next turn
+        pub next_draw: i64,
+        /// Block gained next turn
+        pub next_block: i64,
+        /// "Retain your Hand this turn": ["ANY"], or the Melodies it needs (Ki Rest: "If you have a Wah Melody or Cho Melody") (the original: a tuple of names; empty for none)
+        pub keeps_hand: Vec<String>,
+        /// "Enemy loses N HP." (ignores Block)
+        pub enemy_hp_loss: i64,
+        /// Souls added to the draw pile (each: draw 2 cards)
+        pub souls: i64,
+        /// times every orb is evoked (Shatter)
+        pub evoke_all: i64,
+        /// cannot be played right now only for want of energy or Stars
+        pub short: bool,
+        /// "Osty deals N damage": nothing happens while Osty is dead
+        pub osty_attack: bool,
+        /// Bone Shards: Osty dies, and with him the HP that stood in front of us
+        pub osty_dies: bool,
+        /// End of Days: enemies with as much Doom as HP die at once, not at the end of their turn
+        pub doom_kills: bool,
+        /// Debris (1 energy: Exhaust) it adds to our hand; -1: as many as the hand has room for (Crash Landing)
+        pub debris: i64,
+        /// other statuses it puts in our piles (Wild Strike's Wound, Fight Through's two, Overclock's Burn, Turbo's Void)
+        pub junk: i64,
+        /// Strength it gives the enemy for good (Fight Me: "The enemy gains 1 Strength")
+        pub enemy_strength_gain: i64,
+        /// HP it gives back when played (Not Yet)
+        pub heal: i64,
+        /// gone for the fight if it is still in the hand when the turn ends
+        pub ethereal: bool,
+        /// "End your turn." (Void Form), "Exhaust your Hand." (Fiend Fire, Stoke): nothing in the hand can be played after it
+        pub ends_turn: bool,
+        /// times it is played again by itself ("Replay 1": Sword Sage's Sovereign Blade, Hidden Gem, Transfigure)
+        pub replay: i64,
+        /// "You can only play 1 more card this turn." (Encore): cards allowed after it (-1: no limit)
+        pub play_limit: i64 = -1,
+        // --- the Fool's Arrows: a card that Shoots needs an Arrow not standing in an enemy, or it does nothing
+        pub shoots: bool,
+        /// "Aim affects this card 2 times" (Heavy Shot): the Aim in its text counts this often
+        pub aim_times: i64 = 1,
+        /// Aim gained ("Your next Arrow deals more damage"), per energy on an X card (Brace)
+        pub aim: i64,
+        /// Stretch gained ("The next time you gain Block from a card, gain additional Block")
+        pub stretch: i64,
+        /// Nail: "If the enemy is Impaled, Deal 20 damage ...": nothing otherwise
+        pub impaled_only: bool,
+        /// (energy, cards drawn) it adds when its target is Impaled (Bow Smack, Ki Hop) (the original: that pair, or the empty tuple: None here)
+        pub on_impaled: Option<(i64, i64)>,
+        /// Rain Shot: "Damage ALL other enemies equal to the damage dealt": the same again on each other enemy
+        pub splash: bool,
+        /// Blossom Shot: "gain Stretch equal to the damage dealt" (what its hits did, as Stretch)
+        pub stretch_dealt: bool,
+        /// takes our Arrow back out of its (Impaled) target: Uproot, Recall
+        pub dislodge: bool,
+        /// Wah Hammer: "Deals double damage to Impaled enemies"
+        pub impaled_double: bool,
+        /// Cho Firm: "If you have an Arrow, gain Block an additional time"
+        pub arrow_block: bool,
+        /// the Melodies playing it gives for the turn: the Wah, Cho and Ki in its name (the original: a tuple of names, in MELODIES' order)
+        pub melody: Vec<String>,
+        /// "Hits an additional time for each Melody you have" (its text counts those there are)
+        pub melody_hits: bool,
+        /// "Gain 5 Block for each Melody you have" (Harmonic Shield): Block a Melody
+        pub melody_block: i64,
+        /// Wah Blast: "If you have a Cho Melody or Ki Melody, hits twice" (the original: a tuple of names; empty for none)
+        pub melody_twice: Vec<String>,
+        /// Ki Verse: "The next (2) "Wah" or "Cho" card(s) you play this turn ... played an additional time" (before v0.114: "Wah", "Cho", or "Ki")
+        pub verse: i64,
+        /// the first game's Watcher: the stance the card puts her in (WRATH, CALM, DIVINITY, EXIT; games/sts1/stance.rs)
+        pub stance: String,
+        /// Simmering Fury: "At the start of your next turn, enter Wrath" (the next turn begins in it, as one ended in Wrath)
+        pub wrath_next: bool,
+        /// a Power's energy taken away at the start of every turn from now on (the first game's Fasting)
+        pub energy_drain: i64,
+        /// the first game's Watcher: Mantra gained (at 10 she enters Divinity)
+        pub mantra: i64,
+        /// the Fool's Sadness it puts in the hand when played (Sorrowful Strike 2, Mourning Blow itself), less those it turns into Joy
+        pub sadness: i64,
+        /// a Power's (Sadness, cards drawn) added at the start of every turn: Ennui (1, 2); Ecstasy's Joy (-1, 0) (fight/fool/sadness.rs) (the original: that pair, or the empty tuple: None here)
+        pub sad_turn: Option<(i64, i64)>,
     }
 }
 
@@ -438,9 +354,7 @@ pub fn _cost(raw: &Value) -> i64 {
 
 /// "Retain your Hand this turn": ["ANY"]; behind a Melody ("If you have a Wah Melody or Cho Melody, Retain ..."): those Melodies.
 pub fn _keeps_hand(text: &str) -> Vec<String> {
-    let Some(m) = search!(r"(?:if\s+you\s+have\s+([^,.]*?melody[^,.]*?),\s*)?retain\s+your\s+hand", text) else {
-        return Vec::new();
-    };
+    let Some(m) = search!(r"(?:if\s+you\s+have\s+([^,.]*?melody[^,.]*?),\s*)?retain\s+your\s+hand", text) else { return Vec::new() };
     match m.get(1).map(|g| g.as_str()).filter(|g| !g.is_empty()) {
         Some(needs) => crate::re!(r"(?i)(\w+)\s+melody").captures_iter(needs).map(|w| w[1].to_uppercase()).collect(),
         None => vec!["ANY".to_string()],

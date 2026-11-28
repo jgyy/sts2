@@ -272,3 +272,28 @@ pub fn url_quote(s: &str) -> String {
     }
     out
 }
+
+/// `s.strip()`: the original's blanks (those of Unicode and the four separators 0x1c-0x1f).
+pub fn strip(s: &str) -> &str {
+    s.trim_matches(|c: char| c.is_whitespace() || ('\x1c'..='\x1f').contains(&c))
+}
+
+/// `s.splitlines()`.
+pub fn splitlines(s: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut start = 0;
+    let mut chars = s.char_indices().peekable();
+    while let Some((i, c)) = chars.next() {
+        if matches!(c, '\n' | '\r' | '\x0b' | '\x0c' | '\x1c' | '\x1d' | '\x1e' | '\u{85}' | '\u{2028}' | '\u{2029}') {
+            out.push(&s[start..i]);
+            start = i + c.len_utf8();
+            if c == '\r' && chars.next_if(|&(_, n)| n == '\n').is_some() {
+                start += 1;
+            }
+        }
+    }
+    if start < s.len() {
+        out.push(&s[start..]);
+    }
+    out
+}

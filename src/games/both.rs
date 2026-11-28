@@ -293,9 +293,7 @@ pub fn run(argv: &[String], args: RunArgs) -> i32 {
                     }
                     continue;
                 };
-                let Some(code) = procs[at].1.poll() else {
-                    continue;
-                };
+                let Some(code) = procs[at].1.poll() else { continue };
                 procs.remove(at);
                 if code == 0 {
                     done.insert(game.clone());
