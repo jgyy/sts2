@@ -1298,3 +1298,117 @@ pub fn content() -> Content {
         event: common::event,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::py::Random;
+    use crate::sim::monsters::Arg;
+
+    /// What the Python builds from the data (tests/golden/sim_sts2.json, written by a scratch script from sim/content/sts2.py
+    /// and sts2_foes.py): every monster's spec at Ascension 0, 8 and 9 and its opening state by slot, every Power's rules,
+    /// the card table, the pools, the relic tiers and the potions.
+    #[test]
+    fn golden() {
+        let _playing = crate::games::playing("sts2");
+        let want: Value = serde_json::from_str(include_str!("../../../tests/golden/sim_sts2.json")).unwrap();
+        let g = crate::sim::content::content("sts2");
+        let data = DATA();
+        let mut checked = 0;
+        let run = Run::new(&g, "IRONCLAD", 1, None, 0);
+        let mut f = Fight::new(run, vec![], "monster");
+        for case in want["specs"].list() {
+            let (key, asc) = (case["key"].s(), case["asc"].int());
+            let m = &data["monsters"][key];
+            let spec = Rc::new(sts2_foes::spec_of(key, m, asc));
+            let moves: Vec<Value> = spec
+                .moves
+                .iter()
+                .map(|(k, mv)| {
+                    let fx: Vec<Value> = mv
+                        .fx
+                        .iter()
+                        .map(|fx| {
+                            let mut row = vec![json!(fx.word)];
+                            row.extend(fx.args.iter().map(|a| match a {
+                                Arg::Int(n) => json!(n),
+                                Arg::Str(s) => json!(s),
+                                Arg::Call(_) => json!("<call>"),
+                            }));
+                            Value::Array(row)
+                        })
+                        .collect();
+                    json!([k, mv.dmg, mv.hits, mv.block, mv.kind, fx])
+                })
+                .collect();
+            let states: IndexMap<String, Value> = m["states"].list().iter().map(|s| (s["id"].s().to_string(), s.clone())).collect();
+            let mut firsts = Vec::new();
+            for slot in 0..4 {
+                for alone in [false, true] {
+                    f.foes = vec![sts2_foes::new_foe(&spec, 0, spec.hp.0, slot, alone)];
+                    f.run.rng = Random::new((slot * 2 + alone as i64 + 1) as i128);
+                    let first = sts2_foes::_initial(&mut f, 0, m, &states);
+                    firsts.push(json!([first, f.run.rng.random()]));
+                }
+            }
+            let got = json!({"key": key, "asc": asc, "name": spec.name, "hp": [spec.hp.0, spec.hp.1], "powers": spec.powers.iter().map(|(k, v)| json!([k, v])).collect::<Vec<_>>(),
+                             "minion": spec.minion, "block": spec.block, "hooks": spec.hooks.keys().collect::<Vec<_>>(), "moves": moves, "initial": firsts});
+            assert_eq!(py::json_dumps(&got), py::json_dumps(case), "{key} at Ascension {asc}");
+            checked += 1;
+        }
+        for case in want["power_rules"].list() {
+            let rules: Vec<Value> = power_rules(case[0].s()).iter().map(|(when, what)| json!([when, what])).collect();
+            assert_eq!(json!(rules), case[1], "{}", case[0]);
+            checked += 1;
+        }
+        let mut kinds: Vec<(String, String)> = _PLAY_KIND().iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+        kinds.sort();
+        assert_eq!(json!(kinds), want["play_kind"]);
+        let cards = CARDS();
+        let powers: Vec<&String> = cards.iter().filter(|(k, _)| g.POWER.contains_key(*k)).map(|(k, _)| k).collect();
+        assert_eq!(json!(powers), want["power_keys"]);
+        assert_eq!(powers.len(), g.POWER.len());
+        assert_eq!(json!([COMMON(), UNCOMMON(), RARE()]), want["relics"]);
+        for row in want["relic_names"].list() {
+            assert_eq!(json!([row[0], relic_name(row[0].s()), relic_text(row[0].s())]), *row);
+            checked += 1;
+        }
+        let potions: Vec<Value> = _POTIONS().iter().map(|(k, (name, rarity, text))| json!([k, name, rarity, text])).collect();
+        assert_eq!(json!(potions), want["potions"]);
+        let pools: serde_json::Map<String, Value> = CHARACTERS().keys().map(|ch| (ch.clone(), json!(pool(ch).iter().map(|d| d.key.clone()).collect::<Vec<_>>()))).collect();
+        assert_eq!(py::json_dumps(&Value::Object(pools)), py::json_dumps(&want["pools"]));
+        assert_eq!(json!(colorless().iter().map(|d| d.key.clone()).collect::<Vec<_>>()), want["colorless"]);
+        let rows: Vec<Value> = cards.values().map(|d| json!([d.key, d.name, d.r#type, d.cost, d.rarity, d.targeted, d.text, d.text_up, d.cost_up, d.color, d.star_cost, d.star_cost_up, d.keywords, d.keywords_up])).collect();
+        assert_eq!(rows.len(), want["cards"].list().len());
+        for (got, wanted) in rows.iter().zip(want["cards"].list()) {
+            assert_eq!(got, wanted);
+            checked += 1;
+        }
+        let characters: serde_json::Map<String, Value> = CHARACTERS().iter().map(|(k, c)| (k.clone(), json!({"title": c.title, "hp": c.hp, "deck": c.deck, "relics": c.relics, "orbs": c.orbs}))).collect();
+        assert_eq!(py::json_dumps(&Value::Object(characters)), py::json_dumps(&want["characters"]));
+        let scarce: serde_json::Map<String, Value> = SCARCE_ODDS().iter().map(|(k, v)| (k.clone(), json!(v.iter().map(|(r, p)| json!([r, p])).collect::<Vec<_>>()))).collect();
+        assert_eq!(py::json_dumps(&Value::Object(scarce)), py::json_dumps(&want["scarce"]));
+        for row in want["wither"].list() {
+            let d = wither(row[0].int());
+            assert_eq!(json!([row[0], d.name, d.text]), *row);
+        }
+        for row in want["effect"].list() {
+            let d = _effect_card(row[0].s());
+            assert_eq!(json!([row[0], d.text, d.text_up]), *row);
+        }
+        let sorted = |keys: Vec<&String>| {
+            let mut keys = keys;
+            keys.sort();
+            json!(keys)
+        };
+        assert_eq!(sorted(g.AFTER.keys().collect()), want["after"]);
+        assert_eq!(sorted(g.PRE.keys().collect()), want["pre"]);
+        assert_eq!(sorted(g.DAMAGE.keys().collect()), want["damage"]);
+        for key in want["own_power"].list() {
+            assert!(OWN_POWER(key.s()).is_some(), "{key}");
+        }
+        assert!(cards.keys().filter(|k| OWN_POWER(k).is_some()).count() <= want["own_power"].list().len());
+        assert!(OWN_POWER("INFLAME").is_none());
+        assert!(checked > 1200, "{checked} golden cases");
+    }
+}
